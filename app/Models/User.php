@@ -6,6 +6,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -41,5 +42,22 @@ class User extends Authenticatable
     public function assignedCompanies(): BelongsToMany
     {
         return $this->belongsToMany(Company::class);
+    }
+
+    public function visibleCompanies(): Builder
+    {
+        if ($this->hasRole('admin')) {
+            return Company::query();
+        }
+
+        if ($this->hasRole('client')) {
+            return Company::where('id', $this->company_id);
+        }
+
+        if ($this->hasRole('accountant')) {
+            return Company::whereHas('accountants', fn ($query) => $query->whereKey($this->id));
+        }
+
+        return Company::query()->whereNull('id');
     }
 }

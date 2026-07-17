@@ -2,7 +2,6 @@
 
 namespace App\Livewire;
 
-use App\Models\Company;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -11,14 +10,7 @@ class CompanyIndex extends Component
 {
     public function render()
     {
-        $user = auth()->user();
-
-        $companies = match (true) {
-            $user->hasRole('admin') => Company::orderBy('name')->get(),
-            $user->hasRole('client') => Company::where('id', $user->company_id)->get(),
-            $user->hasRole('accountant') => $user->assignedCompanies()->orderBy('name')->get(),
-            default => collect(),
-        };
+        $companies = auth()->user()->visibleCompanies()->orderBy('name')->get();
 
         return view('livewire.company-index', ['companies' => $companies]);
     }
