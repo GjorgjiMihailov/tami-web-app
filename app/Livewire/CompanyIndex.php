@@ -3,8 +3,10 @@
 namespace App\Livewire;
 
 use App\Models\Company;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+#[Layout('layouts.app')]
 class CompanyIndex extends Component
 {
     public function render()

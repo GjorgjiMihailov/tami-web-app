@@ -71,4 +71,15 @@ class CompanyIndexTest extends TestCase
     {
         $this->get('/companies')->assertRedirect('/login');
     }
+
+    public function test_the_companies_page_renders_successfully_over_http(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin)
+            ->get('/companies')
+            ->assertOk()
+            ->assertSee('Companies');
+    }
 }
