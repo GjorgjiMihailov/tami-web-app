@@ -651,7 +651,10 @@ Append to `.github/workflows/deploy.yml` (same file as Task 5), after the `test`
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
+            chown -R www-data:www-data .
 ```
+
+**Why the final `chown` line is required (discovered live, not in the original design):** `DEPLOY_USER` is `root` (Task 8 uses the same SSH user already used for manual server access). Every file `composer install`, `artisan config:cache`, etc. touch or create during the deploy — `bootstrap/cache/*.php`, `storage/logs/laravel.log` — gets written as `root:root`, since that's who ran the command. Apache/PHP-FPM runs as `www-data` and can no longer write to those files afterward (breaking logging and any future cache regeneration), and on the very first deploy this manifested as a live 500 error (`MissingAppKeyException` masked by a permissions-broken log that silently failed to record anything). Re-`chown`-ing back to `www-data` at the end of every deploy keeps ownership consistent regardless of which user the deploy SSHes in as.
 
 - [ ] **Step 2: Commit**
 
