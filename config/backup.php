@@ -296,7 +296,7 @@ return [
      */
     'monitor_backups' => [
         [
-            'name' => env('APP_NAME', 'tami-web-app'),
+            'name' => 'tami-web-app',
             'disks' => ['google'],
             'health_checks' => [
                 MaximumAgeInDays::class => 1,

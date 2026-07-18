@@ -71,7 +71,7 @@ Sharing a folder only grants access to files someone else owns — it does not c
 
 ## Error Handling
 
-- Failed backups: `spatie/laravel-backup` supports failure notifications (e.g. mail) out of the box; whether to wire up a notification channel is left to execution/implementation, since Phase 0's logging strategy is deliberately manual-check-only (no external error service).
+- Failed backups: `spatie/laravel-backup` supports failure notifications (e.g. mail) out of the box. Decided during execution: left log-only for now (consistent with Phase 0's manual-check-only logging strategy) rather than wiring up real email delivery — a failed nightly backup is recorded in `storage/logs/laravel.log` but does not proactively alert anyone. Revisit if backups become critical enough to need active monitoring.
 - Failed deploys: a failed GitHub Actions run blocks the workflow and leaves the previous code running in the live folder (since steps run in place, a failure mid-deploy could leave a partially-updated app — accepted trade-off of the simple deploy approach chosen above). The workflow run's logs in GitHub Actions are the source of truth for diagnosing a failed deploy.
 
 ## Testing

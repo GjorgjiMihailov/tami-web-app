@@ -85,6 +85,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
             git pull origin main
             composer install --no-dev --optimize-autoloader --no-interaction
