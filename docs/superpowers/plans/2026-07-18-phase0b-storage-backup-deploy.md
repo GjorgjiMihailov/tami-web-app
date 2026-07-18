@@ -305,7 +305,7 @@ Change these keys from their published defaults (leave everything else as publis
 ```php
     'backup' => [
 
-        'name' => env('APP_NAME', 'tami-web-app'),
+        'name' => 'tami-web-app',
 
         'source' => [
             'databases' => [
@@ -322,6 +322,8 @@ Change these keys from their published defaults (leave everything else as publis
         // ... (leave 'filename_prefix', 'temporary_directory' etc. as published)
     ],
 ```
+
+**Why `'name'` is a fixed string, not `env('APP_NAME', ...)`:** `spatie/laravel-backup` namespaces every backup under a subfolder named after `backup.name` inside the destination disk (e.g. `{name}/2026-07-18-....zip`). Discovered live on the droplet: the `masbug/flysystem-google-drive-ext` adapter's `listContents()` throws `UnableToReadFile`/`UnableToListContents` for a subfolder that doesn't exist yet, instead of returning an empty list like local/S3 disks do — which breaks `BackupDestination::isReachable()` on the very first backup run. Using `env('APP_NAME', ...)` is doubly risky here: `APP_NAME` can contain spaces or change between environments, and either way the target subfolder must be pre-created in Drive once before the first `backup:run` (see Task 4's Step 2, updated below) since the adapter cannot create it implicitly the way it can for the local/S3 disks the package was primarily built around.
 
 And under the top-level `cleanup` key, replace the `default_strategy` array with a flat 30-day rolling window (no tiered daily/weekly/monthly retention):
 
@@ -406,7 +408,17 @@ SSH into the droplet. Run `crontab -e` for the user that owns the app files, and
 
 (Replace `/path/to/tami-web-app` with the actual deploy path on the droplet.)
 
-- [ ] **Step 2: Manually trigger a real backup once**
+- [ ] **Step 2: Pre-create the backup subfolder in Drive**
+
+`spatie/laravel-backup` writes into a subfolder named after `config('backup.backup.name')` (`tami-web-app`) inside the `google` disk's root. The Google Drive adapter can't implicitly create this the way local/S3 disks can — it must already exist before the first `backup:run`, or the backup fails with `UnableToReadFile`/`UnableToListContents`. Create it once via tinker:
+
+```bash
+php artisan tinker --execute="Storage::disk('google')->makeDirectory('tami-web-app'); var_dump(Storage::disk('google')->exists('tami-web-app'));"
+```
+
+Confirm it prints `bool(true)`.
+
+- [ ] **Step 3: Manually trigger a real backup once**
 
 On the droplet:
 
@@ -414,7 +426,7 @@ On the droplet:
 php artisan backup:run --only-db
 ```
 
-- [ ] **Step 3: Confirm it landed in Drive**
+- [ ] **Step 4: Confirm it landed in Drive**
 
 Check the Drive folder in the browser (or `php artisan tinker --execute="dd(Storage::disk('google')->allFiles());"`) for a new `.zip` backup file.
 
