@@ -641,7 +641,7 @@ Append to `.github/workflows/deploy.yml` (same file as Task 5), after the `test`
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH }}
+            cd "${{ secrets.DEPLOY_PATH }}"
             git pull origin main
             composer install --no-dev --optimize-autoloader --no-interaction
             php artisan migrate --force
@@ -710,6 +710,8 @@ In the GitHub repo → Settings → Secrets and variables → Actions → New re
 - `DEPLOY_PATH` — the absolute path from Step 3 (e.g. `/path/to/deploy/tami-web-app`)
 
 Delete the local `tami-deploy-key` / `tami-deploy-key.pub` files once added (or keep the private key only somewhere secure — never commit either to git).
+
+**Windows/Git Bash gotcha, discovered live:** if setting secrets via `gh secret set` from Git Bash on Windows, any value that looks like an absolute Unix path (starts with `/`, e.g. `DEPLOY_PATH`) gets silently mangled by MSYS's automatic path conversion before it ever reaches `gh.exe` — `/var/www/portal` became `C:/Program Files/Git/var/www/portal`, which then broke `cd` on the remote server ("too many arguments", because of the space in "Program Files"). Fix: prefix the command with `MSYS_NO_PATHCONV=1` (e.g. `MSYS_NO_PATHCONV=1 gh secret set DEPLOY_PATH --repo ... --body "/var/www/portal"`). This only affects path-shaped values passed as CLI arguments to native (non-MSYS) executables — `DEPLOY_HOST`/`DEPLOY_USER` (not path-shaped) and `DEPLOY_SSH_KEY` (piped via stdin) are unaffected. The workflow's `cd "${{ secrets.DEPLOY_PATH }}"` is also quoted defensively so a future space-containing value fails loudly instead of corrupting the command.
 
 ---
 
