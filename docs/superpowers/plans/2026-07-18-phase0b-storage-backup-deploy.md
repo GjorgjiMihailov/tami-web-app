@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Wire up Google Drive file storage (via a shared personal-Drive folder), nightly MySQL backups to that Drive folder, production MySQL configuration, and GitHub Actions auto-deploy to the droplet — completing the Phase 0 foundation.
+**Goal:** Wire up Google Drive file storage (via OAuth acting as the user's own Google account), nightly MySQL backups to that Drive folder, production MySQL configuration, and GitHub Actions auto-deploy to the droplet — completing the Phase 0 foundation.
 
-**Architecture:** A custom Laravel filesystem disk (`google`) wraps a Flysystem Google Drive adapter pointed at a folder shared with a service account. `spatie/laravel-backup` dumps MySQL nightly and uploads through that same disk, pruning anything older than 30 days. A GitHub Actions workflow runs the test suite against a real MySQL service container (proving migrations/config work on MySQL) and then, only on `main` and only if tests pass, SSHes into the droplet to pull and deploy in place.
+**Architecture:** A custom Laravel filesystem disk (`google`) wraps a Flysystem Google Drive adapter authenticated via OAuth 2.0 (client ID/secret + a long-lived refresh token) acting as the user's own Google account — not a service account, which cannot own files on a personal (non-Workspace) Drive under any configuration. `spatie/laravel-backup` dumps MySQL nightly and uploads through that same disk, pruning anything older than 30 days. A GitHub Actions workflow runs the test suite against a real MySQL service container (proving migrations/config work on MySQL) and then, only on `main` and only if tests pass, SSHes into the droplet to pull and deploy in place.
 
 **Tech Stack:** Laravel 13.20 / PHP 8.3, `masbug/flysystem-google-drive-ext` ^2.5, `spatie/laravel-backup` ^10.3, GitHub Actions (`actions/checkout@v7`, `shivammathur/setup-php@v2`, `appleboy/ssh-action@v1.2.5`).
 
@@ -12,10 +12,10 @@
 
 - PHP ^8.3, Laravel ^13.8 (installed: v13.20.0) — all new packages must be compatible with these floors.
 - Local development keeps `DB_CONNECTION=sqlite`; only production `.env` switches to `mysql`. Never change `phpunit.xml`'s default (sqlite, in-memory) test config.
-- Google Drive storage uses a **personal Drive folder shared with the service account** — not a Shared Drive (Shared Drives require Google Workspace, which is not in use). Never reference "Shared Drive" in code, comments, or docs for this project.
+- Google Drive storage uses **OAuth 2.0 acting as the user's own Google account** — not a service account (confirmed via Google's own API: "Service Accounts do not have storage quota... use OAuth delegation instead") and not a Shared Drive (Workspace-only, not available). Never reference "Shared Drive" or "service account" as the auth mechanism in code, comments, or docs for this project.
 - Backup retention is a rolling **30 days** — nothing older is kept.
 - Deploy is a **simple in-place deploy** (git pull directly into the live folder) — no release-swap/symlink zero-downtime tooling.
-- Credentials (service account key, Drive folder ID, deploy SSH key, MySQL password) live only in the droplet's `.env` or GitHub Actions secrets — never committed to git.
+- Credentials (OAuth client secret, refresh token, Drive folder ID, deploy SSH key, MySQL password) live only in the droplet's `.env` or GitHub Actions secrets — never committed to git.
 
 ---
 
@@ -31,7 +31,9 @@
 
 **Interfaces:**
 - Produces: a Laravel `Storage` disk named `google` — usable anywhere as `Storage::disk('google')`, returning an `Illuminate\Filesystem\FilesystemAdapter`. Later tasks (backup) read/write through this same disk name.
-- Consumes: `config('filesystems.disks.google')` with keys `client_email`, `private_key`, `folder_id` (populated from env in production).
+- Consumes: `config('filesystems.disks.google')` with keys `client_id`, `client_secret`, `refresh_token`, `folder_id` (populated from env in production).
+
+**Auth note (read before implementing):** `Google\Client::setAccessToken()` requires an `access_token` key to be present (throws `InvalidArgumentException` otherwise) — but it does NOT make a network call itself. Passing a stub empty `access_token` alongside the real `refresh_token` is safe and makes `isAccessTokenExpired()` correctly report "expired," which makes the library's own `authorize()` method (confirmed by reading `vendor/google/apiclient/src/Client.php:493-507`) automatically perform the real token refresh over the network, lazily, the first time an actual Drive API call is made — not when the disk is merely resolved. Do NOT call `$client->refreshToken(...)` directly in the service provider — that method (`Client.php:365`) performs the token exchange immediately and unconditionally, which would make every `Storage::disk('google')` resolution a blocking network call (bad for performance) and would break this task's unit test (which uses fake credentials and must not touch the network).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -51,9 +53,9 @@ class GoogleDriveDiskTest extends TestCase
         config([
             'filesystems.disks.google' => [
                 'driver' => 'google',
-                'client_id' => '123456789fake',
-                'client_email' => 'fake@example.iam.gserviceaccount.com',
-                'private_key' => $this->fakePrivateKey(),
+                'client_id' => 'fake-client-id.apps.googleusercontent.com',
+                'client_secret' => 'fake-client-secret',
+                'refresh_token' => 'fake-refresh-token',
                 'folder_id' => 'fake-folder-id',
             ],
         ]);
@@ -62,20 +64,10 @@ class GoogleDriveDiskTest extends TestCase
 
         $this->assertInstanceOf(FilesystemAdapter::class, $disk);
     }
-
-    private function fakePrivateKey(): string
-    {
-        $resource = openssl_pkey_new([
-            'private_key_bits' => 2048,
-            'private_key_type' => OPENSSL_KEYTYPE_RSA,
-        ]);
-
-        openssl_pkey_export($resource, $pem);
-
-        return $pem;
-    }
 }
 ```
+
+This test uses fake credentials and must complete instantly with no network access — if it makes a real HTTP request, the service provider is calling `refreshToken()` eagerly instead of using `setAccessToken()` (see the Auth note above); that's a bug, fix the provider, don't add network mocking to the test.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -94,8 +86,8 @@ Add this entry to the `disks` array, after the existing `s3` entry:
         'google' => [
             'driver' => 'google',
             'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
-            'client_email' => env('GOOGLE_DRIVE_CLIENT_EMAIL'),
-            'private_key' => env('GOOGLE_DRIVE_PRIVATE_KEY'),
+            'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
+            'refresh_token' => env('GOOGLE_DRIVE_REFRESH_TOKEN'),
             'folder_id' => env('GOOGLE_DRIVE_FOLDER_ID'),
         ],
 ```
@@ -121,15 +113,22 @@ class GoogleDriveServiceProvider extends ServiceProvider
     {
         Storage::extend('google', function ($app, array $config) {
             $client = new Client();
-            $client->setAuthConfig([
-                'type' => 'service_account',
-                'client_id' => $config['client_id'],
-                'client_email' => $config['client_email'],
-                'private_key' => str_replace('\\n', "\n", (string) $config['private_key']),
+            $client->setClientId($config['client_id']);
+            $client->setClientSecret($config['client_secret']);
+            // Stub access_token + a real refresh_token: satisfies
+            // setAccessToken()'s validation without making a network call.
+            // The client library refreshes it lazily, automatically, the
+            // first time a real Drive API request is made.
+            $client->setAccessToken([
+                'access_token' => '',
+                'refresh_token' => $config['refresh_token'],
             ]);
             $client->addScope(Drive::DRIVE);
 
             $adapter = new GoogleDriveAdapter(new Drive($client), null, [
+                // "sharedFolderId" is just the adapter's option name for "root
+                // folder ID" — it works identically for a folder this OAuth
+                // user owns outright, not only ones shared with them.
                 'sharedFolderId' => $config['folder_id'],
             ]);
 
@@ -159,8 +158,8 @@ Add to `.env.example`, near the existing `AWS_*` block:
 
 ```
 GOOGLE_DRIVE_CLIENT_ID=
-GOOGLE_DRIVE_CLIENT_EMAIL=
-GOOGLE_DRIVE_PRIVATE_KEY=
+GOOGLE_DRIVE_CLIENT_SECRET=
+GOOGLE_DRIVE_REFRESH_TOKEN=
 GOOGLE_DRIVE_FOLDER_ID=
 ```
 
@@ -178,53 +177,58 @@ git commit -m "Add Google Drive filesystem disk"
 
 ---
 
-### Task 2 (Manual — requires your action): Create the service account and share a Drive folder
+### Task 2 (Manual — requires your action): Get OAuth credentials and a Drive folder
 
-This task can't be done by an agent — it requires clicking through Google's and your own Google Drive's UI, and putting real secrets on the server. Do this with the user directly, walking through each step and waiting for confirmation before moving on.
+This task can't be done by an agent alone — it requires clicking through Google's UI and a one-time interactive login as the user. Walk through each step with the user directly, waiting for confirmation before moving on. Where the controller has local Bash access on the same machine as the user's browser, the controller can run the token-exchange script itself instead of asking the user to run commands.
 
 **Files:**
-- Modify: droplet's `.env` (not in git — edited directly on the server over SSH)
+- Modify: local `.env` (for the smoke test) and, later in Task 6/8/9, the droplet's `.env` (not in git either way)
 
-- [ ] **Step 1: Create a Google Cloud project**
+- [ ] **Step 1: Create a Google Cloud project** (skip if already done)
 
-Go to https://console.cloud.google.com/projectcreate, create a new project (e.g. "tami-web-app"). Note the project ID.
+Go to https://console.cloud.google.com/projectcreate, create a new project (e.g. "tami-web-app").
 
-- [ ] **Step 2: Enable the Google Drive API**
+- [ ] **Step 2: Enable the Google Drive API** (skip if already done)
 
-In the new project, go to "APIs & Services" → "Library", search "Google Drive API", click Enable.
+"APIs & Services" → "Library" → search "Google Drive API" → Enable.
 
-- [ ] **Step 3: Create a service account and key**
+- [ ] **Step 3: Create an OAuth client ID**
 
-"APIs & Services" → "Credentials" → "Create Credentials" → "Service Account". Name it (e.g. "tami-drive-service"). After creation, open it → "Keys" tab → "Add Key" → "Create new key" → JSON. This downloads a `.json` file — treat it as a password; never commit it to git.
+"APIs & Services" → "Credentials" → "Create Credentials" → "OAuth client ID". If prompted to configure an OAuth consent screen first, choose "External" user type, fill in just the required fields (app name, support email), and add the Google account as a "test user" if asked — this app will only ever be used by that one account, so it never needs Google's app-verification review. For the client ID itself, set Application type to **Desktop app**, name it (e.g. "tami-web-app-drive"), and create it. Note the `client_id` and `client_secret` shown.
 
-- [ ] **Step 4: Share a personal Drive folder with the service account**
+- [ ] **Step 4: Create a Drive folder**
 
-In the user's own Google Drive (drive.google.com), create a new folder (e.g. "Tami App Storage"). Right-click → Share → paste the service account's email address (the `client_email` field from the downloaded JSON, looks like `tami-drive-service@<project-id>.iam.gserviceaccount.com`) → give it **Editor** access → Send (no notification email needed).
+In the user's own Google Drive (drive.google.com), create a folder (e.g. "Tami App Storage"). Open it and copy the folder ID from the URL (`https://drive.google.com/drive/folders/<FOLDER_ID>`).
 
-- [ ] **Step 5: Get the folder ID**
+- [ ] **Step 5: Obtain a refresh token via one-time login**
 
-Open the shared folder in the browser. The URL looks like `https://drive.google.com/drive/folders/<FOLDER_ID>`. Copy `<FOLDER_ID>`.
+This is the one part of the whole plan that needs an actual interactive browser login as the Google account. The controller runs a short-lived local script (via Bash, on the same machine as the user's browser) that:
+1. Starts a temporary local HTTP listener on a loopback port (e.g. `127.0.0.1:8090`).
+2. Builds a Google OAuth authorization URL for scope `https://www.googleapis.com/auth/drive`, with `redirect_uri=http://127.0.0.1:8090`, `access_type=offline`, and `prompt=consent`.
+3. Gives the user that URL to open in their own browser and approve.
+4. Captures the `?code=` query parameter Google sends to the local listener after approval.
+5. Exchanges that code for tokens via a POST to `https://oauth2.googleapis.com/token`, extracting `refresh_token` from the response.
 
-- [ ] **Step 6: Set the droplet's `.env` values**
+The client_id/client_secret from Step 3 are needed for this exchange — treat client_secret like a password (same handling as Task 1 originally used for the service account key: read it from a file path, don't paste it into chat).
 
-SSH into the droplet and edit the app's `.env` file, setting:
+- [ ] **Step 6: Set the local `.env` values for the smoke test**
 
 ```
-GOOGLE_DRIVE_CLIENT_ID=<client_id from the JSON key>
-GOOGLE_DRIVE_CLIENT_EMAIL=<client_email from the JSON key>
-GOOGLE_DRIVE_PRIVATE_KEY="<private_key from the JSON key, with real newlines replaced by literal \n>"
-GOOGLE_DRIVE_FOLDER_ID=<folder ID from Step 5>
+GOOGLE_DRIVE_CLIENT_ID=<from Step 3>
+GOOGLE_DRIVE_CLIENT_SECRET=<from Step 3>
+GOOGLE_DRIVE_REFRESH_TOKEN=<from Step 5>
+GOOGLE_DRIVE_FOLDER_ID=<from Step 4>
 ```
 
 - [ ] **Step 7: Manually verify the disk works**
-
-On the droplet, run:
 
 ```bash
 php artisan tinker --execute="Storage::disk('google')->put('smoke-test.txt', 'hello from tami-web-app'); echo Storage::disk('google')->exists('smoke-test.txt') ? 'OK' : 'FAILED';"
 ```
 
-Confirm it prints `OK`, then confirm the file `smoke-test.txt` actually appears in the shared Drive folder in the browser. Delete the test file afterward (`php artisan tinker --execute="Storage::disk('google')->delete('smoke-test.txt');"`).
+Confirm it prints `OK`, then confirm `smoke-test.txt` actually appears in the Drive folder in the browser. Delete the test file afterward (`php artisan tinker --execute="Storage::disk('google')->delete('smoke-test.txt');"`).
+
+These same four values get set on the droplet's `.env` later, once the app is actually deployed there (Task 8/9) — not before, since there's nowhere to put them until then.
 
 ---
 
@@ -412,7 +416,7 @@ php artisan backup:run --only-db
 
 - [ ] **Step 3: Confirm it landed in Drive**
 
-Check the shared Drive folder in the browser (or `php artisan tinker --execute="dd(Storage::disk('google')->allFiles());"`) for a new `.zip` backup file.
+Check the Drive folder in the browser (or `php artisan tinker --execute="dd(Storage::disk('google')->allFiles());"`) for a new `.zip` backup file.
 
 ---
 
