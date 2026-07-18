@@ -6,7 +6,7 @@
 
 **Architecture:** A custom Laravel filesystem disk (`google`) wraps a Flysystem Google Drive adapter authenticated via OAuth 2.0 (client ID/secret + a long-lived refresh token) acting as the user's own Google account — not a service account, which cannot own files on a personal (non-Workspace) Drive under any configuration. `spatie/laravel-backup` dumps MySQL nightly and uploads through that same disk, pruning anything older than 30 days. A GitHub Actions workflow runs the test suite against a real MySQL service container (proving migrations/config work on MySQL) and then, only on `main` and only if tests pass, SSHes into the droplet to pull and deploy in place.
 
-**Tech Stack:** Laravel 13.20 / PHP 8.3, `masbug/flysystem-google-drive-ext` ^2.5, `spatie/laravel-backup` ^10.3, GitHub Actions (`actions/checkout@v7`, `shivammathur/setup-php@v2`, `appleboy/ssh-action@v1.2.5`).
+**Tech Stack:** Laravel 13.20 / PHP 8.3, `masbug/flysystem-google-drive-ext` ^2.5, `spatie/laravel-backup` ^10.3, GitHub Actions (`actions/checkout@v7`, `shivammathur/setup-php@v2`, `actions/setup-node@v4`, `appleboy/ssh-action@v1.2.5`).
 
 ## Global Constraints
 
@@ -521,6 +521,17 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install NPM dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
+
       - name: Generate app key
         run: php artisan key:generate
 
@@ -554,6 +565,8 @@ gh run watch
 ```
 
 Expected: the `test` job completes with a green checkmark (this is the automated proof that migrations and app config work against real MySQL, not just SQLite).
+
+**Why the npm/build steps are required here (not just in Task 7's deploy job):** several Feature tests render Blade views that use the `@vite()` directive (the Breeze/Livewire auth pages' guest/app layouts). Without a built `public/build/manifest.json`, those views throw `Illuminate\Foundation\ViteManifestNotFoundException` and the tests fail with a 500 response — this isn't a MySQL-specific problem, it would fail identically against SQLite in a fresh checkout with no prior local `npm run build`. Confirmed by an actual failed CI run before this fix was added (`gh run view` showed exactly this exception across multiple auth-page tests).
 
 ---
 
