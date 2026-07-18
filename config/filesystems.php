@@ -67,7 +67,6 @@ return [
             'private_key' => env('GOOGLE_DRIVE_PRIVATE_KEY'),
             'folder_id' => env('GOOGLE_DRIVE_FOLDER_ID'),
         ],
-
     ],
 
     /*
