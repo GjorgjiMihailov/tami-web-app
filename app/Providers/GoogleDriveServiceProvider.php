@@ -16,15 +16,22 @@ class GoogleDriveServiceProvider extends ServiceProvider
     {
         Storage::extend('google', function ($app, array $config) {
             $client = new Client();
-            $client->setAuthConfig([
-                'type' => 'service_account',
-                'client_id' => $config['client_id'],
-                'client_email' => $config['client_email'],
-                'private_key' => str_replace('\\n', "\n", (string) $config['private_key']),
+            $client->setClientId($config['client_id']);
+            $client->setClientSecret($config['client_secret']);
+            // Stub access_token + a real refresh_token: satisfies
+            // setAccessToken()'s validation without making a network call.
+            // The client library refreshes it lazily, automatically, the
+            // first time a real Drive API request is made.
+            $client->setAccessToken([
+                'access_token' => '',
+                'refresh_token' => $config['refresh_token'],
             ]);
             $client->addScope(Drive::DRIVE);
 
             $adapter = new GoogleDriveAdapter(new Drive($client), null, [
+                // "sharedFolderId" is just the adapter's option name for "root
+                // folder ID" — it works identically for a folder this OAuth
+                // user owns outright, not only ones shared with them.
                 'sharedFolderId' => $config['folder_id'],
             ]);
 
