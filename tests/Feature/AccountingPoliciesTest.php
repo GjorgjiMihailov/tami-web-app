@@ -78,4 +78,21 @@ class AccountingPoliciesTest extends TestCase
 
         $this->assertTrue($admin->can('update', $partner));
     }
+
+    public function test_accountant_not_assigned_to_a_company_cannot_view_its_accounting_data(): void
+    {
+        $companyTheyManage = Company::factory()->create();
+        $companyTheyDoNotManage = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $accountant->assignedCompanies()->attach($companyTheyManage);
+
+        $account = Account::factory()->for($companyTheyDoNotManage)->create();
+        $partner = Partner::factory()->for($companyTheyDoNotManage)->create();
+        $entry = JournalEntry::factory()->for($companyTheyDoNotManage)->create();
+
+        $this->assertFalse($accountant->can('view', $account));
+        $this->assertFalse($accountant->can('view', $partner));
+        $this->assertFalse($accountant->can('view', $entry));
+    }
 }
