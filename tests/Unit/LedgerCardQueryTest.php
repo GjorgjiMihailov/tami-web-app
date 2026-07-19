@@ -62,4 +62,26 @@ class LedgerCardQueryTest extends TestCase
         $this->assertCount(1, $rows);
         $this->assertSame(1500.0, (float) $rows[0]['balance']);
     }
+
+    public function test_it_filters_by_account_and_partner_together(): void
+    {
+        $company = Company::factory()->create();
+        $account = Account::where('company_id', $company->id)->where('code', '120')->first();
+        $partnerA = Partner::factory()->for($company)->create();
+        $partnerB = Partner::factory()->for($company)->create();
+
+        $entry = JournalEntry::factory()->for($company)->create(['entry_date' => '2026-01-10']);
+        $entry->lines()->create(['account_id' => $account->id, 'partner_id' => $partnerA->id, 'debit' => 1000, 'credit' => 0]);
+        $entry->lines()->create(['account_id' => $account->id, 'partner_id' => $partnerB->id, 'debit' => 2000, 'credit' => 0]);
+
+        $rows = LedgerCardQuery::run($company, [
+            'account_id' => $account->id,
+            'partner_id' => $partnerA->id,
+            'from' => Carbon::parse('2026-01-01'),
+            'to' => Carbon::parse('2026-01-31'),
+        ]);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(1000.0, (float) $rows[0]['debit']);
+    }
 }

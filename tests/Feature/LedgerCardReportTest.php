@@ -38,6 +38,6 @@ class LedgerCardReportTest extends TestCase
             ->set('from', '2026-01-01')
             ->set('to', '2026-01-31')
             ->assertSee('Фактура 01/26')
-            ->assertSee('6000');
+            ->assertSee('6,000.00');
     }
 }
