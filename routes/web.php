@@ -6,6 +6,12 @@ use App\Livewire\Accounting\JournalEntryIndex;
 use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
 use App\Livewire\CompanyIndex;
+use App\Livewire\Inventory\ItemIndex;
+use App\Livewire\Inventory\ItemMovementCardReport;
+use App\Livewire\Inventory\StockMovementForm;
+use App\Livewire\Inventory\StockOnHandReport;
+use App\Livewire\Inventory\StockValuationReport;
+use App\Livewire\Inventory\WarehouseIndex;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome');
@@ -41,6 +47,19 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('accounting.')-
     Route::get('/journal-entries/{journalEntry}/edit', [JournalEntryForm::class, '__invoke'])->name('journal-entries.edit');
     Route::get('/reports/ledger-card', [LedgerCardReport::class, '__invoke'])->name('reports.ledger-card');
     Route::get('/reports/trial-balance', [TrialBalanceReport::class, '__invoke'])->name('reports.trial-balance');
+});
+
+// Array-callable form (not bare class-string) for the same reason as the
+// accounting.* group above: five of these six target classes don't exist
+// until later Inventory tasks, and a bare class-string would crash route
+// registration immediately.
+Route::middleware(['auth'])->prefix('companies/{company}')->name('inventory.')->group(function () {
+    Route::get('/warehouses', [WarehouseIndex::class, '__invoke'])->name('warehouses.index');
+    Route::get('/items', [ItemIndex::class, '__invoke'])->name('items.index');
+    Route::get('/stock-movements/create/{type}', [StockMovementForm::class, '__invoke'])->name('stock-movements.create');
+    Route::get('/reports/stock-on-hand', [StockOnHandReport::class, '__invoke'])->name('reports.stock-on-hand');
+    Route::get('/reports/item-movement-card', [ItemMovementCardReport::class, '__invoke'])->name('reports.item-movement-card');
+    Route::get('/reports/stock-valuation', [StockValuationReport::class, '__invoke'])->name('reports.stock-valuation');
 });
 
 require __DIR__.'/auth.php';
