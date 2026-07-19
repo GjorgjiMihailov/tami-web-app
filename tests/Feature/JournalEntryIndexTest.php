@@ -49,4 +49,20 @@ class JournalEntryIndexTest extends TestCase
             ->assertSee('Opening balances')
             ->assertDontSee('New Entry');
     }
+
+    public function test_it_only_shows_entries_belonging_to_the_current_company(): void
+    {
+        $companyA = Company::factory()->create();
+        $companyB = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        JournalEntry::factory()->for($companyA)->create(['description' => 'Company A opening balances']);
+        JournalEntry::factory()->for($companyB)->create(['description' => 'Company B opening balances']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryIndex::class, ['company' => $companyA])
+            ->assertSee('Company A opening balances')
+            ->assertDontSee('Company B opening balances');
+    }
 }
