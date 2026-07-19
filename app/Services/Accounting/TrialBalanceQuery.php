@@ -52,7 +52,7 @@ class TrialBalanceQuery
 
         $labels = $groupBy === 'synthetic'
             ? Account::where('company_id', $company->id)->where('is_analytical', false)->pluck('name', 'code')
-            : self::labelsByKey($movementLines->isNotEmpty() ? $movementLines : $openingLines, $keyFor, $labelFor);
+            : self::labelsByKey($openingLines->merge($movementLines), $keyFor, $labelFor);
 
         return $keys->map(function ($key) use ($openingTotals, $movementTotals, $labels) {
             $opening = $openingTotals->get($key, ['debit' => 0.0, 'credit' => 0.0]);

@@ -74,4 +74,26 @@ class TrialBalanceQueryTest extends TestCase
         $rowB = $rows->firstWhere('label', 'ХЕТА ЛИЗИНГ ДОО');
         $this->assertSame(10000.0, $rowB['movement_debit']);
     }
+
+    public function test_partner_grouping_shows_correct_labels_even_for_opening_only_partners(): void
+    {
+        $company = Company::factory()->create();
+        $account = Account::where('company_id', $company->id)->where('code', '120')->first();
+        $openingOnlyPartner = Partner::factory()->for($company)->create(['name' => 'Опенинг Само ДОО']);
+        $activePartner = Partner::factory()->for($company)->create(['name' => 'Активен Партнер ДОО']);
+
+        // Opening-only partner: a line dated BEFORE the report range, nothing within it.
+        $priorEntry = JournalEntry::factory()->for($company)->create(['entry_date' => '2025-12-15']);
+        $priorEntry->lines()->create(['account_id' => $account->id, 'partner_id' => $openingOnlyPartner->id, 'debit' => 1000, 'credit' => 0]);
+
+        // Active partner: a line dated WITHIN the report range, so movementLines overall is non-empty.
+        $inRangeEntry = JournalEntry::factory()->for($company)->create(['entry_date' => '2026-01-10']);
+        $inRangeEntry->lines()->create(['account_id' => $account->id, 'partner_id' => $activePartner->id, 'debit' => 500, 'credit' => 0]);
+
+        $rows = TrialBalanceQuery::run($company, 'partner', Carbon::parse('2026-01-01'), Carbon::parse('2026-01-31'));
+
+        $openingRow = $rows->firstWhere('key', (string) $openingOnlyPartner->id);
+        $this->assertSame('Опенинг Само ДОО', $openingRow['label']);
+        $this->assertSame(1000.0, $openingRow['opening_balance']);
+    }
 }
