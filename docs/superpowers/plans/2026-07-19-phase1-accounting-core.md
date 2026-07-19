@@ -1349,16 +1349,16 @@ use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
 
 Route::middleware(['auth'])->prefix('companies/{company}')->name('accounting.')->group(function () {
-    Route::get('/accounts', AccountIndex::class)->name('accounts.index');
-    Route::get('/journal-entries', JournalEntryIndex::class)->name('journal-entries.index');
-    Route::get('/journal-entries/create', JournalEntryForm::class)->name('journal-entries.create');
-    Route::get('/journal-entries/{journalEntry}/edit', JournalEntryForm::class)->name('journal-entries.edit');
-    Route::get('/reports/ledger-card', LedgerCardReport::class)->name('reports.ledger-card');
-    Route::get('/reports/trial-balance', TrialBalanceReport::class)->name('reports.trial-balance');
+    Route::get('/accounts', [AccountIndex::class, '__invoke'])->name('accounts.index');
+    Route::get('/journal-entries', [JournalEntryIndex::class, '__invoke'])->name('journal-entries.index');
+    Route::get('/journal-entries/create', [JournalEntryForm::class, '__invoke'])->name('journal-entries.create');
+    Route::get('/journal-entries/{journalEntry}/edit', [JournalEntryForm::class, '__invoke'])->name('journal-entries.edit');
+    Route::get('/reports/ledger-card', [LedgerCardReport::class, '__invoke'])->name('reports.ledger-card');
+    Route::get('/reports/trial-balance', [TrialBalanceReport::class, '__invoke'])->name('reports.trial-balance');
 });
 ```
 
-`JournalEntryIndex`, `JournalEntryForm`, `LedgerCardReport`, and `TrialBalanceReport` don't exist yet at this point in the plan — that's fine, this step only registers route *names*, and each class is created by its own task before its route is ever dispatched in a test.
+`JournalEntryIndex`, `JournalEntryForm`, `LedgerCardReport`, and `TrialBalanceReport` don't exist yet at this point in the plan. **Use the array-callable form `[ClassName::class, '__invoke']`, not the bare `ClassName::class` form** — verified directly against this codebase's Laravel version: `Route::get($uri, ClassName::class)` eagerly calls `method_exists()` on the class during route registration (to decide whether to treat it as an invokable controller) and throws `UnexpectedValueException` immediately if the class doesn't exist yet, breaking the entire app on every request. `Route::get($uri, [ClassName::class, '__invoke'])` takes a different code path (`is_callable($action, true)`, syntax-only check) that never touches the class, deferring resolution to actual dispatch time as originally intended. Both forms resolve to the identical underlying action once the class exists.
 
 - [ ] **Step 1: Write the failing test**
 
