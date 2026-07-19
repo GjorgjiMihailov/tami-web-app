@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Company;
+use App\Models\JournalEntry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -30,6 +31,9 @@ class AccountingRoutesTest extends TestCase
         $this->get(route('accounting.journal-entries.create', $company))->assertOk();
         $this->get(route('accounting.reports.ledger-card', $company))->assertOk();
         $this->get(route('accounting.reports.trial-balance', $company))->assertOk();
+
+        $entry = JournalEntry::factory()->for($company)->create();
+        $this->get(route('accounting.journal-entries.edit', [$company, $entry]))->assertOk();
     }
 
     public function test_accounting_routes_require_authentication(): void
