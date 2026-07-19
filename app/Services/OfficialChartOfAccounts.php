@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Account;
 use App\Models\Company;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 class OfficialChartOfAccounts
@@ -14,15 +15,17 @@ class OfficialChartOfAccounts
 
         $accounts = json_decode(File::get($path), true, flags: JSON_THROW_ON_ERROR);
 
-        foreach ($accounts as $account) {
-            Account::create([
-                'company_id' => $company->id,
-                'code' => $account['code'],
-                'name' => $account['name'],
-                'parent_code' => null,
-                'is_analytical' => false,
-                'is_active' => true,
-            ]);
-        }
+        DB::transaction(function () use ($accounts, $company) {
+            foreach ($accounts as $account) {
+                Account::create([
+                    'company_id' => $company->id,
+                    'code' => $account['code'],
+                    'name' => $account['name'],
+                    'parent_code' => null,
+                    'is_analytical' => false,
+                    'is_active' => true,
+                ]);
+            }
+        });
     }
 }
