@@ -38,11 +38,14 @@ class AccountTest extends TestCase
 
     public function test_code_is_unique_per_company(): void
     {
+        // Uses a code outside the official chart of accounts (auto-seeded
+        // whenever a Company is created, see OfficialChartOfAccounts) so
+        // this test's own uniqueness violation isn't masked by seed data.
         $company = Company::factory()->create();
-        Account::factory()->for($company)->create(['code' => '100']);
+        Account::factory()->for($company)->create(['code' => '999999']);
 
         $this->expectException(\Illuminate\Database\QueryException::class);
 
-        Account::factory()->for($company)->create(['code' => '100']);
+        Account::factory()->for($company)->create(['code' => '999999']);
     }
 }
