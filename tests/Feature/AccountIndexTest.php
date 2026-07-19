@@ -91,4 +91,15 @@ class AccountIndexTest extends TestCase
             ->call('addAnalyticalAccount')
             ->assertForbidden();
     }
+
+    public function test_the_accounts_page_renders_successfully_over_http(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin)
+            ->get(route('accounting.accounts.index', $company))
+            ->assertOk();
+    }
 }
