@@ -76,6 +76,28 @@ class AccountIndexTest extends TestCase
         ]);
     }
 
+    public function test_adding_an_analytical_account_with_a_duplicate_code_is_rejected(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $accountCountBefore = Account::where('company_id', $company->id)->count();
+
+        $this->actingAs($admin);
+
+        // '120' already exists among the 428 auto-seeded official codes for
+        // every company, so this must fail validation, not throw a
+        // QueryException from the DB-level unique(company_id, code) constraint.
+        Livewire::test(AccountIndex::class, ['company' => $company])
+            ->set('newParentCode', '120')
+            ->set('newCode', '120')
+            ->set('newName', 'Duplicate code test')
+            ->call('addAnalyticalAccount')
+            ->assertHasErrors('newCode');
+
+        $this->assertSame($accountCountBefore, Account::where('company_id', $company->id)->count());
+    }
+
     public function test_client_cannot_add_an_analytical_account(): void
     {
         $company = Company::factory()->create();

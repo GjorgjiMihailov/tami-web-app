@@ -5,6 +5,7 @@ namespace App\Livewire\Accounting;
 use App\Models\Account;
 use App\Models\Company;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -38,7 +39,7 @@ class AccountIndex extends Component
         Gate::authorize('create', Account::class);
 
         $validated = $this->validate([
-            'newCode' => 'required|string|max:10|regex:/^[0-9]{4,}$/',
+            'newCode' => ['required', 'string', 'max:10', 'regex:/^[0-9]{4,}$/', Rule::unique('accounts', 'code')->where('company_id', $this->company->id)],
             'newName' => 'required|string|max:255',
             'newParentCode' => 'required|string|size:3',
         ]);
