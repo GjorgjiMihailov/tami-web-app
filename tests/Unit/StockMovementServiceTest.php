@@ -145,4 +145,76 @@ class StockMovementServiceTest extends TestCase
         $this->assertSame('0.000', (string) $level->quantity_on_hand);
         $this->assertSame('100.0000', (string) $level->average_cost);
     }
+
+    public function test_transfer_moves_quantity_and_carries_source_cost_into_destination(): void
+    {
+        $item = Item::factory()->create();
+        $warehouseA = Warehouse::factory()->create();
+        $warehouseB = Warehouse::factory()->create();
+        $user = User::factory()->create();
+
+        $this->service->receipt($item, $warehouseA, '10', '100.00', '2026-01-10', $user->id);
+        $this->service->receipt($item, $warehouseA, '5', '130.00', '2026-01-12', $user->id);
+        // Warehouse A is now 15 units @ 110.00 average.
+
+        $movement = $this->service->transfer($item, $warehouseA, $warehouseB, '5', '2026-01-15', $user->id);
+
+        $this->assertSame('transfer', $movement->type);
+        $this->assertSame($warehouseA->id, $movement->warehouse_id);
+        $this->assertSame($warehouseB->id, $movement->to_warehouse_id);
+        $this->assertSame('110.0000', (string) $movement->unit_cost);
+
+        $levelA = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseA->id)->first();
+        $levelB = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseB->id)->first();
+
+        $this->assertSame('10.000', (string) $levelA->quantity_on_hand);
+        $this->assertSame('110.0000', (string) $levelA->average_cost);
+        $this->assertSame('5.000', (string) $levelB->quantity_on_hand);
+        $this->assertSame('110.0000', (string) $levelB->average_cost);
+    }
+
+    public function test_transfer_into_a_warehouse_with_existing_stock_recalculates_its_average(): void
+    {
+        $item = Item::factory()->create();
+        $warehouseA = Warehouse::factory()->create();
+        $warehouseB = Warehouse::factory()->create();
+        $user = User::factory()->create();
+
+        $this->service->receipt($item, $warehouseA, '10', '120.00', '2026-01-10', $user->id);
+        $this->service->receipt($item, $warehouseB, '10', '80.00', '2026-01-10', $user->id);
+
+        $this->service->transfer($item, $warehouseA, $warehouseB, '10', '2026-01-15', $user->id);
+
+        // Warehouse B: ((10 * 80) + (10 * 120)) / 20 = 100.00
+        $levelB = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseB->id)->first();
+        $this->assertSame('20.000', (string) $levelB->quantity_on_hand);
+        $this->assertSame('100.0000', (string) $levelB->average_cost);
+    }
+
+    public function test_transfer_exceeding_source_quantity_is_rejected(): void
+    {
+        $item = Item::factory()->create();
+        $warehouseA = Warehouse::factory()->create();
+        $warehouseB = Warehouse::factory()->create();
+        $user = User::factory()->create();
+
+        $this->service->receipt($item, $warehouseA, '5', '100.00', '2026-01-10', $user->id);
+
+        $this->expectException(\App\Exceptions\InsufficientStockException::class);
+
+        $this->service->transfer($item, $warehouseA, $warehouseB, '6', '2026-01-15', $user->id);
+    }
+
+    public function test_transfer_to_the_same_warehouse_is_rejected(): void
+    {
+        $item = Item::factory()->create();
+        $warehouse = Warehouse::factory()->create();
+        $user = User::factory()->create();
+
+        $this->service->receipt($item, $warehouse, '5', '100.00', '2026-01-10', $user->id);
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->service->transfer($item, $warehouse, $warehouse, '1', '2026-01-15', $user->id);
+    }
 }
