@@ -25,7 +25,7 @@ class StockMovementService
             $newValue = bcmul($quantity, $unitCost, self::VALUE_SCALE);
             $newQty = bcadd($level->quantity_on_hand, $quantity, self::QTY_SCALE);
             $newAvgCost = bccomp($newQty, '0', self::QTY_SCALE) > 0
-                ? bcdiv(bcadd($oldValue, $newValue, self::VALUE_SCALE), $newQty, self::COST_SCALE)
+                ? self::bcDivRoundHalfUp(bcadd($oldValue, $newValue, self::VALUE_SCALE), $newQty, self::COST_SCALE)
                 : '0.0000';
 
             $level->update(['quantity_on_hand' => $newQty, 'average_cost' => $newAvgCost]);
@@ -58,5 +58,30 @@ class StockMovementService
             ->where('warehouse_id', $warehouse->id)
             ->lockForUpdate()
             ->first();
+    }
+
+    /**
+     * Divide two bcmath strings and round the result to $scale decimal
+     * places using round-half-up, instead of bcdiv()'s native truncation.
+     *
+     * PHP 8.3's bcmath has no bcround(), so we divide at a higher "guard"
+     * precision, nudge the value by half a unit at the target scale, and
+     * let a final truncating bcadd() collapse it to $scale. This avoids
+     * the one-directional downward drift that truncate-then-reconstruct
+     * causes when a weighted-average cost is recalculated repeatedly
+     * (e.g. many receipts at the same unit cost).
+     */
+    private static function bcDivRoundHalfUp(string $dividend, string $divisor, int $scale): string
+    {
+        $guardScale = $scale + 10;
+        $quotient = bcdiv($dividend, $divisor, $guardScale);
+
+        $half = '0.' . str_repeat('0', $scale) . '5';
+
+        if (bccomp($quotient, '0', $guardScale) < 0) {
+            return bcsub($quotient, $half, $scale);
+        }
+
+        return bcadd($quotient, $half, $scale);
     }
 }

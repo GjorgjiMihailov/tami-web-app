@@ -70,4 +70,29 @@ class StockMovementServiceTest extends TestCase
         $this->assertSame('100.0000', (string) $levelA->average_cost);
         $this->assertSame('50.0000', (string) $levelB->average_cost);
     }
+
+    public function test_many_successive_receipts_at_the_same_unit_cost_do_not_drift_the_average(): void
+    {
+        $item = Item::factory()->create();
+        $warehouse = Warehouse::factory()->create();
+        $user = User::factory()->create();
+
+        // Receipting a fractional quantity against the same unit cost, over
+        // and over, forces the weighted-average recalculation to round on
+        // every receipt (the quantity/cost precision doesn't divide evenly
+        // at COST_SCALE). If the recalculation truncates instead of
+        // rounding half-up when it collapses back to COST_SCALE, the stored
+        // average creeps downward over repeated receipts even though the
+        // true weighted average never changes. This exact combination
+        // (qty 0.014 x 50 @ 33.3333) previously drifted the stored average
+        // from 33.3333 down to 33.3332.
+        for ($i = 0; $i < 50; $i++) {
+            $this->service->receipt($item, $warehouse, '0.014', '33.3333', '2026-01-10', $user->id);
+        }
+
+        $level = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
+
+        $this->assertSame('0.700', (string) $level->quantity_on_hand);
+        $this->assertSame('33.3333', (string) $level->average_cost);
+    }
 }
