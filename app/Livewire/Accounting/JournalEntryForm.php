@@ -31,7 +31,7 @@ class JournalEntryForm extends Component
     {
         $this->company = $company;
 
-        Gate::authorize($journalEntry ? 'update' : 'create', $journalEntry ?? JournalEntry::class);
+        Gate::authorize($journalEntry ? 'view' : 'create', $journalEntry ?? JournalEntry::class);
 
         if ($journalEntry && $journalEntry->company_id !== $company->id) {
             abort(404);

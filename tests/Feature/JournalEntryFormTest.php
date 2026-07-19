@@ -109,6 +109,56 @@ class JournalEntryFormTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_client_can_view_an_existing_entry_belonging_to_their_company(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $revenue = Account::where('company_id', $company->id)->where('code', '740')->first();
+        $entry = JournalEntry::factory()->for($company)->create([
+            'created_by' => $admin->id,
+            'description' => 'Rent payment for July',
+        ]);
+        $entry->lines()->create(['account_id' => $cash->id, 'debit' => 500, 'credit' => 0]);
+        $entry->lines()->create(['account_id' => $revenue->id, 'debit' => 0, 'credit' => 500]);
+
+        $this->actingAs($client);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
+            ->assertSuccessful()
+            ->assertSee('Edit Journal Entry #'.$entry->entry_number)
+            ->assertSet('description', 'Rent payment for July')
+            ->assertSet('lines.0.account_id', $cash->id)
+            ->assertSet('lines.0.debit', '500.00');
+    }
+
+    public function test_client_cannot_save_changes_to_an_entry_they_can_view(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $revenue = Account::where('company_id', $company->id)->where('code', '740')->first();
+        $entry = JournalEntry::factory()->for($company)->create(['created_by' => $admin->id]);
+        $entry->lines()->create(['account_id' => $cash->id, 'debit' => 500, 'credit' => 0]);
+        $entry->lines()->create(['account_id' => $revenue->id, 'debit' => 0, 'credit' => 500]);
+
+        $this->actingAs($client);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
+            ->set('lines.0.debit', '750')
+            ->call('save')
+            ->assertForbidden();
+
+        $entry->refresh();
+        $this->assertSame('500.00', $entry->lines->first()->debit);
+    }
+
     public function test_fetch_rate_pulls_from_nbrm_and_fills_the_line(): void
     {
         Http::fake([
