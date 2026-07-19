@@ -95,4 +95,54 @@ class StockMovementServiceTest extends TestCase
         $this->assertSame('0.700', (string) $level->quantity_on_hand);
         $this->assertSame('33.3333', (string) $level->average_cost);
     }
+
+    public function test_issue_decrements_quantity_at_current_average_cost(): void
+    {
+        $item = Item::factory()->create();
+        $warehouse = Warehouse::factory()->create();
+        $user = User::factory()->create();
+
+        $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
+        $this->service->receipt($item, $warehouse, '5', '130.00', '2026-01-12', $user->id);
+        $movement = $this->service->issue($item, $warehouse, '6', '2026-01-15', $user->id);
+
+        $this->assertSame('issue', $movement->type);
+        $this->assertSame('6.000', (string) $movement->quantity);
+        $this->assertSame('110.0000', (string) $movement->unit_cost);
+
+        $level = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
+        $this->assertSame('9.000', (string) $level->quantity_on_hand);
+        $this->assertSame('110.0000', (string) $level->average_cost);
+    }
+
+    public function test_issue_exceeding_quantity_on_hand_is_rejected(): void
+    {
+        $item = Item::factory()->create();
+        $warehouse = Warehouse::factory()->create();
+        $user = User::factory()->create();
+
+        $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
+
+        $this->expectException(\App\Exceptions\InsufficientStockException::class);
+
+        $this->service->issue($item, $warehouse, '11', '2026-01-15', $user->id);
+    }
+
+    public function test_issue_of_exactly_the_full_quantity_on_hand_succeeds(): void
+    {
+        $item = Item::factory()->create();
+        $warehouse = Warehouse::factory()->create();
+        $user = User::factory()->create();
+
+        $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
+
+        $movement = $this->service->issue($item, $warehouse, '10', '2026-01-15', $user->id);
+
+        $this->assertSame('issue', $movement->type);
+        $this->assertSame('10.000', (string) $movement->quantity);
+
+        $level = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
+        $this->assertSame('0.000', (string) $level->quantity_on_hand);
+        $this->assertSame('100.0000', (string) $level->average_cost);
+    }
 }

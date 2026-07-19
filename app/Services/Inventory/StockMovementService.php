@@ -2,6 +2,7 @@
 
 namespace App\Services\Inventory;
 
+use App\Exceptions\InsufficientStockException;
 use App\Models\Item;
 use App\Models\StockLevel;
 use App\Models\StockMovement;
@@ -34,6 +35,33 @@ class StockMovementService
                 'item_id' => $item->id,
                 'warehouse_id' => $warehouse->id,
                 'type' => 'receipt',
+                'quantity' => $quantity,
+                'unit_cost' => $unitCost,
+                'movement_date' => $movementDate,
+                'created_by' => $createdBy,
+            ]);
+        });
+    }
+
+    public function issue(Item $item, Warehouse $warehouse, string $quantity, string $movementDate, int $createdBy): StockMovement
+    {
+        return DB::transaction(function () use ($item, $warehouse, $quantity, $movementDate, $createdBy) {
+            $level = $this->lockedLevel($item, $warehouse);
+
+            if (bccomp($level->quantity_on_hand, $quantity, self::QTY_SCALE) < 0) {
+                throw new InsufficientStockException(
+                    "Cannot issue {$quantity} of item #{$item->id} from warehouse #{$warehouse->id}: only {$level->quantity_on_hand} on hand."
+                );
+            }
+
+            $unitCost = $level->average_cost;
+            $newQty = bcsub($level->quantity_on_hand, $quantity, self::QTY_SCALE);
+            $level->update(['quantity_on_hand' => $newQty]);
+
+            return StockMovement::create([
+                'item_id' => $item->id,
+                'warehouse_id' => $warehouse->id,
+                'type' => 'issue',
                 'quantity' => $quantity,
                 'unit_cost' => $unitCost,
                 'movement_date' => $movementDate,
