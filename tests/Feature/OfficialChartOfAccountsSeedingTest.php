@@ -51,13 +51,16 @@ class OfficialChartOfAccountsSeedingTest extends TestCase
         $company = Company::factory()->create();
 
         // Wipe the auto-seeded accounts and leave a single account behind whose
-        // code will collide with the first row of the official chart, forcing
-        // seedForCompany() to fail partway through the loop.
+        // code will collide with the LAST row of the official chart (index 427,
+        // code '999'). This lets seedForCompany() successfully insert accounts
+        // for indices 0-426 (426 real inserts inside the transaction) before the
+        // collision fires on the very last entry, genuinely forcing it to fail
+        // partway through the loop rather than on the first iteration.
         Account::where('company_id', $company->id)->delete();
 
         Account::create([
             'company_id' => $company->id,
-            'code' => '000',
+            'code' => '999',
             'name' => 'Pre-existing colliding account',
             'parent_code' => null,
             'is_analytical' => false,
@@ -68,7 +71,7 @@ class OfficialChartOfAccountsSeedingTest extends TestCase
             OfficialChartOfAccounts::seedForCompany($company);
             $this->fail('Expected a QueryException due to the duplicate account code.');
         } catch (QueryException $e) {
-            // Expected: the unique constraint on (company_id, code) collides on '000'.
+            // Expected: the unique constraint on (company_id, code) collides on '999'.
         }
 
         $this->assertSame(1, Account::where('company_id', $company->id)->count());
