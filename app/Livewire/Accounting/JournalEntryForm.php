@@ -10,6 +10,7 @@ use App\Services\ExchangeRateService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -29,9 +30,14 @@ class JournalEntryForm extends Component
     public function mount(Company $company, ?JournalEntry $journalEntry = null): void
     {
         $this->company = $company;
-        $this->journalEntry = $journalEntry;
 
         Gate::authorize($journalEntry ? 'update' : 'create', $journalEntry ?? JournalEntry::class);
+
+        if ($journalEntry && $journalEntry->company_id !== $company->id) {
+            abort(404);
+        }
+
+        $this->journalEntry = $journalEntry;
 
         if ($journalEntry) {
             $this->entryDate = $journalEntry->entry_date->toDateString();
@@ -101,16 +107,54 @@ class JournalEntryForm extends Component
     {
         Gate::authorize($this->journalEntry ? 'update' : 'create', $this->journalEntry ?? JournalEntry::class);
 
+        // Normalize an empty-string partner_id (the default "no partner selected"
+        // value) to null so the nullable exists() rule below treats it as absent
+        // rather than trying to look up '' as a partner id.
+        foreach ($this->lines as $index => $line) {
+            if (($line['partner_id'] ?? null) === '') {
+                $this->lines[$index]['partner_id'] = null;
+            }
+        }
+
         $this->validate([
             'entryDate' => 'required|date',
             'lines' => 'required|array|min:2',
-            'lines.*.account_id' => 'required|exists:accounts,id',
+            'lines.*.account_id' => ['required', Rule::exists('accounts', 'id')->where('company_id', $this->company->id)],
+            'lines.*.partner_id' => ['nullable', Rule::exists('partners', 'id')->where('company_id', $this->company->id)],
+            'lines.*.debit' => 'required|numeric|min:0',
+            'lines.*.credit' => 'required|numeric|min:0',
         ]);
+
+        // Server-side fallback: if a foreign-currency line was set up (currency
+        // + foreign_amount) but the user never clicked "NBRM" to fetch the rate
+        // and fill debit/credit, compute the MKD value now so it can never be
+        // silently posted as zero.
+        foreach ($this->lines as $index => $line) {
+            $currency = $line['currency_code'] ?? 'MKD';
+            $foreignAmount = (float) ($line['foreign_amount'] ?? 0);
+
+            if ($currency !== 'MKD' && $foreignAmount !== 0.0
+                && (float) $line['debit'] === 0.0 && (float) $line['credit'] === 0.0) {
+                $rate = app(ExchangeRateService::class)->getRate($currency, Carbon::parse($this->entryDate));
+                $mkdAmount = number_format($foreignAmount * $rate, 2, '.', '');
+
+                $this->lines[$index]['exchange_rate'] = (string) $rate;
+                $this->lines[$index]['debit'] = $mkdAmount;
+            }
+        }
+
+        foreach ($this->lines as $line) {
+            if ((float) $line['debit'] > 0 && (float) $line['credit'] > 0) {
+                $this->addError('lines', 'A line cannot have both a debit and a credit amount — use one or the other.');
+
+                return;
+            }
+        }
 
         $totalDebit = collect($this->lines)->sum(fn ($line) => (float) $line['debit']);
         $totalCredit = collect($this->lines)->sum(fn ($line) => (float) $line['credit']);
 
-        if (round($totalDebit, 2) !== round($totalCredit, 2)) {
+        if (bccomp((string) $totalDebit, (string) $totalCredit, 2) !== 0) {
             $this->addError('lines', 'The entry does not balance — total debit must equal total credit.');
 
             return;
