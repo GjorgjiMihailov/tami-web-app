@@ -81,21 +81,30 @@ class AccountIndexTest extends TestCase
         $company = Company::factory()->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
-        $accountCountBefore = Account::where('company_id', $company->id)->count();
 
         $this->actingAs($admin);
 
-        // '120' already exists among the 428 auto-seeded official codes for
-        // every company, so this must fail validation, not throw a
-        // QueryException from the DB-level unique(company_id, code) constraint.
+        // '2341' passes the 4+-digit format regex on its own, so this
+        // isolates the uniqueness rule specifically -- unlike a 3-digit
+        // code, which would already fail the regex regardless of whether
+        // the unique(company_id, code) rule exists at all.
         Livewire::test(AccountIndex::class, ['company' => $company])
-            ->set('newParentCode', '120')
-            ->set('newCode', '120')
+            ->set('newParentCode', '234')
+            ->set('newCode', '2341')
+            ->set('newName', 'First analytical account')
+            ->call('addAnalyticalAccount')
+            ->assertHasNoErrors();
+
+        $accountCountAfterFirst = Account::where('company_id', $company->id)->count();
+
+        Livewire::test(AccountIndex::class, ['company' => $company])
+            ->set('newParentCode', '234')
+            ->set('newCode', '2341')
             ->set('newName', 'Duplicate code test')
             ->call('addAnalyticalAccount')
-            ->assertHasErrors('newCode');
+            ->assertHasErrors(['newCode' => 'unique']);
 
-        $this->assertSame($accountCountBefore, Account::where('company_id', $company->id)->count());
+        $this->assertSame($accountCountAfterFirst, Account::where('company_id', $company->id)->count());
     }
 
     public function test_client_cannot_add_an_analytical_account(): void
