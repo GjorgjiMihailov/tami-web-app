@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\Company;
 use App\Models\Partner;
 use App\Models\SalesInvoice;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -40,5 +41,31 @@ class SalesInvoiceTest extends TestCase
         $invoice = SalesInvoice::factory()->create(['status' => 'draft']);
 
         $this->assertSame('n/a', $invoice->paymentStatus());
+    }
+
+    public function test_payment_status_reflects_recorded_payments(): void
+    {
+        $invoice = SalesInvoice::factory()->create(['status' => 'confirmed']);
+        $invoice->lines()->create(['description' => 'Line A', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+
+        $invoice = $invoice->fresh(['lines', 'payments']);
+        $this->assertSame('unpaid', $invoice->paymentStatus());
+
+        $invoice->payments()->create(['amount' => '40.00', 'payment_date' => now(), 'payment_method' => 'bank', 'created_by' => User::factory()->create()->id]);
+        $invoice = $invoice->fresh(['lines', 'payments']);
+        $this->assertSame('partially_paid', $invoice->paymentStatus());
+        $this->assertSame('60.00', $invoice->balanceDue());
+
+        $invoice->payments()->create(['amount' => '60.00', 'payment_date' => now(), 'payment_method' => 'bank', 'created_by' => User::factory()->create()->id]);
+        $invoice = $invoice->fresh(['lines', 'payments']);
+        $this->assertSame('paid', $invoice->paymentStatus());
+    }
+
+    public function test_is_overdue_when_unpaid_past_due_date(): void
+    {
+        $invoice = SalesInvoice::factory()->create(['status' => 'confirmed', 'due_date' => now()->subDay()]);
+        $invoice->lines()->create(['description' => 'Line A', 'quantity' => '1', 'unit_price' => '10.00', 'vat_rate' => '0']);
+
+        $this->assertTrue($invoice->fresh(['lines', 'payments'])->isOverdue());
     }
 }
