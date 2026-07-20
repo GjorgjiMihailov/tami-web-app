@@ -112,6 +112,18 @@ class SalesInvoiceFormTest extends TestCase
             ->assertHasNoErrors();
     }
 
+    public function test_a_client_cannot_create_an_invoice_for_a_company_they_do_not_belong_to(): void
+    {
+        $companyA = Company::factory()->create();
+        $companyB = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $companyA->id]);
+        $client->assignRole('client');
+        $this->actingAs($client);
+
+        Livewire::test(SalesInvoiceForm::class, ['company' => $companyB])
+            ->assertForbidden();
+    }
+
     public function test_the_create_page_renders_successfully_over_http(): void
     {
         $company = Company::factory()->create();

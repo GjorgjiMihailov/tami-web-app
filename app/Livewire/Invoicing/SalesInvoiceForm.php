@@ -34,6 +34,8 @@ class SalesInvoiceForm extends Component
 
     public function mount(Company $company, ?SalesInvoice $salesInvoice = null): void
     {
+        Gate::authorize('view', $company);
+
         $this->company = $company;
 
         Gate::authorize($salesInvoice ? 'update' : 'create', $salesInvoice ?? SalesInvoice::class);
