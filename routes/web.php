@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\SalesInvoicePdfController;
 use App\Livewire\Accounting\AccountIndex;
 use App\Livewire\Accounting\JournalEntryForm;
 use App\Livewire\Accounting\JournalEntryIndex;
@@ -12,6 +13,10 @@ use App\Livewire\Inventory\StockMovementForm;
 use App\Livewire\Inventory\StockOnHandReport;
 use App\Livewire\Inventory\StockValuationReport;
 use App\Livewire\Inventory\WarehouseIndex;
+use App\Livewire\Invoicing\SalesInvoiceForm;
+use App\Livewire\Invoicing\SalesInvoiceIndex;
+use App\Livewire\Invoicing\SalesInvoiceShow;
+use App\Livewire\PartnerIndex;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome');
@@ -60,6 +65,22 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('inventory.')->
     Route::get('/reports/stock-on-hand', [StockOnHandReport::class, '__invoke'])->name('reports.stock-on-hand');
     Route::get('/reports/item-movement-card', [ItemMovementCardReport::class, '__invoke'])->name('reports.item-movement-card');
     Route::get('/reports/stock-valuation', [StockValuationReport::class, '__invoke'])->name('reports.stock-valuation');
+});
+
+Route::middleware(['auth'])->prefix('companies/{company}')->name('partners.')->group(function () {
+    Route::get('/partners', [PartnerIndex::class, '__invoke'])->name('index');
+});
+
+// Array-callable form (not bare class-string) for the same reason as the
+// accounting.* and inventory.* groups above: four of these five target
+// classes don't exist until later Invoicing tasks, and a bare class-string
+// would crash route registration immediately.
+Route::middleware(['auth'])->prefix('companies/{company}')->name('sales-invoices.')->group(function () {
+    Route::get('/sales-invoices', [SalesInvoiceIndex::class, '__invoke'])->name('index');
+    Route::get('/sales-invoices/create', [SalesInvoiceForm::class, '__invoke'])->name('create');
+    Route::get('/sales-invoices/{salesInvoice}/edit', [SalesInvoiceForm::class, '__invoke'])->name('edit');
+    Route::get('/sales-invoices/{salesInvoice}', [SalesInvoiceShow::class, '__invoke'])->name('show');
+    Route::get('/sales-invoices/{salesInvoice}/pdf', [SalesInvoicePdfController::class, '__invoke'])->name('pdf');
 });
 
 require __DIR__.'/auth.php';

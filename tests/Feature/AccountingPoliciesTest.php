@@ -95,4 +95,15 @@ class AccountingPoliciesTest extends TestCase
         $this->assertFalse($accountant->can('view', $partner));
         $this->assertFalse($accountant->can('view', $entry));
     }
+
+    public function test_client_can_manage_their_own_companys_partners(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+        $partner = Partner::factory()->for($company)->create();
+
+        $this->assertTrue($client->can('create', Partner::class));
+        $this->assertTrue($client->can('update', $partner));
+    }
 }
