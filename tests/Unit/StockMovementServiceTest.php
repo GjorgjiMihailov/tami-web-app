@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\Company;
 use App\Models\Item;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -23,8 +24,9 @@ class StockMovementServiceTest extends TestCase
 
     public function test_first_receipt_sets_quantity_and_average_cost(): void
     {
-        $item = Item::factory()->create();
-        $warehouse = Warehouse::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         $movement = $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
@@ -40,8 +42,9 @@ class StockMovementServiceTest extends TestCase
 
     public function test_second_receipt_at_a_different_cost_recalculates_weighted_average(): void
     {
-        $item = Item::factory()->create();
-        $warehouse = Warehouse::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
@@ -56,9 +59,10 @@ class StockMovementServiceTest extends TestCase
 
     public function test_receipts_for_the_same_item_in_different_warehouses_are_independent(): void
     {
-        $item = Item::factory()->create();
-        $warehouseA = Warehouse::factory()->create();
-        $warehouseB = Warehouse::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouseA = Warehouse::factory()->for($company)->create();
+        $warehouseB = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         $this->service->receipt($item, $warehouseA, '10', '100.00', '2026-01-10', $user->id);
@@ -73,8 +77,9 @@ class StockMovementServiceTest extends TestCase
 
     public function test_many_successive_receipts_at_the_same_unit_cost_do_not_drift_the_average(): void
     {
-        $item = Item::factory()->create();
-        $warehouse = Warehouse::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         // Receipting a fractional quantity against the same unit cost, over
@@ -98,8 +103,9 @@ class StockMovementServiceTest extends TestCase
 
     public function test_issue_decrements_quantity_at_current_average_cost(): void
     {
-        $item = Item::factory()->create();
-        $warehouse = Warehouse::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
@@ -117,8 +123,9 @@ class StockMovementServiceTest extends TestCase
 
     public function test_issue_exceeding_quantity_on_hand_is_rejected(): void
     {
-        $item = Item::factory()->create();
-        $warehouse = Warehouse::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
@@ -130,8 +137,9 @@ class StockMovementServiceTest extends TestCase
 
     public function test_issue_of_exactly_the_full_quantity_on_hand_succeeds(): void
     {
-        $item = Item::factory()->create();
-        $warehouse = Warehouse::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
@@ -148,9 +156,10 @@ class StockMovementServiceTest extends TestCase
 
     public function test_transfer_moves_quantity_and_carries_source_cost_into_destination(): void
     {
-        $item = Item::factory()->create();
-        $warehouseA = Warehouse::factory()->create();
-        $warehouseB = Warehouse::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouseA = Warehouse::factory()->for($company)->create();
+        $warehouseB = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         $this->service->receipt($item, $warehouseA, '10', '100.00', '2026-01-10', $user->id);
@@ -175,9 +184,10 @@ class StockMovementServiceTest extends TestCase
 
     public function test_transfer_into_a_warehouse_with_existing_stock_recalculates_its_average(): void
     {
-        $item = Item::factory()->create();
-        $warehouseA = Warehouse::factory()->create();
-        $warehouseB = Warehouse::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouseA = Warehouse::factory()->for($company)->create();
+        $warehouseB = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         $this->service->receipt($item, $warehouseA, '10', '120.00', '2026-01-10', $user->id);
@@ -193,14 +203,15 @@ class StockMovementServiceTest extends TestCase
 
     public function test_transfer_from_higher_id_warehouse_to_lower_id_warehouse_uses_correct_source_and_destination(): void
     {
-        $item = Item::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
         // Create warehouseB before warehouseA so warehouseA ends up with the
         // higher id. Transferring from A (higher id) to B (lower id)
         // exercises the fromWarehouse->id > toWarehouse->id branch of the
         // fixed ascending-id lock ordering in StockMovementService::transfer(),
         // which every other transfer test in this file leaves uncovered.
-        $warehouseB = Warehouse::factory()->create();
-        $warehouseA = Warehouse::factory()->create();
+        $warehouseB = Warehouse::factory()->for($company)->create();
+        $warehouseA = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         $this->assertGreaterThan($warehouseB->id, $warehouseA->id);
@@ -228,9 +239,10 @@ class StockMovementServiceTest extends TestCase
 
     public function test_transfer_exceeding_source_quantity_is_rejected(): void
     {
-        $item = Item::factory()->create();
-        $warehouseA = Warehouse::factory()->create();
-        $warehouseB = Warehouse::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouseA = Warehouse::factory()->for($company)->create();
+        $warehouseB = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         $this->service->receipt($item, $warehouseA, '5', '100.00', '2026-01-10', $user->id);
@@ -242,8 +254,9 @@ class StockMovementServiceTest extends TestCase
 
     public function test_transfer_to_the_same_warehouse_is_rejected(): void
     {
-        $item = Item::factory()->create();
-        $warehouse = Warehouse::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         $this->service->receipt($item, $warehouse, '5', '100.00', '2026-01-10', $user->id);
@@ -255,8 +268,9 @@ class StockMovementServiceTest extends TestCase
 
     public function test_positive_adjustment_increases_quantity_without_changing_average_cost(): void
     {
-        $item = Item::factory()->create();
-        $warehouse = Warehouse::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
@@ -274,8 +288,9 @@ class StockMovementServiceTest extends TestCase
 
     public function test_negative_adjustment_decreases_quantity_without_changing_average_cost(): void
     {
-        $item = Item::factory()->create();
-        $warehouse = Warehouse::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
@@ -290,8 +305,9 @@ class StockMovementServiceTest extends TestCase
 
     public function test_negative_adjustment_exceeding_quantity_on_hand_is_rejected(): void
     {
-        $item = Item::factory()->create();
-        $warehouse = Warehouse::factory()->create();
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
         $user = User::factory()->create();
 
         $this->service->receipt($item, $warehouse, '5', '100.00', '2026-01-10', $user->id);
@@ -299,5 +315,74 @@ class StockMovementServiceTest extends TestCase
         $this->expectException(\App\Exceptions\InsufficientStockException::class);
 
         $this->service->adjustment($item, $warehouse, '-6', 'Miscount', '2026-01-20', $user->id);
+    }
+
+    public function test_receipt_rejects_item_and_warehouse_from_different_companies(): void
+    {
+        $companyA = Company::factory()->create();
+        $companyB = Company::factory()->create();
+        $item = Item::factory()->for($companyA)->create();
+        $warehouse = Warehouse::factory()->for($companyB)->create();
+        $user = User::factory()->create();
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
+    }
+
+    public function test_issue_rejects_item_and_warehouse_from_different_companies(): void
+    {
+        $companyA = Company::factory()->create();
+        $companyB = Company::factory()->create();
+        $item = Item::factory()->for($companyA)->create();
+        $warehouse = Warehouse::factory()->for($companyB)->create();
+        $user = User::factory()->create();
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->service->issue($item, $warehouse, '1', '2026-01-15', $user->id);
+    }
+
+    public function test_adjustment_rejects_item_and_warehouse_from_different_companies(): void
+    {
+        $companyA = Company::factory()->create();
+        $companyB = Company::factory()->create();
+        $item = Item::factory()->for($companyA)->create();
+        $warehouse = Warehouse::factory()->for($companyB)->create();
+        $user = User::factory()->create();
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->service->adjustment($item, $warehouse, '1', 'Physical count correction', '2026-01-20', $user->id);
+    }
+
+    public function test_transfer_rejects_a_from_warehouse_in_a_different_company_than_the_item(): void
+    {
+        $companyA = Company::factory()->create();
+        $companyB = Company::factory()->create();
+        $item = Item::factory()->for($companyA)->create();
+        $fromWarehouse = Warehouse::factory()->for($companyB)->create();
+        $toWarehouse = Warehouse::factory()->for($companyA)->create();
+        $user = User::factory()->create();
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->service->transfer($item, $fromWarehouse, $toWarehouse, '1', '2026-01-15', $user->id);
+    }
+
+    public function test_transfer_rejects_a_to_warehouse_in_a_different_company_than_the_item(): void
+    {
+        $companyA = Company::factory()->create();
+        $companyB = Company::factory()->create();
+        $item = Item::factory()->for($companyA)->create();
+        $fromWarehouse = Warehouse::factory()->for($companyA)->create();
+        $toWarehouse = Warehouse::factory()->for($companyB)->create();
+        $user = User::factory()->create();
+
+        $this->service->receipt($item, $fromWarehouse, '5', '100.00', '2026-01-10', $user->id);
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->service->transfer($item, $fromWarehouse, $toWarehouse, '1', '2026-01-15', $user->id);
     }
 }

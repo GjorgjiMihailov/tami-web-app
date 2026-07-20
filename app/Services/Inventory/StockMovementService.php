@@ -19,6 +19,8 @@ class StockMovementService
 
     public function receipt(Item $item, Warehouse $warehouse, string $quantity, string $unitCost, string $movementDate, int $createdBy): StockMovement
     {
+        $this->assertSameCompany($item, $warehouse);
+
         return DB::transaction(function () use ($item, $warehouse, $quantity, $unitCost, $movementDate, $createdBy) {
             $level = $this->lockedLevel($item, $warehouse);
 
@@ -45,6 +47,8 @@ class StockMovementService
 
     public function issue(Item $item, Warehouse $warehouse, string $quantity, string $movementDate, int $createdBy): StockMovement
     {
+        $this->assertSameCompany($item, $warehouse);
+
         return DB::transaction(function () use ($item, $warehouse, $quantity, $movementDate, $createdBy) {
             $level = $this->lockedLevel($item, $warehouse);
 
@@ -75,6 +79,9 @@ class StockMovementService
         if ($fromWarehouse->is($toWarehouse)) {
             throw new \InvalidArgumentException('Cannot transfer stock to the same warehouse.');
         }
+
+        $this->assertSameCompany($item, $fromWarehouse);
+        $this->assertSameCompany($item, $toWarehouse);
 
         return DB::transaction(function () use ($item, $fromWarehouse, $toWarehouse, $quantity, $movementDate, $createdBy) {
             // Lock both warehouse levels in a fixed order (ascending warehouse
@@ -123,6 +130,8 @@ class StockMovementService
 
     public function adjustment(Item $item, Warehouse $warehouse, string $quantityDelta, string $reason, string $movementDate, int $createdBy): StockMovement
     {
+        $this->assertSameCompany($item, $warehouse);
+
         return DB::transaction(function () use ($item, $warehouse, $quantityDelta, $reason, $movementDate, $createdBy) {
             $level = $this->lockedLevel($item, $warehouse);
 
@@ -166,6 +175,13 @@ class StockMovementService
             ->where('warehouse_id', $warehouse->id)
             ->lockForUpdate()
             ->first();
+    }
+
+    private function assertSameCompany(Item $item, Warehouse $warehouse): void
+    {
+        if ($item->company_id !== $warehouse->company_id) {
+            throw new \InvalidArgumentException('Item and warehouse must belong to the same company.');
+        }
     }
 
     /**
