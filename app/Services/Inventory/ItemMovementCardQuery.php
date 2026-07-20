@@ -63,7 +63,12 @@ class ItemMovementCardQuery
             'receipt' => $quantity,
             'issue' => -$quantity,
             'adjustment' => $quantity,
-            'transfer' => $movement->to_warehouse_id === $warehouseId ? $quantity : -$quantity,
+            // to_warehouse_id is not cast in StockMovement, so under MySQL's default
+            // emulated prepared statements it comes back as a string while $warehouseId
+            // is a native int. Cast explicitly so the comparison is type-safe regardless
+            // of DB driver (SQLite already returns native ints, which is why this bug
+            // wasn't caught by the existing test suite).
+            'transfer' => (int) $movement->to_warehouse_id === $warehouseId ? $quantity : -$quantity,
             default => 0.0,
         };
     }

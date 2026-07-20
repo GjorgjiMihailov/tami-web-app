@@ -5,12 +5,14 @@ namespace Tests\Unit;
 use App\Models\Company;
 use App\Models\Item;
 use App\Models\StockLevel;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Inventory\ItemMovementCardQuery;
 use App\Services\Inventory\StockMovementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use ReflectionMethod;
 use Tests\TestCase;
 
 class ItemMovementCardQueryTest extends TestCase
@@ -97,5 +99,33 @@ class ItemMovementCardQueryTest extends TestCase
         $level = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
 
         $this->assertSame((float) $level->quantity_on_hand, $rows->last()['running_quantity']);
+    }
+
+    public function test_signed_delta_treats_a_transfer_as_an_increase_at_the_destination_even_when_to_warehouse_id_is_a_string(): void
+    {
+        // `to_warehouse_id` is NOT in StockMovement's $casts array. Under SQLite (the
+        // test DB) it happens to come back as a native int, but under MySQL (production)
+        // with emulated prepared statements, it comes back as a string. Simulate that
+        // here by assigning it as a string directly on an unsaved model instance -
+        // since the attribute isn't cast, the raw string is preserved exactly like a
+        // real MySQL row would return it.
+        $movement = new StockMovement([
+            'item_id' => 1,
+            'warehouse_id' => 1,
+            'to_warehouse_id' => '5',
+            'type' => 'transfer',
+            'quantity' => '4',
+            'movement_date' => '2026-01-10',
+        ]);
+
+        $signedDelta = new ReflectionMethod(ItemMovementCardQuery::class, 'signedDelta');
+        $signedDelta->setAccessible(true);
+
+        // $warehouseId is a native int (as it always is when called from run()).
+        // Before the fix, '5' === 5 is false, so this transfer into warehouse 5
+        // would be wrongly treated as a decrease (-4.0) instead of an increase.
+        $delta = $signedDelta->invoke(null, $movement, 5);
+
+        $this->assertSame(4.0, $delta);
     }
 }
