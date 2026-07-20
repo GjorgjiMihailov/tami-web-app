@@ -191,6 +191,41 @@ class StockMovementServiceTest extends TestCase
         $this->assertSame('100.0000', (string) $levelB->average_cost);
     }
 
+    public function test_transfer_from_higher_id_warehouse_to_lower_id_warehouse_uses_correct_source_and_destination(): void
+    {
+        $item = Item::factory()->create();
+        // Create warehouseB before warehouseA so warehouseA ends up with the
+        // higher id. Transferring from A (higher id) to B (lower id)
+        // exercises the fromWarehouse->id > toWarehouse->id branch of the
+        // fixed ascending-id lock ordering in StockMovementService::transfer(),
+        // which every other transfer test in this file leaves uncovered.
+        $warehouseB = Warehouse::factory()->create();
+        $warehouseA = Warehouse::factory()->create();
+        $user = User::factory()->create();
+
+        $this->assertGreaterThan($warehouseB->id, $warehouseA->id);
+
+        $this->service->receipt($item, $warehouseA, '10', '120.00', '2026-01-10', $user->id);
+        $this->service->receipt($item, $warehouseB, '10', '80.00', '2026-01-10', $user->id);
+
+        $movement = $this->service->transfer($item, $warehouseA, $warehouseB, '10', '2026-01-15', $user->id);
+
+        $this->assertSame('transfer', $movement->type);
+        $this->assertSame($warehouseA->id, $movement->warehouse_id);
+        $this->assertSame($warehouseB->id, $movement->to_warehouse_id);
+        $this->assertSame('120.0000', (string) $movement->unit_cost);
+
+        $levelA = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseA->id)->first();
+        $levelB = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseB->id)->first();
+
+        $this->assertSame('0.000', (string) $levelA->quantity_on_hand);
+        $this->assertSame('120.0000', (string) $levelA->average_cost);
+
+        // Warehouse B: ((10 * 80) + (10 * 120)) / 20 = 100.00
+        $this->assertSame('20.000', (string) $levelB->quantity_on_hand);
+        $this->assertSame('100.0000', (string) $levelB->average_cost);
+    }
+
     public function test_transfer_exceeding_source_quantity_is_rejected(): void
     {
         $item = Item::factory()->create();
