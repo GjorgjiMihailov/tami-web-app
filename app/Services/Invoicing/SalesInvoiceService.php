@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\JournalEntry;
 use App\Models\SalesInvoice;
 use App\Services\Inventory\StockMovementService;
+use App\Support\Bcmath;
 use Illuminate\Support\Facades\DB;
 
 class SalesInvoiceService
@@ -58,7 +59,7 @@ class SalesInvoiceService
                 );
 
                 $line->update(['stock_movement_id' => $movement->id]);
-                $cogsTotal = bcadd($cogsTotal, bcmul((string) $line->quantity, (string) $movement->unit_cost, 2), 2);
+                $cogsTotal = bcadd($cogsTotal, Bcmath::roundHalfUp(bcmul((string) $line->quantity, (string) $movement->unit_cost, 10), 2), 2);
             }
 
             $vatRegistered = $invoice->company->is_vat_registered;
