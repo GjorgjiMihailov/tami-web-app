@@ -252,4 +252,52 @@ class StockMovementServiceTest extends TestCase
 
         $this->service->transfer($item, $warehouse, $warehouse, '1', '2026-01-15', $user->id);
     }
+
+    public function test_positive_adjustment_increases_quantity_without_changing_average_cost(): void
+    {
+        $item = Item::factory()->create();
+        $warehouse = Warehouse::factory()->create();
+        $user = User::factory()->create();
+
+        $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
+        $movement = $this->service->adjustment($item, $warehouse, '5', 'Physical count correction', '2026-01-20', $user->id);
+
+        $this->assertSame('adjustment', $movement->type);
+        $this->assertSame('5.000', (string) $movement->quantity);
+        $this->assertSame('100.0000', (string) $movement->unit_cost);
+        $this->assertSame('Physical count correction', $movement->reason);
+
+        $level = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
+        $this->assertSame('15.000', (string) $level->quantity_on_hand);
+        $this->assertSame('100.0000', (string) $level->average_cost);
+    }
+
+    public function test_negative_adjustment_decreases_quantity_without_changing_average_cost(): void
+    {
+        $item = Item::factory()->create();
+        $warehouse = Warehouse::factory()->create();
+        $user = User::factory()->create();
+
+        $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
+        $movement = $this->service->adjustment($item, $warehouse, '-3', 'Damaged goods', '2026-01-20', $user->id);
+
+        $this->assertSame('-3.000', (string) $movement->quantity);
+
+        $level = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
+        $this->assertSame('7.000', (string) $level->quantity_on_hand);
+        $this->assertSame('100.0000', (string) $level->average_cost);
+    }
+
+    public function test_negative_adjustment_exceeding_quantity_on_hand_is_rejected(): void
+    {
+        $item = Item::factory()->create();
+        $warehouse = Warehouse::factory()->create();
+        $user = User::factory()->create();
+
+        $this->service->receipt($item, $warehouse, '5', '100.00', '2026-01-10', $user->id);
+
+        $this->expectException(\App\Exceptions\InsufficientStockException::class);
+
+        $this->service->adjustment($item, $warehouse, '-6', 'Miscount', '2026-01-20', $user->id);
+    }
 }

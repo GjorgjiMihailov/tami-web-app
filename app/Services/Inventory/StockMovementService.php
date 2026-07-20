@@ -121,6 +121,35 @@ class StockMovementService
         });
     }
 
+    public function adjustment(Item $item, Warehouse $warehouse, string $quantityDelta, string $reason, string $movementDate, int $createdBy): StockMovement
+    {
+        return DB::transaction(function () use ($item, $warehouse, $quantityDelta, $reason, $movementDate, $createdBy) {
+            $level = $this->lockedLevel($item, $warehouse);
+
+            $newQty = bcadd($level->quantity_on_hand, $quantityDelta, self::QTY_SCALE);
+
+            if (bccomp($newQty, '0', self::QTY_SCALE) < 0) {
+                throw new InsufficientStockException(
+                    "Cannot adjust item #{$item->id} at warehouse #{$warehouse->id} by {$quantityDelta}: only {$level->quantity_on_hand} on hand."
+                );
+            }
+
+            $unitCost = $level->average_cost;
+            $level->update(['quantity_on_hand' => $newQty]);
+
+            return StockMovement::create([
+                'item_id' => $item->id,
+                'warehouse_id' => $warehouse->id,
+                'type' => 'adjustment',
+                'quantity' => $quantityDelta,
+                'unit_cost' => $unitCost,
+                'reason' => $reason,
+                'movement_date' => $movementDate,
+                'created_by' => $createdBy,
+            ]);
+        });
+    }
+
     /**
      * NOTE: lockForUpdate() here only holds a real lock because every public
      * method wraps its call to this helper in DB::transaction() — same
