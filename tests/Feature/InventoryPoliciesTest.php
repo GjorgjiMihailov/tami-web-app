@@ -79,4 +79,44 @@ class InventoryPoliciesTest extends TestCase
         $this->assertTrue($admin->can('update', $warehouse));
         $this->assertTrue($admin->can('update', $item));
     }
+
+    public function test_stock_movement_view_is_scoped_to_the_owning_companys_users(): void
+    {
+        $ownCompany = Company::factory()->create();
+        $otherCompany = Company::factory()->create();
+        $item = Item::factory()->for($ownCompany)->create();
+        $warehouse = Warehouse::factory()->for($ownCompany)->create();
+        $stockMovement = StockMovement::factory()->for($item)->for($warehouse)->create();
+
+        $sameCompanyClient = User::factory()->create(['company_id' => $ownCompany->id]);
+        $sameCompanyClient->assignRole('client');
+        $otherCompanyClient = User::factory()->create(['company_id' => $otherCompany->id]);
+        $otherCompanyClient->assignRole('client');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->assertTrue($sameCompanyClient->can('view', $stockMovement));
+        $this->assertTrue($admin->can('view', $stockMovement));
+        $this->assertFalse($otherCompanyClient->can('view', $stockMovement));
+    }
+
+    public function test_accountant_assigned_to_a_company_can_manage_its_inventory(): void
+    {
+        $company = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $accountant->assignedCompanies()->attach($company);
+
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $item = Item::factory()->for($company)->create();
+        $stockMovement = StockMovement::factory()->for($item)->for($warehouse)->create();
+
+        $this->assertTrue($accountant->can('view', $warehouse));
+        $this->assertTrue($accountant->can('update', $warehouse));
+        $this->assertTrue($accountant->can('view', $item));
+        $this->assertTrue($accountant->can('update', $item));
+        $this->assertTrue($accountant->can('create', Warehouse::class));
+        $this->assertTrue($accountant->can('create', Item::class));
+        $this->assertTrue($accountant->can('view', $stockMovement));
+    }
 }
