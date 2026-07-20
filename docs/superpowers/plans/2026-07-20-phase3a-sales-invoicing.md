@@ -762,40 +762,16 @@ class SalesInvoiceTest extends TestCase
         $this->assertSame('295.00', $invoice->fresh(['lines'])->grandTotal());
     }
 
-    public function test_payment_status_reflects_recorded_payments(): void
-    {
-        $invoice = SalesInvoice::factory()->create(['status' => 'confirmed']);
-        $invoice->lines()->create(['description' => 'Line A', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
-
-        $invoice = $invoice->fresh(['lines', 'payments']);
-        $this->assertSame('unpaid', $invoice->paymentStatus());
-
-        $invoice->payments()->create(['amount' => '40.00', 'payment_date' => now(), 'payment_method' => 'bank', 'created_by' => \App\Models\User::factory()->create()->id]);
-        $invoice = $invoice->fresh(['lines', 'payments']);
-        $this->assertSame('partially_paid', $invoice->paymentStatus());
-        $this->assertSame('60.00', $invoice->balanceDue());
-
-        $invoice->payments()->create(['amount' => '60.00', 'payment_date' => now(), 'payment_method' => 'bank', 'created_by' => \App\Models\User::factory()->create()->id]);
-        $invoice = $invoice->fresh(['lines', 'payments']);
-        $this->assertSame('paid', $invoice->paymentStatus());
-    }
-
     public function test_draft_invoices_report_payment_status_as_not_applicable(): void
     {
         $invoice = SalesInvoice::factory()->create(['status' => 'draft']);
 
         $this->assertSame('n/a', $invoice->paymentStatus());
     }
-
-    public function test_is_overdue_when_unpaid_past_due_date(): void
-    {
-        $invoice = SalesInvoice::factory()->create(['status' => 'confirmed', 'due_date' => now()->subDay()]);
-        $invoice->lines()->create(['description' => 'Line A', 'quantity' => '1', 'unit_price' => '10.00', 'vat_rate' => '0']);
-
-        $this->assertTrue($invoice->fresh(['lines', 'payments'])->isOverdue());
-    }
 }
 ```
+
+**Note on `paymentStatus()`/`isOverdue()` test coverage:** these two methods touch the `payments` relation once an invoice is `confirmed` (even to observe zero payments), which means testing them requires the `sales_invoice_payments` table — that table doesn't exist until Task 4. Only the `draft` short-circuit case (`paymentStatus()` returns `'n/a'` before ever touching `payments`) is testable here; the `unpaid`/`partially_paid`/`paid`/`isOverdue()` cases are covered by the payment-status test appended to `tests/Unit/SalesInvoiceTest.php` in Task 4, once `SalesInvoicePayment` exists.
 
 ```php
 <?php
@@ -1201,6 +1177,7 @@ git commit -m "feat: add sales_invoices/sales_invoice_lines schema, models, and 
 - Create: `app/Exceptions/InvalidInvoiceStateException.php`
 - Create: `app/Policies/SalesInvoicePolicy.php`
 - Test: `tests/Unit/SalesInvoicePaymentTest.php`
+- Test: `tests/Unit/SalesInvoiceTest.php` (modify — add the two payment-status tests deferred from Task 3)
 
 **Interfaces:**
 - Produces: `SalesInvoicePayment` model — fillable `['sales_invoice_id', 'amount', 'payment_date', 'payment_method', 'created_by']`, casts `amount` to `decimal:2`, `payment_date` to `date`; relations `salesInvoice()`, `creator()`.
@@ -1347,7 +1324,44 @@ class SalesInvoicePaymentFactory extends Factory
 Run: `php artisan test --filter=SalesInvoicePaymentTest`
 Expected: PASS
 
-- [ ] **Step 7: Write the exception class**
+- [ ] **Step 7: Add the deferred `SalesInvoice` payment-status tests**
+
+Task 3's `tests/Unit/SalesInvoiceTest.php` deliberately left out `paymentStatus()`/`isOverdue()` coverage beyond the `draft` case, because both methods touch the `payments` relation on a `confirmed` invoice (even to observe zero rows), which needs the `sales_invoice_payments` table this task just created. Add these two methods to `tests/Unit/SalesInvoiceTest.php` now:
+
+```php
+    public function test_payment_status_reflects_recorded_payments(): void
+    {
+        $invoice = SalesInvoice::factory()->create(['status' => 'confirmed']);
+        $invoice->lines()->create(['description' => 'Line A', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+
+        $invoice = $invoice->fresh(['lines', 'payments']);
+        $this->assertSame('unpaid', $invoice->paymentStatus());
+
+        $invoice->payments()->create(['amount' => '40.00', 'payment_date' => now(), 'payment_method' => 'bank', 'created_by' => \App\Models\User::factory()->create()->id]);
+        $invoice = $invoice->fresh(['lines', 'payments']);
+        $this->assertSame('partially_paid', $invoice->paymentStatus());
+        $this->assertSame('60.00', $invoice->balanceDue());
+
+        $invoice->payments()->create(['amount' => '60.00', 'payment_date' => now(), 'payment_method' => 'bank', 'created_by' => \App\Models\User::factory()->create()->id]);
+        $invoice = $invoice->fresh(['lines', 'payments']);
+        $this->assertSame('paid', $invoice->paymentStatus());
+    }
+
+    public function test_is_overdue_when_unpaid_past_due_date(): void
+    {
+        $invoice = SalesInvoice::factory()->create(['status' => 'confirmed', 'due_date' => now()->subDay()]);
+        $invoice->lines()->create(['description' => 'Line A', 'quantity' => '1', 'unit_price' => '10.00', 'vat_rate' => '0']);
+
+        $this->assertTrue($invoice->fresh(['lines', 'payments'])->isOverdue());
+    }
+```
+
+Add `use App\Models\SalesInvoicePayment;` is not needed (the test only calls `$invoice->payments()->create(...)`, never references the class directly) — but do add `use App\Models\User;` if it isn't already imported in that file (check the existing `use` block; Task 3 already fully-qualified `\App\Models\User::factory()` inline, so no import is strictly required, but importing it is fine too).
+
+Run: `php artisan test --filter=SalesInvoiceTest`
+Expected: PASS (5/5 — the 3 from Task 3 plus these 2)
+
+- [ ] **Step 8: Write the exception class**
 
 ```php
 <?php
@@ -1359,7 +1373,7 @@ class InvalidInvoiceStateException extends \RuntimeException
 }
 ```
 
-- [ ] **Step 8: Write the policy**
+- [ ] **Step 9: Write the policy**
 
 ```php
 <?php
@@ -1394,10 +1408,10 @@ class SalesInvoicePolicy
 }
 ```
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
-git add database/migrations/2026_07_20_100300_create_sales_invoice_payments_table.php app/Models/SalesInvoicePayment.php database/factories/SalesInvoicePaymentFactory.php app/Exceptions/InvalidInvoiceStateException.php app/Policies/SalesInvoicePolicy.php tests/Unit/SalesInvoicePaymentTest.php
+git add database/migrations/2026_07_20_100300_create_sales_invoice_payments_table.php app/Models/SalesInvoicePayment.php database/factories/SalesInvoicePaymentFactory.php app/Exceptions/InvalidInvoiceStateException.php app/Policies/SalesInvoicePolicy.php tests/Unit/SalesInvoicePaymentTest.php tests/Unit/SalesInvoiceTest.php
 git commit -m "feat: add sales_invoice_payments schema, SalesInvoicePolicy, and InvalidInvoiceStateException"
 ```
 
