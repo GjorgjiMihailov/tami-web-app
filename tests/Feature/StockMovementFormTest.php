@@ -255,4 +255,33 @@ class StockMovementFormTest extends TestCase
             ->assertSet('itemId', '')
             ->assertHasErrors(['scannedCode']);
     }
+
+    public function test_scanning_a_known_code_selects_the_item(): void
+    {
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create(['code' => 'SKU-999']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(StockMovementForm::class, ['company' => $company, 'type' => 'receipt'])
+            ->call('lookupByCode', 'SKU-999')
+            ->assertSet('itemId', (string) $item->id)
+            ->assertHasNoErrors();
+    }
+
+    public function test_scanning_an_unknown_code_shows_an_error(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(StockMovementForm::class, ['company' => $company, 'type' => 'receipt'])
+            ->call('lookupByCode', 'DOES-NOT-EXIST')
+            ->assertHasErrors(['scannedCode'])
+            ->assertSet('itemId', '');
+    }
 }

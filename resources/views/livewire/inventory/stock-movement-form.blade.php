@@ -4,6 +4,16 @@
     </h1>
 
     <form wire:submit="save" class="bg-white shadow rounded-md p-4 flex flex-wrap gap-4 items-end max-w-3xl">
+        <div x-data="barcodeScanner" class="w-full">
+            <button type="button" x-show="!scanning" @click="start()" class="text-sm text-indigo-600 hover:underline">
+                Scan barcode
+            </button>
+            <button type="button" x-show="scanning" @click="stop()" class="text-sm text-red-600 hover:underline">
+                Stop scanning
+            </button>
+            <video x-ref="video" x-show="scanning" wire:ignore class="w-full max-w-sm mt-2 rounded-md"></video>
+        </div>
+
         <div class="w-full">
             <x-input-label for="itemId" value="Item" />
             <select id="itemId" wire:model="itemId" class="border-gray-300 rounded-md text-sm w-full">
