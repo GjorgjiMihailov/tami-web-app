@@ -59,4 +59,37 @@ class StockLevelQuery
             ])
             ->values();
     }
+
+    public static function valuationSummary(Company $company, ?string $groupBy = null): Collection
+    {
+        $query = StockLevel::query()
+            ->join('items', 'items.id', '=', 'stock_levels.item_id')
+            ->join('warehouses', 'warehouses.id', '=', 'stock_levels.warehouse_id')
+            ->where('items.company_id', $company->id)
+            ->where('warehouses.company_id', $company->id);
+
+        if ($groupBy === 'warehouse') {
+            return $query
+                ->selectRaw('warehouses.name as label, SUM(stock_levels.quantity_on_hand * stock_levels.average_cost) as total_value')
+                ->groupBy('warehouses.id', 'warehouses.name')
+                ->orderBy('warehouses.name')
+                ->get()
+                ->map(fn ($row) => ['label' => $row->label, 'total_value' => round((float) $row->total_value, 2)])
+                ->values();
+        }
+
+        if ($groupBy === 'category') {
+            return $query
+                ->selectRaw("COALESCE(items.category, 'Uncategorized') as label, SUM(stock_levels.quantity_on_hand * stock_levels.average_cost) as total_value")
+                ->groupBy('label')
+                ->orderBy('label')
+                ->get()
+                ->map(fn ($row) => ['label' => $row->label, 'total_value' => round((float) $row->total_value, 2)])
+                ->values();
+        }
+
+        $total = (clone $query)->selectRaw('SUM(stock_levels.quantity_on_hand * stock_levels.average_cost) as total_value')->value('total_value');
+
+        return collect([['label' => 'Total', 'total_value' => round((float) $total, 2)]]);
+    }
 }
