@@ -21,4 +21,9 @@ class CompanyPolicy
     {
         return $user->hasRole('admin');
     }
+
+    public function update(User $user, Company $company): bool
+    {
+        return $user->hasRole('admin');
+    }
 }

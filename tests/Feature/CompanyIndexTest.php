@@ -164,4 +164,39 @@ class CompanyIndexTest extends TestCase
             ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'transfer']))
             ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'adjustment']));
     }
+
+    public function test_admin_can_update_a_companys_bank_account_and_vat_registration(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(CompanyIndex::class)
+            ->call('startEdit', $company->id)
+            ->set('editBankAccount', 'MK07300701104789126')
+            ->set('editIsVatRegistered', false)
+            ->call('saveEdit')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('companies', [
+            'id' => $company->id,
+            'bank_account' => 'MK07300701104789126',
+            'is_vat_registered' => false,
+        ]);
+    }
+
+    public function test_client_cannot_update_company_settings(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+
+        $this->actingAs($client);
+
+        Livewire::test(CompanyIndex::class)
+            ->call('startEdit', $company->id)
+            ->assertForbidden();
+    }
 }

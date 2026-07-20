@@ -11,7 +11,12 @@ class Company extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'tax_id', 'email', 'phone', 'address', 'logo_path'];
+    protected $fillable = ['name', 'tax_id', 'email', 'phone', 'address', 'logo_path', 'bank_account', 'is_vat_registered'];
+
+    protected function casts(): array
+    {
+        return ['is_vat_registered' => 'boolean'];
+    }
 
     public function clients(): HasMany
     {

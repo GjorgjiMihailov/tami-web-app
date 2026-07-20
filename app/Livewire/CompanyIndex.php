@@ -20,6 +20,12 @@ class CompanyIndex extends Component
 
     public string $newAddress = '';
 
+    public ?int $editingCompanyId = null;
+
+    public string $editBankAccount = '';
+
+    public bool $editIsVatRegistered = true;
+
     public function addCompany(): void
     {
         Gate::authorize('create', Company::class);
@@ -41,6 +47,34 @@ class CompanyIndex extends Component
         ]);
 
         $this->reset(['newName', 'newTaxId', 'newEmail', 'newPhone', 'newAddress']);
+    }
+
+    public function startEdit(int $companyId): void
+    {
+        $company = Company::findOrFail($companyId);
+        Gate::authorize('update', $company);
+
+        $this->editingCompanyId = $company->id;
+        $this->editBankAccount = (string) $company->bank_account;
+        $this->editIsVatRegistered = $company->is_vat_registered;
+    }
+
+    public function saveEdit(): void
+    {
+        $company = Company::findOrFail($this->editingCompanyId);
+        Gate::authorize('update', $company);
+
+        $validated = $this->validate([
+            'editBankAccount' => 'nullable|string|max:255',
+            'editIsVatRegistered' => 'boolean',
+        ]);
+
+        $company->update([
+            'bank_account' => $validated['editBankAccount'] ?: null,
+            'is_vat_registered' => $validated['editIsVatRegistered'],
+        ]);
+
+        $this->editingCompanyId = null;
     }
 
     public function render()

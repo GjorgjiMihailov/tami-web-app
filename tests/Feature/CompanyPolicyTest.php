@@ -66,4 +66,16 @@ class CompanyPolicyTest extends TestCase
         $this->assertFalse($accountant->can('create', Company::class));
         $this->assertFalse($client->can('create', Company::class));
     }
+
+    public function test_only_admin_can_update_a_company(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+
+        $this->assertTrue($admin->can('update', $company));
+        $this->assertFalse($client->can('update', $company));
+    }
 }

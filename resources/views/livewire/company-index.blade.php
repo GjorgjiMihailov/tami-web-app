@@ -43,7 +43,28 @@
                 <li class="py-3">
                     <div class="flex items-center justify-between">
                         <span class="font-medium">{{ $company->name }}</span>
+                        @can('update', $company)
+                            @if ($editingCompanyId !== $company->id)
+                                <button type="button" wire:click="startEdit({{ $company->id }})" class="text-indigo-600 hover:underline text-sm">Edit settings</button>
+                            @endif
+                        @endcan
                     </div>
+
+                    @if ($editingCompanyId === $company->id)
+                        <div class="mt-2 mb-3 p-3 bg-gray-50 rounded-md">
+                            <form wire:submit="saveEdit" class="flex flex-wrap gap-3 items-end">
+                                <div>
+                                    <x-input-label for="editBankAccount" value="Bank account (IBAN)" />
+                                    <x-text-input id="editBankAccount" wire:model="editBankAccount" class="w-64" />
+                                </div>
+                                <div class="flex items-center gap-2 pb-2">
+                                    <input type="checkbox" id="editIsVatRegistered" wire:model="editIsVatRegistered">
+                                    <label for="editIsVatRegistered" class="text-sm">VAT registered</label>
+                                </div>
+                                <x-primary-button type="submit">Save</x-primary-button>
+                            </form>
+                        </div>
+                    @endif
                     <div class="mt-1 text-sm text-gray-500">Accounting:</div>
                     <div class="space-x-3 text-sm">
                         <a href="{{ route('accounting.accounts.index', $company) }}" class="text-indigo-600 hover:underline">Accounts</a>
