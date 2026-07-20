@@ -128,6 +128,57 @@ class SalesInvoiceService
         });
     }
 
+    public function cancel(SalesInvoice $invoice, int $userId): SalesInvoice
+    {
+        if ($invoice->status !== 'confirmed') {
+            throw new InvalidInvoiceStateException("Invoice #{$invoice->id} is not confirmed and cannot be cancelled.");
+        }
+
+        if ($invoice->payments()->exists()) {
+            throw new InvalidInvoiceStateException('An invoice with recorded payments cannot be cancelled.');
+        }
+
+        $invoice->loadMissing(['lines.item', 'lines.stockMovement', 'journalEntry.lines', 'warehouse', 'company']);
+
+        return DB::transaction(function () use ($invoice, $userId) {
+            foreach ($invoice->lines as $line) {
+                if ($line->item_id === null) {
+                    continue;
+                }
+
+                $this->stockMovementService->receipt(
+                    $line->item,
+                    $invoice->warehouse,
+                    (string) $line->quantity,
+                    (string) $line->stockMovement->unit_cost,
+                    now()->toDateString(),
+                    $userId
+                );
+            }
+
+            $reversal = JournalEntry::create([
+                'company_id' => $invoice->company_id,
+                'entry_date' => now()->toDateString(),
+                'description' => "Reversal of invoice {$invoice->fiscal_year}/{$invoice->invoice_number}",
+                'created_by' => $userId,
+            ]);
+
+            foreach ($invoice->journalEntry->lines as $originalLine) {
+                $reversal->lines()->create([
+                    'account_id' => $originalLine->account_id,
+                    'partner_id' => $originalLine->partner_id,
+                    'description' => 'Reversal: '.$originalLine->description,
+                    'debit' => $originalLine->credit,
+                    'credit' => $originalLine->debit,
+                ]);
+            }
+
+            $invoice->update(['status' => 'cancelled']);
+
+            return $invoice->fresh(['lines', 'payments']);
+        });
+    }
+
     private function account(Company $company, string $code): Account
     {
         return Account::where('company_id', $company->id)->where('code', $code)->firstOrFail();

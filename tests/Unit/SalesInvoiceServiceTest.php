@@ -176,4 +176,58 @@ class SalesInvoiceServiceTest extends TestCase
 
         $this->service->confirm($invoice->fresh(), $user->id);
     }
+
+    public function test_cancelling_a_confirmed_invoice_reverses_gl_and_stock(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $item = Item::factory()->for($company)->create();
+        $user = User::factory()->create();
+
+        app(StockMovementService::class)->receipt($item, $warehouse, '10', '50.00', '2026-01-01', $user->id);
+
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'warehouse_id' => $warehouse->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['item_id' => $item->id, 'description' => $item->name, 'quantity' => '4', 'unit_price' => '100.00', 'vat_rate' => '18.00']);
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+
+        $cancelled = $this->service->cancel($confirmed, $user->id);
+
+        $this->assertSame('cancelled', $cancelled->status);
+        $this->assertSame('10.000', (string) \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->quantity_on_hand);
+
+        $reversal = \App\Models\JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines')->first();
+        $this->assertNotNull($reversal);
+
+        $originalTotalDebit = $confirmed->journalEntry->lines->sum('debit');
+        $reversalTotalCredit = $reversal->lines->sum('credit');
+        $this->assertSame((string) $originalTotalDebit, (string) $reversalTotalCredit);
+    }
+
+    public function test_cancelling_a_draft_invoice_throws(): void
+    {
+        $invoice = SalesInvoice::factory()->create(['status' => 'draft']);
+        $user = User::factory()->create();
+
+        $this->expectException(InvalidInvoiceStateException::class);
+
+        $this->service->cancel($invoice, $user->id);
+    }
+
+    public function test_cancelling_an_invoice_with_a_payment_throws(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $user = User::factory()->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+        $this->service->recordPayment($confirmed, '50.00', '2026-03-05', 'bank', $user->id);
+
+        $this->expectException(InvalidInvoiceStateException::class);
+
+        $this->service->cancel($confirmed->fresh(), $user->id);
+    }
 }
