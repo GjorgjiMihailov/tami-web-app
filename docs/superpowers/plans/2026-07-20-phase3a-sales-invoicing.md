@@ -1470,7 +1470,11 @@ class SalesInvoiceServiceTest extends TestCase
             ['code' => '100', 'name' => 'Bank'],
             ['code' => '102', 'name' => 'Cash'],
         ] as $account) {
-            Account::factory()->for($company)->create($account);
+            // firstOrCreate, not create(): CompanyObserver already auto-seeds the
+            // full 428-account official chart (including all codes used here) on
+            // Company::factory()->create(), so a bare create() would collide with
+            // the (company_id, code) unique constraint.
+            Account::firstOrCreate(['company_id' => $company->id, 'code' => $account['code']], $account);
         }
     }
 
