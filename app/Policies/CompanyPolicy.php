@@ -16,4 +16,9 @@ class CompanyPolicy
     {
         return $user->visibleCompanies()->whereKey($company->id)->exists();
     }
+
+    public function create(User $user): bool
+    {
+        return $user->hasRole('admin');
+    }
 }

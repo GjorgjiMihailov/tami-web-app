@@ -82,4 +82,86 @@ class CompanyIndexTest extends TestCase
             ->assertOk()
             ->assertSee('Companies');
     }
+
+    public function test_admin_can_add_a_company(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newName', 'New Client DOO')
+            ->set('newTaxId', '4012345678901')
+            ->set('newEmail', 'contact@newclient.mk')
+            ->call('addCompany')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('companies', [
+            'name' => 'New Client DOO',
+            'tax_id' => '4012345678901',
+            'email' => 'contact@newclient.mk',
+        ]);
+    }
+
+    public function test_adding_a_company_requires_a_name(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newName', '')
+            ->call('addCompany')
+            ->assertHasErrors(['newName' => 'required']);
+    }
+
+    public function test_client_cannot_add_a_company(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+
+        $this->actingAs($client);
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newName', 'Sneaky DOO')
+            ->call('addCompany')
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('companies', ['name' => 'Sneaky DOO']);
+    }
+
+    public function test_add_company_form_is_not_shown_to_non_admins(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+
+        $this->actingAs($client);
+
+        Livewire::test(CompanyIndex::class)
+            ->assertDontSee('Add company');
+    }
+
+    public function test_the_companies_list_links_to_inventory_screens_for_a_visible_company(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $company = Company::factory()->create(['name' => 'Alpha Ltd']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(CompanyIndex::class)
+            ->assertSeeHtml(route('inventory.warehouses.index', $company))
+            ->assertSeeHtml(route('inventory.items.index', $company))
+            ->assertSeeHtml(route('inventory.reports.stock-on-hand', $company))
+            ->assertSeeHtml(route('inventory.reports.item-movement-card', $company))
+            ->assertSeeHtml(route('inventory.reports.stock-valuation', $company))
+            ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'receipt']))
+            ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'issue']))
+            ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'transfer']))
+            ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'adjustment']));
+    }
 }
