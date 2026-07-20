@@ -2554,8 +2554,12 @@ class SalesInvoiceShowTest extends TestCase
 
     private function seedAccounts(Company $company): void
     {
+        // firstOrCreate, not create(): CompanyObserver already auto-seeds the
+        // full 428-account official chart (including all codes used here) on
+        // Company::factory()->create(), so a bare create() would collide with
+        // the (company_id, code) unique constraint.
         foreach (['120', '740', '230', '660', '701', '100', '102'] as $code) {
-            \App\Models\Account::factory()->for($company)->create(['code' => $code, 'name' => $code]);
+            \App\Models\Account::firstOrCreate(['company_id' => $company->id, 'code' => $code], ['name' => $code]);
         }
     }
 
