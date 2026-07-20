@@ -14,6 +14,7 @@ class StockLevelQuery
             ->join('items', 'items.id', '=', 'stock_levels.item_id')
             ->join('warehouses', 'warehouses.id', '=', 'stock_levels.warehouse_id')
             ->where('items.company_id', $company->id)
+            ->where('warehouses.company_id', $company->id)
             ->when($warehouseId, fn ($q) => $q->where('stock_levels.warehouse_id', $warehouseId))
             ->orderBy('items.name')
             ->get([
@@ -42,7 +43,9 @@ class StockLevelQuery
     {
         return StockLevel::query()
             ->join('items', 'items.id', '=', 'stock_levels.item_id')
+            ->join('warehouses', 'warehouses.id', '=', 'stock_levels.warehouse_id')
             ->where('items.company_id', $company->id)
+            ->where('warehouses.company_id', $company->id)
             ->selectRaw('items.id as item_id, items.code as item_code, items.name as item_name, SUM(stock_levels.quantity_on_hand) as total_quantity, SUM(stock_levels.quantity_on_hand * stock_levels.average_cost) as total_value')
             ->groupBy('items.id', 'items.code', 'items.name')
             ->orderBy('items.name')
