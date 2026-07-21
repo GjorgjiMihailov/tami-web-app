@@ -2,6 +2,7 @@
 
 namespace App\Services\Invoicing;
 
+use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidInvoiceStateException;
 use App\Models\Account;
 use App\Models\Company;
@@ -116,6 +117,62 @@ class PurchaseInvoiceService
                 'journal_entry_id' => $entry->id,
                 'status' => 'confirmed',
             ]);
+
+            return $invoice->fresh(['lines', 'payments']);
+        });
+    }
+
+    public function cancel(PurchaseInvoice $invoice, int $userId): PurchaseInvoice
+    {
+        if ($invoice->status !== 'confirmed') {
+            throw new InvalidInvoiceStateException("Purchase invoice #{$invoice->id} is not confirmed and cannot be cancelled.");
+        }
+
+        if ($invoice->payments()->exists()) {
+            throw new InvalidInvoiceStateException('A purchase invoice with recorded payments cannot be cancelled.');
+        }
+
+        $invoice->loadMissing(['lines.item', 'lines.stockMovement', 'journalEntry.lines', 'warehouse', 'company', 'partner']);
+
+        return DB::transaction(function () use ($invoice, $userId) {
+            foreach ($invoice->lines as $line) {
+                if ($line->item_id === null) {
+                    continue;
+                }
+
+                try {
+                    $this->stockMovementService->issue(
+                        $line->item,
+                        $invoice->warehouse,
+                        (string) $line->quantity,
+                        now()->toDateString(),
+                        $userId
+                    );
+                } catch (InsufficientStockException $e) {
+                    throw new InvalidInvoiceStateException(
+                        "Cannot cancel purchase invoice #{$invoice->id}: stock received against it has already been used elsewhere ({$e->getMessage()})."
+                    );
+                }
+            }
+
+            $reversal = JournalEntry::create([
+                'company_id' => $invoice->company_id,
+                'entry_date' => now()->toDateString(),
+                'description' => "Reversal of purchase bill {$invoice->partner->name} #{$invoice->supplier_invoice_number}",
+                'created_by' => $userId,
+            ]);
+
+            foreach ($invoice->journalEntry->lines as $originalLine) {
+                $reversal->lines()->create([
+                    'account_id' => $originalLine->account_id,
+                    'partner_id' => $originalLine->partner_id,
+                    'description' => 'Reversal: '.$originalLine->description,
+                    'debit' => $originalLine->credit,
+                    'credit' => $originalLine->debit,
+                ]);
+            }
+
+            $invoice->update(['status' => 'cancelled']);
 
             return $invoice->fresh(['lines', 'payments']);
         });
