@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PurchaseInvoiceDocumentController;
 use App\Http\Controllers\SalesInvoicePdfController;
 use App\Livewire\Accounting\AccountIndex;
 use App\Livewire\Accounting\JournalEntryForm;
@@ -13,6 +14,9 @@ use App\Livewire\Inventory\StockMovementForm;
 use App\Livewire\Inventory\StockOnHandReport;
 use App\Livewire\Inventory\StockValuationReport;
 use App\Livewire\Inventory\WarehouseIndex;
+use App\Livewire\Invoicing\PurchaseInvoiceForm;
+use App\Livewire\Invoicing\PurchaseInvoiceIndex;
+use App\Livewire\Invoicing\PurchaseInvoiceShow;
 use App\Livewire\Invoicing\SalesInvoiceForm;
 use App\Livewire\Invoicing\SalesInvoiceIndex;
 use App\Livewire\Invoicing\SalesInvoiceShow;
@@ -81,6 +85,18 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('sales-invoices
     Route::get('/sales-invoices/{salesInvoice}/edit', [SalesInvoiceForm::class, '__invoke'])->name('edit');
     Route::get('/sales-invoices/{salesInvoice}', [SalesInvoiceShow::class, '__invoke'])->name('show');
     Route::get('/sales-invoices/{salesInvoice}/pdf', [SalesInvoicePdfController::class, '__invoke'])->name('pdf');
+});
+
+// Array-callable form (not bare class-string) for the same reason as the
+// accounting.*, inventory.*, and sales-invoices.* groups above: four of
+// these five target classes don't exist until later Purchase Invoicing
+// tasks, and a bare class-string would crash route registration immediately.
+Route::middleware(['auth'])->prefix('companies/{company}')->name('purchase-invoices.')->group(function () {
+    Route::get('/purchase-invoices', [PurchaseInvoiceIndex::class, '__invoke'])->name('index');
+    Route::get('/purchase-invoices/create', [PurchaseInvoiceForm::class, '__invoke'])->name('create');
+    Route::get('/purchase-invoices/{purchaseInvoice}/edit', [PurchaseInvoiceForm::class, '__invoke'])->name('edit');
+    Route::get('/purchase-invoices/{purchaseInvoice}', [PurchaseInvoiceShow::class, '__invoke'])->name('show');
+    Route::get('/purchase-invoices/{purchaseInvoice}/document', [PurchaseInvoiceDocumentController::class, '__invoke'])->name('document');
 });
 
 require __DIR__.'/auth.php';

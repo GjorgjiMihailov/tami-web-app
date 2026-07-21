@@ -43,4 +43,16 @@ class InvoicingRoutesTest extends TestCase
         $this->get(route('partners.index', $company))->assertRedirect(route('login'));
         $this->get(route('sales-invoices.index', $company))->assertRedirect(route('login'));
     }
+
+    public function test_purchase_invoice_index_and_create_routes_render_successfully_for_an_admin(): void
+    {
+        $company = Company::factory()->create();
+        Partner::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $this->get(route('purchase-invoices.index', $company))->assertOk();
+        $this->get(route('purchase-invoices.create', $company))->assertOk();
+    }
 }
