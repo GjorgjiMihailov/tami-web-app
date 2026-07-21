@@ -175,6 +175,41 @@ class PurchaseInvoiceServiceTest extends TestCase
         $this->service->confirm($invoice->fresh(), $user->id);
     }
 
+    public function test_confirming_an_item_line_with_non_deductible_vat_throws(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $item = Item::factory()->for($company)->create(['vat_rate' => '18.00']);
+        $user = User::factory()->create();
+
+        $invoice = PurchaseInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'warehouse_id' => $warehouse->id,
+            'invoice_date' => '2026-03-01',
+        ]);
+        $invoice->lines()->create(['item_id' => $item->id, 'description' => $item->name, 'quantity' => '10', 'unit_price' => '50.00', 'vat_rate' => '18.00', 'vat_deductible' => false]);
+
+        $this->expectException(InvalidInvoiceStateException::class);
+
+        $this->service->confirm($invoice->fresh(), $user->id);
+    }
+
+    public function test_confirming_a_non_item_line_without_an_account_throws(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $user = User::factory()->create();
+        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['description' => 'No account', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+
+        $this->expectException(InvalidInvoiceStateException::class);
+
+        $this->service->confirm($invoice->fresh(), $user->id);
+    }
+
     public function test_cancelling_a_confirmed_invoice_reverses_gl_and_stock(): void
     {
         $company = Company::factory()->create(['is_vat_registered' => true]);

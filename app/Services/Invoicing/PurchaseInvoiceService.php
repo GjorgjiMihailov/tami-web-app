@@ -36,6 +36,18 @@ class PurchaseInvoiceService
             throw new InvalidInvoiceStateException('A warehouse is required to confirm a purchase invoice with item lines.');
         }
 
+        foreach ($invoice->lines as $index => $line) {
+            $position = $index + 1;
+
+            if ($line->item_id !== null && $line->vat_deductible === false) {
+                throw new InvalidInvoiceStateException("Non-deductible VAT is not supported on stock-item lines (item line at position {$position}).");
+            }
+
+            if ($line->item_id === null && $line->account_id === null) {
+                throw new InvalidInvoiceStateException("A non-item line requires an expense account (line at position {$position}).");
+            }
+        }
+
         return DB::transaction(function () use ($invoice, $userId) {
             $invoice->loadMissing(['lines.account', 'lines.item', 'partner', 'company']);
 

@@ -114,6 +114,30 @@ class PurchaseInvoiceFormTest extends TestCase
             ->assertHasErrors(['lines.0.account_id']);
     }
 
+    public function test_a_line_account_from_another_company_is_rejected(): void
+    {
+        Storage::fake('google');
+        $company = Company::factory()->create();
+        $otherCompany = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $otherCompanyAccount = Account::where('company_id', $otherCompany->id)->where('code', '462')->first();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('partnerId', (string) $partner->id)
+            ->set('supplierInvoiceNumber', 'SUP-2026-049')
+            ->set('invoiceDate', '2026-03-01')
+            ->set('dueDate', '2026-03-15')
+            ->set('lines.0.account_id', (string) $otherCompanyAccount->id)
+            ->set('lines.0.description', 'Cross-company line')
+            ->set('lines.0.quantity', '1')
+            ->set('lines.0.unit_price', '50.00')
+            ->call('save')
+            ->assertHasErrors(['lines.0.account_id']);
+    }
+
     public function test_duplicate_supplier_invoice_number_for_the_same_partner_is_rejected(): void
     {
         Storage::fake('google');
