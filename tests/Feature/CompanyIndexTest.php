@@ -165,6 +165,20 @@ class CompanyIndexTest extends TestCase
             ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'adjustment']));
     }
 
+    public function test_the_companies_list_links_to_invoicing_screens_for_a_visible_company(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $company = Company::factory()->create(['name' => 'Alpha Ltd']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(CompanyIndex::class)
+            ->assertSeeHtml(route('partners.index', $company))
+            ->assertSeeHtml(route('sales-invoices.index', $company))
+            ->assertSeeHtml(route('sales-invoices.create', $company));
+    }
+
     public function test_admin_can_update_a_companys_bank_account_and_vat_registration(): void
     {
         $company = Company::factory()->create(['is_vat_registered' => true]);

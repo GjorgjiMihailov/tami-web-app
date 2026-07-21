@@ -87,6 +87,12 @@
                         <a href="{{ route('inventory.stock-movements.create', [$company, 'transfer']) }}" class="text-indigo-600 hover:underline">Transfer</a>
                         <a href="{{ route('inventory.stock-movements.create', [$company, 'adjustment']) }}" class="text-indigo-600 hover:underline">Adjustment</a>
                     </div>
+                    <div class="mt-1 text-sm text-gray-500">Invoicing:</div>
+                    <div class="space-x-3 text-sm">
+                        <a href="{{ route('partners.index', $company) }}" class="text-indigo-600 hover:underline">Partners</a>
+                        <a href="{{ route('sales-invoices.index', $company) }}" class="text-indigo-600 hover:underline">Sales Invoices</a>
+                        <a href="{{ route('sales-invoices.create', $company) }}" class="text-indigo-600 hover:underline">New Invoice</a>
+                    </div>
                 </li>
             @endforeach
         </ul>
