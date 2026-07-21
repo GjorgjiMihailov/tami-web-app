@@ -57,6 +57,20 @@ class SalesInvoicePoliciesTest extends TestCase
         $this->assertFalse($accountant->can('view', $invoice));
     }
 
+    public function test_accountant_assigned_to_a_company_can_manage_its_invoices(): void
+    {
+        $company = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $accountant->assignedCompanies()->attach($company);
+
+        $invoice = SalesInvoice::factory()->for($company)->create();
+
+        $this->assertTrue($accountant->can('view', $invoice));
+        $this->assertTrue($accountant->can('update', $invoice));
+        $this->assertTrue($accountant->can('create', SalesInvoice::class));
+    }
+
     public function test_admin_can_manage_invoices_for_any_company(): void
     {
         $company = Company::factory()->create();
@@ -64,6 +78,7 @@ class SalesInvoicePoliciesTest extends TestCase
         $admin->assignRole('admin');
         $invoice = SalesInvoice::factory()->for($company)->create();
 
+        $this->assertTrue($admin->can('view', $invoice));
         $this->assertTrue($admin->can('update', $invoice));
     }
 }
