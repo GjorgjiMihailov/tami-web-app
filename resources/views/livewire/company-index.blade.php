@@ -92,6 +92,8 @@
                         <a href="{{ route('partners.index', $company) }}" class="text-indigo-600 hover:underline">Partners</a>
                         <a href="{{ route('sales-invoices.index', $company) }}" class="text-indigo-600 hover:underline">Sales Invoices</a>
                         <a href="{{ route('sales-invoices.create', $company) }}" class="text-indigo-600 hover:underline">New Invoice</a>
+                        <a href="{{ route('purchase-invoices.index', $company) }}" class="text-indigo-600 hover:underline">Purchase Invoices</a>
+                        <a href="{{ route('purchase-invoices.create', $company) }}" class="text-indigo-600 hover:underline">New Purchase Invoice</a>
                     </div>
                 </li>
             @endforeach

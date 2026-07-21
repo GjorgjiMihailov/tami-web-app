@@ -47,12 +47,14 @@ class InvoicingRoutesTest extends TestCase
     public function test_purchase_invoice_index_and_create_routes_render_successfully_for_an_admin(): void
     {
         $company = Company::factory()->create();
-        Partner::factory()->for($company)->create();
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = \App\Models\PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id]);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
         $this->get(route('purchase-invoices.index', $company))->assertOk();
         $this->get(route('purchase-invoices.create', $company))->assertOk();
+        $this->get(route('purchase-invoices.show', [$company, $invoice]))->assertOk();
     }
 }
