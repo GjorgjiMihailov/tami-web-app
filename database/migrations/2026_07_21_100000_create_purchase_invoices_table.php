@@ -23,7 +23,7 @@ return new class extends Migration
             $table->foreignId('created_by')->constrained('users');
             $table->timestamps();
 
-            $table->unique(['company_id', 'partner_id', 'supplier_invoice_number']);
+            $table->unique(['company_id', 'partner_id', 'supplier_invoice_number'], 'purchase_invoices_company_partner_number_unique');
         });
     }
 
