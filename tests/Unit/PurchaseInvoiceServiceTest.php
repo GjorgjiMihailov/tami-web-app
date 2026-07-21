@@ -257,4 +257,72 @@ class PurchaseInvoiceServiceTest extends TestCase
 
         $this->service->cancel($confirmed->fresh(), $user->id);
     }
+
+    public function test_recording_a_payment_posts_ap_debit_and_bank_credit(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $user = User::factory()->create();
+        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+
+        $payment = $this->service->recordPayment($confirmed, '60.00', '2026-03-10', 'bank', $user->id);
+
+        $this->assertSame('60.00', (string) $payment->amount);
+        $this->assertSame('partially_paid', $confirmed->fresh(['lines', 'payments'])->paymentStatus());
+
+        $entry = \App\Models\JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
+        $bank = $entry->lines->firstWhere('account.code', '100');
+        $ap = $entry->lines->firstWhere('account.code', '220');
+
+        $this->assertSame('60.00', (string) $bank->credit);
+        $this->assertSame('60.00', (string) $ap->debit);
+    }
+
+    public function test_recording_a_cash_payment_credits_the_cash_account(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $user = User::factory()->create();
+        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+
+        $this->service->recordPayment($confirmed, '100.00', '2026-03-10', 'cash', $user->id);
+
+        $entry = \App\Models\JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
+        $cash = $entry->lines->firstWhere('account.code', '102');
+        $this->assertSame('100.00', (string) $cash->credit);
+    }
+
+    public function test_payment_cannot_exceed_the_remaining_balance(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $user = User::factory()->create();
+        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+
+        $this->expectException(InvalidInvoiceStateException::class);
+
+        $this->service->recordPayment($confirmed, '150.00', '2026-03-10', 'bank', $user->id);
+    }
+
+    public function test_payment_on_a_draft_invoice_throws(): void
+    {
+        $invoice = PurchaseInvoice::factory()->create(['status' => 'draft']);
+        $user = User::factory()->create();
+
+        $this->expectException(InvalidInvoiceStateException::class);
+
+        $this->service->recordPayment($invoice, '10.00', '2026-03-10', 'bank', $user->id);
+    }
 }

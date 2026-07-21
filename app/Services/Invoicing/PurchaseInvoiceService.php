@@ -8,6 +8,7 @@ use App\Models\Account;
 use App\Models\Company;
 use App\Models\JournalEntry;
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseInvoicePayment;
 use App\Services\Inventory\StockMovementService;
 use Illuminate\Support\Facades\DB;
 
@@ -175,6 +176,56 @@ class PurchaseInvoiceService
             $invoice->update(['status' => 'cancelled']);
 
             return $invoice->fresh(['lines', 'payments']);
+        });
+    }
+
+    public function recordPayment(PurchaseInvoice $invoice, string $amount, string $paymentDate, string $paymentMethod, int $userId): PurchaseInvoicePayment
+    {
+        if ($invoice->status !== 'confirmed') {
+            throw new InvalidInvoiceStateException("Purchase invoice #{$invoice->id} is not confirmed; payments can only be recorded against confirmed invoices.");
+        }
+
+        $invoice->loadMissing(['lines', 'payments', 'company', 'partner']);
+
+        if (bccomp($amount, $invoice->balanceDue(), 2) > 0) {
+            throw new InvalidInvoiceStateException("Payment of {$amount} exceeds the remaining balance of {$invoice->balanceDue()}.");
+        }
+
+        return DB::transaction(function () use ($invoice, $amount, $paymentDate, $paymentMethod, $userId) {
+            $payment = $invoice->payments()->create([
+                'amount' => $amount,
+                'payment_date' => $paymentDate,
+                'payment_method' => $paymentMethod,
+                'created_by' => $userId,
+            ]);
+
+            $cashOrBankCode = $paymentMethod === 'cash' ? '102' : '100';
+            $label = "Payment for purchase bill {$invoice->partner->name} #{$invoice->supplier_invoice_number}";
+
+            $entry = JournalEntry::create([
+                'company_id' => $invoice->company_id,
+                'entry_date' => $paymentDate,
+                'description' => $label,
+                'created_by' => $userId,
+            ]);
+
+            $entry->lines()->create([
+                'account_id' => $this->account($invoice->company, '220')->id,
+                'partner_id' => $invoice->partner_id,
+                'description' => $label,
+                'debit' => $amount,
+                'credit' => '0',
+            ]);
+
+            $entry->lines()->create([
+                'account_id' => $this->account($invoice->company, $cashOrBankCode)->id,
+                'partner_id' => $invoice->partner_id,
+                'description' => $label,
+                'debit' => '0',
+                'credit' => $amount,
+            ]);
+
+            return $payment;
         });
     }
 
