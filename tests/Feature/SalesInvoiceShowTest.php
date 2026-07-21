@@ -112,6 +112,21 @@ class SalesInvoiceShowTest extends TestCase
         $this->assertNotNull($invoice->fresh()->sent_at);
     }
 
+    public function test_mark_sent_rejects_draft_invoices(): void
+    {
+        $company = Company::factory()->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['status' => 'draft']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->call('markSent')
+            ->assertHasErrors(['markSent']);
+
+        $this->assertNull($invoice->fresh()->sent_at);
+    }
+
     public function test_client_cannot_view_another_companys_invoice(): void
     {
         $ownCompany = Company::factory()->create();

@@ -93,6 +93,12 @@ class SalesInvoiceShow extends Component
     {
         Gate::authorize('update', $this->salesInvoice);
 
+        if ($this->salesInvoice->status !== 'confirmed') {
+            $this->addError('markSent', 'Only confirmed invoices can be marked as sent.');
+
+            return;
+        }
+
         $this->salesInvoice->update(['sent_at' => now()]);
     }
 
