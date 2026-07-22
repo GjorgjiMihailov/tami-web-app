@@ -96,4 +96,6 @@
             @endif
         </div>
     @endif
+
+    <livewire:document-manager :documentable="$invoice" />
 </div>
