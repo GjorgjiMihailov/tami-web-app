@@ -39,6 +39,7 @@
                 <th class="py-2 px-4">Tax ID</th>
                 <th class="py-2 px-4">Email</th>
                 <th class="py-2 px-4">Phone</th>
+                <th class="py-2 px-4"></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
@@ -48,9 +49,10 @@
                     <td class="py-2 px-4">{{ $partner->tax_id }}</td>
                     <td class="py-2 px-4">{{ $partner->email }}</td>
                     <td class="py-2 px-4">{{ $partner->phone }}</td>
+                    <td class="py-2 px-4"><a href="{{ route('partners.show', [$company, $partner]) }}" class="text-indigo-600 hover:underline">Documents</a></td>
                 </tr>
             @empty
-                <tr><td colspan="4" class="py-4 px-4 text-gray-500">No partners yet.</td></tr>
+                <tr><td colspan="5" class="py-4 px-4 text-gray-500">No partners yet.</td></tr>
             @endforelse
         </tbody>
     </table>

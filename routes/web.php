@@ -21,6 +21,7 @@ use App\Livewire\Invoicing\SalesInvoiceForm;
 use App\Livewire\Invoicing\SalesInvoiceIndex;
 use App\Livewire\Invoicing\SalesInvoiceShow;
 use App\Livewire\PartnerIndex;
+use App\Livewire\PartnerShow;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome');
@@ -73,6 +74,7 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('inventory.')->
 
 Route::middleware(['auth'])->prefix('companies/{company}')->name('partners.')->group(function () {
     Route::get('/partners', [PartnerIndex::class, '__invoke'])->name('index');
+    Route::get('/partners/{partner}', [PartnerShow::class, '__invoke'])->name('show');
 });
 
 // Array-callable form (not bare class-string) for the same reason as the
