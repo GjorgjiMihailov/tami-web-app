@@ -29,6 +29,15 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::table('documents')->where('documentable_type', 'purchase_invoice')->where('category', 'Invoice')->delete();
+        // Intentional no-op: this migration performs a one-time, non-reversible
+        // copy of historical source_document_path values into the documents
+        // table. Reversing it by deleting rows matched on type+category alone
+        // would risk deleting legitimate documents users later upload through
+        // the normal DocumentManager UI with the same type/category — there is
+        // no way to distinguish this migration's own rows from later ones by
+        // type+category, so a safe reversal would require tracking inserted
+        // IDs, which isn't worth the complexity for a one-time data-preservation
+        // step. The paired schema-drop migration (2026_07_22_090200) is the one
+        // that actually needs a working down() to restore the column, and it has one.
     }
 };

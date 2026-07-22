@@ -53,6 +53,26 @@ class DocumentManagerTest extends TestCase
         Storage::disk('google')->assertExists($document->path);
     }
 
+    public function test_uploading_a_file_between_livewires_default_12mb_cap_and_the_projects_25mb_limit_succeeds(): void
+    {
+        Storage::fake('google');
+        $company = Company::factory()->create();
+        $invoice = PurchaseInvoice::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(DocumentManager::class, ['documentable' => $invoice])
+            ->set('newFile', UploadedFile::fake()->create('large-scan.pdf', 20000))
+            ->set('newCategory', 'Invoice')
+            ->call('upload')
+            ->assertHasNoErrors();
+
+        $document = Document::where('documentable_id', $invoice->id)->firstOrFail();
+        $this->assertSame($company->id, $document->company_id);
+        Storage::disk('google')->assertExists($document->path);
+    }
+
     public function test_a_failed_upload_does_not_leave_a_placeholder_document_row(): void
     {
         $company = Company::factory()->create();
