@@ -153,6 +153,7 @@ class SalesInvoiceFormTest extends TestCase
             ->set('lines.0.vat_rate', '18.00')
             ->call('setVatTreatment', 0, 'export')
             ->assertSet('lines.0.vat_rate', '0.00')
+            ->set('lines.0.vat_rate', '18.00') // simulate a bypass: force a nonzero rate back in after the client-side zeroing, so only save()'s own server-side loop can be responsible for the persisted value
             ->call('save')
             ->assertHasNoErrors();
 
