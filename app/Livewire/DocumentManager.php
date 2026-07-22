@@ -38,6 +38,8 @@ class DocumentManager extends Component
             'newNote' => 'nullable|string|max:255',
         ]);
 
+        $originalFilename = basename($this->newFile->getClientOriginalName());
+
         $document = new Document([
             'company_id' => $this->documentable->company_id,
             'category' => $this->newCategory,
@@ -47,7 +49,7 @@ class DocumentManager extends Component
             // is NOT NULL with no default, so we can't leave it unset on
             // this first save.
             'path' => '',
-            'original_filename' => $this->newFile->getClientOriginalName(),
+            'original_filename' => $originalFilename,
             'mime_type' => $this->newFile->getMimeType(),
             'size' => $this->newFile->getSize(),
             'uploaded_by' => auth()->id(),
@@ -55,12 +57,20 @@ class DocumentManager extends Component
         $document->documentable()->associate($this->documentable);
         $document->save();
 
-        $document->path = $this->newFile->storeAs(
-            "documents/{$this->documentable->company_id}/{$document->documentable_type}/{$this->documentable->id}",
-            "{$document->id}_{$document->original_filename}",
-            'google'
-        );
-        $document->save();
+        try {
+            $document->path = $this->newFile->storeAs(
+                "documents/{$this->documentable->company_id}/{$document->documentable_type}/{$this->documentable->id}",
+                "{$document->id}_{$originalFilename}",
+                'google'
+            );
+            $document->save();
+        } catch (\Throwable $e) {
+            // The placeholder row must not survive a failed upload - remove
+            // it completely rather than leaving a broken (soft-deleted) row.
+            $document->forceDelete();
+
+            throw $e;
+        }
 
         $this->reset(['newFile', 'newNote']);
         $this->newCategory = 'Other';

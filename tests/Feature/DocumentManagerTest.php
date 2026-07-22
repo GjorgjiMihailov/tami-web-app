@@ -53,6 +53,31 @@ class DocumentManagerTest extends TestCase
         Storage::disk('google')->assertExists($document->path);
     }
 
+    public function test_a_failed_upload_does_not_leave_a_placeholder_document_row(): void
+    {
+        $company = Company::factory()->create();
+        $invoice = PurchaseInvoice::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $failingDisk = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
+        $failingDisk->shouldReceive('put')
+            ->andThrow(new \RuntimeException('simulated storage failure'));
+        Storage::partialMock()->shouldReceive('disk')->with('google')->andReturn($failingDisk);
+
+        $this->expectException(\RuntimeException::class);
+
+        try {
+            Livewire::test(DocumentManager::class, ['documentable' => $invoice])
+                ->set('newFile', UploadedFile::fake()->create('bill.pdf', 50))
+                ->set('newCategory', 'Invoice')
+                ->call('upload');
+        } finally {
+            $this->assertSame(0, Document::withTrashed()->count());
+        }
+    }
+
     public function test_a_client_cannot_view_another_companys_purchase_invoice_documents(): void
     {
         $ownCompany = Company::factory()->create();
