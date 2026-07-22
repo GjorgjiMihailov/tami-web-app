@@ -96,6 +96,10 @@
                         <a href="{{ route('purchase-invoices.create', $company) }}" class="text-indigo-600 hover:underline">New Purchase Invoice</a>
                         <a href="{{ route('documents.index', $company) }}" class="text-indigo-600 hover:underline">Documents</a>
                     </div>
+                    <div class="mt-1 text-sm text-gray-500">Statutory Reports:</div>
+                    <div class="space-x-3 text-sm">
+                        <a href="{{ route('reports.ddv04', $company) }}" class="text-indigo-600 hover:underline">ДДВ-04</a>
+                    </div>
                 </li>
             @endforeach
         </ul>

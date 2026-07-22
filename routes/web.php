@@ -23,6 +23,7 @@ use App\Livewire\Invoicing\SalesInvoiceIndex;
 use App\Livewire\Invoicing\SalesInvoiceShow;
 use App\Livewire\PartnerIndex;
 use App\Livewire\PartnerShow;
+use App\Livewire\Reports\Ddv04Report;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome');
@@ -104,6 +105,10 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('purchase-invoi
 Route::middleware(['auth'])->prefix('companies/{company}')->name('documents.')->group(function () {
     Route::get('/documents', [DocumentIndex::class, '__invoke'])->name('index');
     Route::get('/documents/{document}', [DocumentController::class, '__invoke'])->name('download');
+});
+
+Route::middleware(['auth'])->prefix('companies/{company}')->name('reports.')->group(function () {
+    Route::get('/reports/ddv04', [Ddv04Report::class, '__invoke'])->name('ddv04');
 });
 
 require __DIR__.'/auth.php';
