@@ -99,4 +99,8 @@
             </div>
         @endif
     </form>
+
+    @if ($journalEntry)
+        <livewire:document-manager :documentable="$journalEntry" />
+    @endif
 </div>
