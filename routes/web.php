@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\PurchaseInvoiceDocumentController;
+use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\SalesInvoicePdfController;
 use App\Livewire\Accounting\AccountIndex;
 use App\Livewire\Accounting\JournalEntryForm;
@@ -96,7 +96,10 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('purchase-invoi
     Route::get('/purchase-invoices/create', [PurchaseInvoiceForm::class, '__invoke'])->name('create');
     Route::get('/purchase-invoices/{purchaseInvoice}/edit', [PurchaseInvoiceForm::class, '__invoke'])->name('edit');
     Route::get('/purchase-invoices/{purchaseInvoice}', [PurchaseInvoiceShow::class, '__invoke'])->name('show');
-    Route::get('/purchase-invoices/{purchaseInvoice}/document', [PurchaseInvoiceDocumentController::class, '__invoke'])->name('document');
+});
+
+Route::middleware(['auth'])->prefix('companies/{company}')->name('documents.')->group(function () {
+    Route::get('/documents/{document}', [DocumentController::class, '__invoke'])->name('download');
 });
 
 require __DIR__.'/auth.php';

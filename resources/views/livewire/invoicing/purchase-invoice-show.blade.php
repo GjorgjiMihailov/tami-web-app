@@ -49,9 +49,6 @@
             <a href="{{ route('purchase-invoices.edit', [$company, $invoice]) }}" class="text-indigo-600 hover:underline text-sm">Edit</a>
             <button type="button" wire:click="confirm" class="bg-indigo-600 text-white px-3 py-1.5 rounded-md text-sm">Confirm</button>
         @endif
-        @if ($invoice->source_document_path)
-            <a href="{{ route('purchase-invoices.document', [$company, $invoice]) }}" class="text-indigo-600 hover:underline text-sm">Download original</a>
-        @endif
         @if ($invoice->status === 'confirmed' && $invoice->payments->isEmpty())
             <button type="button" wire:click="cancel" class="text-red-600 hover:underline text-sm">Cancel invoice</button>
         @endif
@@ -95,4 +92,6 @@
             @endif
         </div>
     @endif
+
+    <livewire:document-manager :documentable="$invoice" />
 </div>

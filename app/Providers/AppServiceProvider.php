@@ -7,6 +7,7 @@ use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
+use App\Models\User;
 use App\Observers\CompanyObserver;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
@@ -33,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
             'sales_invoice' => SalesInvoice::class,
             'journal_entry' => JournalEntry::class,
             'partner' => Partner::class,
+            'user' => User::class,
         ]);
     }
 }

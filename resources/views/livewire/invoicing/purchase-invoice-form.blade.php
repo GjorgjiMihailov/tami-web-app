@@ -40,11 +40,6 @@
                 <x-text-input id="dueDate" type="date" wire:model="dueDate" class="w-full" />
                 @error('dueDate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
-            <div>
-                <x-input-label for="sourceDocument" value="Attach supplier's bill (optional)" />
-                <input type="file" id="sourceDocument" wire:model="sourceDocument" class="w-full text-sm">
-                @error('sourceDocument') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-            </div>
         </div>
 
         <div class="bg-white shadow rounded-md p-4">

@@ -17,7 +17,7 @@ class PurchaseInvoice extends Model
     protected $fillable = [
         'company_id', 'partner_id', 'warehouse_id', 'journal_entry_id',
         'supplier_invoice_number', 'invoice_date', 'due_date',
-        'status', 'notes', 'source_document_path', 'created_by',
+        'status', 'notes', 'created_by',
     ];
 
     protected function casts(): array

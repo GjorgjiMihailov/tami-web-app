@@ -23,7 +23,6 @@ class PurchaseInvoiceFactory extends Factory
             'due_date' => now()->addDays(15)->toDateString(),
             'status' => 'draft',
             'notes' => null,
-            'source_document_path' => null,
             'created_by' => User::factory(),
         ];
     }

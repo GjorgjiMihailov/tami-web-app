@@ -13,13 +13,10 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 #[Layout('layouts.app')]
 class PurchaseInvoiceForm extends Component
 {
-    use WithFileUploads;
-
     public Company $company;
 
     public ?PurchaseInvoice $purchaseInvoice = null;
@@ -37,8 +34,6 @@ class PurchaseInvoiceForm extends Component
     public string $notes = '';
 
     public array $lines = [];
-
-    public $sourceDocument = null;
 
     public function mount(Company $company, ?PurchaseInvoice $purchaseInvoice = null): void
     {
@@ -148,7 +143,6 @@ class PurchaseInvoiceForm extends Component
             'lines.*.quantity' => 'required|numeric|min:0.001',
             'lines.*.unit_price' => 'required|numeric|min:0',
             'lines.*.vat_rate' => 'required|numeric|min:0|max:100',
-            'sourceDocument' => 'nullable|file|max:10240',
         ]);
 
         foreach ($this->lines as $index => $line) {
@@ -187,15 +181,6 @@ class PurchaseInvoiceForm extends Component
             }
 
             $invoice->save();
-
-            if ($this->sourceDocument) {
-                $path = $this->sourceDocument->storeAs(
-                    "purchase-invoices/{$this->company->id}/{$invoice->id}",
-                    $this->sourceDocument->getClientOriginalName(),
-                    'google'
-                );
-                $invoice->update(['source_document_path' => $path]);
-            }
 
             $invoice->lines()->delete();
 

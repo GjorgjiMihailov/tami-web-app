@@ -10,7 +10,6 @@ use App\Models\Partner;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -47,7 +46,6 @@ class PurchaseInvoiceFormTest extends TestCase
             ->set('lines.0.quantity', '1')
             ->set('lines.0.unit_price', '500.00')
             ->set('lines.0.vat_rate', '18.00')
-            ->set('sourceDocument', UploadedFile::fake()->create('bill.pdf', 50))
             ->call('save')
             ->assertHasNoErrors();
 
@@ -61,10 +59,6 @@ class PurchaseInvoiceFormTest extends TestCase
             'account_id' => $account->id,
             'description' => 'Office rent',
         ]);
-
-        $invoice = \App\Models\PurchaseInvoice::where('supplier_invoice_number', 'SUP-2026-045')->firstOrFail();
-        $this->assertNotNull($invoice->source_document_path);
-        Storage::disk('google')->assertExists($invoice->source_document_path);
     }
 
     public function test_an_item_line_requires_no_account_but_a_non_item_line_does(): void

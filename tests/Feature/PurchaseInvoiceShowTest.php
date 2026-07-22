@@ -9,7 +9,6 @@ use App\Models\Partner;
 use App\Models\PurchaseInvoice;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -73,36 +72,5 @@ class PurchaseInvoiceShowTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame('cancelled', $invoice->fresh()->status);
-    }
-
-    public function test_it_downloads_the_attached_source_document(): void
-    {
-        Storage::fake('google');
-        $company = Company::factory()->create();
-        $partner = Partner::factory()->for($company)->create();
-        $path = "purchase-invoices/{$company->id}/1/bill.pdf";
-        Storage::disk('google')->put($path, 'fake-pdf-content');
-        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'source_document_path' => $path]);
-        $admin = User::factory()->create();
-        $admin->assignRole('admin');
-
-        $response = $this->actingAs($admin)->get(route('purchase-invoices.document', [$company, $invoice]));
-
-        $response->assertOk();
-    }
-
-    public function test_document_download_requires_view_permission(): void
-    {
-        Storage::fake('google');
-        Storage::disk('google')->put('purchase-invoices/1/1/bill.pdf', 'fake-pdf-content');
-
-        $ownCompany = Company::factory()->create();
-        $otherCompany = Company::factory()->create();
-        $invoice = PurchaseInvoice::factory()->for($otherCompany)->create(['source_document_path' => 'purchase-invoices/1/1/bill.pdf']);
-        $client = User::factory()->create(['company_id' => $ownCompany->id]);
-        $client->assignRole('client');
-        $this->actingAs($client);
-
-        $this->get(route('purchase-invoices.document', [$otherCompany, $invoice]))->assertForbidden();
     }
 }
