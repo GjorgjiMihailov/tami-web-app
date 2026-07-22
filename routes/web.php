@@ -8,6 +8,7 @@ use App\Livewire\Accounting\JournalEntryIndex;
 use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
 use App\Livewire\CompanyIndex;
+use App\Livewire\DocumentIndex;
 use App\Livewire\Inventory\ItemIndex;
 use App\Livewire\Inventory\ItemMovementCardReport;
 use App\Livewire\Inventory\StockMovementForm;
@@ -101,6 +102,7 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('purchase-invoi
 });
 
 Route::middleware(['auth'])->prefix('companies/{company}')->name('documents.')->group(function () {
+    Route::get('/documents', [DocumentIndex::class, '__invoke'])->name('index');
     Route::get('/documents/{document}', [DocumentController::class, '__invoke'])->name('download');
 });
 
