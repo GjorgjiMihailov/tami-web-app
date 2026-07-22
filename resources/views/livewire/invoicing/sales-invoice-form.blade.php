@@ -65,7 +65,16 @@
                     </div>
                     <div class="w-24">
                         <x-input-label value="VAT %" />
-                        <x-text-input wire:model="lines.{{ $index }}.vat_rate" class="w-full" />
+                        <x-text-input wire:model="lines.{{ $index }}.vat_rate" class="w-full" @disabled($line['vat_treatment'] !== 'standard') />
+                    </div>
+                    <div class="w-40">
+                        <x-input-label value="VAT treatment" />
+                        <select wire:change="setVatTreatment({{ $index }}, $event.target.value)" class="w-full border-gray-300 rounded-md text-sm">
+                            <option value="standard" @selected($line['vat_treatment'] === 'standard')>Standard</option>
+                            <option value="export" @selected($line['vat_treatment'] === 'export')>Export</option>
+                            <option value="exempt_with_credit" @selected($line['vat_treatment'] === 'exempt_with_credit')>Exempt (with credit)</option>
+                            <option value="exempt_without_credit" @selected($line['vat_treatment'] === 'exempt_without_credit')>Exempt (without credit)</option>
+                        </select>
                     </div>
                     <button type="button" wire:click="removeLine({{ $index }})" class="text-red-600 text-sm">Remove</button>
                 </div>

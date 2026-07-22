@@ -134,4 +134,32 @@ class SalesInvoiceFormTest extends TestCase
             ->get(route('sales-invoices.create', $company))
             ->assertOk();
     }
+
+    public function test_a_non_standard_treatment_forces_the_vat_rate_to_zero_even_if_submitted_nonzero(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->set('partnerId', (string) $partner->id)
+            ->set('invoiceDate', '2026-03-01')
+            ->set('dueDate', '2026-03-15')
+            ->set('lines.0.description', 'Export sale')
+            ->set('lines.0.quantity', '1')
+            ->set('lines.0.unit_price', '1000.00')
+            ->set('lines.0.vat_rate', '18.00')
+            ->call('setVatTreatment', 0, 'export')
+            ->assertSet('lines.0.vat_rate', '0.00')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('sales_invoice_lines', [
+            'description' => 'Export sale',
+            'vat_treatment' => 'export',
+            'vat_rate' => '0.00',
+        ]);
+    }
 }

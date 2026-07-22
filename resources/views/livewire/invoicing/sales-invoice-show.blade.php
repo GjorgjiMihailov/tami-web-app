@@ -26,7 +26,7 @@
                         <td class="py-1">{{ $line->description }}</td>
                         <td class="py-1">{{ $line->quantity }}</td>
                         <td class="py-1">{{ $line->unit_price }}</td>
-                        <td class="py-1">{{ $line->vat_rate }}</td>
+                        <td class="py-1">{{ $line->vat_rate }}{{ $line->vat_treatment !== 'standard' ? ' ('.ucwords(str_replace('_', ' ', $line->vat_treatment)).')' : '' }}</td>
                         <td class="py-1">{{ $line->lineTotal() }}</td>
                     </tr>
                 @endforeach

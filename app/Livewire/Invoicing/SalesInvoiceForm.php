@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\Item;
 use App\Models\Partner;
 use App\Models\SalesInvoice;
+use App\Models\SalesInvoiceLine;
 use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -64,6 +65,7 @@ class SalesInvoiceForm extends Component
                 'quantity' => (string) $line->quantity,
                 'unit_price' => (string) $line->unit_price,
                 'vat_rate' => (string) $line->vat_rate,
+                'vat_treatment' => (string) $line->vat_treatment,
             ])->toArray();
         } else {
             $this->invoiceDate = now()->toDateString();
@@ -80,6 +82,7 @@ class SalesInvoiceForm extends Component
             'quantity' => '1',
             'unit_price' => '0',
             'vat_rate' => $this->company->is_vat_registered ? '18.00' : '0.00',
+            'vat_treatment' => 'standard',
         ];
     }
 
@@ -110,6 +113,15 @@ class SalesInvoiceForm extends Component
         }
     }
 
+    public function setVatTreatment(int $index, string $treatment): void
+    {
+        $this->lines[$index]['vat_treatment'] = $treatment;
+
+        if ($treatment !== 'standard') {
+            $this->lines[$index]['vat_rate'] = '0.00';
+        }
+    }
+
     public function save(): void
     {
         Gate::authorize($this->salesInvoice ? 'update' : 'create', $this->salesInvoice ?? SalesInvoice::class);
@@ -125,7 +137,14 @@ class SalesInvoiceForm extends Component
             'lines.*.quantity' => 'required|numeric|min:0.001',
             'lines.*.unit_price' => 'required|numeric|min:0',
             'lines.*.vat_rate' => 'required|numeric|min:0|max:100',
+            'lines.*.vat_treatment' => ['required', Rule::in(SalesInvoiceLine::TREATMENTS)],
         ]);
+
+        foreach ($this->lines as $index => $line) {
+            if (($line['vat_treatment'] ?? 'standard') !== 'standard') {
+                $this->lines[$index]['vat_rate'] = '0.00';
+            }
+        }
 
         foreach ($this->lines as $index => $line) {
             if (($line['item_id'] ?? '') === '' && trim((string) ($line['description'] ?? '')) === '') {
@@ -171,6 +190,7 @@ class SalesInvoiceForm extends Component
                     'quantity' => $line['quantity'],
                     'unit_price' => $line['unit_price'],
                     'vat_rate' => $line['vat_rate'],
+                    'vat_treatment' => $line['vat_treatment'] ?? 'standard',
                 ]);
             }
 
