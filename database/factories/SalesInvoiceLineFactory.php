@@ -17,6 +17,7 @@ class SalesInvoiceLineFactory extends Factory
             'quantity' => '1.000',
             'unit_price' => '100.00',
             'vat_rate' => '18.00',
+            'vat_treatment' => 'standard',
         ];
     }
 }

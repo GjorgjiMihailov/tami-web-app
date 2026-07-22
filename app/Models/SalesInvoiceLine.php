@@ -11,7 +11,9 @@ class SalesInvoiceLine extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['sales_invoice_id', 'item_id', 'stock_movement_id', 'description', 'quantity', 'unit_price', 'vat_rate'];
+    public const TREATMENTS = ['standard', 'export', 'exempt_with_credit', 'exempt_without_credit'];
+
+    protected $fillable = ['sales_invoice_id', 'item_id', 'stock_movement_id', 'description', 'quantity', 'unit_price', 'vat_rate', 'vat_treatment'];
 
     protected function casts(): array
     {

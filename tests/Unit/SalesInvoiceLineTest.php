@@ -30,4 +30,19 @@ class SalesInvoiceLineTest extends TestCase
 
         $this->assertSame('0.00', $line->vatAmount());
     }
+
+    public function test_vat_treatment_defaults_to_standard(): void
+    {
+        $line = SalesInvoiceLine::factory()->create();
+
+        $this->assertSame('standard', $line->vat_treatment);
+    }
+
+    public function test_export_treatment_can_be_set_with_zero_vat_rate(): void
+    {
+        $line = SalesInvoiceLine::factory()->create(['vat_treatment' => 'export', 'vat_rate' => '0.00']);
+
+        $this->assertSame('export', $line->vat_treatment);
+        $this->assertSame('0.00', $line->vatAmount());
+    }
 }
