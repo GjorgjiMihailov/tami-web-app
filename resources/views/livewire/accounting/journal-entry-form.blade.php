@@ -14,7 +14,8 @@
         <p class="text-sm text-gray-500 mb-4">You have read-only access to this entry.</p>
     @endunless
 
-    <form wire:submit="save" class="bg-white shadow rounded-md p-4">
+    <x-card>
+    <form wire:submit="save">
         <div class="grid grid-cols-2 gap-4 mb-4">
             <div>
                 <x-input-label for="entryDate" value="Date" />
@@ -99,6 +100,7 @@
             </div>
         @endif
     </form>
+    </x-card>
 
     @if ($journalEntry)
         <livewire:document-manager :documentable="$journalEntry" />

@@ -8,7 +8,8 @@
         @endcan
     </div>
 
-    <table class="min-w-full divide-y divide-gray-200 bg-white shadow rounded-md">
+    <x-card class="p-0 overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500">
                 <th class="py-2 px-4">#</th>
@@ -34,6 +35,7 @@
             @endforelse
         </tbody>
     </table>
+    </x-card>
 
     <div class="mt-4">{{ $entries->links() }}</div>
 </div>

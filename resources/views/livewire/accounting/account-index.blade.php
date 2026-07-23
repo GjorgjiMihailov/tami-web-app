@@ -2,7 +2,7 @@
     <h1 class="text-2xl font-bold text-gray-800 mb-4">Chart of Accounts — {{ $company->name }}</h1>
 
     @can('create', \App\Models\Account::class)
-        <div class="bg-white shadow rounded-md p-4 mb-6">
+        <x-card class="mb-6">
             <h2 class="font-semibold text-gray-700 mb-2">Add analytical account</h2>
             <form wire:submit="addAnalyticalAccount" class="flex flex-wrap gap-3 items-end">
                 <div>
@@ -22,7 +22,7 @@
                 </div>
                 <x-primary-button type="submit">Add</x-primary-button>
             </form>
-        </div>
+        </x-card>
     @endcan
 
     @foreach ($accountsByClass as $class => $accounts)

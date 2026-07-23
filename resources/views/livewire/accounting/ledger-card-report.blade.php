@@ -1,7 +1,7 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-4">Аналитичка картица — {{ $company->name }}</h1>
 
-    <div class="bg-white shadow rounded-md p-4 mb-4 flex flex-wrap gap-4 items-end">
+    <x-card class="mb-4 flex flex-wrap gap-4 items-end">
         <div>
             <x-input-label for="accountId" value="Account" />
             <select id="accountId" wire:model.live="accountId" class="border-gray-300 rounded-md text-sm">
@@ -28,10 +28,11 @@
             <x-input-label for="to" value="To" />
             <input type="date" id="to" wire:model.live="to" class="border-gray-300 rounded-md text-sm" />
         </div>
-    </div>
+    </x-card>
 
     @if ($accountId || $partnerId)
-        <table class="min-w-full divide-y divide-gray-200 bg-white shadow rounded-md">
+        <x-card class="p-0 overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
             <thead>
                 <tr class="text-left text-sm text-gray-500">
                     <th class="py-2 px-4">Date</th>
@@ -57,6 +58,7 @@
                 @endforelse
             </tbody>
         </table>
+        </x-card>
     @else
         <p class="text-gray-500">Select an account and/or a partner to see the ledger card.</p>
     @endif
