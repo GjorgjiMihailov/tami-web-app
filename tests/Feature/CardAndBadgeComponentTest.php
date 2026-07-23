@@ -15,6 +15,14 @@ class CardAndBadgeComponentTest extends TestCase
         $this->assertStringContainsString('rounded-2xl', $html);
     }
 
+    public function test_card_padding_prop_overrides_default_padding_without_conflicting_classes(): void
+    {
+        $html = Blade::render('<x-card padding="p-0">Hello</x-card>');
+
+        $this->assertStringContainsString('p-0', $html);
+        $this->assertStringNotContainsString('p-4', $html);
+    }
+
     public function test_badge_maps_confirmed_and_paid_to_green(): void
     {
         $confirmed = Blade::render('<x-badge status="confirmed">Confirmed</x-badge>');

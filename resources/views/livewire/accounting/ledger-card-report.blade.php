@@ -31,7 +31,7 @@
     </x-card>
 
     @if ($accountId || $partnerId)
-        <x-card class="p-0 overflow-hidden">
+        <x-card padding="p-0" class="overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200">
             <thead>
                 <tr class="text-left text-sm text-gray-500">
