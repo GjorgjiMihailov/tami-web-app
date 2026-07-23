@@ -3,7 +3,8 @@
         Record {{ ucfirst($type) }} — {{ $company->name }}
     </h1>
 
-    <form wire:submit="save" class="bg-white shadow rounded-md p-4 flex flex-wrap gap-4 items-end max-w-3xl">
+    <x-card class="max-w-3xl">
+    <form wire:submit="save" class="flex flex-wrap gap-4 items-end">
         <div x-data="barcodeScanner" class="w-full">
             <button type="button" x-show="!scanning" @click="start()" class="text-sm text-indigo-600 hover:underline">
                 Scan barcode
@@ -90,4 +91,5 @@
 
         <x-primary-button type="submit">Save</x-primary-button>
     </form>
+    </x-card>
 </div>

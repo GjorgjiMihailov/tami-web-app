@@ -2,7 +2,7 @@
     <h1 class="text-2xl font-bold text-gray-800 mb-4">Warehouses — {{ $company->name }}</h1>
 
     @can('create', \App\Models\Warehouse::class)
-        <div class="bg-white shadow rounded-md p-4 mb-6">
+        <x-card class="mb-6">
             <form wire:submit="addWarehouse" class="flex flex-wrap gap-3 items-end">
                 <div class="flex-1 min-w-[16rem]">
                     <x-input-label for="newName" value="Warehouse name" />
@@ -11,10 +11,11 @@
                 </div>
                 <x-primary-button type="submit">Add</x-primary-button>
             </form>
-        </div>
+        </x-card>
     @endcan
 
-    <table class="min-w-full divide-y divide-gray-200 bg-white shadow rounded-md">
+    <x-card padding="p-0" class="overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500">
                 <th class="py-2 px-4">Name</th>
@@ -40,4 +41,5 @@
             @endforelse
         </tbody>
     </table>
+    </x-card>
 </div>

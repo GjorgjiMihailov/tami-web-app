@@ -2,7 +2,7 @@
     <h1 class="text-2xl font-bold text-gray-800 mb-4">Items — {{ $company->name }}</h1>
 
     @can('create', \App\Models\Item::class)
-        <div class="bg-white shadow rounded-md p-4 mb-6">
+        <x-card class="mb-6">
             <h2 class="font-semibold text-gray-700 mb-2">Add item</h2>
             <form wire:submit="addItem" class="flex flex-wrap gap-3 items-end">
                 <div>
@@ -38,14 +38,15 @@
                 </div>
                 <x-primary-button type="submit">Add</x-primary-button>
             </form>
-        </div>
+        </x-card>
     @endcan
 
     <div class="mb-4">
         <x-text-input wire:model.live="search" placeholder="Search by name or code" class="w-full max-w-sm" />
     </div>
 
-    <table class="min-w-full divide-y divide-gray-200 bg-white shadow rounded-md">
+    <x-card padding="p-0" class="overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500">
                 <th class="py-2 px-4">Code</th>
@@ -79,4 +80,5 @@
             @endforelse
         </tbody>
     </table>
+    </x-card>
 </div>
