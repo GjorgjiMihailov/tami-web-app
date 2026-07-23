@@ -2,14 +2,19 @@
     <h1 class="text-2xl font-bold text-gray-800 mb-1">
         Purchase bill — {{ $invoice->partner->name }} #{{ $invoice->supplier_invoice_number }}
     </h1>
-    <p class="text-sm text-gray-500 mb-4">status: {{ $invoice->status }}
-        @if ($invoice->status === 'confirmed') ({{ $invoice->paymentStatus() }}@if($invoice->isOverdue()), overdue @endif) @endif
+    <p class="text-sm text-gray-500 mb-4 flex items-center gap-2">
+        <x-badge :status="$invoice->status">{{ ucfirst($invoice->status) }}</x-badge>
+        @if ($invoice->status === 'confirmed')
+            <x-badge :status="$invoice->isOverdue() ? 'overdue' : $invoice->paymentStatus()">
+                {{ $invoice->isOverdue() ? 'Overdue' : ucfirst($invoice->paymentStatus()) }}
+            </x-badge>
+        @endif
     </p>
 
     @error('confirm') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
     @error('cancel') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
 
-    <div class="bg-white shadow rounded-md p-4 mb-4">
+    <x-card class="mb-4">
         <table class="min-w-full text-sm">
             <thead>
                 <tr class="text-left text-gray-500">
@@ -42,7 +47,7 @@
                 <div>Balance due: {{ $invoice->balanceDue() }}</div>
             @endif
         </div>
-    </div>
+    </x-card>
 
     <div class="flex gap-3 mb-4">
         @if ($invoice->status === 'draft')
@@ -55,7 +60,7 @@
     </div>
 
     @if ($invoice->status === 'confirmed')
-        <div class="bg-white shadow rounded-md p-4">
+        <x-card>
             <h2 class="font-semibold text-gray-700 mb-2">Payments</h2>
             <table class="min-w-full text-sm mb-3">
                 <tbody>
@@ -90,7 +95,7 @@
                     <x-primary-button type="submit">Record payment</x-primary-button>
                 </form>
             @endif
-        </div>
+        </x-card>
     @endif
 
     <livewire:document-manager :documentable="$invoice" />

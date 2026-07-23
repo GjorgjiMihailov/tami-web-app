@@ -13,7 +13,8 @@
         </select>
     </div>
 
-    <table class="min-w-full divide-y divide-gray-200 bg-white shadow rounded-md">
+    <x-card padding="p-0" class="overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500">
                 <th class="py-2 px-4">Number</th>
@@ -30,7 +31,7 @@
                     <td class="py-2 px-4">{{ $invoice->invoice_number ? "{$invoice->fiscal_year}/{$invoice->invoice_number}" : '—' }}</td>
                     <td class="py-2 px-4">{{ $invoice->partner->name }}</td>
                     <td class="py-2 px-4">{{ $invoice->invoice_date->toDateString() }}</td>
-                    <td class="py-2 px-4">{{ $invoice->status }}</td>
+                    <td class="py-2 px-4"><x-badge :status="$invoice->status">{{ ucfirst($invoice->status) }}</x-badge></td>
                     <td class="py-2 px-4">{{ $invoice->grandTotal() }}</td>
                     <td class="py-2 px-4">
                         <a href="{{ route('sales-invoices.show', [$company, $invoice]) }}" class="text-indigo-600 hover:underline">View</a>
@@ -41,4 +42,5 @@
             @endforelse
         </tbody>
     </table>
+    </x-card>
 </div>

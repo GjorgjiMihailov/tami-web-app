@@ -4,7 +4,7 @@
     </h1>
 
     <form wire:submit="save" class="space-y-6">
-        <div class="bg-white shadow rounded-md p-4 grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <x-card class="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
                 <x-input-label for="partnerId" value="Customer" />
                 <select id="partnerId" wire:model="partnerId" class="w-full border-gray-300 rounded-md text-sm">
@@ -35,9 +35,9 @@
                 <x-text-input id="dueDate" type="date" wire:model="dueDate" class="w-full" />
                 @error('dueDate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
-        </div>
+        </x-card>
 
-        <div class="bg-white shadow rounded-md p-4">
+        <x-card>
             <h2 class="font-semibold text-gray-700 mb-3">Lines</h2>
             @foreach ($lines as $index => $line)
                 <div class="flex flex-wrap gap-3 items-end mb-3 pb-3 border-b border-gray-100">
@@ -81,12 +81,12 @@
             @endforeach
 
             <button type="button" wire:click="addLine" class="text-indigo-600 text-sm hover:underline">+ Add line</button>
-        </div>
+        </x-card>
 
-        <div class="bg-white shadow rounded-md p-4">
+        <x-card>
             <x-input-label for="notes" value="Notes" />
             <textarea id="notes" wire:model="notes" rows="2" class="w-full border-gray-300 rounded-md text-sm"></textarea>
-        </div>
+        </x-card>
 
         <x-primary-button type="submit">Save draft</x-primary-button>
     </form>
