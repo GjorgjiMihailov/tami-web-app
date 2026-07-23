@@ -1,7 +1,7 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-4">ДДВ-04 — {{ $company->name }}</h1>
 
-    <div class="bg-white shadow rounded-md p-4 mb-4 flex flex-wrap gap-4 items-end">
+    <x-card class="mb-4 flex flex-wrap gap-4 items-end">
         <div>
             <x-input-label for="from" value="From" />
             <input type="date" id="from" wire:model.live="from" class="border-gray-300 rounded-md text-sm" />
@@ -10,9 +10,9 @@
             <x-input-label for="to" value="To" />
             <input type="date" id="to" wire:model.live="to" class="border-gray-300 rounded-md text-sm" />
         </div>
-    </div>
+    </x-card>
 
-    <div class="bg-white shadow rounded-md p-4 mb-4">
+    <x-card class="mb-4">
         <h2 class="font-semibold text-gray-700 mb-3">Промет на добра и услуги</h2>
         <table class="min-w-full text-sm">
             <tbody class="divide-y divide-gray-100">
@@ -58,9 +58,9 @@
                 </tr>
             </tbody>
         </table>
-    </div>
+    </x-card>
 
-    <div class="bg-white shadow rounded-md p-4 mb-4">
+    <x-card class="mb-4">
         <h2 class="font-semibold text-gray-700 mb-3">Влезни исполнувања со право на одбивка</h2>
         <table class="min-w-full text-sm">
             <tbody class="divide-y divide-gray-100">
@@ -86,5 +86,5 @@
                 </tr>
             </tbody>
         </table>
-    </div>
+    </x-card>
 </div>

@@ -1,4 +1,4 @@
-<div class="bg-white shadow rounded-md p-4 mt-4">
+<x-card class="mt-4">
     <h2 class="font-semibold text-gray-700 mb-2">Documents</h2>
 
     @can('update', $documentable)
@@ -58,4 +58,4 @@
             @endforelse
         </tbody>
     </table>
-</div>
+</x-card>

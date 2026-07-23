@@ -2,7 +2,7 @@
     <h1 class="text-2xl font-bold text-gray-800 mb-4">Companies</h1>
 
     @can('create', \App\Models\Company::class)
-        <div class="bg-white shadow rounded-md p-4 mb-6">
+        <x-card class="mb-6">
             <h2 class="font-semibold text-gray-700 mb-2">Add company</h2>
             <form wire:submit="addCompany" class="flex flex-wrap gap-3 items-end">
                 <div class="flex-1 min-w-[16rem]">
@@ -32,7 +32,7 @@
                 </div>
                 <x-primary-button type="submit">Add company</x-primary-button>
             </form>
-        </div>
+        </x-card>
     @endcan
 
     @if ($companies->isEmpty())

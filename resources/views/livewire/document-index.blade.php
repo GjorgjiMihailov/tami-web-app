@@ -1,7 +1,7 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-4">Documents — {{ $company->name }}</h1>
 
-    <div class="bg-white shadow rounded-md p-4 mb-4 flex flex-wrap gap-3 items-end">
+    <x-card class="mb-4 flex flex-wrap gap-3 items-end">
         <div>
             <x-input-label for="categoryFilter" value="Category" />
             <select id="categoryFilter" wire:model.live="categoryFilter" class="border-gray-300 rounded-md text-sm">
@@ -28,9 +28,10 @@
             <x-input-label for="toDate" value="To" />
             <x-text-input id="toDate" type="date" wire:model.live="toDate" class="w-full" />
         </div>
-    </div>
+    </x-card>
 
-    <table class="min-w-full divide-y divide-gray-200 bg-white shadow rounded-md">
+    <x-card padding="p-0" class="overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500">
                 <th class="py-2 px-4">File</th>
@@ -69,4 +70,5 @@
             @endforelse
         </tbody>
     </table>
+    </x-card>
 </div>
