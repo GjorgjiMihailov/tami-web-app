@@ -39,7 +39,7 @@
             @forelse ($documents as $document)
                 <tr>
                     <td class="py-1">
-                        <a href="{{ route('documents.download', [$documentable->company_id, $document]) }}" class="text-indigo-600 hover:underline">
+                        <a href="{{ route('documents.download', [$documentable->company_id, $document]) }}" class="text-brand hover:underline">
                             {{ $document->original_filename }}
                         </a>
                     </td>

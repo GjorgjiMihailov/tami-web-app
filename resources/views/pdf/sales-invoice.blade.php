@@ -4,10 +4,12 @@
     <meta charset="utf-8">
     <style>
         body { font-family: sans-serif; font-size: 12px; color: #1f2937; }
-        h1 { font-size: 18px; }
+        h1 { font-size: 18px; color: #ff6600; }
         table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th, td { padding: 4px 6px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+        th { padding: 4px 6px; text-align: left; background: #f3f4f6; }
+        td { padding: 4px 6px; border-bottom: 1px solid #e5e7eb; text-align: left; }
         .totals { text-align: right; margin-top: 12px; }
+        .totals strong { color: #ff6600; }
         .header { display: flex; justify-content: space-between; margin-bottom: 16px; }
     </style>
 </head>

@@ -50,13 +50,13 @@
 
     <div class="flex gap-3 mb-4">
         @if ($invoice->status === 'draft')
-            <a href="{{ route('sales-invoices.edit', [$company, $invoice]) }}" class="text-indigo-600 hover:underline text-sm">Edit</a>
-            <button type="button" wire:click="confirm" class="bg-indigo-600 text-white px-3 py-1.5 rounded-md text-sm">Confirm</button>
+            <a href="{{ route('sales-invoices.edit', [$company, $invoice]) }}" class="text-brand hover:underline text-sm">Edit</a>
+            <button type="button" wire:click="confirm" class="bg-brand text-white px-3 py-1.5 rounded-md text-sm">Confirm</button>
         @endif
         @if ($invoice->status === 'confirmed')
-            <a href="{{ route('sales-invoices.pdf', [$company, $invoice]) }}" class="text-indigo-600 hover:underline text-sm">Download PDF</a>
+            <a href="{{ route('sales-invoices.pdf', [$company, $invoice]) }}" class="text-brand hover:underline text-sm">Download PDF</a>
             @if (! $invoice->sent_at)
-                <button type="button" wire:click="markSent" class="text-indigo-600 hover:underline text-sm">Mark as sent</button>
+                <button type="button" wire:click="markSent" class="text-brand hover:underline text-sm">Mark as sent</button>
             @endif
             @if ($invoice->payments->isEmpty())
                 <button type="button" wire:click="cancel" class="text-red-600 hover:underline text-sm">Cancel invoice</button>

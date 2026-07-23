@@ -91,7 +91,7 @@
                 </div>
             @endforeach
 
-            <button type="button" wire:click="addLine" class="text-indigo-600 text-sm hover:underline">+ Add line</button>
+            <button type="button" wire:click="addLine" class="text-brand text-sm hover:underline">+ Add line</button>
         </x-card>
 
         <x-card>

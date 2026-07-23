@@ -6,7 +6,7 @@
     <x-card class="max-w-3xl">
     <form wire:submit="save" class="flex flex-wrap gap-4 items-end">
         <div x-data="barcodeScanner" class="w-full">
-            <button type="button" x-show="!scanning" @click="start()" class="text-sm text-indigo-600 hover:underline">
+            <button type="button" x-show="!scanning" @click="start()" class="text-sm text-brand hover:underline">
                 Scan barcode
             </button>
             <button type="button" x-show="scanning" @click="stop()" class="text-sm text-red-600 hover:underline">

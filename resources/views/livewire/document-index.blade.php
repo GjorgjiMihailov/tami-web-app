@@ -54,12 +54,12 @@
                 @endphp
                 <tr class="text-sm">
                     <td class="py-2 px-4">
-                        <a href="{{ route('documents.download', [$company, $document]) }}" class="text-indigo-600 hover:underline">{{ $document->original_filename }}</a>
+                        <a href="{{ route('documents.download', [$company, $document]) }}" class="text-brand hover:underline">{{ $document->original_filename }}</a>
                     </td>
                     <td class="py-2 px-4">{{ $document->category }}</td>
                     <td class="py-2 px-4">
                         @if ($recordUrl)
-                            <a href="{{ $recordUrl }}" class="text-indigo-600 hover:underline">{{ $types[$document->documentable_type] }}</a>
+                            <a href="{{ $recordUrl }}" class="text-brand hover:underline">{{ $types[$document->documentable_type] }}</a>
                         @endif
                     </td>
                     <td class="py-2 px-4">{{ $document->uploader?->name }}</td>

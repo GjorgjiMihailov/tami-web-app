@@ -45,7 +45,7 @@
                         <span class="font-medium">{{ $company->name }}</span>
                         @can('update', $company)
                             @if ($editingCompanyId !== $company->id)
-                                <button type="button" wire:click="startEdit({{ $company->id }})" class="text-indigo-600 hover:underline text-sm">Edit settings</button>
+                                <button type="button" wire:click="startEdit({{ $company->id }})" class="text-brand hover:underline text-sm">Edit settings</button>
                             @endif
                         @endcan
                     </div>
@@ -67,38 +67,38 @@
                     @endif
                     <div class="mt-1 text-sm text-gray-500">Accounting:</div>
                     <div class="space-x-3 text-sm">
-                        <a href="{{ route('accounting.accounts.index', $company) }}" class="text-indigo-600 hover:underline">Accounts</a>
-                        <a href="{{ route('accounting.journal-entries.index', $company) }}" class="text-indigo-600 hover:underline">Journal</a>
-                        <a href="{{ route('accounting.reports.ledger-card', $company) }}" class="text-indigo-600 hover:underline">Ledger Card</a>
-                        <a href="{{ route('accounting.reports.trial-balance', $company) }}" class="text-indigo-600 hover:underline">Trial Balance</a>
+                        <a href="{{ route('accounting.accounts.index', $company) }}" class="text-brand hover:underline">Accounts</a>
+                        <a href="{{ route('accounting.journal-entries.index', $company) }}" class="text-brand hover:underline">Journal</a>
+                        <a href="{{ route('accounting.reports.ledger-card', $company) }}" class="text-brand hover:underline">Ledger Card</a>
+                        <a href="{{ route('accounting.reports.trial-balance', $company) }}" class="text-brand hover:underline">Trial Balance</a>
                     </div>
                     <div class="mt-1 text-sm text-gray-500">Inventory:</div>
                     <div class="space-x-3 text-sm">
-                        <a href="{{ route('inventory.warehouses.index', $company) }}" class="text-indigo-600 hover:underline">Warehouses</a>
-                        <a href="{{ route('inventory.items.index', $company) }}" class="text-indigo-600 hover:underline">Items</a>
-                        <a href="{{ route('inventory.reports.stock-on-hand', $company) }}" class="text-indigo-600 hover:underline">Stock On Hand</a>
-                        <a href="{{ route('inventory.reports.item-movement-card', $company) }}" class="text-indigo-600 hover:underline">Item Movement Card</a>
-                        <a href="{{ route('inventory.reports.stock-valuation', $company) }}" class="text-indigo-600 hover:underline">Stock Valuation</a>
+                        <a href="{{ route('inventory.warehouses.index', $company) }}" class="text-brand hover:underline">Warehouses</a>
+                        <a href="{{ route('inventory.items.index', $company) }}" class="text-brand hover:underline">Items</a>
+                        <a href="{{ route('inventory.reports.stock-on-hand', $company) }}" class="text-brand hover:underline">Stock On Hand</a>
+                        <a href="{{ route('inventory.reports.item-movement-card', $company) }}" class="text-brand hover:underline">Item Movement Card</a>
+                        <a href="{{ route('inventory.reports.stock-valuation', $company) }}" class="text-brand hover:underline">Stock Valuation</a>
                     </div>
                     <div class="mt-1 text-sm text-gray-500">Record movement:</div>
                     <div class="space-x-3 text-sm">
-                        <a href="{{ route('inventory.stock-movements.create', [$company, 'receipt']) }}" class="text-indigo-600 hover:underline">Receipt</a>
-                        <a href="{{ route('inventory.stock-movements.create', [$company, 'issue']) }}" class="text-indigo-600 hover:underline">Issue</a>
-                        <a href="{{ route('inventory.stock-movements.create', [$company, 'transfer']) }}" class="text-indigo-600 hover:underline">Transfer</a>
-                        <a href="{{ route('inventory.stock-movements.create', [$company, 'adjustment']) }}" class="text-indigo-600 hover:underline">Adjustment</a>
+                        <a href="{{ route('inventory.stock-movements.create', [$company, 'receipt']) }}" class="text-brand hover:underline">Receipt</a>
+                        <a href="{{ route('inventory.stock-movements.create', [$company, 'issue']) }}" class="text-brand hover:underline">Issue</a>
+                        <a href="{{ route('inventory.stock-movements.create', [$company, 'transfer']) }}" class="text-brand hover:underline">Transfer</a>
+                        <a href="{{ route('inventory.stock-movements.create', [$company, 'adjustment']) }}" class="text-brand hover:underline">Adjustment</a>
                     </div>
                     <div class="mt-1 text-sm text-gray-500">Invoicing:</div>
                     <div class="space-x-3 text-sm">
-                        <a href="{{ route('partners.index', $company) }}" class="text-indigo-600 hover:underline">Partners</a>
-                        <a href="{{ route('sales-invoices.index', $company) }}" class="text-indigo-600 hover:underline">Sales Invoices</a>
-                        <a href="{{ route('sales-invoices.create', $company) }}" class="text-indigo-600 hover:underline">New Invoice</a>
-                        <a href="{{ route('purchase-invoices.index', $company) }}" class="text-indigo-600 hover:underline">Purchase Invoices</a>
-                        <a href="{{ route('purchase-invoices.create', $company) }}" class="text-indigo-600 hover:underline">New Purchase Invoice</a>
-                        <a href="{{ route('documents.index', $company) }}" class="text-indigo-600 hover:underline">Documents</a>
+                        <a href="{{ route('partners.index', $company) }}" class="text-brand hover:underline">Partners</a>
+                        <a href="{{ route('sales-invoices.index', $company) }}" class="text-brand hover:underline">Sales Invoices</a>
+                        <a href="{{ route('sales-invoices.create', $company) }}" class="text-brand hover:underline">New Invoice</a>
+                        <a href="{{ route('purchase-invoices.index', $company) }}" class="text-brand hover:underline">Purchase Invoices</a>
+                        <a href="{{ route('purchase-invoices.create', $company) }}" class="text-brand hover:underline">New Purchase Invoice</a>
+                        <a href="{{ route('documents.index', $company) }}" class="text-brand hover:underline">Documents</a>
                     </div>
                     <div class="mt-1 text-sm text-gray-500">Statutory Reports:</div>
                     <div class="space-x-3 text-sm">
-                        <a href="{{ route('reports.ddv04', $company) }}" class="text-indigo-600 hover:underline">ДДВ-04</a>
+                        <a href="{{ route('reports.ddv04', $company) }}" class="text-brand hover:underline">ДДВ-04</a>
                     </div>
                 </li>
             @endforeach

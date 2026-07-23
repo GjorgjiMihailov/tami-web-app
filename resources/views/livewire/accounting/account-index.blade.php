@@ -45,7 +45,7 @@
                             <td class="py-1 pr-4">{{ $account->is_active ? 'Yes' : 'No' }}</td>
                             <td class="py-1">
                                 @can('update', $account)
-                                    <button type="button" wire:click="toggleActive({{ $account->id }})" class="text-indigo-600 hover:underline text-sm">
+                                    <button type="button" wire:click="toggleActive({{ $account->id }})" class="text-brand hover:underline text-sm">
                                         {{ $account->is_active ? 'Deactivate' : 'Activate' }}
                                     </button>
                                 @endcan

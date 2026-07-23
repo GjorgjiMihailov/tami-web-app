@@ -25,7 +25,7 @@
                     <td class="py-2 px-4">{{ $entry->entry_date->format('d.m.Y') }}</td>
                     <td class="py-2 px-4">{{ $entry->description }}</td>
                     <td class="py-2 px-4">
-                        <a href="{{ route('accounting.journal-entries.edit', [$company, $entry]) }}" class="text-indigo-600 hover:underline">
+                        <a href="{{ route('accounting.journal-entries.edit', [$company, $entry]) }}" class="text-brand hover:underline">
                             @can('update', $entry) Edit @else View @endcan
                         </a>
                     </td>

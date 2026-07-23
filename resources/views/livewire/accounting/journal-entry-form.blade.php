@@ -79,7 +79,7 @@
                         <td class="py-1 pr-2 flex items-center gap-1">
                             <input type="number" step="0.000001" wire:model="lines.{{ $index }}.exchange_rate" class="border-gray-300 rounded-md text-sm w-20" @disabled(! $canEdit) />
                             @if ($line['currency_code'] !== 'MKD' && $canEdit)
-                                <button type="button" wire:click="fetchRate({{ $index }})" class="text-xs text-indigo-600 hover:underline">NBRM</button>
+                                <button type="button" wire:click="fetchRate({{ $index }})" class="text-xs text-brand hover:underline">NBRM</button>
                             @endif
                         </td>
                         <td class="py-1">
@@ -93,7 +93,7 @@
         </table>
 
         @if ($canEdit)
-            <button type="button" wire:click="addLine" class="text-sm text-indigo-600 hover:underline mb-4">+ Add line</button>
+            <button type="button" wire:click="addLine" class="text-sm text-brand hover:underline mb-4">+ Add line</button>
 
             <div>
                 <x-primary-button type="submit">Save</x-primary-button>
