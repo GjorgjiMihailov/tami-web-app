@@ -19,6 +19,7 @@
 - No PDF/file-export changes beyond brand colors on the existing invoice PDF template.
 - Out of scope: `resources/views/welcome.blade.php` and `resources/views/livewire/welcome/navigation.blade.php` — Laravel's default unbranded landing splash (unused marketing boilerplate, not real app content), shown only to logged-out visitors at `/`. Redesigning it meaningfully would require new copy/content decisions, not just style application, so it's left as-is this pass.
 - Existing tests assert on visible text and Livewire behavior, not CSS classes, so pure restyling tasks are verified by "existing suite still green" rather than new assertions — new assertions are only written for genuinely new logic (the sidebar's company-scoping, the badge's status-to-color mapping).
+- `<x-card>`'s padding is a dedicated `padding` prop (default `p-4`), not part of `class` — fixed after Task 4's review found that passing `class="p-0 ..."` silently lost to the component's own default `p-4` in Tailwind's cascade (both classes ended up in the rendered output; equal specificity, later-generated rule wins). Every table-wrapping card in this plan uses `<x-card padding="p-0" class="overflow-hidden">`, never `class="p-0 overflow-hidden"`.
 
 ---
 
@@ -655,7 +656,7 @@ Modify `resources/views/livewire/accounting/journal-entry-index.blade.php` — r
 with:
 
 ```blade
-    <x-card class="p-0 overflow-hidden">
+    <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
 ```
 
@@ -739,7 +740,7 @@ with:
     </x-card>
 
     @if ($accountId || $partnerId)
-        <x-card class="p-0 overflow-hidden">
+        <x-card padding="p-0" class="overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200">
 ```
 
@@ -789,7 +790,7 @@ with:
         </div>
     </x-card>
 
-    <x-card class="p-0 overflow-hidden">
+    <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
 ```
 
@@ -875,7 +876,7 @@ with:
         </x-card>
     @endcan
 
-    <x-card class="p-0 overflow-hidden">
+    <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
 ```
 
@@ -937,7 +938,7 @@ with:
         <x-text-input wire:model.live="search" placeholder="Search by name or code" class="w-full max-w-sm" />
     </div>
 
-    <x-card class="p-0 overflow-hidden">
+    <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
 ```
 
@@ -1017,7 +1018,7 @@ with:
     </x-card>
 
     @if ($warehouseId)
-        <x-card class="p-0 overflow-hidden">
+        <x-card padding="p-0" class="overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200">
 ```
 
@@ -1037,7 +1038,7 @@ with:
         </table>
         </x-card>
     @else
-        <x-card class="p-0 overflow-hidden">
+        <x-card padding="p-0" class="overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200">
 ```
 
@@ -1087,7 +1088,7 @@ with:
         </div>
     </x-card>
 
-    <x-card class="p-0 overflow-hidden">
+    <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
 ```
 
@@ -1137,7 +1138,7 @@ with:
     </x-card>
 
     @if ($itemId && $warehouseId)
-        <x-card class="p-0 overflow-hidden">
+        <x-card padding="p-0" class="overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200">
 ```
 
@@ -1273,7 +1274,7 @@ Modify `resources/views/livewire/invoicing/sales-invoice-index.blade.php` — re
 with:
 
 ```blade
-    <x-card class="p-0 overflow-hidden">
+    <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
 ```
 
@@ -1411,7 +1412,7 @@ Modify `resources/views/livewire/invoicing/purchase-invoice-index.blade.php` —
 with:
 
 ```blade
-    <x-card class="p-0 overflow-hidden">
+    <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
 ```
 
@@ -1550,7 +1551,7 @@ with:
 ```blade
     </x-card>
 
-    <x-card class="p-0 overflow-hidden">
+    <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
 ```
 
@@ -1672,7 +1673,7 @@ with:
         </x-card>
     @endcan
 
-    <x-card class="p-0 overflow-hidden">
+    <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
 ```
 
