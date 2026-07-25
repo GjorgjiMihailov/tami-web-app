@@ -7,6 +7,7 @@ use App\Livewire\Accounting\JournalEntryForm;
 use App\Livewire\Accounting\JournalEntryIndex;
 use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
+use App\Livewire\CompanyDashboard;
 use App\Livewire\CompanyIndex;
 use App\Livewire\DocumentIndex;
 use App\Livewire\Inventory\ItemIndex;
@@ -38,6 +39,10 @@ Route::view('profile', 'profile')
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/companies', CompanyIndex::class)->name('companies.index');
+});
+
+Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
+    Route::get('/dashboard', [CompanyDashboard::class, '__invoke'])->name('companies.dashboard');
 });
 
 // NOTE: Route::get($uri, ClassString::class) (bare class-string) resolves
