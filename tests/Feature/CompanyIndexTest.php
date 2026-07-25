@@ -145,7 +145,7 @@ class CompanyIndexTest extends TestCase
             ->assertDontSee('Add company');
     }
 
-    public function test_the_companies_list_links_to_inventory_screens_for_a_visible_company(): void
+    public function test_the_companies_list_no_longer_shows_per_company_module_links(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('admin');
@@ -154,29 +154,10 @@ class CompanyIndexTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(CompanyIndex::class)
-            ->assertSeeHtml(route('inventory.warehouses.index', $company))
-            ->assertSeeHtml(route('inventory.items.index', $company))
-            ->assertSeeHtml(route('inventory.reports.stock-on-hand', $company))
-            ->assertSeeHtml(route('inventory.reports.item-movement-card', $company))
-            ->assertSeeHtml(route('inventory.reports.stock-valuation', $company))
-            ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'receipt']))
-            ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'issue']))
-            ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'transfer']))
-            ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'adjustment']));
-    }
-
-    public function test_the_companies_list_links_to_invoicing_screens_for_a_visible_company(): void
-    {
-        $admin = User::factory()->create();
-        $admin->assignRole('admin');
-        $company = Company::factory()->create(['name' => 'Alpha Ltd']);
-
-        $this->actingAs($admin);
-
-        Livewire::test(CompanyIndex::class)
-            ->assertSeeHtml(route('partners.index', $company))
-            ->assertSeeHtml(route('sales-invoices.index', $company))
-            ->assertSeeHtml(route('sales-invoices.create', $company));
+            ->assertDontSeeHtml(route('accounting.accounts.index', $company))
+            ->assertDontSeeHtml(route('inventory.warehouses.index', $company))
+            ->assertDontSeeHtml(route('sales-invoices.index', $company))
+            ->assertDontSeeHtml(route('inventory.stock-movements.create', [$company, 'receipt']));
     }
 
     public function test_admin_can_update_a_companys_bank_account_and_vat_registration(): void
