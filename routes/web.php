@@ -9,6 +9,7 @@ use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
 use App\Livewire\CompanyDashboard;
 use App\Livewire\CompanyIndex;
+use App\Livewire\Dashboard;
 use App\Livewire\DocumentIndex;
 use App\Livewire\Inventory\ItemIndex;
 use App\Livewire\Inventory\ItemMovementCardReport;
@@ -29,7 +30,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome');
 
-Route::view('dashboard', 'dashboard')
+Route::get('dashboard', [Dashboard::class, '__invoke'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
