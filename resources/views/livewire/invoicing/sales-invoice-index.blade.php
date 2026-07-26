@@ -31,7 +31,7 @@
                     <td class="py-2 px-4">{{ $invoice->invoice_number ? "{$invoice->fiscal_year}/{$invoice->invoice_number}" : '—' }}</td>
                     <td class="py-2 px-4">{{ $invoice->partner->name }}</td>
                     <td class="py-2 px-4">{{ \App\Support\Format::date($invoice->invoice_date) }}</td>
-                    <td class="py-2 px-4"><x-badge :status="$invoice->status">{{ ucfirst($invoice->status) }}</x-badge></td>
+                    <td class="py-2 px-4"><x-badge :status="$invoice->status">{{ \App\Support\Format::invoiceStatus($invoice->status) }}</x-badge></td>
                     <td class="py-2 px-4">{{ \App\Support\Format::money($invoice->grandTotal()) }}</td>
                     <td class="py-2 px-4">
                         <a href="{{ route('sales-invoices.show', [$company, $invoice]) }}" class="text-brand hover:underline">Прегледај</a>

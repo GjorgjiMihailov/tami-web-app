@@ -101,7 +101,7 @@ class StockLevelQueryTest extends TestCase
         $rows = StockLevelQuery::valuationSummary($company);
 
         $this->assertCount(1, $rows);
-        $this->assertSame('Total', $rows[0]['label']);
+        $this->assertSame('Вкупно', $rows[0]['label']);
         $this->assertSame(600.0, $rows[0]['total_value']);
     }
 

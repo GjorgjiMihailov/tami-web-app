@@ -43,7 +43,7 @@
                             {{ $document->original_filename }}
                         </a>
                     </td>
-                    <td class="py-1">{{ $document->category }}</td>
+                    <td class="py-1">{{ \App\Support\Format::documentCategory($document->category) }}</td>
                     <td class="py-1">{{ $document->note }}</td>
                     <td class="py-1">{{ $document->uploader?->name }}</td>
                     <td class="py-1">{{ \App\Support\Format::date($document->created_at) }}</td>

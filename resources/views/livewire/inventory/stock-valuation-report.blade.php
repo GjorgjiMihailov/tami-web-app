@@ -16,7 +16,7 @@
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500">
-                <th class="py-2 px-4">{{ $groupBy ? ucfirst($groupBy) : '' }}</th>
+                <th class="py-2 px-4">{{ $groupBy === 'warehouse' ? 'Магацин' : ($groupBy === 'category' ? 'Категорија' : '') }}</th>
                 <th class="py-2 px-4 text-right">Вкупна вредност</th>
             </tr>
         </thead>

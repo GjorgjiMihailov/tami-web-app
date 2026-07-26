@@ -56,7 +56,7 @@
                     <td class="py-2 px-4">
                         <a href="{{ route('documents.download', [$company, $document]) }}" class="text-brand hover:underline">{{ $document->original_filename }}</a>
                     </td>
-                    <td class="py-2 px-4">{{ $document->category }}</td>
+                    <td class="py-2 px-4">{{ \App\Support\Format::documentCategory($document->category) }}</td>
                     <td class="py-2 px-4">
                         @if ($recordUrl)
                             <a href="{{ $recordUrl }}" class="text-brand hover:underline">{{ $types[$document->documentable_type] }}</a>
