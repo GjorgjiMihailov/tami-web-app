@@ -56,7 +56,7 @@ class StockMovementForm extends Component
         $item = Item::where('company_id', $this->company->id)->where('code', $code)->first();
 
         if (! $item) {
-            $this->addError('scannedCode', "No item found with code \"{$code}\".");
+            $this->addError('scannedCode', "Не е пронајден артикл со шифра \"{$code}\".");
 
             return;
         }

@@ -1,13 +1,13 @@
 <div>
-    <h1 class="text-2xl font-bold text-gray-800 mb-4">Stock Valuation — {{ $company->name }}</h1>
+    <h1 class="text-2xl font-bold text-gray-800 mb-4">Вреднување на залихи — {{ $company->name }}</h1>
 
     <x-card class="mb-4 flex flex-wrap gap-4 items-end">
         <div>
-            <x-input-label for="groupBy" value="Break down by" />
+            <x-input-label for="groupBy" value="Групирај по" />
             <select id="groupBy" wire:model.live="groupBy" class="border-gray-300 rounded-md text-sm">
-                <option value="">Total only</option>
-                <option value="warehouse">Warehouse</option>
-                <option value="category">Category</option>
+                <option value="">Само вкупно</option>
+                <option value="warehouse">Магацин</option>
+                <option value="category">Категорија</option>
             </select>
         </div>
     </x-card>
@@ -17,17 +17,17 @@
         <thead>
             <tr class="text-left text-sm text-gray-500">
                 <th class="py-2 px-4">{{ $groupBy ? ucfirst($groupBy) : '' }}</th>
-                <th class="py-2 px-4 text-right">Total Value</th>
+                <th class="py-2 px-4 text-right">Вкупна вредност</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($rows as $row)
                 <tr class="text-sm">
                     <td class="py-2 px-4">{{ $row['label'] }}</td>
-                    <td class="py-2 px-4 text-right">{{ number_format($row['total_value'], 2) }}</td>
+                    <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['total_value'], currency: '') }}</td>
                 </tr>
             @empty
-                <tr><td colspan="2" class="py-4 px-4 text-gray-500">No stock recorded yet.</td></tr>
+                <tr><td colspan="2" class="py-4 px-4 text-gray-500">Нема евидентирана залиха.</td></tr>
             @endforelse
         </tbody>
     </table>

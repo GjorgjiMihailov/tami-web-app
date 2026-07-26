@@ -54,7 +54,7 @@ class StockMovementService
 
             if (bccomp($level->quantity_on_hand, $quantity, self::QTY_SCALE) < 0) {
                 throw new InsufficientStockException(
-                    "Cannot issue {$quantity} of item #{$item->id} from warehouse #{$warehouse->id}: only {$level->quantity_on_hand} on hand."
+                    "Не може да се издаде {$quantity} од артикл #{$item->id} од магацин #{$warehouse->id}: на залиха има само {$level->quantity_on_hand}."
                 );
             }
 
@@ -77,7 +77,7 @@ class StockMovementService
     public function transfer(Item $item, Warehouse $fromWarehouse, Warehouse $toWarehouse, string $quantity, string $movementDate, int $createdBy): StockMovement
     {
         if ($fromWarehouse->is($toWarehouse)) {
-            throw new \InvalidArgumentException('Cannot transfer stock to the same warehouse.');
+            throw new \InvalidArgumentException('Не може да се трансферира стока во истиот магацин.');
         }
 
         $this->assertSameCompany($item, $fromWarehouse);
@@ -100,7 +100,7 @@ class StockMovementService
 
             if (bccomp($fromLevel->quantity_on_hand, $quantity, self::QTY_SCALE) < 0) {
                 throw new InsufficientStockException(
-                    "Cannot transfer {$quantity} of item #{$item->id} from warehouse #{$fromWarehouse->id}: only {$fromLevel->quantity_on_hand} on hand."
+                    "Не може да се трансферира {$quantity} од артикл #{$item->id} од магацин #{$fromWarehouse->id}: на залиха има само {$fromLevel->quantity_on_hand}."
                 );
             }
 
@@ -139,7 +139,7 @@ class StockMovementService
 
             if (bccomp($newQty, '0', self::QTY_SCALE) < 0) {
                 throw new InsufficientStockException(
-                    "Cannot adjust item #{$item->id} at warehouse #{$warehouse->id} by {$quantityDelta}: only {$level->quantity_on_hand} on hand."
+                    "Не може да се корегира артикл #{$item->id} во магацин #{$warehouse->id} за {$quantityDelta}: на залиха има само {$level->quantity_on_hand}."
                 );
             }
 
@@ -180,7 +180,7 @@ class StockMovementService
     private function assertSameCompany(Item $item, Warehouse $warehouse): void
     {
         if ($item->company_id !== $warehouse->company_id) {
-            throw new \InvalidArgumentException('Item and warehouse must belong to the same company.');
+            throw new \InvalidArgumentException('Артиклот и магацинот мора да припаѓаат на иста фирма.');
         }
     }
 

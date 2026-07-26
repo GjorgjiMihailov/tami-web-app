@@ -1,22 +1,22 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-4">
-        Record {{ ucfirst($type) }} — {{ $company->name }}
+        {{ \App\Support\Format::movementType($type) }} — {{ $company->name }}
     </h1>
 
     <x-card class="max-w-3xl">
     <form wire:submit="save" class="flex flex-wrap gap-4 items-end">
         <div x-data="barcodeScanner" class="w-full">
             <button type="button" x-show="!scanning" @click="start()" class="text-sm text-brand hover:underline">
-                Scan barcode
+                Скенирај баркод
             </button>
             <button type="button" x-show="scanning" @click="stop()" class="text-sm text-red-600 hover:underline">
-                Stop scanning
+                Стопирај скенирање
             </button>
             <video x-ref="video" x-show="scanning" wire:ignore class="w-full max-w-sm mt-2 rounded-md"></video>
         </div>
 
         <div class="w-full">
-            <x-input-label for="itemId" value="Item" />
+            <x-input-label for="itemId" value="Артикл" />
             <select id="itemId" wire:model="itemId" class="border-gray-300 rounded-md text-sm w-full">
                 <option value="">—</option>
                 @foreach ($items as $item)
@@ -28,7 +28,7 @@
         </div>
 
         <div>
-            <x-input-label for="warehouseId" value="{{ $type === 'transfer' ? 'From warehouse' : 'Warehouse' }}" />
+            <x-input-label for="warehouseId" value="{{ $type === 'transfer' ? 'Од магацин' : 'Магацин' }}" />
             <select id="warehouseId" wire:model="warehouseId" class="border-gray-300 rounded-md text-sm">
                 <option value="">—</option>
                 @foreach ($warehouses as $warehouse)
@@ -40,7 +40,7 @@
 
         @if ($type === 'transfer')
             <div>
-                <x-input-label for="toWarehouseId" value="To warehouse" />
+                <x-input-label for="toWarehouseId" value="До магацин" />
                 <select id="toWarehouseId" wire:model="toWarehouseId" class="border-gray-300 rounded-md text-sm">
                     <option value="">—</option>
                     @foreach ($warehouses as $warehouse)
@@ -53,23 +53,23 @@
 
         @if ($type === 'adjustment')
             <div>
-                <x-input-label for="direction" value="Direction" />
+                <x-input-label for="direction" value="Насока" />
                 <select id="direction" wire:model="direction" class="border-gray-300 rounded-md text-sm">
-                    <option value="increase">Increase</option>
-                    <option value="decrease">Decrease</option>
+                    <option value="increase">Зголемување</option>
+                    <option value="decrease">Намалување</option>
                 </select>
             </div>
         @endif
 
         <div>
-            <x-input-label for="quantity" value="Quantity" />
+            <x-input-label for="quantity" value="Количина" />
             <x-text-input id="quantity" wire:model="quantity" class="w-32" />
             @error('quantity') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
         </div>
 
         @if ($type === 'receipt')
             <div>
-                <x-input-label for="unitCost" value="Unit cost" />
+                <x-input-label for="unitCost" value="Единечна цена" />
                 <x-text-input id="unitCost" wire:model="unitCost" class="w-32" />
                 @error('unitCost') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
@@ -77,19 +77,19 @@
 
         @if ($type === 'adjustment')
             <div class="flex-1 min-w-[16rem]">
-                <x-input-label for="reason" value="Reason" />
+                <x-input-label for="reason" value="Причина" />
                 <x-text-input id="reason" wire:model="reason" class="w-full" />
                 @error('reason') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
         @endif
 
         <div>
-            <x-input-label for="movementDate" value="Date" />
+            <x-input-label for="movementDate" value="Датум" />
             <input type="date" id="movementDate" wire:model="movementDate" class="border-gray-300 rounded-md text-sm" />
             @error('movementDate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
         </div>
 
-        <x-primary-button type="submit">Save</x-primary-button>
+        <x-primary-button type="submit">Зачувај</x-primary-button>
     </form>
     </x-card>
 </div>

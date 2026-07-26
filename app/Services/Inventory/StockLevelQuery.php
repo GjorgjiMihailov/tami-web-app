@@ -80,7 +80,7 @@ class StockLevelQuery
 
         if ($groupBy === 'category') {
             return $query
-                ->selectRaw("COALESCE(items.category, 'Uncategorized') as label, SUM(stock_levels.quantity_on_hand * stock_levels.average_cost) as total_value")
+                ->selectRaw("COALESCE(items.category, 'Без категорија') as label, SUM(stock_levels.quantity_on_hand * stock_levels.average_cost) as total_value")
                 ->groupBy('label')
                 ->orderBy('label')
                 ->get()
@@ -90,6 +90,6 @@ class StockLevelQuery
 
         $total = (clone $query)->selectRaw('SUM(stock_levels.quantity_on_hand * stock_levels.average_cost) as total_value')->value('total_value');
 
-        return collect([['label' => 'Total', 'total_value' => round((float) $total, 2)]]);
+        return collect([['label' => 'Вкупно', 'total_value' => round((float) $total, 2)]]);
     }
 }

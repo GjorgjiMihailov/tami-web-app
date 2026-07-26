@@ -35,8 +35,8 @@ class StockValuationReportTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(StockValuationReport::class, ['company' => $company])
-            ->assertSee('Total')
-            ->assertSee('500.00');
+            ->assertSee('Вкупно')
+            ->assertSee('500,00');
     }
 
     public function test_the_valuation_page_renders_successfully_over_http(): void

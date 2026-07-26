@@ -36,7 +36,7 @@ class StockOnHandReportTest extends TestCase
 
         Livewire::test(StockOnHandReport::class, ['company' => $company])
             ->assertSee('Widget')
-            ->assertSee('500.00');
+            ->assertSee('500,00');
     }
 
     public function test_the_stock_on_hand_page_renders_successfully_over_http(): void

@@ -48,7 +48,7 @@ class ItemMovementCardReportTest extends TestCase
             ->set('warehouseId', $warehouse->id)
             ->set('from', '2026-01-01')
             ->set('to', '2026-01-31')
-            ->assertSee('Receipt');
+            ->assertSee('Прием');
     }
 
     public function test_the_movement_card_page_renders_successfully_over_http(): void
