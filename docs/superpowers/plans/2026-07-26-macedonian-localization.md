@@ -1489,7 +1489,7 @@ git commit -m "Fix remaining English strings found in final localization sweep"
 
 Push to `main` per the project's established CI/CD flow (GitHub Actions auto-deploys on push). After deploy, SSH in and add the four `.env` keys noted in Task 2 (`APP_NAME`, `APP_LOCALE`, `APP_FALLBACK_LOCALE`, `APP_FAKER_LOCALE`) to production `.env`, since `.env` is not part of the deployed repo.
 
-**Note:** Task 10's own implementer found a genuine scope gap while doing Step 3's grep sweep — the `/profile` page (Breeze-scaffold account settings, reachable via the "Profile" link in the nav dropdown that Task 3 translated) was never inventoried by any of Tasks 1-10's research and is still mostly English. Rather than deploy with that gap, Task 11 below closes it before Step 6 runs. Step 6 is deferred until after Task 11 and the final whole-branch review.
+**Note:** Task 10's own implementer found a genuine scope gap while doing Step 3's grep sweep — the `/profile` page (Breeze-scaffold account settings, reachable via the "Profile" link in the nav dropdown that Task 3 translated) was never inventoried by any of Tasks 1-10's research and is still mostly English. The controller's own Step 4 manual click-through then found a second gap — the Sidebar's own navigation links (top-level Dashboard/Companies plus 19 accordion submenu items) were never inventoried either, since no module-research task was ever scoped to the shared layout component itself. Rather than deploy with either gap, Task 11 and Task 12 below close them before Step 6 runs. Step 6 is deferred until after both and the final whole-branch review.
 
 ---
 
@@ -1557,3 +1557,64 @@ Expected: PASS — `ProfileTest.php` has no literal-English-text assertions (con
 git add resources/views/livewire/profile resources/views/profile.blade.php
 git commit -m "Translate profile/account-settings page to Macedonian"
 ```
+
+---
+
+### Task 12: Sidebar navigation translation
+
+**Files:**
+- Modify: `resources/views/livewire/layout/sidebar.blade.php`
+
+**Interfaces:**
+- Consumes: none (this file has no PHP class of its own with translatable strings — it's a pure Blade template driven by a Livewire component elsewhere that only holds `$company`/`$expandedModule`/`$recordMovementExpanded` state, none of it user-facing text).
+
+Found during Task 10's manual click-through: the Sidebar was translated at the module-name level (Сметководство/Магацин/Фактури/Документи/Извештаи) during an earlier phase (Navigation/IA Redesign, before this localization effort started), but its two top-level links and all 19 accordion submenu items were never touched — no module-research task in this plan was ever scoped to check the shared layout component itself, only individual module screens.
+
+- [ ] **Step 1: Edit `sidebar.blade.php`**
+
+| Line | Old | New |
+|---|---|---|
+| 11 | `Dashboard` | `Почетна` |
+| 15 | `Companies` | `Фирми` |
+| 31 | `Accounts` | `Контен план` |
+| 33 | `Journal` | `Налози` |
+| 35 | `Ledger Card` | `Аналитичка картица` |
+| 37 | `Trial Balance` | `Бруто биланс` |
+| 50 | `Warehouses` | `Магацини` |
+| 52 | `Items` | `Артикли` |
+| 54 | `Stock On Hand` | `Залиха` |
+| 56 | `Item Movement Card` | `Картица на движење` |
+| 58 | `Stock Valuation` | `Вреднување на залихи` |
+| 62 | `Record Movement` | `Движење на залиха` |
+| 68 | `Receipt` | `Прием` |
+| 70 | `Issue` | `Издавање` |
+| 72 | `Transfer` | `Трансфер` |
+| 74 | `Adjustment` | `Корекција` |
+| 89 | `Partners` | `Партнери` |
+| 91 | `Sales Invoices` | `Излезни фактури` |
+| 93 | `New Invoice` | `Нова фактура` |
+| 95 | `Purchase Invoices` | `Влезни фактури` |
+| 97 | `New Purchase Invoice` | `Нова влезна фактура` |
+
+These translations deliberately match the wording already used on each linked page's own heading (e.g. `Ledger Card`→`Аналитичка картица` matches `ledger-card-report.blade.php`'s own already-Macedonian heading; `Accounts`→`Контен план` matches `account-index.blade.php`'s Task 4 translation; `Receipt`/`Issue`/`Transfer`/`Adjustment`→`Прием`/`Издавање`/`Трансфер`/`Корекција` match `App\Support\Format::movementType()`'s existing mappings from Task 1) so the nav label and the destination page agree with each other.
+
+- [ ] **Step 2: Check for existing tests**
+
+Search `tests/` for any test asserting on this file's literal English strings (e.g. `assertSee('Dashboard')`, `assertSee('Accounts')`, `assertSee('Partners')` scoped to a Sidebar-rendering test like `SidebarTest.php`). Fix any found to expect the new Macedonian text. (Not enumerated here with exact line numbers since this task was added reactively — read `tests/Feature/SidebarTest.php` directly if it exists and check its assertions against this table.)
+
+- [ ] **Step 3: Run tests**
+
+Run: `php artisan test --filter=Sidebar`
+Expected: PASS (after fixing any assertions found in Step 2)
+
+Then run the full suite once: `php artisan test`
+Expected: PASS — this file is included in every authenticated page's layout, so a syntax error here would fail broadly; a full-suite run is the right level of caution for this specific file, unlike the narrower focused-filter convention used elsewhere in this plan.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add resources/views/livewire/layout/sidebar.blade.php tests/Feature/SidebarTest.php
+git commit -m "Translate sidebar navigation links to Macedonian"
+```
+
+(Adjust the `git add` file list if Step 2 found no test file to change, or found a differently-named one.)
