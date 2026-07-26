@@ -7,12 +7,16 @@ use Livewire\Component;
 
 class Sidebar extends Component
 {
+    public ?Company $company = null;
+
     public ?string $expandedModule = null;
 
     public bool $recordMovementExpanded = false;
 
     public function mount(): void
     {
+        $company = request()->route('company');
+        $this->company = $company instanceof Company ? $company : null;
         $this->expandedModule = $this->moduleMatchingCurrentRoute();
         $this->recordMovementExpanded = request()->routeIs('inventory.stock-movements.create');
     }
@@ -43,10 +47,8 @@ class Sidebar extends Component
 
     public function render()
     {
-        $company = request()->route('company');
-
         return view('livewire.layout.sidebar', [
-            'company' => $company instanceof Company ? $company : null,
+            'company' => $this->company,
         ]);
     }
 }
