@@ -745,6 +745,7 @@ git commit -m "Translate Accounting module to Macedonian"
 - Modify: `resources/views/livewire/inventory/item-movement-card-report.blade.php`
 - Modify: `tests/Feature/ItemMovementCardReportTest.php`
 - Modify: `tests/Feature/StockValuationReportTest.php`
+- Modify: `tests/Feature/StockOnHandReportTest.php`
 
 **Interfaces:**
 - Consumes: `Format::date()`, `Format::money()`, `Format::movementType()` (Task 1).
@@ -894,6 +895,10 @@ $this->addError('scannedCode', "Не е пронајден артикл со ш�
 In `tests/Feature/ItemMovementCardReportTest.php:51`, change `assertSee('Receipt')` to `assertSee('Прием')`.
 
 In `tests/Feature/StockValuationReportTest.php:38`, change `assertSee('Total')` to `assertSee('Вкупно')`.
+
+In `tests/Feature/StockValuationReportTest.php:39`, change `assertSee('500.00')` to `assertSee('500,00')` (same root cause as Task 4's addendum: `Format::money(currency: '')` renders Macedonian comma-decimal, breaking this pre-existing literal-format assertion — found during Task 5 pre-flight, added here rather than left for the implementer to hit as a surprise BLOCKED).
+
+In `tests/Feature/StockOnHandReportTest.php:39`, change `assertSee('500.00')` to `assertSee('500,00')` (same reason).
 
 - [ ] **Step 11: Run tests**
 
