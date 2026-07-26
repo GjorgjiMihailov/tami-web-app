@@ -43,7 +43,7 @@ class DashboardTest extends TestCase
         $this->get('/dashboard')
             ->assertOk()
             ->assertSee('Solo Ltd')
-            ->assertSee('Select a company');
+            ->assertSee('Изберете фирма');
     }
 
     public function test_picking_a_company_links_to_its_own_dashboard(): void

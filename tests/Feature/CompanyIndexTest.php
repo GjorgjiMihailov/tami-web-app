@@ -80,7 +80,7 @@ class CompanyIndexTest extends TestCase
         $this->actingAs($admin)
             ->get('/companies')
             ->assertOk()
-            ->assertSee('Companies');
+            ->assertSee('Фирми');
     }
 
     public function test_admin_can_add_a_company(): void
