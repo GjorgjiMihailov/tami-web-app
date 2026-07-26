@@ -1199,6 +1199,7 @@ git commit -m "Translate Invoicing module to Macedonian"
 - Modify: `resources/views/livewire/document-index.blade.php`
 - Modify: `app/Livewire/DocumentIndex.php`
 - Modify: `resources/views/livewire/reports/ddv04-report.blade.php`
+- Modify: `tests/Feature/Ddv04ReportTest.php`
 
 **Interfaces:**
 - Consumes: `Format::date()`, `Format::money()`, `Format::documentCategory()` (Task 1).
@@ -1284,15 +1285,22 @@ Everything else in this file is already Macedonian from Phase 4b — do not touc
 
 Also replace all 15 `number_format($fields['XX'], 2)` calls (lines 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 69, 73, 77, 81, 85) with `\App\Support\Format::money($fields['XX'], currency: '')` (same field key per line, e.g. line 21's `$fields['01']` becomes `\App\Support\Format::money($fields['01'], currency: '')`).
 
-- [ ] **Step 5: Run tests**
+- [ ] **Step 5: Update test**
+
+In `tests/Feature/Ddv04ReportTest.php:37`, change `->assertSee('1,000.00')` to `->assertSee('1.000,00')`.
+In `tests/Feature/Ddv04ReportTest.php:38`, change `->assertSee('180.00')` to `->assertSee('180,00')`.
+
+(Same root cause as Tasks 4-5's addenda: `Format::money(currency: '')` renders Macedonian comma-decimal/dot-thousands, breaking this pre-existing literal-format assertion — found during Task 7 pre-flight and added here rather than left for the implementer to hit as a surprise.)
+
+- [ ] **Step 6: Run tests**
 
 Run: `php artisan test --filter=Document --filter=Ddv04`
-Expected: PASS — no test in this area asserts literal English chrome text (per the earlier inventory), so no test-file edits needed.
+Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add resources/views/livewire/document-manager.blade.php resources/views/livewire/document-index.blade.php app/Livewire/DocumentIndex.php resources/views/livewire/reports/ddv04-report.blade.php
+git add resources/views/livewire/document-manager.blade.php resources/views/livewire/document-index.blade.php app/Livewire/DocumentIndex.php resources/views/livewire/reports/ddv04-report.blade.php tests/Feature/Ddv04ReportTest.php
 git commit -m "Translate Documents module and DDV-04 report chrome to Macedonian"
 ```
 
