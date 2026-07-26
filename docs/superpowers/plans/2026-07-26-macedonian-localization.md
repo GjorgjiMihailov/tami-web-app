@@ -1444,9 +1444,24 @@ git commit -m "Translate PDF invoice to Macedonian and fix Cyrillic font renderi
 - [ ] **Step 1: Run the full test suite**
 
 Run: `php artisan test`
-Expected: PASS, all ~353+ tests (353 existing + 15 new `FormatTest` + 2 new `ErrorPagesTest` = 370)
+Expected: PASS, all tests (should be in the low 400s given the tests added across Tasks 1-9)
 
-- [ ] **Step 2: Grep sweep for leftover English chrome**
+- [ ] **Step 2: Fix three known leftover-English spots found during Tasks 5-7's reviews**
+
+These were flagged as Minor findings during earlier task reviews, out of scope for those specific tasks' briefs, and deferred here:
+
+**(a) `resources/views/livewire/inventory/stock-valuation-report.blade.php`** — the dynamic group-by column header renders `{{ $groupBy ? ucfirst($groupBy) : '' }}`, which shows the raw English value of `$groupBy` (`warehouse`/`category`) since that's what the underlying `groupBy` select option values are. Fix by mapping the display label without changing the stored/compared `$groupBy` value:
+```blade
+{{ $groupBy === 'warehouse' ? 'Магацин' : ($groupBy === 'category' ? 'Категорија' : '') }}
+```
+
+**(b) `resources/views/livewire/invoicing/sales-invoice-index.blade.php` and `purchase-invoice-index.blade.php`** — the list-view status badge still renders `{{ ucfirst($invoice->status) }}` in English (only the show-page badges were translated in Task 6). Change to `{{ \App\Support\Format::invoiceStatus($invoice->status) }}` in both files (the `:status="$invoice->status"` binding driving the badge color stays unchanged).
+
+**(c) `resources/views/livewire/document-manager.blade.php` and `document-index.blade.php`** — the per-row document list table still renders the category cell as raw `{{ $document->category }}` (only the category filter's dropdown options were translated in Task 7). Change to `{{ \App\Support\Format::documentCategory($document->category) }}` in both files.
+
+Run `php artisan test --filter="StockValuation|SalesInvoiceIndex|PurchaseInvoiceIndex|Document"` after these three fixes and confirm all pass.
+
+- [ ] **Step 3: Grep sweep for other leftover English chrome**
 
 Run each of the following and inspect any hits — a hit means a string this plan's inventory missed:
 
@@ -1457,20 +1472,19 @@ grep -rn ">Yes<\|>No<\|>View<" resources/views/livewire --include="*.blade.php"
 
 Fix any genuine leftover English UI copy found (translate in place, following the same glossary used throughout this plan: Save→Зачувај, Cancel→Откажи, Edit→Измени, Delete→Избриши, Add→Додади, Yes→Да, No→Не, View→Прегледај). Some hits will be false positives (e.g. `wire:model` attribute names containing "date", CSS classes) — skip those.
 
-- [ ] **Step 3: Manual click-through per module**
+- [ ] **Step 4: Manual click-through per module**
 
 Using the browser preview (`preview_start` against this project's dev server), log in and click through: Companies → pick a company → each of the 5 sidebar modules (Сметководство/Магацин/Фактури/Документи/Извештаи) and their sub-screens. Confirm no English text remains on any screen reached this way, including empty-state messages (create a fresh company with no data to see all the "No X yet" states at once).
 
-- [ ] **Step 4: Fix anything found, then commit**
+- [ ] **Step 5: Commit**
 
-If Steps 2-3 found anything, fix it and:
 ```bash
 git add -A
 git commit -m "Fix remaining English strings found in final localization sweep"
 ```
 
-If nothing was found, no commit is needed for this task — the localization work is complete as of Task 9's commit.
+(This commit covers Step 2's three known fixes plus anything found in Steps 3-4. If Steps 3-4 found nothing beyond Step 2's known fixes, the commit message and content still apply — Step 2 alone guarantees this step has something to commit.)
 
-- [ ] **Step 5: Deploy**
+- [ ] **Step 6: Deploy**
 
 Push to `main` per the project's established CI/CD flow (GitHub Actions auto-deploys on push). After deploy, SSH in and add the four `.env` keys noted in Task 2 (`APP_NAME`, `APP_LOCALE`, `APP_FALLBACK_LOCALE`, `APP_FAKER_LOCALE`) to production `.env`, since `.env` is not part of the deployed repo.
