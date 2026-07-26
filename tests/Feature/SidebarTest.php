@@ -99,7 +99,7 @@ class SidebarTest extends TestCase
 
         $this->get(route('inventory.stock-movements.create', [$company, 'receipt']))
             ->assertOk()
-            ->assertSee('Record Movement')
+            ->assertSee('Движење на залиха')
             ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'issue']))
             ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'transfer']))
             ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'adjustment']));
