@@ -1598,9 +1598,9 @@ Found during Task 10's manual click-through: the Sidebar was translated at the m
 
 These translations deliberately match the wording already used on each linked page's own heading (e.g. `Ledger Card`→`Аналитичка картица` matches `ledger-card-report.blade.php`'s own already-Macedonian heading; `Accounts`→`Контен план` matches `account-index.blade.php`'s Task 4 translation; `Receipt`/`Issue`/`Transfer`/`Adjustment`→`Прием`/`Издавање`/`Трансфер`/`Корекција` match `App\Support\Format::movementType()`'s existing mappings from Task 1) so the nav label and the destination page agree with each other.
 
-- [ ] **Step 2: Check for existing tests**
+- [ ] **Step 2: Update test**
 
-Search `tests/` for any test asserting on this file's literal English strings (e.g. `assertSee('Dashboard')`, `assertSee('Accounts')`, `assertSee('Partners')` scoped to a Sidebar-rendering test like `SidebarTest.php`). Fix any found to expect the new Macedonian text. (Not enumerated here with exact line numbers since this task was added reactively — read `tests/Feature/SidebarTest.php` directly if it exists and check its assertions against this table.)
+`tests/Feature/SidebarTest.php:102` — change `->assertSee('Record Movement')` to `->assertSee('Движење на залиха')`. (Checked directly: `SidebarTest.php:59`'s `assertSee('Сметководство')` is unaffected — already Macedonian, not touched by this task.)
 
 - [ ] **Step 3: Run tests**
 
