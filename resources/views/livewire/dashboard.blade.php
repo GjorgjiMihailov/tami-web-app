@@ -5,7 +5,9 @@
             <p class="text-sm text-gray-500 mb-4">Choose which company you want to work on.</p>
 
             @if ($companies->isEmpty())
-                <p class="text-gray-500">You don't have access to any companies yet.</p>
+                <p class="text-gray-500">You don't have access to any companies yet.
+                    <a href="{{ route('companies.index') }}" class="text-brand hover:underline">Manage companies</a>
+                </p>
             @else
                 <ul class="divide-y divide-gray-200">
                     @foreach ($companies as $company)
