@@ -21,30 +21,30 @@ class PurchaseInvoiceService
     public function confirm(PurchaseInvoice $invoice, int $userId): PurchaseInvoice
     {
         if ($invoice->status !== 'draft') {
-            throw new InvalidInvoiceStateException("Purchase invoice #{$invoice->id} is not a draft and cannot be confirmed.");
+            throw new InvalidInvoiceStateException("Влезна фактура #{$invoice->id} не е нацрт и не може да се потврди.");
         }
 
         $invoice->loadMissing(['lines', 'company']);
 
         if ($invoice->lines->isEmpty()) {
-            throw new InvalidInvoiceStateException('A purchase invoice needs at least one line before it can be confirmed.');
+            throw new InvalidInvoiceStateException('Влезната фактура мора да содржи барем една ставка пред да се потврди.');
         }
 
         $hasItemLines = $invoice->lines->contains(fn ($line) => $line->item_id !== null);
 
         if ($hasItemLines && $invoice->warehouse_id === null) {
-            throw new InvalidInvoiceStateException('A warehouse is required to confirm a purchase invoice with item lines.');
+            throw new InvalidInvoiceStateException('Потребен е магацин за потврдување влезна фактура со ставки со артикли.');
         }
 
         foreach ($invoice->lines as $index => $line) {
             $position = $index + 1;
 
             if ($line->item_id !== null && $line->vat_deductible === false) {
-                throw new InvalidInvoiceStateException("Non-deductible VAT is not supported on stock-item lines (item line at position {$position}).");
+                throw new InvalidInvoiceStateException("ДДВ без право на одбивка не е поддржано за ставки со артикл од залиха (ставка на позиција {$position}).");
             }
 
             if ($line->item_id === null && $line->account_id === null) {
-                throw new InvalidInvoiceStateException("A non-item line requires an expense account (line at position {$position}).");
+                throw new InvalidInvoiceStateException("Ставка без артикл мора да содржи сметка за трошок (ставка на позиција {$position}).");
             }
         }
 
@@ -138,11 +138,11 @@ class PurchaseInvoiceService
     public function cancel(PurchaseInvoice $invoice, int $userId): PurchaseInvoice
     {
         if ($invoice->status !== 'confirmed') {
-            throw new InvalidInvoiceStateException("Purchase invoice #{$invoice->id} is not confirmed and cannot be cancelled.");
+            throw new InvalidInvoiceStateException("Влезна фактура #{$invoice->id} не е потврдена и не може да се откаже.");
         }
 
         if ($invoice->payments()->exists()) {
-            throw new InvalidInvoiceStateException('A purchase invoice with recorded payments cannot be cancelled.');
+            throw new InvalidInvoiceStateException('Влезна фактура со евидентирани плаќања не може да се откаже.');
         }
 
         $invoice->loadMissing(['lines.item', 'lines.stockMovement', 'journalEntry.lines', 'warehouse', 'company', 'partner']);
@@ -163,7 +163,7 @@ class PurchaseInvoiceService
                     );
                 } catch (InsufficientStockException $e) {
                     throw new InvalidInvoiceStateException(
-                        "Cannot cancel purchase invoice #{$invoice->id}: stock received against it has already been used elsewhere ({$e->getMessage()})."
+                        "Не може да се откаже влезна фактура #{$invoice->id}: примената стока веќе е искористена на друго место ({$e->getMessage()})."
                     );
                 }
             }
@@ -194,13 +194,13 @@ class PurchaseInvoiceService
     public function recordPayment(PurchaseInvoice $invoice, string $amount, string $paymentDate, string $paymentMethod, int $userId): PurchaseInvoicePayment
     {
         if ($invoice->status !== 'confirmed') {
-            throw new InvalidInvoiceStateException("Purchase invoice #{$invoice->id} is not confirmed; payments can only be recorded against confirmed invoices.");
+            throw new InvalidInvoiceStateException("Влезна фактура #{$invoice->id} не е потврдена; плаќања можат да се внесуваат само за потврдени фактури.");
         }
 
         $invoice->loadMissing(['lines', 'payments', 'company', 'partner']);
 
         if (bccomp($amount, $invoice->balanceDue(), 2) > 0) {
-            throw new InvalidInvoiceStateException("Payment of {$amount} exceeds the remaining balance of {$invoice->balanceDue()}.");
+            throw new InvalidInvoiceStateException("Плаќањето од {$amount} го надминува преостанатото салдо од {$invoice->balanceDue()}.");
         }
 
         return DB::transaction(function () use ($invoice, $amount, $paymentDate, $paymentMethod, $userId) {

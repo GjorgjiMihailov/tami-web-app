@@ -21,19 +21,19 @@ class SalesInvoiceService
     public function confirm(SalesInvoice $invoice, int $userId): SalesInvoice
     {
         if ($invoice->status !== 'draft') {
-            throw new InvalidInvoiceStateException("Invoice #{$invoice->id} is not a draft and cannot be confirmed.");
+            throw new InvalidInvoiceStateException("Фактура #{$invoice->id} не е нацрт и не може да се потврди.");
         }
 
         $invoice->loadMissing(['lines', 'company']);
 
         if ($invoice->lines->isEmpty()) {
-            throw new InvalidInvoiceStateException('An invoice needs at least one line before it can be confirmed.');
+            throw new InvalidInvoiceStateException('Фактурата мора да содржи барем една ставка пред да се потврди.');
         }
 
         $hasItemLines = $invoice->lines->contains(fn ($line) => $line->item_id !== null);
 
         if ($hasItemLines && $invoice->warehouse_id === null) {
-            throw new InvalidInvoiceStateException('A warehouse is required to confirm an invoice with item lines.');
+            throw new InvalidInvoiceStateException('Потребен е магацин за потврдување фактура со ставки со артикли.');
         }
 
         return DB::transaction(function () use ($invoice, $userId) {
@@ -132,11 +132,11 @@ class SalesInvoiceService
     public function cancel(SalesInvoice $invoice, int $userId): SalesInvoice
     {
         if ($invoice->status !== 'confirmed') {
-            throw new InvalidInvoiceStateException("Invoice #{$invoice->id} is not confirmed and cannot be cancelled.");
+            throw new InvalidInvoiceStateException("Фактура #{$invoice->id} не е потврдена и не може да се откаже.");
         }
 
         if ($invoice->payments()->exists()) {
-            throw new InvalidInvoiceStateException('An invoice with recorded payments cannot be cancelled.');
+            throw new InvalidInvoiceStateException('Фактура со евидентирани плаќања не може да се откаже.');
         }
 
         $invoice->loadMissing(['lines.item', 'lines.stockMovement', 'journalEntry.lines', 'warehouse', 'company']);
@@ -183,13 +183,13 @@ class SalesInvoiceService
     public function recordPayment(SalesInvoice $invoice, string $amount, string $paymentDate, string $paymentMethod, int $userId): SalesInvoicePayment
     {
         if ($invoice->status !== 'confirmed') {
-            throw new InvalidInvoiceStateException("Invoice #{$invoice->id} is not confirmed; payments can only be recorded against confirmed invoices.");
+            throw new InvalidInvoiceStateException("Фактура #{$invoice->id} не е потврдена; плаќања можат да се внесуваат само за потврдени фактури.");
         }
 
         $invoice->loadMissing(['lines', 'payments', 'company']);
 
         if (bccomp($amount, $invoice->balanceDue(), 2) > 0) {
-            throw new InvalidInvoiceStateException("Payment of {$amount} exceeds the remaining balance of {$invoice->balanceDue()}.");
+            throw new InvalidInvoiceStateException("Плаќањето од {$amount} го надминува преостанатото салдо од {$invoice->balanceDue()}.");
         }
 
         return DB::transaction(function () use ($invoice, $amount, $paymentDate, $paymentMethod, $userId) {

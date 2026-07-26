@@ -47,7 +47,7 @@ class SalesInvoiceForm extends Component
             }
 
             if ($salesInvoice->status !== 'draft') {
-                abort(403, 'Only draft invoices can be edited.');
+                abort(403, 'Можат да се менуваат само нацрт фактури.');
             }
         }
 
@@ -148,7 +148,7 @@ class SalesInvoiceForm extends Component
 
         foreach ($this->lines as $index => $line) {
             if (($line['item_id'] ?? '') === '' && trim((string) ($line['description'] ?? '')) === '') {
-                $this->addError("lines.{$index}.description", 'Each line needs an item or a description.');
+                $this->addError("lines.{$index}.description", 'Секоја ставка мора да содржи артикл или опис.');
 
                 return;
             }
@@ -157,7 +157,7 @@ class SalesInvoiceForm extends Component
         $hasItemLines = collect($this->lines)->contains(fn ($line) => ($line['item_id'] ?? '') !== '');
 
         if ($hasItemLines && $this->warehouseId === '') {
-            $this->addError('warehouseId', 'A warehouse is required when any line references an item.');
+            $this->addError('warehouseId', 'Потребен е магацин кога некоја ставка содржи артикл.');
 
             return;
         }

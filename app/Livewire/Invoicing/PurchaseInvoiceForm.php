@@ -49,7 +49,7 @@ class PurchaseInvoiceForm extends Component
             }
 
             if ($purchaseInvoice->status !== 'draft') {
-                abort(403, 'Only draft purchase invoices can be edited.');
+                abort(403, 'Можат да се менуваат само нацрт влезни фактури.');
             }
         }
 
@@ -147,7 +147,7 @@ class PurchaseInvoiceForm extends Component
 
         foreach ($this->lines as $index => $line) {
             if (($line['item_id'] ?? '') === '' && ($line['account_id'] ?? '') === '') {
-                $this->addError("lines.{$index}.account_id", 'Each non-item line needs an expense account.');
+                $this->addError("lines.{$index}.account_id", 'Секоја ставка без артикл мора да содржи сметка за трошок.');
 
                 return;
             }
@@ -156,7 +156,7 @@ class PurchaseInvoiceForm extends Component
         $hasItemLines = collect($this->lines)->contains(fn ($line) => ($line['item_id'] ?? '') !== '');
 
         if ($hasItemLines && $this->warehouseId === '') {
-            $this->addError('warehouseId', 'A warehouse is required when any line references an item.');
+            $this->addError('warehouseId', 'Потребен е магацин кога некоја ставка содржи артикл.');
 
             return;
         }
