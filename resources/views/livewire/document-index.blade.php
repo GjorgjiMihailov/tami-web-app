@@ -1,31 +1,31 @@
 <div>
-    <h1 class="text-2xl font-bold text-gray-800 mb-4">Documents — {{ $company->name }}</h1>
+    <h1 class="text-2xl font-bold text-gray-800 mb-4">Документи — {{ $company->name }}</h1>
 
     <x-card class="mb-4 flex flex-wrap gap-3 items-end">
         <div>
-            <x-input-label for="categoryFilter" value="Category" />
+            <x-input-label for="categoryFilter" value="Категорија" />
             <select id="categoryFilter" wire:model.live="categoryFilter" class="border-gray-300 rounded-md text-sm">
-                <option value="">All</option>
+                <option value="">Сите</option>
                 @foreach ($categories as $category)
-                    <option value="{{ $category }}">{{ $category }}</option>
+                    <option value="{{ $category }}">{{ \App\Support\Format::documentCategory($category) }}</option>
                 @endforeach
             </select>
         </div>
         <div>
-            <x-input-label for="typeFilter" value="Record type" />
+            <x-input-label for="typeFilter" value="Тип на запис" />
             <select id="typeFilter" wire:model.live="typeFilter" class="border-gray-300 rounded-md text-sm">
-                <option value="">All</option>
+                <option value="">Сите</option>
                 @foreach ($types as $key => $label)
                     <option value="{{ $key }}">{{ $label }}</option>
                 @endforeach
             </select>
         </div>
         <div>
-            <x-input-label for="fromDate" value="From" />
+            <x-input-label for="fromDate" value="Од" />
             <x-text-input id="fromDate" type="date" wire:model.live="fromDate" class="w-full" />
         </div>
         <div>
-            <x-input-label for="toDate" value="To" />
+            <x-input-label for="toDate" value="До" />
             <x-text-input id="toDate" type="date" wire:model.live="toDate" class="w-full" />
         </div>
     </x-card>
@@ -34,11 +34,11 @@
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500">
-                <th class="py-2 px-4">File</th>
-                <th class="py-2 px-4">Category</th>
-                <th class="py-2 px-4">Record</th>
-                <th class="py-2 px-4">Uploaded by</th>
-                <th class="py-2 px-4">Date</th>
+                <th class="py-2 px-4">Датотека</th>
+                <th class="py-2 px-4">Категорија</th>
+                <th class="py-2 px-4">Запис</th>
+                <th class="py-2 px-4">Прикачено од</th>
+                <th class="py-2 px-4">Датум</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
@@ -63,10 +63,10 @@
                         @endif
                     </td>
                     <td class="py-2 px-4">{{ $document->uploader?->name }}</td>
-                    <td class="py-2 px-4">{{ $document->created_at->toDateString() }}</td>
+                    <td class="py-2 px-4">{{ \App\Support\Format::date($document->created_at) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="5" class="py-4 px-4 text-gray-500">No documents yet.</td></tr>
+                <tr><td colspan="5" class="py-4 px-4 text-gray-500">Нема прикачени документи.</td></tr>
             @endforelse
         </tbody>
     </table>

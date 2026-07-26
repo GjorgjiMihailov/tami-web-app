@@ -52,10 +52,10 @@ class DocumentIndex extends Component
             'documents' => $query->get(),
             'categories' => Document::CATEGORIES,
             'types' => [
-                'purchase_invoice' => 'Purchase Invoice',
-                'sales_invoice' => 'Sales Invoice',
-                'journal_entry' => 'Journal Entry',
-                'partner' => 'Partner',
+                'purchase_invoice' => 'Влезна фактура',
+                'sales_invoice' => 'Излезна фактура',
+                'journal_entry' => 'Налог',
+                'partner' => 'Партнер',
             ],
         ]);
     }

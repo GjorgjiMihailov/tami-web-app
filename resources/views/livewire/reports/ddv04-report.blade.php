@@ -3,11 +3,11 @@
 
     <x-card class="mb-4 flex flex-wrap gap-4 items-end">
         <div>
-            <x-input-label for="from" value="From" />
+            <x-input-label for="from" value="Од" />
             <input type="date" id="from" wire:model.live="from" class="border-gray-300 rounded-md text-sm" />
         </div>
         <div>
-            <x-input-label for="to" value="To" />
+            <x-input-label for="to" value="До" />
             <input type="date" id="to" wire:model.live="to" class="border-gray-300 rounded-md text-sm" />
         </div>
     </x-card>
@@ -18,43 +18,43 @@
             <tbody class="divide-y divide-gray-100">
                 <tr>
                     <td class="py-1">01 — Оданочив промет по општа даночна стапка (основа)</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['01'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['01'], currency: '') }}</td>
                 </tr>
                 <tr>
                     <td class="py-1">02 — ДДВ по општа даночна стапка</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['02'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['02'], currency: '') }}</td>
                 </tr>
                 <tr>
                     <td class="py-1">03 — Оданочив промет по повластена стапка 10% (основа)</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['03'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['03'], currency: '') }}</td>
                 </tr>
                 <tr>
                     <td class="py-1">04 — ДДВ по повластена стапка 10%</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['04'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['04'], currency: '') }}</td>
                 </tr>
                 <tr>
                     <td class="py-1">05 — Оданочив промет по повластена стапка 5% (основа)</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['05'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['05'], currency: '') }}</td>
                 </tr>
                 <tr>
                     <td class="py-1">06 — ДДВ по повластена стапка 5%</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['06'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['06'], currency: '') }}</td>
                 </tr>
                 <tr>
                     <td class="py-1">07 — Извоз</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['07'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['07'], currency: '') }}</td>
                 </tr>
                 <tr>
                     <td class="py-1">08 — Промет ослободен со право на одбивка</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['08'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['08'], currency: '') }}</td>
                 </tr>
                 <tr>
                     <td class="py-1">09 — Промет ослободен без право на одбивка</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['09'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['09'], currency: '') }}</td>
                 </tr>
                 <tr class="font-semibold">
                     <td class="py-1">20 — Вкупен ДДВ</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['20'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['20'], currency: '') }}</td>
                 </tr>
             </tbody>
         </table>
@@ -66,23 +66,23 @@
             <tbody class="divide-y divide-gray-100">
                 <tr>
                     <td class="py-1">21 — Влезен промет (основа)</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['21'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['21'], currency: '') }}</td>
                 </tr>
                 <tr>
                     <td class="py-1">22 — Претходен данок</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['22'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['22'], currency: '') }}</td>
                 </tr>
                 <tr class="font-semibold">
                     <td class="py-1">29 — Претходни даноци за одбивање</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['29'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['29'], currency: '') }}</td>
                 </tr>
                 <tr>
                     <td class="py-1">30 — Останати даноци, претходни даноци и износи за одбивање</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['30'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['30'], currency: '') }}</td>
                 </tr>
                 <tr class="font-semibold">
                     <td class="py-1">31 — Даночен долг / побарување</td>
-                    <td class="py-1 text-right font-mono">{{ number_format($fields['31'], 2) }}</td>
+                    <td class="py-1 text-right font-mono">{{ \App\Support\Format::money($fields['31'], currency: '') }}</td>
                 </tr>
             </tbody>
         </table>

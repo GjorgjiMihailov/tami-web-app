@@ -34,8 +34,8 @@ class Ddv04ReportTest extends TestCase
         Livewire::test(Ddv04Report::class, ['company' => $company])
             ->set('from', '2026-01-01')
             ->set('to', '2026-01-31')
-            ->assertSee('1,000.00')
-            ->assertSee('180.00');
+            ->assertSee('1.000,00')
+            ->assertSee('180,00');
     }
 
     public function test_a_client_can_view_their_own_companys_report(): void
