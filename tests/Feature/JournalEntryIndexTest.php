@@ -47,7 +47,7 @@ class JournalEntryIndexTest extends TestCase
 
         Livewire::test(JournalEntryIndex::class, ['company' => $company])
             ->assertSee('Opening balances')
-            ->assertDontSee('New Entry');
+            ->assertDontSee('Нов налог');
     }
 
     public function test_it_only_shows_entries_belonging_to_the_current_company(): void

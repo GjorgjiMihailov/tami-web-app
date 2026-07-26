@@ -145,7 +145,7 @@ class JournalEntryForm extends Component
 
         foreach ($this->lines as $line) {
             if ((float) $line['debit'] > 0 && (float) $line['credit'] > 0) {
-                $this->addError('lines', 'A line cannot have both a debit and a credit amount — use one or the other.');
+                $this->addError('lines', 'Ставката не може да има истовремено износ за должи и побарува — внесете само едно.');
 
                 return;
             }
@@ -155,7 +155,7 @@ class JournalEntryForm extends Component
         $totalCredit = collect($this->lines)->sum(fn ($line) => (float) $line['credit']);
 
         if (bccomp((string) $totalDebit, (string) $totalCredit, 2) !== 0) {
-            $this->addError('lines', 'The entry does not balance — total debit must equal total credit.');
+            $this->addError('lines', 'Налогот не е балансиран — вкупното должи мора да е еднакво на вкупното побарува.');
 
             return;
         }

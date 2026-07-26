@@ -1,9 +1,9 @@
 <div>
     <div class="flex items-center justify-between mb-4">
-        <h1 class="text-2xl font-bold text-gray-800">Journal Entries — {{ $company->name }}</h1>
+        <h1 class="text-2xl font-bold text-gray-800">Налози за книжење — {{ $company->name }}</h1>
         @can('create', \App\Models\JournalEntry::class)
             <a href="{{ route('accounting.journal-entries.create', $company) }}">
-                <x-primary-button type="button">New Entry</x-primary-button>
+                <x-primary-button type="button">Нов налог</x-primary-button>
             </a>
         @endcan
     </div>
@@ -13,8 +13,8 @@
         <thead>
             <tr class="text-left text-sm text-gray-500">
                 <th class="py-2 px-4">#</th>
-                <th class="py-2 px-4">Date</th>
-                <th class="py-2 px-4">Description</th>
+                <th class="py-2 px-4">Датум</th>
+                <th class="py-2 px-4">Опис</th>
                 <th class="py-2 px-4"></th>
             </tr>
         </thead>
@@ -22,16 +22,16 @@
             @forelse ($entries as $entry)
                 <tr class="text-sm">
                     <td class="py-2 px-4 font-mono">{{ $entry->entry_number }}</td>
-                    <td class="py-2 px-4">{{ $entry->entry_date->format('d.m.Y') }}</td>
+                    <td class="py-2 px-4">{{ \App\Support\Format::date($entry->entry_date) }}</td>
                     <td class="py-2 px-4">{{ $entry->description }}</td>
                     <td class="py-2 px-4">
                         <a href="{{ route('accounting.journal-entries.edit', [$company, $entry]) }}" class="text-brand hover:underline">
-                            @can('update', $entry) Edit @else View @endcan
+                            @can('update', $entry) Измени @else Прегледај @endcan
                         </a>
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="4" class="py-4 px-4 text-gray-500">No journal entries yet.</td></tr>
+                <tr><td colspan="4" class="py-4 px-4 text-gray-500">Нема внесени налози.</td></tr>
             @endforelse
         </tbody>
     </table>

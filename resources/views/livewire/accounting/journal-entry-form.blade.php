@@ -7,23 +7,23 @@
 @endphp
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-4">
-        {{ $journalEntry ? 'Edit Journal Entry #'.$journalEntry->entry_number : 'New Journal Entry' }} — {{ $company->name }}
+        {{ $journalEntry ? 'Измени налог #'.$journalEntry->entry_number : 'Нов налог' }} — {{ $company->name }}
     </h1>
 
     @unless ($canEdit)
-        <p class="text-sm text-gray-500 mb-4">You have read-only access to this entry.</p>
+        <p class="text-sm text-gray-500 mb-4">Имате пристап само за преглед на овој налог.</p>
     @endunless
 
     <x-card>
     <form wire:submit="save">
         <div class="grid grid-cols-2 gap-4 mb-4">
             <div>
-                <x-input-label for="entryDate" value="Date" />
+                <x-input-label for="entryDate" value="Датум" />
                 <input type="date" id="entryDate" wire:model="entryDate" class="border-gray-300 rounded-md shadow-sm w-full" @disabled(! $canEdit) />
                 @error('entryDate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
             <div>
-                <x-input-label for="description" value="Description" />
+                <x-input-label for="description" value="Опис" />
                 <x-text-input id="description" wire:model="description" class="w-full" @disabled(! $canEdit) />
             </div>
         </div>
@@ -33,14 +33,14 @@
         <table class="min-w-full divide-y divide-gray-200 mb-4">
             <thead>
                 <tr class="text-left text-sm text-gray-500">
-                    <th class="py-1 pr-2">Account</th>
-                    <th class="py-1 pr-2">Partner</th>
-                    <th class="py-1 pr-2">Description</th>
-                    <th class="py-1 pr-2">Debit</th>
-                    <th class="py-1 pr-2">Credit</th>
-                    <th class="py-1 pr-2">Currency</th>
-                    <th class="py-1 pr-2">Foreign amt.</th>
-                    <th class="py-1 pr-2">Rate</th>
+                    <th class="py-1 pr-2">Сметка</th>
+                    <th class="py-1 pr-2">Партнер</th>
+                    <th class="py-1 pr-2">Опис</th>
+                    <th class="py-1 pr-2">Должи</th>
+                    <th class="py-1 pr-2">Побарува</th>
+                    <th class="py-1 pr-2">Валута</th>
+                    <th class="py-1 pr-2">Износ во валута</th>
+                    <th class="py-1 pr-2">Курс</th>
                     <th class="py-1"></th>
                 </tr>
             </thead>
@@ -79,7 +79,7 @@
                         <td class="py-1 pr-2 flex items-center gap-1">
                             <input type="number" step="0.000001" wire:model="lines.{{ $index }}.exchange_rate" class="border-gray-300 rounded-md text-sm w-20" @disabled(! $canEdit) />
                             @if ($line['currency_code'] !== 'MKD' && $canEdit)
-                                <button type="button" wire:click="fetchRate({{ $index }})" class="text-xs text-brand hover:underline">NBRM</button>
+                                <button type="button" wire:click="fetchRate({{ $index }})" class="text-xs text-brand hover:underline">НБРМ</button>
                             @endif
                         </td>
                         <td class="py-1">
@@ -93,10 +93,10 @@
         </table>
 
         @if ($canEdit)
-            <button type="button" wire:click="addLine" class="text-sm text-brand hover:underline mb-4">+ Add line</button>
+            <button type="button" wire:click="addLine" class="text-sm text-brand hover:underline mb-4">+ Додади ставка</button>
 
             <div>
-                <x-primary-button type="submit">Save</x-primary-button>
+                <x-primary-button type="submit">Зачувај</x-primary-button>
             </div>
         @endif
     </form>

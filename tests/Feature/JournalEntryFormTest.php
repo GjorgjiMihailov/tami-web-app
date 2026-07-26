@@ -129,7 +129,7 @@ class JournalEntryFormTest extends TestCase
 
         Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
             ->assertSuccessful()
-            ->assertSee('Edit Journal Entry #'.$entry->entry_number)
+            ->assertSee('Измени налог #'.$entry->entry_number)
             ->assertSet('description', 'Rent payment for July')
             ->assertSet('lines.0.account_id', $cash->id)
             ->assertSet('lines.0.debit', '500.00');

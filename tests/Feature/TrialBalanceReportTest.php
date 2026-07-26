@@ -37,6 +37,6 @@ class TrialBalanceReportTest extends TestCase
             ->set('from', '2026-01-01')
             ->set('to', '2026-01-31')
             ->assertSee('120')
-            ->assertSee('1,000.00');
+            ->assertSee('1.000,00');
     }
 }
