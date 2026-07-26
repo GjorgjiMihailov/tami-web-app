@@ -1488,3 +1488,72 @@ git commit -m "Fix remaining English strings found in final localization sweep"
 - [ ] **Step 6: Deploy**
 
 Push to `main` per the project's established CI/CD flow (GitHub Actions auto-deploys on push). After deploy, SSH in and add the four `.env` keys noted in Task 2 (`APP_NAME`, `APP_LOCALE`, `APP_FALLBACK_LOCALE`, `APP_FAKER_LOCALE`) to production `.env`, since `.env` is not part of the deployed repo.
+
+**Note:** Task 10's own implementer found a genuine scope gap while doing Step 3's grep sweep — the `/profile` page (Breeze-scaffold account settings, reachable via the "Profile" link in the nav dropdown that Task 3 translated) was never inventoried by any of Tasks 1-10's research and is still mostly English. Rather than deploy with that gap, Task 11 below closes it before Step 6 runs. Step 6 is deferred until after Task 11 and the final whole-branch review.
+
+---
+
+### Task 11: Profile page translation
+
+**Files:**
+- Modify: `resources/views/livewire/profile/delete-user-form.blade.php`
+- Modify: `resources/views/livewire/profile/update-password-form.blade.php`
+- Modify: `resources/views/livewire/profile/update-profile-information-form.blade.php`
+- Modify: `resources/views/profile.blade.php`
+
+**Interfaces:** none (leaf views). Same pattern as Task 3: these are Breeze-scaffold components already wrapping every label in `__('English text')` with no `lang/` directory backing it (so `__()` currently just returns the English string unchanged). Remove the `__()` wrapper, replace with the literal Macedonian string directly, matching Task 3's precedent.
+
+- [ ] **Step 1: Edit `delete-user-form.blade.php`**
+
+| Line | Old | New |
+|---|---|---|
+| 29 | `{{ __('Delete Account') }}` | `Избриши профил` |
+| 33 | `{{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Before deleting your account, please download any data or information that you wish to retain.') }}` | `Откако профилот ќе биде избришан, сите негови ресурси и податоци трајно ќе бидат избришани. Пред да го избришете профилот, преземете ги податоците или информациите што сакате да ги задржите.` |
+| 40 | `>{{ __('Delete Account') }}</x-danger-button>` | `>Избриши профил</x-danger-button>` |
+| 46 | `{{ __('Are you sure you want to delete your account?') }}` | `Дали сте сигурни дека сакате да го избришете профилот?` |
+| 50 | `{{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}` | `Откако профилот ќе биде избришан, сите негови ресурси и податоци трајно ќе бидат избришани. Внесете ја вашата лозинка за да потврдите дека сакате трајно да го избришете профилот.` |
+| 54 | `:value="__('Password')"` | `value="Лозинка"` |
+| 62 | `placeholder="{{ __('Password') }}"` | `placeholder="Лозинка"` |
+| 74 | `{{ __('Delete Account') }}` | `Избриши профил` |
+
+- [ ] **Step 2: Edit `update-password-form.blade.php`**
+
+| Line | Old | New |
+|---|---|---|
+| 44 | `{{ __('Update Password') }}` | `Промени лозинка` |
+| 48 | `{{ __('Ensure your account is using a long, random password to stay secure.') }}` | `Осигурете се дека профилот користи долга, случајна лозинка за поголема безбедност.` |
+| 54 | `:value="__('Current Password')"` | `value="Тековна лозинка"` |
+| 60 | `:value="__('New Password')"` | `value="Нова лозинка"` |
+| 66 | `:value="__('Confirm Password')"` | `value="Потврди лозинка"` |
+| 75 | `{{ __('Saved.') }}` | `Зачувано.` |
+
+- [ ] **Step 3: Edit `update-profile-information-form.blade.php`**
+
+| Line | Old | New |
+|---|---|---|
+| 68 | `{{ __('Profile Information') }}` | `Информации за профилот` |
+| 72 | `{{ __("Update your account's profile information and email address.") }}` | `Ажурирајте ги информациите за профилот и е-поштата на вашата сметка.` |
+| 78 | `:value="__('Name')"` | `value="Име"` |
+| 84 | `:value="__('Email')"` | `value="Е-пошта"` |
+| 91 | `{{ __('Your email address is unverified.') }}` | `Вашата е-пошта не е потврдена.` |
+| 94 | `{{ __('Click here to re-send the verification email.') }}` | `Кликнете тука за повторно да испратите линк за потврда.` |
+| 100 | `{{ __('A new verification link has been sent to your email address.') }}` | `Нов линк за потврда е испратен на вашата е-пошта.` |
+| 111 | `{{ __('Saved.') }}` | `Зачувано.` |
+
+- [ ] **Step 4: Edit `resources/views/profile.blade.php`**
+
+| Line | Old | New |
+|---|---|---|
+| 4 | `{{ __('Profile') }}` | `Профил` |
+
+- [ ] **Step 5: Run tests**
+
+Run: `php artisan test --filter=Profile`
+Expected: PASS — `ProfileTest.php` has no literal-English-text assertions (confirmed before writing this task), so no test-file edits are needed.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add resources/views/livewire/profile resources/views/profile.blade.php
+git commit -m "Translate profile/account-settings page to Macedonian"
+```
