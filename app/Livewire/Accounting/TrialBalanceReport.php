@@ -32,6 +32,13 @@ class TrialBalanceReport extends Component
     {
         $rows = TrialBalanceQuery::run($this->company, $this->groupBy, Carbon::parse($this->from), Carbon::parse($this->to));
 
-        return view('livewire.accounting.trial-balance-report', ['rows' => $rows]);
+        $totals = [
+            'opening_balance' => $rows->sum('opening_balance'),
+            'movement_debit' => $rows->sum('movement_debit'),
+            'movement_credit' => $rows->sum('movement_credit'),
+            'closing_balance' => $rows->sum('closing_balance'),
+        ];
+
+        return view('livewire.accounting.trial-balance-report', ['rows' => $rows, 'totals' => $totals]);
     }
 }

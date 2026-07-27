@@ -47,6 +47,15 @@
                 <tr><td colspan="6" class="py-4 px-4 text-gray-500">Нема промет во овој период.</td></tr>
             @endforelse
         </tbody>
+        <tfoot>
+            <tr class="text-sm font-bold border-t border-gray-300">
+                <td class="py-2 px-4" colspan="2">Вкупно</td>
+                <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($totals['opening_balance'], currency: '') }}</td>
+                <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($totals['movement_debit'], currency: '') }}</td>
+                <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($totals['movement_credit'], currency: '') }}</td>
+                <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($totals['closing_balance'], currency: '') }}</td>
+            </tr>
+        </tfoot>
     </table>
     </x-card>
 </div>
