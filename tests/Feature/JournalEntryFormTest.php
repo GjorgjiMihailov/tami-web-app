@@ -341,6 +341,22 @@ class JournalEntryFormTest extends TestCase
         $this->assertDatabaseCount('journal_entries', 0);
     }
 
+    public function test_render_exposes_account_and_partner_options_for_the_autocomplete(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $partner = \App\Models\Partner::factory()->for($company)->create(['name' => 'ABC Trading']);
+
+        $this->actingAs($admin);
+
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->assertViewHas('accountsForJs', fn ($accounts) => collect($accounts)->contains(fn ($a) => $a['id'] === $cash->id && str_contains($a['label'], $cash->code)))
+            ->assertViewHas('partnersForJs', fn ($partners) => collect($partners)->contains(fn ($p) => $p['id'] === $partner->id && $p['label'] === 'ABC Trading'));
+    }
+
     public function test_editing_an_entry_from_a_different_company_than_the_route_is_not_found(): void
     {
         $company = Company::factory()->create();

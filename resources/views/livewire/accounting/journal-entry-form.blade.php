@@ -87,21 +87,31 @@
             <tbody>
                 @foreach ($lines as $index => $line)
                     <tr>
-                        <td class="py-1 pr-2">
-                            <select wire:model="lines.{{ $index }}.account_id" class="border-gray-300 rounded-md text-sm" @disabled(! $canEdit)>
-                                <option value="">—</option>
-                                @foreach ($accounts as $account)
-                                    <option value="{{ $account->id }}">{{ $account->code }} — {{ $account->name }}</option>
-                                @endforeach
-                            </select>
+                        @php
+                            $selectedAccount = $accounts->firstWhere('id', $line['account_id']);
+                            $accountLabel = $selectedAccount ? $selectedAccount->code.' — '.$selectedAccount->name : '';
+                        @endphp
+                        <td class="py-1 pr-2 relative" x-data="journalEntryPicker(@js($accountsForJs), 'lines.{{ $index }}.account_id', @js($accountLabel))" @click.outside="open = false">
+                            <input type="text" x-model="query" @focus="open = true" @input="open = true"
+                                   placeholder="Код или име..." class="border-gray-300 rounded-md text-sm w-40" @disabled(! $canEdit) />
+                            <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-gray-200 rounded-md shadow-md mt-1 max-h-48 overflow-y-auto w-64">
+                                <template x-for="item in filtered" :key="item.id">
+                                    <div @click="select(item)" class="px-2 py-1 text-sm hover:bg-gray-100 cursor-pointer" x-text="item.label"></div>
+                                </template>
+                            </div>
                         </td>
-                        <td class="py-1 pr-2">
-                            <select wire:model="lines.{{ $index }}.partner_id" class="border-gray-300 rounded-md text-sm" @disabled(! $canEdit)>
-                                <option value="">—</option>
-                                @foreach ($partners as $partner)
-                                    <option value="{{ $partner->id }}">{{ $partner->name }}</option>
-                                @endforeach
-                            </select>
+                        @php
+                            $selectedPartner = $partners->firstWhere('id', $line['partner_id']);
+                            $partnerLabel = $selectedPartner?->name ?? '';
+                        @endphp
+                        <td class="py-1 pr-2 relative" x-data="journalEntryPicker(@js($partnersForJs), 'lines.{{ $index }}.partner_id', @js($partnerLabel))" @click.outside="open = false">
+                            <input type="text" x-model="query" @focus="open = true" @input="open = true"
+                                   placeholder="Партнер..." class="border-gray-300 rounded-md text-sm w-40" @disabled(! $canEdit) />
+                            <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-gray-200 rounded-md shadow-md mt-1 max-h-48 overflow-y-auto w-64">
+                                <template x-for="item in filtered" :key="item.id">
+                                    <div @click="select(item)" class="px-2 py-1 text-sm hover:bg-gray-100 cursor-pointer" x-text="item.label"></div>
+                                </template>
+                            </div>
                         </td>
                         <td class="py-1 pr-2"><input type="text" wire:model="lines.{{ $index }}.description" class="border-gray-300 rounded-md text-sm w-32" @disabled(! $canEdit) /></td>
                         @php $isLate = $line['line_date'] > $entryDate; @endphp
