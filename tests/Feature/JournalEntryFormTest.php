@@ -580,4 +580,82 @@ class JournalEntryFormTest extends TestCase
         Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
             ->assertSet('isForeignCurrency', false);
     }
+
+    public function test_admin_can_permanently_delete_a_journal_entry(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $entry = JournalEntry::factory()->for($company)->create(['created_by' => $admin->id]);
+        $entry->lines()->create(['account_id' => $cash->id, 'debit' => 100, 'credit' => 0]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
+            ->call('delete')
+            ->assertRedirect(route('accounting.journal-entries.index', $company));
+
+        $this->assertDatabaseMissing('journal_entries', ['id' => $entry->id]);
+        $this->assertDatabaseMissing('journal_entry_lines', ['journal_entry_id' => $entry->id]);
+    }
+
+    public function test_client_cannot_delete_a_journal_entry(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+        $entry = JournalEntry::factory()->for($company)->create();
+
+        $this->actingAs($client);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
+            ->call('delete')
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('journal_entries', ['id' => $entry->id]);
+    }
+
+    public function test_deleting_an_entry_linked_to_a_sales_invoice_is_blocked(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $partner = \App\Models\Partner::factory()->for($company)->create();
+        $entry = JournalEntry::factory()->for($company)->create(['created_by' => $admin->id]);
+        \App\Models\SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'journal_entry_id' => $entry->id]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
+            ->call('delete')
+            ->assertHasErrors('delete');
+
+        $this->assertDatabaseHas('journal_entries', ['id' => $entry->id]);
+    }
+
+    public function test_deleting_a_non_last_entry_leaves_a_numbering_gap(): void
+    {
+        $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $entry1 = JournalEntry::factory()->for($company)->create(['journal_group_id' => $group->id, 'entry_date' => '2026-01-01', 'created_by' => $admin->id]);
+        $entry2 = JournalEntry::factory()->for($company)->create(['journal_group_id' => $group->id, 'entry_date' => '2026-01-02', 'created_by' => $admin->id]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry1])
+            ->call('delete');
+
+        $entry3 = JournalEntry::create([
+            'company_id' => $company->id,
+            'journal_group_id' => $group->id,
+            'entry_date' => '2026-01-03',
+            'description' => 'Third',
+            'created_by' => $admin->id,
+        ]);
+
+        $this->assertGreaterThan($entry2->entry_number, $entry3->entry_number);
+    }
 }

@@ -54,6 +54,7 @@
         </div>
 
         @error('lines') <p class="text-red-600 text-sm mb-2">{{ $message }}</p> @enderror
+        @error('delete') <p class="text-red-600 text-sm mb-2">{{ $message }}</p> @enderror
 
         <table class="min-w-full divide-y divide-gray-200 mb-4">
             <thead>
@@ -133,6 +134,9 @@
 
             <div>
                 <x-primary-button type="submit">Зачувај</x-primary-button>
+                @if ($journalEntry)
+                    <x-danger-button type="button" wire:click="delete" wire:confirm="Да се избрише трајно овој налог? Ова не може да се врати." class="ml-2">Избриши</x-danger-button>
+                @endif
             </div>
         @endif
     </form>

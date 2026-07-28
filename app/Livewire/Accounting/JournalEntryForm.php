@@ -7,6 +7,8 @@ use App\Models\Company;
 use App\Models\JournalEntry;
 use App\Models\JournalGroup;
 use App\Models\Partner;
+use App\Models\PurchaseInvoice;
+use App\Models\SalesInvoice;
 use App\Services\ExchangeRateService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -226,6 +228,28 @@ class JournalEntryForm extends Component
         });
 
         $this->redirect(route('accounting.journal-entries.index', $this->company));
+    }
+
+    public function delete(): void
+    {
+        Gate::authorize('delete', $this->journalEntry);
+
+        if (SalesInvoice::where('journal_entry_id', $this->journalEntry->id)->exists()
+            || PurchaseInvoice::where('journal_entry_id', $this->journalEntry->id)->exists()) {
+            $this->addError('delete', 'Овој налог е автоматски создаден од фактура и не може да се избрише директно — прво откажете ја фактурата.');
+
+            return;
+        }
+
+        $company = $this->company;
+
+        // Documents are a polymorphic relation with no FK constraint, so
+        // they would otherwise survive as orphaned rows pointing at a
+        // deleted entry.
+        $this->journalEntry->documents()->delete();
+        $this->journalEntry->delete();
+
+        $this->redirect(route('accounting.journal-entries.index', $company));
     }
 
     public function render()
