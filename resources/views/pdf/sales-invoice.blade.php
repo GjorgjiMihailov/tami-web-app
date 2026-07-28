@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     @php
         $logoPosition = ($invoice->company->logo_position ?? null) ?: 'left';
+        $vatRegistered = (bool) ($invoice->company->is_vat_registered ?? true);
     @endphp
     <style>
         body { font-family: 'DejaVu Sans'; font-size: 11px; color: #1f2937; margin: 0; padding: 0; }
@@ -25,8 +26,10 @@
         .totals-box { width: 210px; background-color: #fff3ea; border-radius: 8px; padding: 10px 14px; font-size: 11px; }
         .totals-box .row { display: flex; justify-content: space-between; padding: 2px 0; }
         .totals-box .grand { border-top: 1px solid #ffd4b0; font-weight: bold; margin-top: 4px; padding-top: 4px; color: #b34700; }
-        .footnotes { margin-top: 16px; font-size: 9px; color: #6b7280; }
-        .footnotes p { margin: 2px 0; }
+        @if (! $vatRegistered || $invoice->company->invoice_footer_note)
+            .footnotes { margin-top: 16px; font-size: 9px; color: #6b7280; }
+            .footnotes p { margin: 2px 0; }
+        @endif
         @if ($logoPosition === 'center')
             .logo-row { text-align: center; margin-bottom: 10px; }
         @endif
@@ -39,7 +42,6 @@
             $company = $invoice->company;
             $hasLogo = (bool) $company->logo_path;
             $logoPath = $hasLogo ? \Illuminate\Support\Facades\Storage::disk('public')->path($company->logo_path) : null;
-            $vatRegistered = (bool) $company->is_vat_registered;
         @endphp
 
         @if ($hasLogo && $logoPosition === 'center')
@@ -132,7 +134,22 @@
                 <div class="row"><span>За доплата</span><span>{{ \App\Support\Format::money($invoice->balanceDue()) }}</span></div>
             </div>
         </div>
-        {{-- Task 4 adds footnotes here --}}
+        @php
+            $footnotes = [];
+            if (! $vatRegistered) {
+                $footnotes[] = 'Фирмава не е ДДВ обврзник.';
+            }
+            if ($company->invoice_footer_note) {
+                $footnotes[] = $company->invoice_footer_note;
+            }
+        @endphp
+        @if (count($footnotes))
+            <div class="footnotes">
+                @foreach ($footnotes as $note)
+                    <p>{{ $note }}</p>
+                @endforeach
+            </div>
+        @endif
     </div>
 </body>
 </html>

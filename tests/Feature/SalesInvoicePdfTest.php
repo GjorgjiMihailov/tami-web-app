@@ -284,4 +284,68 @@ class SalesInvoicePdfTest extends TestCase
 
         $response->assertOk();
     }
+
+    public function test_it_shows_no_footnotes_when_vat_registered_and_no_custom_note(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true, 'invoice_footer_note' => null]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
+        $invoice->lines()->create(['description' => 'Item', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00']);
+
+        $html = view('pdf.sales-invoice', [
+            'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
+        ])->render();
+
+        $this->assertStringNotContainsString('footnotes', $html);
+    }
+
+    public function test_it_shows_the_legal_note_for_a_non_vat_registered_company(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => false, 'invoice_footer_note' => null]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
+        $invoice->lines()->create(['description' => 'Item', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0.00']);
+
+        $html = view('pdf.sales-invoice', [
+            'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
+        ])->render();
+
+        $this->assertStringContainsString('Фирмава не е ДДВ обврзник.', $html);
+    }
+
+    public function test_it_shows_the_custom_footer_note(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true, 'invoice_footer_note' => 'Стоката не подлежи на рекламација.']);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
+        $invoice->lines()->create(['description' => 'Item', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00']);
+
+        $html = view('pdf.sales-invoice', [
+            'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
+        ])->render();
+
+        $this->assertStringContainsString('Стоката не подлежи на рекламација.', $html);
+        $this->assertStringNotContainsString('Фирмава не е ДДВ обврзник.', $html);
+    }
+
+    public function test_it_shows_the_legal_note_before_the_custom_footer_note_when_both_apply(): void
+    {
+        $company = Company::factory()->create([
+            'is_vat_registered' => false,
+            'invoice_footer_note' => 'Стоката не подлежи на рекламација.',
+        ]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
+        $invoice->lines()->create(['description' => 'Item', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0.00']);
+
+        $html = view('pdf.sales-invoice', [
+            'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
+        ])->render();
+
+        $legalPos = strpos($html, 'Фирмава не е ДДВ обврзник.');
+        $customPos = strpos($html, 'Стоката не подлежи на рекламација.');
+        $this->assertNotFalse($legalPos);
+        $this->assertNotFalse($customPos);
+        $this->assertLessThan($customPos, $legalPos);
+    }
 }
