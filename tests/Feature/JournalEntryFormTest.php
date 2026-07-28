@@ -746,4 +746,38 @@ class JournalEntryFormTest extends TestCase
             ->call('goToNext')
             ->assertRedirect(route('accounting.journal-entries.edit', [$company, $firstOf2026]));
     }
+
+    public function test_footer_shows_running_totals(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $revenue = Account::where('company_id', $company->id)->where('code', '740')->first();
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('lines.0.account_id', $cash->id)
+            ->set('lines.0.debit', '1500')
+            ->set('lines.1.account_id', $revenue->id)
+            ->set('lines.1.credit', '1000')
+            ->assertSeeText(\App\Support\Format::money('1500.00'))
+            ->assertSeeText(\App\Support\Format::money('1000.00'));
+    }
+
+    public function test_footer_flags_red_when_unbalanced(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('lines.0.account_id', $cash->id)
+            ->set('lines.0.debit', '500')
+            ->assertSeeHtml('text-red-600');
+    }
 }

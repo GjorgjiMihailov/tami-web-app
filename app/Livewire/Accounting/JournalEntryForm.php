@@ -344,6 +344,8 @@ class JournalEntryForm extends Component
             'groups' => JournalGroup::where('company_id', $this->company->id)->orderBy('sort_order')->orderBy('code')->get(),
             'hasPrevious' => $this->previousEntry() !== null,
             'hasNext' => $this->nextEntry() !== null,
+            'totalDebit' => collect($this->lines)->sum(fn ($line) => (float) $line['debit']),
+            'totalCredit' => collect($this->lines)->sum(fn ($line) => (float) $line['credit']),
         ]);
     }
 }

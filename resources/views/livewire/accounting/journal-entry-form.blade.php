@@ -67,7 +67,7 @@
         @error('lines') <p class="text-red-600 text-sm mb-2">{{ $message }}</p> @enderror
         @error('delete') <p class="text-red-600 text-sm mb-2">{{ $message }}</p> @enderror
 
-        <table class="min-w-full divide-y divide-gray-200 mb-4">
+        <table class="min-w-full divide-y divide-gray-200 mb-4 hidden md:table">
             <thead>
                 <tr class="text-left text-sm text-gray-500">
                     <th class="py-1 pr-2">Сметка</th>
@@ -150,6 +150,45 @@
             </tbody>
         </table>
 
+        <div class="md:hidden space-y-3 mb-4">
+            @foreach ($lines as $index => $line)
+                @php $isLate = $line['line_date'] > $entryDate; @endphp
+                <div class="border border-gray-200 rounded-lg p-3 text-sm {{ $isLate ? 'bg-red-50' : '' }}">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="font-medium text-gray-500">Ставка {{ $index + 1 }}</span>
+                        @if ($canEdit)
+                            <button type="button" wire:click="removeLine({{ $index }})" class="text-red-600 text-xs">Отстрани</button>
+                        @endif
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs text-gray-500">Сметка</label>
+                            <div x-data="journalEntryPicker(@js($accountsForJs), 'lines.{{ $index }}.account_id', @js($accounts->firstWhere('id', $line['account_id'])?->code.' — '.$accounts->firstWhere('id', $line['account_id'])?->name ?? ''))" @click.outside="open = false" class="relative">
+                                <input type="text" x-model="query" @focus="open = true" @input="open = true" class="border-gray-300 rounded-md text-sm w-full" @disabled(! $canEdit) />
+                                <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-gray-200 rounded-md shadow-md mt-1 max-h-40 overflow-y-auto w-full">
+                                    <template x-for="item in filtered" :key="item.id">
+                                        <div @click="select(item)" class="px-2 py-1 text-sm hover:bg-gray-100 cursor-pointer" x-text="item.label"></div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Датум</label>
+                            <input type="date" wire:model="lines.{{ $index }}.line_date" class="rounded-md text-sm w-full {{ $isLate ? 'border-red-400 text-red-700' : 'border-gray-300' }}" @disabled(! $canEdit) />
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Должи</label>
+                            <input type="number" step="0.01" wire:model="lines.{{ $index }}.debit" class="border-gray-300 rounded-md text-sm w-full" @disabled(! $canEdit) />
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Побарува</label>
+                            <input type="number" step="0.01" wire:model="lines.{{ $index }}.credit" class="border-gray-300 rounded-md text-sm w-full" @disabled(! $canEdit) />
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
         @if ($canEdit)
             <button type="button" wire:click="addLine" class="text-sm text-brand hover:underline mb-4">+ Додади ставка</button>
 
@@ -160,6 +199,13 @@
                 @endif
             </div>
         @endif
+
+        @php $isBalanced = bccomp((string) $totalDebit, (string) $totalCredit, 2) === 0; @endphp
+        <div class="sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 flex flex-wrap justify-end gap-6 text-sm font-semibold {{ $isBalanced ? 'text-gray-800' : 'text-red-600' }}">
+            <span>Вкупно должи: {{ \App\Support\Format::money($totalDebit) }}</span>
+            <span>Вкупно побарува: {{ \App\Support\Format::money($totalCredit) }}</span>
+            <span>Салдо: {{ \App\Support\Format::money($totalDebit - $totalCredit) }}</span>
+        </div>
     </form>
     </x-card>
 
