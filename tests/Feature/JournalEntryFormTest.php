@@ -778,6 +778,25 @@ class JournalEntryFormTest extends TestCase
         Livewire::test(JournalEntryForm::class, ['company' => $company])
             ->set('lines.0.account_id', $cash->id)
             ->set('lines.0.debit', '500')
-            ->assertSeeHtml('text-red-600');
+            ->assertSeeHtml('sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 flex flex-wrap justify-end gap-6 text-sm font-semibold text-red-600');
+    }
+
+    public function test_footer_does_not_flag_red_when_balanced(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $revenue = Account::where('company_id', $company->id)->where('code', '740')->first();
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('lines.0.account_id', $cash->id)
+            ->set('lines.0.debit', '500')
+            ->set('lines.1.account_id', $revenue->id)
+            ->set('lines.1.credit', '500')
+            ->assertSeeHtml('sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 flex flex-wrap justify-end gap-6 text-sm font-semibold text-gray-800')
+            ->assertDontSeeHtml('sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 flex flex-wrap justify-end gap-6 text-sm font-semibold text-red-600');
     }
 }
