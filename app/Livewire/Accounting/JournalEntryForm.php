@@ -30,6 +30,8 @@ class JournalEntryForm extends Component
 
     public array $lines = [];
 
+    public bool $isForeignCurrency = false;
+
     protected ?string $previousEntryDate = null;
 
     public function mount(Company $company, ?JournalEntry $journalEntry = null): void
@@ -59,6 +61,8 @@ class JournalEntryForm extends Component
                 'exchange_rate' => (string) $line->exchange_rate,
                 'foreign_amount' => $line->foreign_amount === null ? null : (string) $line->foreign_amount,
             ])->toArray();
+
+            $this->isForeignCurrency = collect($this->lines)->contains(fn ($line) => $line['currency_code'] !== 'MKD');
         } else {
             $this->entryDate = now()->toDateString();
             $this->lines = [$this->emptyLine(), $this->emptyLine()];

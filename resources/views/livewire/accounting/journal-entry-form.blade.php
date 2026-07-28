@@ -46,6 +46,13 @@
             </div>
         </div>
 
+        <div class="mb-4">
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" wire:model.live="isForeignCurrency" @disabled(! $canEdit) />
+                Овој налог е во девизи
+            </label>
+        </div>
+
         @error('lines') <p class="text-red-600 text-sm mb-2">{{ $message }}</p> @enderror
 
         <table class="min-w-full divide-y divide-gray-200 mb-4">
@@ -57,9 +64,11 @@
                     <th class="py-1 pr-2">Датум</th>
                     <th class="py-1 pr-2">Должи</th>
                     <th class="py-1 pr-2">Побарува</th>
-                    <th class="py-1 pr-2">Валута</th>
-                    <th class="py-1 pr-2">Износ во валута</th>
-                    <th class="py-1 pr-2">Курс</th>
+                    @if ($isForeignCurrency)
+                        <th class="py-1 pr-2">Валута</th>
+                        <th class="py-1 pr-2">Износ во валута</th>
+                        <th class="py-1 pr-2">Курс</th>
+                    @endif
                     <th class="py-1"></th>
                 </tr>
             </thead>
@@ -91,22 +100,24 @@
                         </td>
                         <td class="py-1 pr-2"><input type="number" step="0.01" wire:model="lines.{{ $index }}.debit" class="border-gray-300 rounded-md text-sm w-24" @disabled(! $canEdit) /></td>
                         <td class="py-1 pr-2"><input type="number" step="0.01" wire:model="lines.{{ $index }}.credit" class="border-gray-300 rounded-md text-sm w-24" @disabled(! $canEdit) /></td>
-                        <td class="py-1 pr-2">
-                            <select wire:model="lines.{{ $index }}.currency_code" class="border-gray-300 rounded-md text-sm" @disabled(! $canEdit)>
-                                <option value="MKD">MKD</option>
-                                <option value="EUR">EUR</option>
-                                <option value="USD">USD</option>
-                                <option value="GBP">GBP</option>
-                                <option value="CHF">CHF</option>
-                            </select>
-                        </td>
-                        <td class="py-1 pr-2"><input type="number" step="0.01" wire:model="lines.{{ $index }}.foreign_amount" class="border-gray-300 rounded-md text-sm w-20" @disabled(! $canEdit) /></td>
-                        <td class="py-1 pr-2 flex items-center gap-1">
-                            <input type="number" step="0.000001" wire:model="lines.{{ $index }}.exchange_rate" class="border-gray-300 rounded-md text-sm w-20" @disabled(! $canEdit) />
-                            @if ($line['currency_code'] !== 'MKD' && $canEdit)
-                                <button type="button" wire:click="fetchRate({{ $index }})" class="text-xs text-brand hover:underline">НБРМ</button>
-                            @endif
-                        </td>
+                        @if ($isForeignCurrency)
+                            <td class="py-1 pr-2">
+                                <select wire:model="lines.{{ $index }}.currency_code" class="border-gray-300 rounded-md text-sm" @disabled(! $canEdit)>
+                                    <option value="MKD">MKD</option>
+                                    <option value="EUR">EUR</option>
+                                    <option value="USD">USD</option>
+                                    <option value="GBP">GBP</option>
+                                    <option value="CHF">CHF</option>
+                                </select>
+                            </td>
+                            <td class="py-1 pr-2"><input type="number" step="0.01" wire:model="lines.{{ $index }}.foreign_amount" class="border-gray-300 rounded-md text-sm w-20" @disabled(! $canEdit) /></td>
+                            <td class="py-1 pr-2 flex items-center gap-1">
+                                <input type="number" step="0.000001" wire:model="lines.{{ $index }}.exchange_rate" class="border-gray-300 rounded-md text-sm w-20" @disabled(! $canEdit) />
+                                @if ($line['currency_code'] !== 'MKD' && $canEdit)
+                                    <button type="button" wire:click="fetchRate({{ $index }})" class="text-xs text-brand hover:underline">НБРМ</button>
+                                @endif
+                            </td>
+                        @endif
                         <td class="py-1">
                             @if ($canEdit)
                                 <button type="button" wire:click="removeLine({{ $index }})" class="text-red-600 text-sm">✕</button>

@@ -522,4 +522,62 @@ class JournalEntryFormTest extends TestCase
             ->assertSuccessful()
             ->assertSet('lines.0.line_date', $entry->entry_date->toDateString());
     }
+
+    public function test_fx_checkbox_is_unchecked_by_default_for_a_new_entry(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->assertSet('isForeignCurrency', false)
+            ->assertDontSeeHtml('lines.0.currency_code');
+    }
+
+    public function test_checking_the_fx_box_reveals_the_currency_columns(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('isForeignCurrency', true)
+            ->assertSeeHtml('lines.0.currency_code');
+    }
+
+    public function test_fx_checkbox_auto_checks_when_loading_an_entry_with_a_foreign_currency_line(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $entry = JournalEntry::factory()->for($company)->create(['created_by' => $admin->id]);
+        $entry->lines()->create(['account_id' => $cash->id, 'debit' => 100, 'credit' => 0, 'currency_code' => 'EUR', 'exchange_rate' => '61.5', 'foreign_amount' => '1.63']);
+        $entry->lines()->create(['account_id' => $cash->id, 'debit' => 0, 'credit' => 100]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
+            ->assertSet('isForeignCurrency', true);
+    }
+
+    public function test_fx_checkbox_stays_unchecked_when_loading_an_all_mkd_entry(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $entry = JournalEntry::factory()->for($company)->create(['created_by' => $admin->id]);
+        $entry->lines()->create(['account_id' => $cash->id, 'debit' => 100, 'credit' => 0]);
+        $entry->lines()->create(['account_id' => $cash->id, 'debit' => 0, 'credit' => 100]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
+            ->assertSet('isForeignCurrency', false);
+    }
 }
