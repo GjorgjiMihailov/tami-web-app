@@ -29,6 +29,8 @@
                     <div class="pl-6">
                         <a href="{{ route('accounting.accounts.index', $company) }}" wire:navigate
                            class="block px-4 py-1.5 text-sm {{ request()->routeIs('accounting.accounts.*') ? 'text-white font-medium' : 'text-gray-400 hover:text-white' }}">Контен план</a>
+                        <a href="{{ route('accounting.journal-groups.index', $company) }}" wire:navigate
+                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('accounting.journal-groups.*') ? 'text-white font-medium' : 'text-gray-400 hover:text-white' }}">Журнали</a>
                         <a href="{{ route('accounting.journal-entries.index', $company) }}" wire:navigate
                            class="block px-4 py-1.5 text-sm {{ request()->routeIs('accounting.journal-entries.*') ? 'text-white font-medium' : 'text-gray-400 hover:text-white' }}">Налози</a>
                         <a href="{{ route('accounting.reports.ledger-card', $company) }}" wire:navigate

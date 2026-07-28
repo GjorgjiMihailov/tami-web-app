@@ -5,6 +5,7 @@ use App\Http\Controllers\SalesInvoicePdfController;
 use App\Livewire\Accounting\AccountIndex;
 use App\Livewire\Accounting\JournalEntryForm;
 use App\Livewire\Accounting\JournalEntryIndex;
+use App\Livewire\Accounting\JournalGroupIndex;
 use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
 use App\Livewire\CompanyDashboard;
@@ -60,6 +61,7 @@ Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
 // the same action at dispatch time once the class exists.
 Route::middleware(['auth'])->prefix('companies/{company}')->name('accounting.')->group(function () {
     Route::get('/accounts', [AccountIndex::class, '__invoke'])->name('accounts.index');
+    Route::get('/journal-groups', [JournalGroupIndex::class, '__invoke'])->name('journal-groups.index');
     Route::get('/journal-entries', [JournalEntryIndex::class, '__invoke'])->name('journal-entries.index');
     Route::get('/journal-entries/create', [JournalEntryForm::class, '__invoke'])->name('journal-entries.create');
     Route::get('/journal-entries/{journalEntry}/edit', [JournalEntryForm::class, '__invoke'])->name('journal-entries.edit');
