@@ -24,7 +24,8 @@ class SalesInvoicePdfTest extends TestCase
 
     public function test_it_downloads_a_pdf_for_a_confirmed_invoice(): void
     {
-        $company = Company::factory()->create(['name' => 'Fajnens Badi DOOEL', 'bank_account' => 'MK07300701104789126']);
+        $company = Company::factory()->create(['name' => 'Fajnens Badi DOOEL']);
+        $company->bankAccounts()->create(['bank_name' => 'Комерцијална банка', 'account_number' => 'MK07300701104789126', 'position' => 0]);
         $partner = Partner::factory()->for($company)->create(['name' => 'Customer DOO']);
         $entry = JournalEntry::factory()->for($company)->create();
         $invoice = SalesInvoice::factory()->for($company)->create([

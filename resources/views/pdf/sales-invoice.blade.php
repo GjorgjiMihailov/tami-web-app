@@ -21,9 +21,9 @@
             <strong>{{ $invoice->company->name }}</strong><br>
             {{ $invoice->company->address }}<br>
             ЕДБ: {{ $invoice->company->tax_id }}<br>
-            @if ($invoice->company->bank_account)
-                Трансакциска сметка: {{ $invoice->company->bank_account }}<br>
-            @endif
+            @foreach ($invoice->company->bankAccounts as $bankAccount)
+                Трансакциска сметка{{ $bankAccount->bank_name ? " ({$bankAccount->bank_name})" : '' }}: {{ $bankAccount->account_number }}<br>
+            @endforeach
         </div>
         <div>
             <strong>Купувач:</strong><br>
