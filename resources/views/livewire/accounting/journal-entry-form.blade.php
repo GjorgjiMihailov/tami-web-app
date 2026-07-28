@@ -12,11 +12,14 @@
         </h1>
 
         @if ($journalEntry)
-            <div class="flex gap-1 text-sm">
+            <div class="flex items-center gap-2 text-sm">
                 <button type="button" wire:click="goToFirst" @disabled(! $hasPrevious) class="px-2 py-1 border rounded-md disabled:opacity-30">⏮</button>
                 <button type="button" wire:click="goToPrevious" @disabled(! $hasPrevious) class="px-2 py-1 border rounded-md disabled:opacity-30">◁</button>
                 <button type="button" wire:click="goToNext" @disabled(! $hasNext) class="px-2 py-1 border rounded-md disabled:opacity-30">▷</button>
                 <button type="button" wire:click="goToLast" @disabled(! $hasNext) class="px-2 py-1 border rounded-md disabled:opacity-30">⏭</button>
+                <a href="{{ route('accounting.journal-entries.pdf', [$company, $journalEntry]) }}" target="_blank">
+                    <x-secondary-button type="button">Печати</x-secondary-button>
+                </a>
             </div>
         @endif
     </div>

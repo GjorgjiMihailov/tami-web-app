@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\JournalEntryPdfController;
 use App\Http\Controllers\SalesInvoicePdfController;
 use App\Livewire\Accounting\AccountIndex;
 use App\Livewire\Accounting\JournalEntryForm;
@@ -65,6 +66,7 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('accounting.')-
     Route::get('/journal-entries', [JournalEntryIndex::class, '__invoke'])->name('journal-entries.index');
     Route::get('/journal-entries/create', [JournalEntryForm::class, '__invoke'])->name('journal-entries.create');
     Route::get('/journal-entries/{journalEntry}/edit', [JournalEntryForm::class, '__invoke'])->name('journal-entries.edit');
+    Route::get('/journal-entries/{journalEntry}/pdf', [JournalEntryPdfController::class, '__invoke'])->name('journal-entries.pdf');
     Route::get('/reports/ledger-card', [LedgerCardReport::class, '__invoke'])->name('reports.ledger-card');
     Route::get('/reports/trial-balance', [TrialBalanceReport::class, '__invoke'])->name('reports.trial-balance');
 });
