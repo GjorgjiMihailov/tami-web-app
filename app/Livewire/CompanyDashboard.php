@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Company;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -140,44 +141,46 @@ class CompanyDashboard extends Component
             'newLogo' => 'nullable|image|max:25600',
         ]);
 
-        $this->company->update([
-            'name' => $validated['editName'],
-            'short_name' => $validated['editShortName'] ?: null,
-            'tax_id' => $validated['editTaxId'] ?: null,
-            'registration_number' => $validated['editRegistrationNumber'] ?: null,
-            'nkd_code' => $validated['editNkdCode'] ?: null,
-            'nkd_name' => $validated['editNkdName'] ?: null,
-            'email' => $validated['editEmail'] ?: null,
-            'phone' => $validated['editPhone'] ?: null,
-            'website' => $validated['editWebsite'] ?: null,
-            'address' => $validated['editAddress'] ?: null,
-            'director_name' => $validated['editDirectorName'] ?: null,
-            'director_phone' => $validated['editDirectorPhone'] ?: null,
-            'director_email' => $validated['editDirectorEmail'] ?: null,
-            'is_vat_registered' => $validated['editIsVatRegistered'],
-            'logo_position' => $validated['editLogoPosition'],
-            'invoice_footer_note' => $validated['editInvoiceFooterNote'] ?: null,
-        ]);
-
-        $keptRows = collect($validated['bankAccounts'])
-            ->filter(fn ($row) => trim((string) ($row['bank_name'] ?? '')) !== '' || trim((string) ($row['account_number'] ?? '')) !== '')
-            ->values()
-            ->take(5);
-
-        $this->company->bankAccounts()->delete();
-        foreach ($keptRows as $index => $row) {
-            $this->company->bankAccounts()->create([
-                'bank_name' => $row['bank_name'] ?: null,
-                'account_number' => $row['account_number'] ?: null,
-                'position' => $index,
+        DB::transaction(function () use ($validated) {
+            $this->company->update([
+                'name' => $validated['editName'],
+                'short_name' => $validated['editShortName'] ?: null,
+                'tax_id' => $validated['editTaxId'] ?: null,
+                'registration_number' => $validated['editRegistrationNumber'] ?: null,
+                'nkd_code' => $validated['editNkdCode'] ?: null,
+                'nkd_name' => $validated['editNkdName'] ?: null,
+                'email' => $validated['editEmail'] ?: null,
+                'phone' => $validated['editPhone'] ?: null,
+                'website' => $validated['editWebsite'] ?: null,
+                'address' => $validated['editAddress'] ?: null,
+                'director_name' => $validated['editDirectorName'] ?: null,
+                'director_phone' => $validated['editDirectorPhone'] ?: null,
+                'director_email' => $validated['editDirectorEmail'] ?: null,
+                'is_vat_registered' => $validated['editIsVatRegistered'],
+                'logo_position' => $validated['editLogoPosition'],
+                'invoice_footer_note' => $validated['editInvoiceFooterNote'] ?: null,
             ]);
-        }
 
-        if ($this->newLogo) {
-            $path = $this->newLogo->store('logos/'.$this->company->id, 'public');
-            $this->company->update(['logo_path' => $path]);
-            $this->newLogo = null;
-        }
+            $keptRows = collect($validated['bankAccounts'])
+                ->filter(fn ($row) => trim((string) ($row['bank_name'] ?? '')) !== '' || trim((string) ($row['account_number'] ?? '')) !== '')
+                ->values()
+                ->take(5);
+
+            $this->company->bankAccounts()->delete();
+            foreach ($keptRows as $index => $row) {
+                $this->company->bankAccounts()->create([
+                    'bank_name' => $row['bank_name'] ?: null,
+                    'account_number' => $row['account_number'] ?: null,
+                    'position' => $index,
+                ]);
+            }
+
+            if ($this->newLogo) {
+                $path = $this->newLogo->store('logos/'.$this->company->id, 'public');
+                $this->company->update(['logo_path' => $path]);
+                $this->newLogo = null;
+            }
+        });
 
         $this->editing = false;
     }

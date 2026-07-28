@@ -80,7 +80,7 @@
                         <h3 class="text-sm font-semibold text-gray-700 mb-2">Трансакциски сметки (до 5)</h3>
                         <div class="space-y-2">
                             @foreach ($bankAccounts as $index => $row)
-                                <div class="flex flex-wrap gap-3 items-end">
+                                <div class="flex flex-wrap gap-3 items-end" wire:key="bank-{{ $index }}">
                                     <div>
                                         <x-input-label for="bank_name_{{ $index }}" value="Банка" />
                                         <x-text-input id="bank_name_{{ $index }}" wire:model="bankAccounts.{{ $index }}.bank_name" class="w-48" />
