@@ -488,4 +488,38 @@ class JournalEntryFormTest extends TestCase
 
         $component->assertDontSeeHtml('bg-red-50');
     }
+
+    public function test_changing_the_entry_date_does_not_overwrite_a_manually_set_line_date(): void
+    {
+        $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('entryDate', '2026-05-10')
+            ->set('journalGroupId', $group->id)
+            ->set('lines.0.line_date', '2026-05-01')
+            ->set('entryDate', '2026-05-20')
+            ->assertSet('lines.0.line_date', '2026-05-01');
+    }
+
+    public function test_mounting_an_entry_with_a_null_line_date_does_not_crash(): void
+    {
+        $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $entry = JournalEntry::factory()->for($company)->create(['journal_group_id' => $group->id, 'created_by' => $admin->id]);
+        $entry->lines()->create(['account_id' => $cash->id, 'debit' => 100, 'credit' => 0, 'line_date' => null]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
+            ->assertSuccessful()
+            ->assertSet('lines.0.line_date', $entry->entry_date->toDateString());
+    }
 }
