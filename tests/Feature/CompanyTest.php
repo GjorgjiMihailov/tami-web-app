@@ -60,4 +60,26 @@ class CompanyTest extends TestCase
 
         $this->assertEquals('left', $company->fresh()->logo_position);
     }
+
+    public function test_a_company_can_have_up_to_five_bank_accounts_ordered_by_position(): void
+    {
+        $company = Company::factory()->create();
+        $company->bankAccounts()->create(['bank_name' => 'НЛБ Банка', 'account_number' => 'MK07200002785123453', 'position' => 1]);
+        $company->bankAccounts()->create(['bank_name' => 'Комерцијална банка', 'account_number' => 'MK07300701104789126', 'position' => 0]);
+
+        $this->assertEquals(
+            ['Комерцијална банка', 'НЛБ Банка'],
+            $company->bankAccounts()->pluck('bank_name')->all()
+        );
+    }
+
+    public function test_deleting_a_company_deletes_its_bank_accounts(): void
+    {
+        $company = Company::factory()->create();
+        $company->bankAccounts()->create(['bank_name' => 'НЛБ Банка', 'account_number' => 'MK07200002785123453', 'position' => 0]);
+
+        $company->delete();
+
+        $this->assertDatabaseCount('company_bank_accounts', 0);
+    }
 }

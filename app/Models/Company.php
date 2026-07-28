@@ -31,4 +31,9 @@ class Company extends Model
     {
         return $this->belongsToMany(User::class);
     }
+
+    public function bankAccounts(): HasMany
+    {
+        return $this->hasMany(CompanyBankAccount::class)->orderBy('position');
+    }
 }
