@@ -106,4 +106,29 @@ class AccountingPoliciesTest extends TestCase
         $this->assertTrue($client->can('create', Partner::class));
         $this->assertTrue($client->can('update', $partner));
     }
+
+    public function test_client_cannot_manage_journal_groups(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+        $group = \App\Models\JournalGroup::factory()->for($company)->create();
+
+        $this->assertFalse($client->can('create', \App\Models\JournalGroup::class));
+        $this->assertFalse($client->can('update', $group));
+        $this->assertFalse($client->can('delete', $group));
+    }
+
+    public function test_accountant_assigned_to_a_company_can_manage_its_journal_groups(): void
+    {
+        $company = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $accountant->assignedCompanies()->attach($company);
+        $group = \App\Models\JournalGroup::factory()->for($company)->create();
+
+        $this->assertTrue($accountant->can('create', \App\Models\JournalGroup::class));
+        $this->assertTrue($accountant->can('update', $group));
+        $this->assertTrue($accountant->can('delete', $group));
+    }
 }
