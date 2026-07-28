@@ -116,7 +116,22 @@
                 @endforeach
             </tbody>
         </table>
-        {{-- Task 3 adds the bottom-row (payment info + totals) here --}}
+        <div class="bottom-row">
+            <div class="pay-box">
+                <h4>Начин на плаќање</h4>
+                @forelse ($company->bankAccounts as $bankAccount)
+                    <div>{{ $bankAccount->bank_name ? $bankAccount->bank_name.': ' : '' }}{{ $bankAccount->account_number }}</div>
+                @empty
+                    <div class="muted">Нема внесена банкарска сметка.</div>
+                @endforelse
+            </div>
+            <div class="totals-box">
+                <div class="row"><span>Основа</span><span>{{ \App\Support\Format::money($invoice->subtotal()) }}</span></div>
+                <div class="row"><span>ДДВ</span><span>{{ \App\Support\Format::money($invoice->vatTotal()) }}</span></div>
+                <div class="row grand"><span>Вкупно</span><span>{{ \App\Support\Format::money($invoice->grandTotal()) }}</span></div>
+                <div class="row"><span>За доплата</span><span>{{ \App\Support\Format::money($invoice->balanceDue()) }}</span></div>
+            </div>
+        </div>
         {{-- Task 4 adds footnotes here --}}
     </div>
 </body>

@@ -225,4 +225,63 @@ class SalesInvoicePdfTest extends TestCase
         $this->assertStringContainsString('>Вкупно<', $html);
         $this->assertStringNotContainsString('Вкупно со ДДВ', $html);
     }
+
+    public function test_it_lists_all_company_bank_accounts_in_the_payment_box(): void
+    {
+        $company = Company::factory()->create();
+        $company->bankAccounts()->create(['bank_name' => 'Комерцијална банка', 'account_number' => 'MK07300701104789126', 'position' => 0]);
+        $company->bankAccounts()->create(['bank_name' => 'НЛБ Банка', 'account_number' => 'MK07210987654321098', 'position' => 1]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
+        $invoice->lines()->create(['description' => 'Item', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00']);
+
+        $html = view('pdf.sales-invoice', [
+            'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
+        ])->render();
+
+        $this->assertStringContainsString('Начин на плаќање', $html);
+        $this->assertStringContainsString('Комерцијална банка', $html);
+        $this->assertStringContainsString('MK07300701104789126', $html);
+        $this->assertStringContainsString('НЛБ Банка', $html);
+        $this->assertStringContainsString('MK07210987654321098', $html);
+    }
+
+    public function test_it_shows_all_four_totals_rows(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
+        $invoice->lines()->create(['description' => 'Item', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00']);
+
+        $html = view('pdf.sales-invoice', [
+            'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
+        ])->render();
+
+        $this->assertStringContainsString('Основа', $html);
+        $this->assertStringContainsString('ДДВ', $html);
+        $this->assertStringContainsString('Вкупно', $html);
+        $this->assertStringContainsString('За доплата', $html);
+        $this->assertStringContainsString(\App\Support\Format::money('1000.00'), $html); // subtotal
+        $this->assertStringContainsString(\App\Support\Format::money('180.00'), $html); // vat total
+        $this->assertStringContainsString(\App\Support\Format::money('1180.00'), $html); // grand total / balance due
+    }
+
+    public function test_pdf_controller_eager_loads_bank_accounts(): void
+    {
+        $company = Company::factory()->create();
+        $company->bankAccounts()->create(['bank_name' => 'Комерцијална банка', 'account_number' => 'MK07300701104789126', 'position' => 0]);
+        $partner = Partner::factory()->for($company)->create();
+        $entry = \App\Models\JournalEntry::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id, 'status' => 'confirmed',
+            'fiscal_year' => 2026, 'invoice_number' => 2, 'journal_entry_id' => $entry->id,
+        ]);
+        $invoice->lines()->create(['description' => 'Item', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $response = $this->actingAs($admin)->get(route('sales-invoices.pdf', [$company, $invoice]));
+
+        $response->assertOk();
+    }
 }

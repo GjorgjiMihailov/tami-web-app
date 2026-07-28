@@ -16,7 +16,7 @@ class SalesInvoicePdfController extends Controller
         abort_if($salesInvoice->company_id !== $company->id, 404);
         abort_if($salesInvoice->status !== 'confirmed', 403, 'Only confirmed invoices can be downloaded as PDF.');
 
-        $salesInvoice->load(['lines', 'partner', 'company']);
+        $salesInvoice->load(['lines', 'partner', 'company.bankAccounts']);
 
         $pdf = Pdf::loadView('pdf.sales-invoice', ['invoice' => $salesInvoice]);
 
