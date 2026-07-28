@@ -88,7 +88,34 @@
             </div>
         </div>
 
-        {{-- Task 2 adds the items table here --}}
+        <table class="items">
+            <thead>
+                <tr>
+                    <th style="width: 24px;">Р.б.</th>
+                    <th>Опис</th>
+                    <th style="width: 50px;">Кол.</th>
+                    <th style="width: 80px;">Ед. цена</th>
+                    @if ($vatRegistered)
+                        <th style="width: 100px;">ДДВ %</th>
+                    @endif
+                    <th style="width: 100px;">{{ $vatRegistered ? 'Вкупно со ДДВ' : 'Вкупно' }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($invoice->lines as $index => $line)
+                    <tr>
+                        <td>{{ $index + 1 }}</td>
+                        <td>{{ $line->description }}</td>
+                        <td>{{ $line->quantity }}</td>
+                        <td>{{ \App\Support\Format::money($line->unit_price) }}</td>
+                        @if ($vatRegistered)
+                            <td>{{ $line->vat_rate }}{{ $line->vat_treatment !== 'standard' ? ' ('.\App\Support\Format::vatTreatment($line->vat_treatment).')' : '' }}</td>
+                        @endif
+                        <td>{{ \App\Support\Format::money(bcadd($line->lineTotal(), $line->vatAmount(), 2)) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
         {{-- Task 3 adds the bottom-row (payment info + totals) here --}}
         {{-- Task 4 adds footnotes here --}}
     </div>
