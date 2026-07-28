@@ -413,4 +413,79 @@ class JournalEntryFormTest extends TestCase
 
         $this->assertDatabaseCount('journal_entries', 0);
     }
+
+    public function test_a_new_lines_date_defaults_to_the_entry_date(): void
+    {
+        $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('entryDate', '2026-05-10')
+            ->set('journalGroupId', $group->id)
+            ->assertSet('lines.0.line_date', '2026-05-10');
+    }
+
+    public function test_saving_persists_each_lines_own_date(): void
+    {
+        $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $revenue = Account::where('company_id', $company->id)->where('code', '740')->first();
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('entryDate', '2026-05-10')
+            ->set('journalGroupId', $group->id)
+            ->set('lines.0.account_id', $cash->id)
+            ->set('lines.0.debit', '1000')
+            ->set('lines.0.line_date', '2026-05-08')
+            ->set('lines.1.account_id', $revenue->id)
+            ->set('lines.1.credit', '1000')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $entry = JournalEntry::where('company_id', $company->id)->firstOrFail();
+        $this->assertSame('2026-05-08', $entry->lines()->where('account_id', $cash->id)->first()->line_date->toDateString());
+    }
+
+    public function test_a_line_dated_after_the_entry_date_is_flagged_red(): void
+    {
+        $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        $component = Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('entryDate', '2026-05-10')
+            ->set('journalGroupId', $group->id)
+            ->set('lines.0.line_date', '2026-05-15');
+
+        $component->assertSeeHtml('bg-red-50');
+    }
+
+    public function test_a_line_dated_on_or_before_the_entry_date_is_not_flagged(): void
+    {
+        $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        $component = Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('entryDate', '2026-05-10')
+            ->set('journalGroupId', $group->id)
+            ->set('lines.0.line_date', '2026-05-10');
+
+        $component->assertDontSeeHtml('bg-red-50');
+    }
 }

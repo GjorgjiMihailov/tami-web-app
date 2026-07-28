@@ -54,6 +54,7 @@
                     <th class="py-1 pr-2">Сметка</th>
                     <th class="py-1 pr-2">Партнер</th>
                     <th class="py-1 pr-2">Опис</th>
+                    <th class="py-1 pr-2">Датум</th>
                     <th class="py-1 pr-2">Должи</th>
                     <th class="py-1 pr-2">Побарува</th>
                     <th class="py-1 pr-2">Валута</th>
@@ -82,6 +83,12 @@
                             </select>
                         </td>
                         <td class="py-1 pr-2"><input type="text" wire:model="lines.{{ $index }}.description" class="border-gray-300 rounded-md text-sm w-32" @disabled(! $canEdit) /></td>
+                        @php $isLate = $line['line_date'] > $entryDate; @endphp
+                        <td class="py-1 pr-2 {{ $isLate ? 'bg-red-50' : '' }}">
+                            <input type="date" wire:model="lines.{{ $index }}.line_date"
+                                   class="rounded-md text-sm {{ $isLate ? 'border-red-400 text-red-700' : 'border-gray-300' }}"
+                                   @disabled(! $canEdit) />
+                        </td>
                         <td class="py-1 pr-2"><input type="number" step="0.01" wire:model="lines.{{ $index }}.debit" class="border-gray-300 rounded-md text-sm w-24" @disabled(! $canEdit) /></td>
                         <td class="py-1 pr-2"><input type="number" step="0.01" wire:model="lines.{{ $index }}.credit" class="border-gray-300 rounded-md text-sm w-24" @disabled(! $canEdit) /></td>
                         <td class="py-1 pr-2">

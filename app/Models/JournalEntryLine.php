@@ -11,13 +11,14 @@ class JournalEntryLine extends Model
     use HasFactory;
 
     protected $fillable = [
-        'journal_entry_id', 'account_id', 'partner_id', 'description',
+        'journal_entry_id', 'account_id', 'partner_id', 'description', 'line_date',
         'debit', 'credit', 'currency_code', 'exchange_rate', 'foreign_amount',
     ];
 
     protected function casts(): array
     {
         return [
+            'line_date' => 'date',
             'debit' => 'decimal:2',
             'credit' => 'decimal:2',
             'exchange_rate' => 'decimal:6',

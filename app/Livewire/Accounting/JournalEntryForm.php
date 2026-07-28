@@ -30,6 +30,8 @@ class JournalEntryForm extends Component
 
     public array $lines = [];
 
+    protected ?string $previousEntryDate = null;
+
     public function mount(Company $company, ?JournalEntry $journalEntry = null): void
     {
         $this->company = $company;
@@ -50,6 +52,7 @@ class JournalEntryForm extends Component
                 'account_id' => $line->account_id,
                 'partner_id' => $line->partner_id,
                 'description' => $line->description,
+                'line_date' => ($line->line_date ?? $journalEntry->entry_date)->toDateString(),
                 'debit' => (string) $line->debit,
                 'credit' => (string) $line->credit,
                 'currency_code' => $line->currency_code,
@@ -62,12 +65,30 @@ class JournalEntryForm extends Component
         }
     }
 
+    public function updatingEntryDate(): void
+    {
+        $this->previousEntryDate = $this->entryDate;
+    }
+
+    // Lines whose date still matches the entry date (i.e. never manually
+    // overridden by the user) track a changed entry date; lines the user has
+    // deliberately dated differently are left alone.
+    public function updatedEntryDate(string $value): void
+    {
+        foreach ($this->lines as $index => $line) {
+            if (($line['line_date'] ?? null) === $this->previousEntryDate) {
+                $this->lines[$index]['line_date'] = $value;
+            }
+        }
+    }
+
     protected function emptyLine(): array
     {
         return [
             'account_id' => '',
             'partner_id' => '',
             'description' => '',
+            'line_date' => $this->entryDate,
             'debit' => '0',
             'credit' => '0',
             'currency_code' => 'MKD',
@@ -126,6 +147,7 @@ class JournalEntryForm extends Component
             'lines' => 'required|array|min:2',
             'lines.*.account_id' => ['required', Rule::exists('accounts', 'id')->where('company_id', $this->company->id)],
             'lines.*.partner_id' => ['nullable', Rule::exists('partners', 'id')->where('company_id', $this->company->id)],
+            'lines.*.line_date' => 'required|date',
             'lines.*.debit' => 'required|numeric|min:0',
             'lines.*.credit' => 'required|numeric|min:0',
         ]);
@@ -187,6 +209,7 @@ class JournalEntryForm extends Component
                     'account_id' => $line['account_id'],
                     'partner_id' => $line['partner_id'] ?: null,
                     'description' => $line['description'],
+                    'line_date' => $line['line_date'],
                     'debit' => $line['debit'],
                     'credit' => $line['credit'],
                     'currency_code' => $line['currency_code'],
