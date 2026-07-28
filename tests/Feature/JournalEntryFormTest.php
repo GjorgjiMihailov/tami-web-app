@@ -658,4 +658,72 @@ class JournalEntryFormTest extends TestCase
 
         $this->assertGreaterThan($entry2->entry_number, $entry3->entry_number);
     }
+
+    public function test_next_navigates_to_the_next_entry_in_the_same_journal_group(): void
+    {
+        $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $entry1 = JournalEntry::factory()->for($company)->create(['journal_group_id' => $group->id, 'entry_date' => '2026-01-01', 'created_by' => $admin->id]);
+        $entry2 = JournalEntry::factory()->for($company)->create(['journal_group_id' => $group->id, 'entry_date' => '2026-01-02', 'created_by' => $admin->id]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry1])
+            ->call('goToNext')
+            ->assertRedirect(route('accounting.journal-entries.edit', [$company, $entry2]));
+    }
+
+    public function test_previous_navigates_to_the_previous_entry_in_the_same_journal_group(): void
+    {
+        $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $entry1 = JournalEntry::factory()->for($company)->create(['journal_group_id' => $group->id, 'entry_date' => '2026-01-01', 'created_by' => $admin->id]);
+        $entry2 = JournalEntry::factory()->for($company)->create(['journal_group_id' => $group->id, 'entry_date' => '2026-01-02', 'created_by' => $admin->id]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry2])
+            ->call('goToPrevious')
+            ->assertRedirect(route('accounting.journal-entries.edit', [$company, $entry1]));
+    }
+
+    public function test_navigator_does_not_cross_into_a_different_journal_group(): void
+    {
+        $company = Company::factory()->create();
+        $groupA = JournalGroup::factory()->for($company)->create(['code' => '10']);
+        $groupB = JournalGroup::factory()->for($company)->create(['code' => '20']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $entryInA = JournalEntry::factory()->for($company)->create(['journal_group_id' => $groupA->id, 'entry_date' => '2026-01-01', 'created_by' => $admin->id]);
+        JournalEntry::factory()->for($company)->create(['journal_group_id' => $groupB->id, 'entry_date' => '2026-01-02', 'created_by' => $admin->id]);
+
+        $this->actingAs($admin);
+
+        $before = JournalEntry::count();
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entryInA])
+            ->call('goToNext');
+
+        $this->assertSame($before, JournalEntry::count());
+    }
+
+    public function test_navigator_rolls_from_the_last_entry_of_one_fiscal_year_into_the_next_years_first_entry(): void
+    {
+        $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $lastOf2025 = JournalEntry::factory()->for($company)->create(['journal_group_id' => $group->id, 'entry_date' => '2025-12-31', 'created_by' => $admin->id]);
+        $firstOf2026 = JournalEntry::factory()->for($company)->create(['journal_group_id' => $group->id, 'entry_date' => '2026-01-01', 'created_by' => $admin->id]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $lastOf2025])
+            ->call('goToNext')
+            ->assertRedirect(route('accounting.journal-entries.edit', [$company, $firstOf2026]));
+    }
 }

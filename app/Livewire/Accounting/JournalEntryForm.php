@@ -252,12 +252,93 @@ class JournalEntryForm extends Component
         $this->redirect(route('accounting.journal-entries.index', $company));
     }
 
+    public function goToFirst(): void
+    {
+        $this->navigateTo($this->firstEntry());
+    }
+
+    public function goToPrevious(): void
+    {
+        $this->navigateTo($this->previousEntry());
+    }
+
+    public function goToNext(): void
+    {
+        $this->navigateTo($this->nextEntry());
+    }
+
+    public function goToLast(): void
+    {
+        $this->navigateTo($this->lastEntry());
+    }
+
+    private function firstEntry(): ?JournalEntry
+    {
+        if (! $this->journalEntry) {
+            return null;
+        }
+
+        return JournalEntry::where('company_id', $this->company->id)
+            ->where('journal_group_id', $this->journalEntry->journal_group_id)
+            ->orderBy('fiscal_year')->orderBy('entry_number')
+            ->first();
+    }
+
+    private function lastEntry(): ?JournalEntry
+    {
+        if (! $this->journalEntry) {
+            return null;
+        }
+
+        return JournalEntry::where('company_id', $this->company->id)
+            ->where('journal_group_id', $this->journalEntry->journal_group_id)
+            ->orderByDesc('fiscal_year')->orderByDesc('entry_number')
+            ->first();
+    }
+
+    private function previousEntry(): ?JournalEntry
+    {
+        if (! $this->journalEntry) {
+            return null;
+        }
+
+        return JournalEntry::where('company_id', $this->company->id)
+            ->where('journal_group_id', $this->journalEntry->journal_group_id)
+            ->where(fn ($q) => $q->where('fiscal_year', '<', $this->journalEntry->fiscal_year)
+                ->orWhere(fn ($q) => $q->where('fiscal_year', $this->journalEntry->fiscal_year)->where('entry_number', '<', $this->journalEntry->entry_number)))
+            ->orderByDesc('fiscal_year')->orderByDesc('entry_number')
+            ->first();
+    }
+
+    private function nextEntry(): ?JournalEntry
+    {
+        if (! $this->journalEntry) {
+            return null;
+        }
+
+        return JournalEntry::where('company_id', $this->company->id)
+            ->where('journal_group_id', $this->journalEntry->journal_group_id)
+            ->where(fn ($q) => $q->where('fiscal_year', '>', $this->journalEntry->fiscal_year)
+                ->orWhere(fn ($q) => $q->where('fiscal_year', $this->journalEntry->fiscal_year)->where('entry_number', '>', $this->journalEntry->entry_number)))
+            ->orderBy('fiscal_year')->orderBy('entry_number')
+            ->first();
+    }
+
+    private function navigateTo(?JournalEntry $target): void
+    {
+        if ($target) {
+            $this->redirect(route('accounting.journal-entries.edit', [$this->company, $target]));
+        }
+    }
+
     public function render()
     {
         return view('livewire.accounting.journal-entry-form', [
             'accounts' => Account::where('company_id', $this->company->id)->where('is_active', true)->orderBy('code')->get(),
             'partners' => Partner::where('company_id', $this->company->id)->orderBy('name')->get(),
             'groups' => JournalGroup::where('company_id', $this->company->id)->orderBy('sort_order')->orderBy('code')->get(),
+            'hasPrevious' => $this->previousEntry() !== null,
+            'hasNext' => $this->nextEntry() !== null,
         ]);
     }
 }

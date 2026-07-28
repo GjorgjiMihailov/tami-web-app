@@ -6,9 +6,20 @@
     $canEdit = $journalEntry ? auth()->user()->can('update', $journalEntry) : true;
 @endphp
 <div>
-    <h1 class="text-2xl font-bold text-gray-800 mb-4">
-        {{ $journalEntry ? 'Измени налог '.$journalEntry->displayNumber() : 'Нов налог' }} — {{ $company->name }}
-    </h1>
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold text-gray-800">
+            {{ $journalEntry ? 'Измени налог '.$journalEntry->displayNumber() : 'Нов налог' }} — {{ $company->name }}
+        </h1>
+
+        @if ($journalEntry)
+            <div class="flex gap-1 text-sm">
+                <button type="button" wire:click="goToFirst" @disabled(! $hasPrevious) class="px-2 py-1 border rounded-md disabled:opacity-30">⏮</button>
+                <button type="button" wire:click="goToPrevious" @disabled(! $hasPrevious) class="px-2 py-1 border rounded-md disabled:opacity-30">◁</button>
+                <button type="button" wire:click="goToNext" @disabled(! $hasNext) class="px-2 py-1 border rounded-md disabled:opacity-30">▷</button>
+                <button type="button" wire:click="goToLast" @disabled(! $hasNext) class="px-2 py-1 border rounded-md disabled:opacity-30">⏭</button>
+            </div>
+        @endif
+    </div>
 
     @unless ($canEdit)
         <p class="text-sm text-gray-500 mb-4">Имате пристап само за преглед на овој налог.</p>
