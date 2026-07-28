@@ -698,17 +698,21 @@ class JournalEntryFormTest extends TestCase
         $groupB = JournalGroup::factory()->for($company)->create(['code' => '20']);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
+        // entryInA is the ONLY entry in group A, so within-group there is no "next" entry.
+        // The group B entry is dated into a LATER fiscal year so its fiscal_year (2027) is
+        // strictly greater than entryInA's (2026) regardless of entry_number (which is itself
+        // scoped per journal_group_id, so a same-year group B entry would tie at entry_number
+        // 1 and not actually exercise the fiscal_year/entry_number ordering). This guarantees
+        // nextEntry() would incorrectly surface the group B entry if the journal_group_id
+        // scoping were removed, giving this test real discriminating power.
         $entryInA = JournalEntry::factory()->for($company)->create(['journal_group_id' => $groupA->id, 'entry_date' => '2026-01-01', 'created_by' => $admin->id]);
-        JournalEntry::factory()->for($company)->create(['journal_group_id' => $groupB->id, 'entry_date' => '2026-01-02', 'created_by' => $admin->id]);
+        JournalEntry::factory()->for($company)->create(['journal_group_id' => $groupB->id, 'entry_date' => '2027-01-01', 'created_by' => $admin->id]);
 
         $this->actingAs($admin);
 
-        $before = JournalEntry::count();
-
         Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entryInA])
-            ->call('goToNext');
-
-        $this->assertSame($before, JournalEntry::count());
+            ->call('goToNext')
+            ->assertNoRedirect();
     }
 
     public function test_navigator_rolls_from_the_last_entry_of_one_fiscal_year_into_the_next_years_first_entry(): void
