@@ -41,30 +41,7 @@
         <ul class="divide-y divide-gray-200">
             @foreach ($companies as $company)
                 <li class="py-3">
-                    <div class="flex items-center justify-between">
-                        <span class="font-medium">{{ $company->name }}</span>
-                        @can('update', $company)
-                            @if ($editingCompanyId !== $company->id)
-                                <button type="button" wire:click="startEdit({{ $company->id }})" class="text-brand hover:underline text-sm">Измени поставки</button>
-                            @endif
-                        @endcan
-                    </div>
-
-                    @if ($editingCompanyId === $company->id)
-                        <div class="mt-2 mb-3 p-3 bg-gray-50 rounded-md">
-                            <form wire:submit="saveEdit" class="flex flex-wrap gap-3 items-end">
-                                <div>
-                                    <x-input-label for="editBankAccount" value="Трансакциска сметка (IBAN)" />
-                                    <x-text-input id="editBankAccount" wire:model="editBankAccount" class="w-64" />
-                                </div>
-                                <div class="flex items-center gap-2 pb-2">
-                                    <input type="checkbox" id="editIsVatRegistered" wire:model="editIsVatRegistered">
-                                    <label for="editIsVatRegistered" class="text-sm">Во ДДВ систем</label>
-                                </div>
-                                <x-primary-button type="submit">Зачувај</x-primary-button>
-                            </form>
-                        </div>
-                    @endif
+                    <span class="font-medium">{{ $company->name }}</span>
                 </li>
             @endforeach
         </ul>
