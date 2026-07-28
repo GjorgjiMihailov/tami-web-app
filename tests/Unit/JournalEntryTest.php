@@ -91,6 +91,25 @@ class JournalEntryTest extends TestCase
         $this->assertSame('10-'.str_pad((string) $entry->entry_number, 4, '0', STR_PAD_LEFT), $entry->displayNumber());
     }
 
+    public function test_display_number_falls_back_to_plain_number_when_no_journal_group_is_set(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->create();
+
+        // NOTE: uses JournalEntry::create() directly (not JournalEntry::factory()->create())
+        // because the factory's afterMaking hook auto-assigns a journal group whenever
+        // journal_group_id is falsy, which would defeat this test's null case.
+        $entry = JournalEntry::create([
+            'company_id' => $company->id,
+            'journal_group_id' => null,
+            'entry_date' => '2026-01-01',
+            'description' => 'No group entry',
+            'created_by' => $user->id,
+        ]);
+
+        $this->assertSame(str_pad((string) $entry->entry_number, 4, '0', STR_PAD_LEFT), $entry->displayNumber());
+    }
+
     public function test_is_balanced_returns_true_when_debits_equal_credits(): void
     {
         $company = Company::factory()->create();

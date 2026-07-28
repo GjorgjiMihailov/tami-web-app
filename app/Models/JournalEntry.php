@@ -49,6 +49,10 @@ class JournalEntry extends Model
 
     public function displayNumber(): string
     {
+        if (! $this->journalGroup) {
+            return sprintf('%04d', $this->entry_number);
+        }
+
         return sprintf('%s-%04d', $this->journalGroup->code, $this->entry_number);
     }
 
