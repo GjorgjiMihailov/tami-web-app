@@ -167,4 +167,119 @@ class CompanyDashboardTest extends TestCase
             ->call('save')
             ->assertForbidden();
     }
+
+    public function test_starting_edit_seeds_one_blank_bank_account_row_when_none_exist(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(CompanyDashboard::class, ['company' => $company])
+            ->call('startEdit')
+            ->assertSet('bankAccounts', [['bank_name' => '', 'account_number' => '']]);
+    }
+
+    public function test_filling_the_last_bank_account_row_reveals_a_new_blank_row(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $component = Livewire::test(CompanyDashboard::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('bankAccounts.0.account_number', 'MK07300701104789126');
+
+        $this->assertCount(2, $component->get('bankAccounts'));
+    }
+
+    public function test_bank_account_rows_are_capped_at_five(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $component = Livewire::test(CompanyDashboard::class, ['company' => $company])
+            ->call('startEdit');
+
+        foreach (range(0, 4) as $index) {
+            $component->set("bankAccounts.$index.account_number", "MK0{$index}00000000000000");
+        }
+
+        $this->assertCount(5, $component->get('bankAccounts'));
+    }
+
+    public function test_admin_can_save_multiple_bank_accounts(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(CompanyDashboard::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('bankAccounts.0.bank_name', 'Комерцијална банка')
+            ->set('bankAccounts.0.account_number', 'MK07300701104789126')
+            ->set('bankAccounts.1.bank_name', 'НЛБ Банка')
+            ->set('bankAccounts.1.account_number', 'MK07200002785123453')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('company_bank_accounts', [
+            'company_id' => $company->id,
+            'bank_name' => 'Комерцијална банка',
+            'account_number' => 'MK07300701104789126',
+            'position' => 0,
+        ]);
+        $this->assertDatabaseHas('company_bank_accounts', [
+            'company_id' => $company->id,
+            'bank_name' => 'НЛБ Банка',
+            'account_number' => 'MK07200002785123453',
+            'position' => 1,
+        ]);
+        $this->assertDatabaseCount('company_bank_accounts', 2);
+    }
+
+    public function test_saving_replaces_the_previous_set_of_bank_accounts(): void
+    {
+        $company = Company::factory()->create();
+        $company->bankAccounts()->create(['bank_name' => 'Стара банка', 'account_number' => 'MK00OLD00000000000', 'position' => 0]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(CompanyDashboard::class, ['company' => $company])
+            ->call('startEdit')
+            ->assertSet('bankAccounts.0.account_number', 'MK00OLD00000000000')
+            ->set('bankAccounts.0.bank_name', 'Нова банка')
+            ->set('bankAccounts.0.account_number', 'MK00NEW00000000000')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseMissing('company_bank_accounts', ['account_number' => 'MK00OLD00000000000']);
+        $this->assertDatabaseHas('company_bank_accounts', [
+            'company_id' => $company->id,
+            'bank_name' => 'Нова банка',
+            'account_number' => 'MK00NEW00000000000',
+        ]);
+    }
+
+    public function test_a_blank_trailing_row_is_not_saved(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(CompanyDashboard::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('bankAccounts.0.bank_name', 'Комерцијална банка')
+            ->set('bankAccounts.0.account_number', 'MK07300701104789126')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseCount('company_bank_accounts', 1);
+    }
 }

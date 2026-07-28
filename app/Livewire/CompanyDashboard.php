@@ -42,6 +42,8 @@ class CompanyDashboard extends Component
 
     public bool $editIsVatRegistered = true;
 
+    public array $bankAccounts = [];
+
     public function mount(Company $company): void
     {
         Gate::authorize('view', $company);
@@ -67,12 +69,34 @@ class CompanyDashboard extends Component
         $this->editDirectorEmail = (string) $this->company->director_email;
         $this->editIsVatRegistered = $this->company->is_vat_registered;
 
+        $existing = $this->company->bankAccounts()->get();
+        $this->bankAccounts = $existing->isEmpty()
+            ? [['bank_name' => '', 'account_number' => '']]
+            : $existing->map(fn ($row) => [
+                'bank_name' => (string) $row->bank_name,
+                'account_number' => (string) $row->account_number,
+            ])->all();
+
         $this->editing = true;
     }
 
     public function cancelEdit(): void
     {
         $this->editing = false;
+    }
+
+    public function updated(string $name, $value): void
+    {
+        if (! str_ends_with($name, '.account_number')) {
+            return;
+        }
+
+        $lastIndex = array_key_last($this->bankAccounts);
+        $currentIndex = (int) explode('.', $name)[1];
+
+        if ($currentIndex === $lastIndex && trim((string) $value) !== '' && count($this->bankAccounts) < 5) {
+            $this->bankAccounts[] = ['bank_name' => '', 'account_number' => ''];
+        }
     }
 
     public function save(): void
@@ -94,6 +118,9 @@ class CompanyDashboard extends Component
             'editDirectorPhone' => 'nullable|string|max:255',
             'editDirectorEmail' => 'nullable|email|max:255',
             'editIsVatRegistered' => 'boolean',
+            'bankAccounts' => 'array|max:5',
+            'bankAccounts.*.bank_name' => 'nullable|string|max:255',
+            'bankAccounts.*.account_number' => 'nullable|string|max:255',
         ]);
 
         $this->company->update([
@@ -112,6 +139,20 @@ class CompanyDashboard extends Component
             'director_email' => $validated['editDirectorEmail'] ?: null,
             'is_vat_registered' => $validated['editIsVatRegistered'],
         ]);
+
+        $keptRows = collect($validated['bankAccounts'])
+            ->filter(fn ($row) => trim((string) ($row['bank_name'] ?? '')) !== '' || trim((string) ($row['account_number'] ?? '')) !== '')
+            ->values()
+            ->take(5);
+
+        $this->company->bankAccounts()->delete();
+        foreach ($keptRows as $index => $row) {
+            $this->company->bankAccounts()->create([
+                'bank_name' => $row['bank_name'] ?: null,
+                'account_number' => $row['account_number'] ?: null,
+                'position' => $index,
+            ]);
+        }
 
         $this->editing = false;
     }

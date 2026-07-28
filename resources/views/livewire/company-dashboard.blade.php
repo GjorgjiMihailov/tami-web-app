@@ -76,6 +76,24 @@
                         </div>
                     </div>
 
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Трансакциски сметки (до 5)</h3>
+                        <div class="space-y-2">
+                            @foreach ($bankAccounts as $index => $row)
+                                <div class="flex flex-wrap gap-3 items-end">
+                                    <div>
+                                        <x-input-label for="bank_name_{{ $index }}" value="Банка" />
+                                        <x-text-input id="bank_name_{{ $index }}" wire:model="bankAccounts.{{ $index }}.bank_name" class="w-48" />
+                                    </div>
+                                    <div>
+                                        <x-input-label for="account_number_{{ $index }}" value="Сметка (IBAN)" />
+                                        <x-text-input id="account_number_{{ $index }}" wire:model.live.blur="bankAccounts.{{ $index }}.account_number" class="w-64" />
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+
                     <div class="flex gap-3">
                         <x-primary-button type="submit">Зачувај</x-primary-button>
                         <button type="button" wire:click="cancelEdit" class="text-sm text-gray-500 hover:underline">Откажи</button>
