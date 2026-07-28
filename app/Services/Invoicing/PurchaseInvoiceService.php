@@ -7,6 +7,7 @@ use App\Exceptions\InvalidInvoiceStateException;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\JournalEntry;
+use App\Models\JournalGroup;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoicePayment;
 use App\Services\Inventory\StockMovementService;
@@ -89,6 +90,7 @@ class PurchaseInvoiceService
 
             $entry = JournalEntry::create([
                 'company_id' => $invoice->company_id,
+                'journal_group_id' => $this->systemJournalGroup($invoice->company)->id,
                 'entry_date' => $invoice->invoice_date,
                 'description' => $label,
                 'created_by' => $userId,
@@ -170,6 +172,7 @@ class PurchaseInvoiceService
 
             $reversal = JournalEntry::create([
                 'company_id' => $invoice->company_id,
+                'journal_group_id' => $this->systemJournalGroup($invoice->company)->id,
                 'entry_date' => now()->toDateString(),
                 'description' => "Reversal of purchase bill {$invoice->partner->name} #{$invoice->supplier_invoice_number}",
                 'created_by' => $userId,
@@ -216,6 +219,7 @@ class PurchaseInvoiceService
 
             $entry = JournalEntry::create([
                 'company_id' => $invoice->company_id,
+                'journal_group_id' => $this->systemJournalGroup($invoice->company)->id,
                 'entry_date' => $paymentDate,
                 'description' => $label,
                 'created_by' => $userId,
@@ -244,5 +248,13 @@ class PurchaseInvoiceService
     private function account(Company $company, string $code): Account
     {
         return Account::where('company_id', $company->id)->where('code', $code)->firstOrFail();
+    }
+
+    private function systemJournalGroup(Company $company): JournalGroup
+    {
+        return JournalGroup::firstOrCreate(
+            ['company_id' => $company->id, 'code' => '99'],
+            ['name' => 'Автоматски (фактури)', 'sort_order' => 99]
+        );
     }
 }

@@ -295,4 +295,43 @@ class SalesInvoiceServiceTest extends TestCase
 
         $this->service->recordPayment($invoice, '10.00', '2026-03-10', 'bank', $user->id);
     }
+
+    public function test_confirming_an_invoice_posts_to_the_system_journal_group(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $user = User::factory()->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['description' => 'Consulting', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00']);
+
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+
+        $entry = $confirmed->journalEntry()->with('journalGroup')->first();
+        $this->assertNotNull($entry->journalGroup);
+        $this->assertSame('99', $entry->journalGroup->code);
+        $this->assertSame('Автоматски (фактури)', $entry->journalGroup->name);
+    }
+
+    public function test_confirming_two_invoices_for_the_same_company_reuses_the_same_system_group(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $user = User::factory()->create();
+
+        $first = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $first->lines()->create(['description' => 'A', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00']);
+        $second = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-02']);
+        $second->lines()->create(['description' => 'B', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00']);
+
+        $confirmedFirst = $this->service->confirm($first->fresh(), $user->id);
+        $confirmedSecond = $this->service->confirm($second->fresh(), $user->id);
+
+        $this->assertSame(
+            $confirmedFirst->journalEntry->journal_group_id,
+            $confirmedSecond->journalEntry->journal_group_id
+        );
+        $this->assertDatabaseCount('journal_groups', 1);
+    }
 }
