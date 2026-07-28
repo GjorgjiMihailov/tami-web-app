@@ -20,13 +20,15 @@ for the issuer/recipient/payment sections, matching the app's existing
 Manrope/rounded-card visual language (established in the 2026-07-23/24
 visual redesign).
 
-**Technical constraint:** dompdf's CSS support does not include flexbox.
-The side-by-side block layout (issuer/recipient blocks, totals+payment
-boxes) must be implemented with CSS tables or floated/inline-block divs,
-not `display: flex`. dompdf does support `border-radius` and background
-colors on block elements, so the rounded-card look is achievable — the
-implementation just won't literally reuse flex-based markup from any HTML
-mockup used during brainstorming.
+**Technical note:** the installed `dompdf/dompdf` is v3.1.6, which does
+support `display: flex` (the existing template already relies on it for
+`.header`, live in production), so the side-by-side block layout
+(issuer/recipient, totals+payment) can use flexbox directly. The **line
+items table** still needs to be a real `<table><thead>…</thead><tbody>`
+structure regardless — that's what makes dompdf repeat the column header
+and flow rows correctly across a page break, which plain flex rows would
+not do. dompdf also supports `border-radius` and background colors on
+block elements, so the rounded-card look is achievable throughout.
 
 ## Header
 
