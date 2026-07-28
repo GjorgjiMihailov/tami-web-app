@@ -33,7 +33,7 @@ class JournalEntryIndexTest extends TestCase
 
         Livewire::test(JournalEntryIndex::class, ['company' => $company])
             ->assertSee('Opening balances')
-            ->assertSee((string) $entry->entry_number);
+            ->assertSee($entry->displayNumber());
     }
 
     public function test_client_can_view_the_list_but_sees_no_new_entry_link(): void

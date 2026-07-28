@@ -13,7 +13,7 @@ class JournalEntry extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['company_id', 'entry_date', 'description', 'created_by'];
+    protected $fillable = ['company_id', 'journal_group_id', 'entry_date', 'description', 'created_by'];
 
     protected function casts(): array
     {
@@ -29,6 +29,7 @@ class JournalEntry extends Model
 
             $max = static::where('company_id', $entry->company_id)
                 ->where('fiscal_year', $entry->fiscal_year)
+                ->where('journal_group_id', $entry->journal_group_id)
                 ->lockForUpdate()
                 ->max('entry_number');
 
@@ -39,6 +40,16 @@ class JournalEntry extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function journalGroup(): BelongsTo
+    {
+        return $this->belongsTo(JournalGroup::class);
+    }
+
+    public function displayNumber(): string
+    {
+        return sprintf('%s-%04d', $this->journalGroup->code, $this->entry_number);
     }
 
     public function lines(): HasMany

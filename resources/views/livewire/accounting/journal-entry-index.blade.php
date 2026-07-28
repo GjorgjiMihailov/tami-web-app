@@ -21,7 +21,7 @@
         <tbody class="divide-y divide-gray-100">
             @forelse ($entries as $entry)
                 <tr class="text-sm">
-                    <td class="py-2 px-4 font-mono">{{ $entry->entry_number }}</td>
+                    <td class="py-2 px-4 font-mono">{{ $entry->displayNumber() }}</td>
                     <td class="py-2 px-4">{{ \App\Support\Format::date($entry->entry_date) }}</td>
                     <td class="py-2 px-4">{{ $entry->description }}</td>
                     <td class="py-2 px-4">

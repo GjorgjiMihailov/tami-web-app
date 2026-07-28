@@ -25,7 +25,7 @@ class JournalEntryIndex extends Component
     public function render()
     {
         $entries = JournalEntry::where('company_id', $this->company->id)
-            ->with('creator')
+            ->with(['creator', 'journalGroup'])
             ->orderByDesc('entry_date')
             ->orderByDesc('entry_number')
             ->paginate(25);
