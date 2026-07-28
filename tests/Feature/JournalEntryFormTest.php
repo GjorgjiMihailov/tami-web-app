@@ -6,6 +6,7 @@ use App\Livewire\Accounting\JournalEntryForm;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\JournalEntry;
+use App\Models\JournalGroup;
 use App\Models\Partner;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,6 +29,7 @@ class JournalEntryFormTest extends TestCase
     public function test_a_balanced_entry_saves_and_posts_immediately(): void
     {
         $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
@@ -37,6 +39,7 @@ class JournalEntryFormTest extends TestCase
 
         Livewire::test(JournalEntryForm::class, ['company' => $company])
             ->set('entryDate', '2026-03-15')
+            ->set('journalGroupId', $group->id)
             ->set('description', 'Cash sale')
             ->set('lines.0.account_id', $cash->id)
             ->set('lines.0.debit', '1000')
@@ -54,6 +57,30 @@ class JournalEntryFormTest extends TestCase
     public function test_an_unbalanced_entry_is_rejected(): void
     {
         $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $revenue = Account::where('company_id', $company->id)->where('code', '740')->first();
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('entryDate', '2026-03-15')
+            ->set('journalGroupId', $group->id)
+            ->set('lines.0.account_id', $cash->id)
+            ->set('lines.0.debit', '1000')
+            ->set('lines.1.account_id', $revenue->id)
+            ->set('lines.1.credit', '900')
+            ->call('save')
+            ->assertHasErrors('lines');
+
+        $this->assertDatabaseCount('journal_entries', 0);
+    }
+
+    public function test_creating_an_entry_requires_a_journal_group(): void
+    {
+        $company = Company::factory()->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
@@ -66,11 +93,91 @@ class JournalEntryFormTest extends TestCase
             ->set('lines.0.account_id', $cash->id)
             ->set('lines.0.debit', '1000')
             ->set('lines.1.account_id', $revenue->id)
-            ->set('lines.1.credit', '900')
+            ->set('lines.1.credit', '1000')
             ->call('save')
-            ->assertHasErrors('lines');
+            ->assertHasErrors('journalGroupId');
 
         $this->assertDatabaseCount('journal_entries', 0);
+    }
+
+    public function test_creating_an_entry_assigns_the_selected_group_and_numbers_within_it(): void
+    {
+        $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create(['code' => '10']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $revenue = Account::where('company_id', $company->id)->where('code', '740')->first();
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('entryDate', '2026-03-15')
+            ->set('journalGroupId', $group->id)
+            ->set('lines.0.account_id', $cash->id)
+            ->set('lines.0.debit', '1000')
+            ->set('lines.1.account_id', $revenue->id)
+            ->set('lines.1.credit', '1000')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $entry = JournalEntry::where('company_id', $company->id)->firstOrFail();
+        $this->assertSame($group->id, $entry->journal_group_id);
+        $this->assertSame(1, $entry->entry_number);
+    }
+
+    public function test_numbering_is_independent_across_two_journal_groups(): void
+    {
+        $company = Company::factory()->create();
+        $groupA = JournalGroup::factory()->for($company)->create(['code' => '10']);
+        $groupB = JournalGroup::factory()->for($company)->create(['code' => '20']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $revenue = Account::where('company_id', $company->id)->where('code', '740')->first();
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('entryDate', '2026-03-15')->set('journalGroupId', $groupA->id)
+            ->set('lines.0.account_id', $cash->id)->set('lines.0.debit', '1000')
+            ->set('lines.1.account_id', $revenue->id)->set('lines.1.credit', '1000')
+            ->call('save');
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('entryDate', '2026-03-16')->set('journalGroupId', $groupB->id)
+            ->set('lines.0.account_id', $cash->id)->set('lines.0.debit', '500')
+            ->set('lines.1.account_id', $revenue->id)->set('lines.1.credit', '500')
+            ->call('save');
+
+        $entryInB = JournalEntry::where('journal_group_id', $groupB->id)->firstOrFail();
+        $this->assertSame(1, $entryInB->entry_number);
+    }
+
+    public function test_the_journal_group_cannot_be_changed_when_editing_an_existing_entry(): void
+    {
+        $company = Company::factory()->create();
+        $originalGroup = JournalGroup::factory()->for($company)->create(['code' => '10']);
+        $otherGroup = JournalGroup::factory()->for($company)->create(['code' => '20']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $revenue = Account::where('company_id', $company->id)->where('code', '740')->first();
+        $entry = JournalEntry::factory()->for($company)->create(['journal_group_id' => $originalGroup->id, 'created_by' => $admin->id]);
+        $entry->lines()->create(['account_id' => $cash->id, 'debit' => 500, 'credit' => 0]);
+        $entry->lines()->create(['account_id' => $revenue->id, 'debit' => 0, 'credit' => 500]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
+            ->set('journalGroupId', $otherGroup->id)
+            ->set('lines.0.debit', '750')
+            ->set('lines.1.credit', '750')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $entry->refresh();
+        $this->assertSame($originalGroup->id, $entry->journal_group_id);
     }
 
     public function test_editing_an_existing_entry_replaces_its_lines(): void
@@ -129,7 +236,7 @@ class JournalEntryFormTest extends TestCase
 
         Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
             ->assertSuccessful()
-            ->assertSee('Измени налог #'.$entry->entry_number)
+            ->assertSee('Измени налог '.$entry->displayNumber())
             ->assertSet('description', 'Rent payment for July')
             ->assertSet('lines.0.account_id', $cash->id)
             ->assertSet('lines.0.debit', '500.00');
@@ -185,6 +292,7 @@ class JournalEntryFormTest extends TestCase
     public function test_an_account_belonging_to_a_different_company_is_rejected(): void
     {
         $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
         $otherCompany = Company::factory()->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
@@ -195,6 +303,7 @@ class JournalEntryFormTest extends TestCase
 
         Livewire::test(JournalEntryForm::class, ['company' => $company])
             ->set('entryDate', '2026-03-15')
+            ->set('journalGroupId', $group->id)
             ->set('lines.0.account_id', $cash->id)
             ->set('lines.0.debit', '1000')
             ->set('lines.1.account_id', $foreignRevenue->id)
@@ -208,6 +317,7 @@ class JournalEntryFormTest extends TestCase
     public function test_a_partner_belonging_to_a_different_company_is_rejected(): void
     {
         $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
         $otherCompany = Company::factory()->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
@@ -219,6 +329,7 @@ class JournalEntryFormTest extends TestCase
 
         Livewire::test(JournalEntryForm::class, ['company' => $company])
             ->set('entryDate', '2026-03-15')
+            ->set('journalGroupId', $group->id)
             ->set('lines.0.account_id', $cash->id)
             ->set('lines.0.debit', '1000')
             ->set('lines.0.partner_id', $foreignPartner->id)
@@ -253,6 +364,7 @@ class JournalEntryFormTest extends TestCase
         ]);
 
         $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
@@ -260,10 +372,9 @@ class JournalEntryFormTest extends TestCase
 
         $this->actingAs($admin);
 
-        // Note: fetchRate() is deliberately never called here — the user set
-        // currency + foreign_amount but never clicked "NBRM".
         Livewire::test(JournalEntryForm::class, ['company' => $company])
             ->set('entryDate', '2026-07-01')
+            ->set('journalGroupId', $group->id)
             ->set('lines.0.account_id', $cash->id)
             ->set('lines.0.currency_code', 'EUR')
             ->set('lines.0.foreign_amount', '100')
@@ -281,6 +392,7 @@ class JournalEntryFormTest extends TestCase
     public function test_a_line_with_both_debit_and_credit_nonzero_is_rejected(): void
     {
         $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
@@ -290,6 +402,7 @@ class JournalEntryFormTest extends TestCase
 
         Livewire::test(JournalEntryForm::class, ['company' => $company])
             ->set('entryDate', '2026-03-15')
+            ->set('journalGroupId', $group->id)
             ->set('lines.0.account_id', $cash->id)
             ->set('lines.0.debit', '1000')
             ->set('lines.0.credit', '1000')

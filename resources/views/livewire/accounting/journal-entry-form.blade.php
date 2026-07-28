@@ -7,7 +7,7 @@
 @endphp
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-4">
-        {{ $journalEntry ? 'Измени налог #'.$journalEntry->entry_number : 'Нов налог' }} — {{ $company->name }}
+        {{ $journalEntry ? 'Измени налог '.$journalEntry->displayNumber() : 'Нов налог' }} — {{ $company->name }}
     </h1>
 
     @unless ($canEdit)
@@ -16,7 +16,25 @@
 
     <x-card>
     <form wire:submit="save">
-        <div class="grid grid-cols-2 gap-4 mb-4">
+        <div class="grid grid-cols-3 gap-4 mb-4">
+            <div>
+                <x-input-label for="journalGroupId" value="Журнал" />
+                @if ($journalEntry)
+                    <div class="text-sm text-gray-700 py-2">{{ $journalEntry->journalGroup->code }} — {{ $journalEntry->journalGroup->name }}</div>
+                @else
+                    <select id="journalGroupId" wire:model="journalGroupId" class="border-gray-300 rounded-md text-sm w-full">
+                        <option value="">—</option>
+                        @foreach ($groups->groupBy(fn ($g) => substr($g->code, 0, 1)) as $digit => $groupsInDigit)
+                            <optgroup label="{{ $digit }}">
+                                @foreach ($groupsInDigit as $g)
+                                    <option value="{{ $g->id }}">{{ $g->code }} — {{ $g->name }}</option>
+                                @endforeach
+                            </optgroup>
+                        @endforeach
+                    </select>
+                    @error('journalGroupId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                @endif
+            </div>
             <div>
                 <x-input-label for="entryDate" value="Датум" />
                 <input type="date" id="entryDate" wire:model="entryDate" class="border-gray-300 rounded-md shadow-sm w-full" @disabled(! $canEdit) />

@@ -5,6 +5,7 @@ namespace App\Livewire\Accounting;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\JournalEntry;
+use App\Models\JournalGroup;
 use App\Models\Partner;
 use App\Services\ExchangeRateService;
 use Illuminate\Support\Carbon;
@@ -20,6 +21,8 @@ class JournalEntryForm extends Component
     public Company $company;
 
     public ?JournalEntry $journalEntry = null;
+
+    public string $journalGroupId = '';
 
     public string $entryDate = '';
 
@@ -40,6 +43,7 @@ class JournalEntryForm extends Component
         $this->journalEntry = $journalEntry;
 
         if ($journalEntry) {
+            $this->journalGroupId = (string) $journalEntry->journal_group_id;
             $this->entryDate = $journalEntry->entry_date->toDateString();
             $this->description = (string) $journalEntry->description;
             $this->lines = $journalEntry->lines->map(fn ($line) => [
@@ -118,6 +122,7 @@ class JournalEntryForm extends Component
 
         $this->validate([
             'entryDate' => 'required|date',
+            'journalGroupId' => [$this->journalEntry ? 'nullable' : 'required', Rule::exists('journal_groups', 'id')->where('company_id', $this->company->id)],
             'lines' => 'required|array|min:2',
             'lines.*.account_id' => ['required', Rule::exists('accounts', 'id')->where('company_id', $this->company->id)],
             'lines.*.partner_id' => ['nullable', Rule::exists('partners', 'id')->where('company_id', $this->company->id)],
@@ -171,6 +176,7 @@ class JournalEntryForm extends Component
 
             if (! $entry->exists) {
                 $entry->created_by = auth()->id();
+                $entry->journal_group_id = $this->journalGroupId;
             }
 
             $entry->save();
@@ -200,6 +206,7 @@ class JournalEntryForm extends Component
         return view('livewire.accounting.journal-entry-form', [
             'accounts' => Account::where('company_id', $this->company->id)->where('is_active', true)->orderBy('code')->get(),
             'partners' => Partner::where('company_id', $this->company->id)->orderBy('name')->get(),
+            'groups' => JournalGroup::where('company_id', $this->company->id)->orderBy('sort_order')->orderBy('code')->get(),
         ]);
     }
 }
