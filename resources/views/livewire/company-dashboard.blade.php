@@ -94,6 +94,38 @@
                         </div>
                     </div>
 
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Лого</h3>
+                        <div class="flex flex-wrap gap-4 items-start">
+                            <div>
+                                @if ($company->logo_path)
+                                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($company->logo_path) }}" alt="Лого" class="h-16 mb-2">
+                                @endif
+                                <input type="file" wire:model="newLogo" accept="image/*" class="text-sm">
+                                @error('newLogo') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <x-input-label value="Позиција на логото на фактура" />
+                                <div class="flex gap-4 text-sm mt-1">
+                                    <label class="flex items-center gap-1">
+                                        <input type="radio" wire:model="editLogoPosition" value="left"> Лево
+                                    </label>
+                                    <label class="flex items-center gap-1">
+                                        <input type="radio" wire:model="editLogoPosition" value="center"> Средина
+                                    </label>
+                                    <label class="flex items-center gap-1">
+                                        <input type="radio" wire:model="editLogoPosition" value="right"> Десно
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <x-input-label for="editInvoiceFooterNote" value="Забелешка за фуснота на фактура" />
+                        <textarea id="editInvoiceFooterNote" wire:model="editInvoiceFooterNote" rows="3" class="border-gray-300 rounded-md w-full text-sm"></textarea>
+                    </div>
+
                     <div class="flex gap-3">
                         <x-primary-button type="submit">Зачувај</x-primary-button>
                         <button type="button" wire:click="cancelEdit" class="text-sm text-gray-500 hover:underline">Откажи</button>

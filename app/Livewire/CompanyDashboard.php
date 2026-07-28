@@ -4,12 +4,16 @@ namespace App\Livewire;
 
 use App\Models\Company;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('layouts.app')]
 class CompanyDashboard extends Component
 {
+    use WithFileUploads;
+
     public Company $company;
 
     public bool $editing = false;
@@ -44,6 +48,12 @@ class CompanyDashboard extends Component
 
     public array $bankAccounts = [];
 
+    public string $editLogoPosition = 'left';
+
+    public string $editInvoiceFooterNote = '';
+
+    public $newLogo = null;
+
     public function mount(Company $company): void
     {
         Gate::authorize('view', $company);
@@ -76,6 +86,10 @@ class CompanyDashboard extends Component
                 'bank_name' => (string) $row->bank_name,
                 'account_number' => (string) $row->account_number,
             ])->all();
+
+        $this->editLogoPosition = $this->company->logo_position ?: 'left';
+        $this->editInvoiceFooterNote = (string) $this->company->invoice_footer_note;
+        $this->newLogo = null;
 
         $this->editing = true;
     }
@@ -121,6 +135,9 @@ class CompanyDashboard extends Component
             'bankAccounts' => 'array|max:5',
             'bankAccounts.*.bank_name' => 'nullable|string|max:255',
             'bankAccounts.*.account_number' => 'nullable|string|max:255',
+            'editLogoPosition' => ['required', Rule::in(['left', 'center', 'right'])],
+            'editInvoiceFooterNote' => 'nullable|string|max:2000',
+            'newLogo' => 'nullable|image|max:25600',
         ]);
 
         $this->company->update([
@@ -138,6 +155,8 @@ class CompanyDashboard extends Component
             'director_phone' => $validated['editDirectorPhone'] ?: null,
             'director_email' => $validated['editDirectorEmail'] ?: null,
             'is_vat_registered' => $validated['editIsVatRegistered'],
+            'logo_position' => $validated['editLogoPosition'],
+            'invoice_footer_note' => $validated['editInvoiceFooterNote'] ?: null,
         ]);
 
         $keptRows = collect($validated['bankAccounts'])
@@ -152,6 +171,12 @@ class CompanyDashboard extends Component
                 'account_number' => $row['account_number'] ?: null,
                 'position' => $index,
             ]);
+        }
+
+        if ($this->newLogo) {
+            $path = $this->newLogo->store('logos/'.$this->company->id, 'public');
+            $this->company->update(['logo_path' => $path]);
+            $this->newLogo = null;
         }
 
         $this->editing = false;

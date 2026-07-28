@@ -6,6 +6,8 @@ use App\Livewire\CompanyDashboard;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -281,5 +283,59 @@ class CompanyDashboardTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertDatabaseCount('company_bank_accounts', 1);
+    }
+
+    public function test_admin_can_upload_a_logo_and_set_its_position(): void
+    {
+        Storage::fake('public');
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $file = UploadedFile::fake()->image('logo.png');
+
+        Livewire::test(CompanyDashboard::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('newLogo', $file)
+            ->set('editLogoPosition', 'center')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $company->refresh();
+        $this->assertNotNull($company->logo_path);
+        Storage::disk('public')->assertExists($company->logo_path);
+        $this->assertEquals('center', $company->logo_position);
+    }
+
+    public function test_admin_can_save_the_invoice_footer_note(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(CompanyDashboard::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('editInvoiceFooterNote', 'Ви благодариме за соработката.')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('companies', [
+            'id' => $company->id,
+            'invoice_footer_note' => 'Ви благодариме за соработката.',
+        ]);
+    }
+
+    public function test_logo_position_defaults_to_left_when_editing_an_untouched_company(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(CompanyDashboard::class, ['company' => $company])
+            ->call('startEdit')
+            ->assertSet('editLogoPosition', 'left');
     }
 }
