@@ -9,6 +9,7 @@ use App\Models\Partner;
 use App\Models\SalesInvoice;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -59,6 +60,9 @@ class SalesInvoicePdfTest extends TestCase
 
     public function test_it_renders_the_logo_on_the_left_by_default(): void
     {
+        Storage::fake('public');
+        Storage::disk('public')->put('logos/1/logo.png', 'fake-png-bytes');
+
         $company = Company::factory()->create([
             'logo_path' => 'logos/1/logo.png',
             'logo_position' => 'left',
@@ -75,15 +79,24 @@ class SalesInvoicePdfTest extends TestCase
             'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
         ])->render();
 
-        $expectedPath = \Illuminate\Support\Facades\Storage::disk('public')->path('logos/1/logo.png');
+        $expectedPath = Storage::disk('public')->path('logos/1/logo.png');
         $this->assertStringContainsString($expectedPath, $html);
-        $this->assertStringNotContainsString('row-reverse', $html);
         $this->assertStringNotContainsString('logo-row', $html);
         $this->assertSame(1, substr_count($html, '<img'));
+
+        // The logo cell is emitted BEFORE the invoice badge cell for left-positioned logos.
+        $imgPos = strpos($html, '<img');
+        $badgePos = strpos($html, '<span class="badge">');
+        $this->assertNotFalse($imgPos);
+        $this->assertNotFalse($badgePos);
+        $this->assertLessThan($badgePos, $imgPos);
     }
 
     public function test_it_renders_the_logo_on_the_right_when_configured(): void
     {
+        Storage::fake('public');
+        Storage::disk('public')->put('logos/1/logo.png', 'fake-png-bytes');
+
         $company = Company::factory()->create(['logo_path' => 'logos/1/logo.png', 'logo_position' => 'right']);
         $partner = Partner::factory()->for($company)->create();
         $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
@@ -93,12 +106,22 @@ class SalesInvoicePdfTest extends TestCase
             'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
         ])->render();
 
-        $this->assertStringContainsString('row-reverse', $html);
         $this->assertSame(1, substr_count($html, '<img'));
+
+        // The badge cell is emitted BEFORE the logo cell for right-positioned logos —
+        // the columns are swapped in the markup, not via a CSS transform.
+        $imgPos = strpos($html, '<img');
+        $badgePos = strpos($html, '<span class="badge">');
+        $this->assertNotFalse($imgPos);
+        $this->assertNotFalse($badgePos);
+        $this->assertGreaterThan($badgePos, $imgPos);
     }
 
     public function test_it_renders_the_logo_centered_when_configured(): void
     {
+        Storage::fake('public');
+        Storage::disk('public')->put('logos/1/logo.png', 'fake-png-bytes');
+
         $company = Company::factory()->create(['logo_path' => 'logos/1/logo.png', 'logo_position' => 'center']);
         $partner = Partner::factory()->for($company)->create();
         $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
@@ -110,6 +133,23 @@ class SalesInvoicePdfTest extends TestCase
 
         $this->assertStringContainsString('logo-row', $html);
         $this->assertSame(1, substr_count($html, '<img'));
+    }
+
+    public function test_it_renders_no_image_tag_when_the_logo_file_is_missing_from_storage(): void
+    {
+        Storage::fake('public');
+        // logo_path is set on the company but the file was never written to the disk.
+        $company = Company::factory()->create(['logo_path' => 'logos/1/gone.png', 'logo_position' => 'left']);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
+        $invoice->lines()->create(['description' => 'Item', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00']);
+
+        $html = view('pdf.sales-invoice', [
+            'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
+        ])->render();
+
+        $this->assertStringNotContainsString('<img', $html);
+        $this->assertStringNotContainsString('logos/1/gone.png', $html);
     }
 
     public function test_it_renders_no_image_tag_when_company_has_no_logo(): void
@@ -222,7 +262,8 @@ class SalesInvoicePdfTest extends TestCase
         ])->render();
 
         $this->assertStringNotContainsString('ДДВ %', $html);
-        $this->assertStringContainsString('>Вкупно<', $html);
+        // Scoped to the items-table header so the totals-box "Вкупно" cell can't satisfy it.
+        $this->assertStringContainsString('<th style="width: 100px;">Вкупно</th>', $html);
         $this->assertStringNotContainsString('Вкупно со ДДВ', $html);
     }
 
@@ -257,10 +298,12 @@ class SalesInvoicePdfTest extends TestCase
             'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
         ])->render();
 
-        $this->assertStringContainsString('Основа', $html);
-        $this->assertStringContainsString('ДДВ', $html);
-        $this->assertStringContainsString('Вкупно', $html);
-        $this->assertStringContainsString('За доплата', $html);
+        // Scoped to the totals-table label cells: a bare 'ДДВ'/'Вкупно' substring would
+        // also be satisfied by the items-table header, so these must be real <td> labels.
+        $this->assertStringContainsString('>Основа</td>', $html);
+        $this->assertStringContainsString('>ДДВ</td>', $html);
+        $this->assertStringContainsString('>Вкупно</td>', $html);
+        $this->assertStringContainsString('>За доплата</td>', $html);
         $this->assertStringContainsString(\App\Support\Format::money('1000.00'), $html); // subtotal
         $this->assertStringContainsString(\App\Support\Format::money('180.00'), $html); // vat total
         $this->assertStringContainsString(\App\Support\Format::money('1180.00'), $html); // grand total / balance due

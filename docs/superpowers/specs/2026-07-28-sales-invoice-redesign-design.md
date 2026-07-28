@@ -21,14 +21,27 @@ Manrope/rounded-card visual language (established in the 2026-07-23/24
 visual redesign).
 
 **Technical note:** the installed `dompdf/dompdf` is v3.1.6, which does
-support `display: flex` (the existing template already relies on it for
-`.header`, live in production), so the side-by-side block layout
-(issuer/recipient, totals+payment) can use flexbox directly. The **line
-items table** still needs to be a real `<table><thead>…</thead><tbody>`
-structure regardless — that's what makes dompdf repeat the column header
-and flow rows correctly across a page break, which plain flex rows would
-not do. dompdf also supports `border-radius` and background colors on
-block elements, so the rounded-card look is achievable throughout.
+**not** implement flexbox. Verified directly in the vendor tree:
+`vendor/dompdf/dompdf/src/Css/Style.php::_compute_display()` silently
+downgrades `display: flex` to `block` and `display: inline-flex` to
+`inline-block`, and `vendor/dompdf/dompdf/src/FrameReflower/` contains no
+flex reflower at all (only Block, Inline, Image, Table, TableCell,
+TableRow, TableRowGroup, Text, ListBullet, Page, Null). Consequently
+`flex-direction`, `flex: 1`, `justify-content`, `align-items` and `gap` have
+no effect whatsoever — a `justify-content: space-between` row renders as a
+single run of fused inline content (e.g. `Основа1.000,00 ден`).
+
+Therefore **every multi-column region in this template uses table-based
+layout** — a `<table>` with one `<tr>` and `<td>` cells carrying explicit
+widths, `vertical-align: top`, and padding where a gutter is wanted. That
+applies to the header row (logo + invoice badge), the issuer/recipient
+party boxes, the payment + totals row, and the label/amount pairs inside
+the totals box. The **line items table** is a real
+`<table><thead>…</thead><tbody>` structure for the same family of reasons
+plus page-break support: that's what makes dompdf repeat the column header
+and flow rows correctly across a page break. dompdf does support
+`border-radius` and background colors on block elements, so the rounded-card
+look is still achievable throughout.
 
 ## Header
 
