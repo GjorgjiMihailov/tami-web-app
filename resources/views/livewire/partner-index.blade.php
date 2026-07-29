@@ -1,5 +1,8 @@
 <div>
-    <h1 class="text-2xl font-bold text-gray-800 mb-4">Партнери — {{ $company->name }}</h1>
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold text-gray-800">Партнери — {{ $company->name }}</h1>
+        <a href="{{ route('partners.pdf', $company) }}" class="text-brand hover:underline text-sm">Преземи PDF</a>
+    </div>
 
     @can('create', \App\Models\Partner::class)
         <x-card class="mb-6">

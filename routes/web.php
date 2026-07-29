@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\JournalEntryPdfController;
+use App\Http\Controllers\PartnerListPdfController;
 use App\Http\Controllers\SalesInvoicePdfController;
 use App\Livewire\Accounting\AccountIndex;
 use App\Livewire\Accounting\JournalEntryForm;
@@ -86,6 +87,7 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('inventory.')->
 
 Route::middleware(['auth'])->prefix('companies/{company}')->name('partners.')->group(function () {
     Route::get('/partners', [PartnerIndex::class, '__invoke'])->name('index');
+    Route::get('/partners/pdf', [PartnerListPdfController::class, '__invoke'])->name('pdf');
     Route::get('/partners/{partner}', [PartnerShow::class, '__invoke'])->name('show');
 });
 
