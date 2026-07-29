@@ -71,6 +71,25 @@ class PartnerListPdfTest extends TestCase
         $this->assertStringContainsString('Физичко лице', $html);
     }
 
+    public function test_the_downloaded_response_is_an_actual_rendered_pdf(): void
+    {
+        $company = Company::factory()->create();
+        Partner::factory()->for($company)->create(['name' => 'Acme DOOEL']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $response = $this->actingAs($admin)->get(route('partners.pdf', $company));
+
+        $response->assertOk();
+
+        $bytes = $response->getContent();
+
+        $this->assertNotFalse($bytes, 'Expected the response to expose raw PDF bytes.');
+        $this->assertStringStartsWith('%PDF-', $bytes, 'Response body does not look like a real PDF document.');
+        $this->assertGreaterThan(1000, strlen($bytes), 'Rendered PDF is suspiciously small to be a real document.');
+        $this->assertStringContainsString('%%EOF', $bytes, 'Rendered PDF is missing its end-of-file marker.');
+    }
+
     public function test_the_partner_index_links_to_the_pdf_download(): void
     {
         $company = Company::factory()->create();

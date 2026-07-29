@@ -25,8 +25,8 @@
                         <div>
                             <x-input-label for="editType" value="Тип на партнер" />
                             <select id="editType" wire:model.live="editType" class="border-gray-300 rounded-md text-sm w-full">
-                                <option value="legal_entity">Правно лице</option>
-                                <option value="individual">Физичко лице</option>
+                                <option value="legal_entity">{{ \App\Support\Format::partnerType('legal_entity') }}</option>
+                                <option value="individual">{{ \App\Support\Format::partnerType('individual') }}</option>
                             </select>
                         </div>
                         <div>
@@ -110,6 +110,14 @@
         <div>Е-пошта: {{ $partner->email ?? '—' }}</div>
         <div>Телефон: {{ $partner->phone ?? '—' }}</div>
         <div>Адреса: {{ $partner->address ?? '—' }}</div>
+        <div class="pt-2">
+            <div class="font-medium">Трансакциски сметки:</div>
+            @forelse ($partner->bankAccounts as $bankAccount)
+                <div>{{ $bankAccount->bank_name ? $bankAccount->bank_name.': ' : '' }}{{ $bankAccount->account_number }}</div>
+            @empty
+                <div>—</div>
+            @endforelse
+        </div>
     </x-card>
 
     <livewire:document-manager :documentable="$partner" />

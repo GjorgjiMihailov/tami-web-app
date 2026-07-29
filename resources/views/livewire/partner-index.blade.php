@@ -16,8 +16,8 @@
                 <div>
                     <x-input-label for="newType" value="Тип" />
                     <select id="newType" wire:model="newType" class="border-gray-300 rounded-md text-sm">
-                        <option value="legal_entity">Правно лице</option>
-                        <option value="individual">Физичко лице</option>
+                        <option value="legal_entity">{{ \App\Support\Format::partnerType('legal_entity') }}</option>
+                        <option value="individual">{{ \App\Support\Format::partnerType('individual') }}</option>
                     </select>
                 </div>
                 <div>
@@ -50,20 +50,18 @@
                 <th class="py-2 px-4">ЕДБ</th>
                 <th class="py-2 px-4">Е-пошта</th>
                 <th class="py-2 px-4">Телефон</th>
-                <th class="py-2 px-4"></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($partners as $partner)
                 <tr class="text-sm">
-                    <td class="py-2 px-4">{{ $partner->name }}</td>
+                    <td class="py-2 px-4"><a href="{{ route('partners.show', [$company, $partner]) }}" class="text-brand hover:underline font-medium">{{ $partner->name }}</a></td>
                     <td class="py-2 px-4">{{ $partner->tax_id }}</td>
                     <td class="py-2 px-4">{{ $partner->email }}</td>
                     <td class="py-2 px-4">{{ $partner->phone }}</td>
-                    <td class="py-2 px-4"><a href="{{ route('partners.show', [$company, $partner]) }}" class="text-brand hover:underline">Документи</a></td>
                 </tr>
             @empty
-                <tr><td colspan="5" class="py-4 px-4 text-gray-500">Нема додадено партнери.</td></tr>
+                <tr><td colspan="4" class="py-4 px-4 text-gray-500">Нема додадено партнери.</td></tr>
             @endforelse
         </tbody>
     </table>

@@ -331,6 +331,45 @@ class PartnerShowTest extends TestCase
         ]);
     }
 
+    public function test_the_info_card_shows_existing_bank_accounts(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $partner->bankAccounts()->create([
+            'bank_name' => 'Комерцијална банка',
+            'account_number' => 'MK07300701104789126',
+            'position' => 0,
+        ]);
+        $partner->bankAccounts()->create([
+            'bank_name' => 'НЛБ Банка',
+            'account_number' => 'MK07200002785123453',
+            'position' => 1,
+        ]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PartnerShow::class, ['company' => $company, 'partner' => $partner])
+            ->assertSee('Трансакциски сметки')
+            ->assertSee('Комерцијална банка')
+            ->assertSee('MK07300701104789126')
+            ->assertSee('НЛБ Банка')
+            ->assertSee('MK07200002785123453');
+    }
+
+    public function test_the_info_card_shows_a_dash_when_no_bank_accounts_exist(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PartnerShow::class, ['company' => $company, 'partner' => $partner])
+            ->assertSee('Трансакциски сметки')
+            ->assertDontSee('MK0');
+    }
+
     public function test_a_blank_trailing_row_is_not_saved(): void
     {
         $company = Company::factory()->create();

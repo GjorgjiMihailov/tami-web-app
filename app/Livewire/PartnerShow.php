@@ -155,6 +155,8 @@ class PartnerShow extends Component
 
     public function render()
     {
+        $this->partner->loadMissing('bankAccounts');
+
         return view('livewire.partner-show');
     }
 }
