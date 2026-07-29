@@ -15,6 +15,26 @@ return new class extends Migration
             $table->foreignId('journal_group_id')->nullable()->after('company_id')->constrained();
         });
 
+        // The new composite unique index is added BEFORE the old one is
+        // dropped. MySQL/InnoDB requires the company_id foreign key
+        // (added above) to always have a supporting index, and
+        // (company_id, fiscal_year, entry_number) is currently the only
+        // index covering it. Dropping it first throws "Cannot drop
+        // index ...: needed in a foreign key constraint" under real
+        // MySQL — SQLite never enforces this, which is why every local/
+        // CI-SQLite test run passed despite this ordering bug (same
+        // class of MySQL-only constraint this project has hit before,
+        // see Phase 3b's identifier-length migration failure). Adding
+        // the new unique first is safe even though journal_group_id is
+        // still null for every row at this point: MySQL treats each
+        // NULL in a unique index as distinct from every other NULL, so
+        // no duplicate-key error is possible here regardless of how
+        // many rows share the same (company_id, fiscal_year, NULL,
+        // entry_number) tuple.
+        Schema::table('journal_entries', function (Blueprint $table) {
+            $table->unique(['company_id', 'fiscal_year', 'journal_group_id', 'entry_number']);
+        });
+
         Schema::table('journal_entries', function (Blueprint $table) {
             $table->dropUnique(['company_id', 'fiscal_year', 'entry_number']);
         });
@@ -47,10 +67,6 @@ return new class extends Migration
                         ])->save();
                     }
                 });
-        });
-
-        Schema::table('journal_entries', function (Blueprint $table) {
-            $table->unique(['company_id', 'fiscal_year', 'journal_group_id', 'entry_number']);
         });
     }
 
