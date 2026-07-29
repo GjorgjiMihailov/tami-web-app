@@ -96,7 +96,7 @@
             </thead>
             <tbody>
                 @foreach ($lines as $index => $line)
-                    <tr wire:key="line-{{ $line['_key'] }}">
+                    <tr wire:key="d-line-{{ $line['_key'] }}">
                         @php
                             $selectedAccount = $accounts->firstWhere('id', $line['account_id']);
                             $accountLabel = $selectedAccount ? $selectedAccount->code.' — '.$selectedAccount->name : '';
@@ -163,7 +163,7 @@
         <div class="md:hidden space-y-3 mb-4">
             @foreach ($lines as $index => $line)
                 @php $isLate = $line['line_date'] > $entryDate; @endphp
-                <div wire:key="line-{{ $line['_key'] }}" class="border border-gray-200 rounded-lg p-3 text-sm {{ $isLate ? 'bg-red-50' : '' }}">
+                <div wire:key="m-line-{{ $line['_key'] }}" class="border border-gray-200 rounded-lg p-3 text-sm {{ $isLate ? 'bg-red-50' : '' }}">
                     <div class="flex justify-between items-start mb-2">
                         <span class="font-medium text-gray-500">Ставка {{ $index + 1 }}</span>
                         @if ($canEdit)
@@ -173,7 +173,11 @@
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="text-xs text-gray-500">Сметка</label>
-                            <div x-data="journalEntryPicker(jepAccounts, 'lines.{{ $index }}.account_id', @js($accounts->firstWhere('id', $line['account_id'])?->code.' — '.$accounts->firstWhere('id', $line['account_id'])?->name ?? ''))" @click.outside="open = false" class="relative">
+                            @php
+                                $mobileSelectedAccount = $accounts->firstWhere('id', $line['account_id']);
+                                $mobileAccountLabel = $mobileSelectedAccount ? $mobileSelectedAccount->code.' — '.$mobileSelectedAccount->name : '';
+                            @endphp
+                            <div x-data="journalEntryPicker(jepAccounts, 'lines.{{ $index }}.account_id', @js($mobileAccountLabel))" @click.outside="open = false" class="relative">
                                 <input type="text" x-model="query" @focus="open = true" @input="onInput()" class="border-gray-300 rounded-md text-sm w-full" @disabled(! $canEdit) />
                                 <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-gray-200 rounded-md shadow-md mt-1 max-h-40 overflow-y-auto w-full">
                                     <template x-for="item in filtered" :key="item.id">

@@ -24,9 +24,9 @@ document.addEventListener('alpine:init', () => {
 
         onInput() {
             this.open = true;
-            if (this.query !== this.selectedLabel) {
+            if (this.selectedLabel !== '' && this.query !== this.selectedLabel) {
                 this.selectedLabel = '';
-                this.$wire.set(wireModel, '');
+                this.$wire.set(wireModel, '', false);
             }
         },
     }));
