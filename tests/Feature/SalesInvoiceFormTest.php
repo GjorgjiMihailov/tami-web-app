@@ -61,6 +61,33 @@ class SalesInvoiceFormTest extends TestCase
             ->assertSet('lines.0.vat_rate', '18.00');
     }
 
+    public function test_selecting_an_item_prefills_the_unit_price_from_selling_price(): void
+    {
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create(['name' => 'Widget', 'selling_price' => '249.99']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->call('selectItem', 0, (string) $item->id)
+            ->assertSet('lines.0.unit_price', '249.99');
+    }
+
+    public function test_selecting_an_item_without_a_selling_price_leaves_unit_price_unchanged(): void
+    {
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create(['name' => 'Widget', 'selling_price' => null]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->set('lines.0.unit_price', '5.00')
+            ->call('selectItem', 0, (string) $item->id)
+            ->assertSet('lines.0.unit_price', '5.00');
+    }
+
     public function test_an_item_line_without_a_warehouse_is_rejected(): void
     {
         $company = Company::factory()->create();

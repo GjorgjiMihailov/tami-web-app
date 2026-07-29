@@ -110,6 +110,10 @@ class SalesInvoiceForm extends Component
         if ($item) {
             $this->lines[$index]['description'] = $item->name;
             $this->lines[$index]['vat_rate'] = $this->company->is_vat_registered ? (string) $item->vat_rate : '0.00';
+
+            if ($item->selling_price !== null) {
+                $this->lines[$index]['unit_price'] = (string) $item->selling_price;
+            }
         }
     }
 

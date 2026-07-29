@@ -25,15 +25,15 @@ class SalesInvoiceService
             throw new InvalidInvoiceStateException("Фактура #{$invoice->id} не е нацрт и не може да се потврди.");
         }
 
-        $invoice->loadMissing(['lines', 'company']);
+        $invoice->loadMissing(['lines.item', 'company']);
 
         if ($invoice->lines->isEmpty()) {
             throw new InvalidInvoiceStateException('Фактурата мора да содржи барем една ставка пред да се потврди.');
         }
 
-        $hasItemLines = $invoice->lines->contains(fn ($line) => $line->item_id !== null);
+        $hasStockTrackedLines = $invoice->lines->contains(fn ($line) => $line->item_id !== null && ! $line->item->isService());
 
-        if ($hasItemLines && $invoice->warehouse_id === null) {
+        if ($hasStockTrackedLines && $invoice->warehouse_id === null) {
             throw new InvalidInvoiceStateException('Потребен е магацин за потврдување фактура со ставки со артикли.');
         }
 
@@ -48,7 +48,7 @@ class SalesInvoiceService
             $cogsTotal = '0.00';
 
             foreach ($invoice->lines as $line) {
-                if ($line->item_id === null) {
+                if ($line->item_id === null || $line->item->isService()) {
                     continue;
                 }
 
@@ -150,7 +150,7 @@ class SalesInvoiceService
 
         return DB::transaction(function () use ($invoice, $userId) {
             foreach ($invoice->lines as $line) {
-                if ($line->item_id === null) {
+                if ($line->item_id === null || $line->stockMovement === null) {
                     continue;
                 }
 

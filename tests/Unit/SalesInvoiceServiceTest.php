@@ -393,4 +393,52 @@ class SalesInvoiceServiceTest extends TestCase
             $this->assertSame('2026-04-15', $line->line_date->toDateString());
         });
     }
+
+    public function test_confirming_a_service_type_item_line_does_not_require_a_warehouse_or_issue_stock(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $serviceItem = Item::factory()->for($company)->service()->create(['vat_rate' => '18.00']);
+        $user = User::factory()->create();
+
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'warehouse_id' => null,
+            'invoice_date' => '2026-03-01',
+        ]);
+        $invoice->lines()->create([
+            'item_id' => $serviceItem->id,
+            'description' => $serviceItem->name,
+            'quantity' => '2',
+            'unit_price' => '500.00',
+            'vat_rate' => '18.00',
+        ]);
+
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+
+        $this->assertSame('confirmed', $confirmed->status);
+        $entry = $confirmed->journalEntry()->with('lines.account')->first();
+        $this->assertCount(3, $entry->lines); // AR + revenue + VAT, no COGS/inventory lines
+        $this->assertNull($entry->lines->firstWhere('account.code', '701'));
+        $this->assertNull($entry->lines->firstWhere('account.code', '660'));
+        $this->assertSame(0, \App\Models\StockMovement::where('item_id', $serviceItem->id)->count());
+    }
+
+    public function test_cancelling_an_invoice_with_a_service_type_item_line_does_not_error(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $serviceItem = Item::factory()->for($company)->service()->create();
+        $user = User::factory()->create();
+
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'warehouse_id' => null, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['item_id' => $serviceItem->id, 'description' => $serviceItem->name, 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00']);
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+
+        $cancelled = $this->service->cancel($confirmed->fresh(), $user->id);
+
+        $this->assertSame('cancelled', $cancelled->status);
+    }
 }
