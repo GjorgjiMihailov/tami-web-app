@@ -67,4 +67,25 @@ class PartnerTest extends TestCase
         $this->assertFalse($partner->is_vat_registered);
         $this->assertNull($partner->vat_number);
     }
+
+    public function test_partner_has_many_bank_accounts_ordered_by_position(): void
+    {
+        $partner = Partner::factory()->create();
+        $partner->bankAccounts()->create(['bank_name' => 'Втора банка', 'account_number' => 'MK02', 'position' => 1]);
+        $partner->bankAccounts()->create(['bank_name' => 'Прва банка', 'account_number' => 'MK01', 'position' => 0]);
+
+        $names = $partner->bankAccounts()->pluck('bank_name')->all();
+
+        $this->assertSame(['Прва банка', 'Втора банка'], $names);
+    }
+
+    public function test_deleting_a_partner_cascades_to_its_bank_accounts(): void
+    {
+        $partner = Partner::factory()->create();
+        $partner->bankAccounts()->create(['bank_name' => 'Банка', 'account_number' => 'MK01', 'position' => 0]);
+
+        $partner->delete();
+
+        $this->assertDatabaseCount('partner_bank_accounts', 0);
+    }
 }

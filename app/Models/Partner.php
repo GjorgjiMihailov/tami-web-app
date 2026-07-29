@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Partner extends Model
@@ -25,6 +26,11 @@ class Partner extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function bankAccounts(): HasMany
+    {
+        return $this->hasMany(PartnerBankAccount::class)->orderBy('position');
     }
 
     public function documents(): MorphMany
