@@ -103,6 +103,7 @@ class PurchaseInvoiceService
                     'account_id' => $accountId,
                     'partner_id' => $invoice->partner_id,
                     'description' => $label,
+                    'line_date' => $invoice->invoice_date,
                     'debit' => $amount,
                     'credit' => '0',
                 ]);
@@ -114,6 +115,7 @@ class PurchaseInvoiceService
                     'account_id' => $this->account($invoice->company, '130')->id,
                     'partner_id' => $invoice->partner_id,
                     'description' => "Input VAT on {$label}",
+                    'line_date' => $invoice->invoice_date,
                     'debit' => $vatTotal,
                     'credit' => '0',
                 ]);
@@ -124,6 +126,7 @@ class PurchaseInvoiceService
                 'account_id' => $this->account($invoice->company, '220')->id,
                 'partner_id' => $invoice->partner_id,
                 'description' => $label,
+                'line_date' => $invoice->invoice_date,
                 'debit' => '0',
                 'credit' => $grossTotal,
             ]);
@@ -183,6 +186,7 @@ class PurchaseInvoiceService
                     'account_id' => $originalLine->account_id,
                     'partner_id' => $originalLine->partner_id,
                     'description' => 'Reversal: '.$originalLine->description,
+                    'line_date' => $reversal->entry_date,
                     'debit' => $originalLine->credit,
                     'credit' => $originalLine->debit,
                 ]);
@@ -229,6 +233,7 @@ class PurchaseInvoiceService
                 'account_id' => $this->account($invoice->company, '220')->id,
                 'partner_id' => $invoice->partner_id,
                 'description' => $label,
+                'line_date' => $paymentDate,
                 'debit' => $amount,
                 'credit' => '0',
             ]);
@@ -237,6 +242,7 @@ class PurchaseInvoiceService
                 'account_id' => $this->account($invoice->company, $cashOrBankCode)->id,
                 'partner_id' => $invoice->partner_id,
                 'description' => $label,
+                'line_date' => $paymentDate,
                 'debit' => '0',
                 'credit' => $amount,
             ]);

@@ -334,4 +334,63 @@ class SalesInvoiceServiceTest extends TestCase
         );
         $this->assertDatabaseCount('journal_groups', 1);
     }
+
+    public function test_confirming_an_invoice_gives_every_posted_line_a_non_null_line_date_matching_the_entry(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $user = User::factory()->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['description' => 'Consulting', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00']);
+
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+
+        $entry = $confirmed->journalEntry()->with('lines')->first();
+        $this->assertGreaterThan(0, $entry->lines->count());
+        $entry->lines->each(function ($line) use ($entry) {
+            $this->assertNotNull($line->line_date);
+            $this->assertSame($entry->entry_date->toDateString(), $line->line_date->toDateString());
+        });
+    }
+
+    public function test_cancelling_a_confirmed_invoice_gives_reversal_lines_a_non_null_line_date_matching_the_reversal_entry(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $user = User::factory()->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['description' => 'Consulting', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00']);
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+
+        $cancelled = $this->service->cancel($confirmed, $user->id);
+
+        $reversal = $cancelled->fresh()->journalEntry()->with('lines')->first();
+        $this->assertGreaterThan(0, $reversal->lines->count());
+        $reversal->lines->each(function ($line) use ($reversal) {
+            $this->assertNotNull($line->line_date);
+            $this->assertSame($reversal->entry_date->toDateString(), $line->line_date->toDateString());
+        });
+    }
+
+    public function test_recording_a_payment_gives_its_posted_lines_a_line_date_matching_the_payment_date(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $user = User::factory()->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['description' => 'Consulting', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00']);
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+
+        $this->service->recordPayment($confirmed, (string) $confirmed->fresh()->balanceDue(), '2026-04-15', 'bank', $user->id);
+
+        $paymentEntry = \App\Models\JournalEntry::where('description', 'like', 'Payment for invoice%')->with('lines')->firstOrFail();
+        $this->assertGreaterThan(0, $paymentEntry->lines->count());
+        $paymentEntry->lines->each(function ($line) {
+            $this->assertNotNull($line->line_date);
+            $this->assertSame('2026-04-15', $line->line_date->toDateString());
+        });
+    }
 }

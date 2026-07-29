@@ -82,6 +82,7 @@ class SalesInvoiceService
                 'account_id' => $this->account($invoice->company, '120')->id,
                 'partner_id' => $invoice->partner_id,
                 'description' => $label,
+                'line_date' => $invoice->invoice_date,
                 'debit' => $gross,
                 'credit' => '0',
             ]);
@@ -90,6 +91,7 @@ class SalesInvoiceService
                 'account_id' => $this->account($invoice->company, '740')->id,
                 'partner_id' => $invoice->partner_id,
                 'description' => $label,
+                'line_date' => $invoice->invoice_date,
                 'debit' => '0',
                 'credit' => $net,
             ]);
@@ -99,6 +101,7 @@ class SalesInvoiceService
                     'account_id' => $this->account($invoice->company, '230')->id,
                     'partner_id' => $invoice->partner_id,
                     'description' => "VAT on {$label}",
+                    'line_date' => $invoice->invoice_date,
                     'debit' => '0',
                     'credit' => $vat,
                 ]);
@@ -108,6 +111,7 @@ class SalesInvoiceService
                 $entry->lines()->create([
                     'account_id' => $this->account($invoice->company, '701')->id,
                     'description' => "COGS for {$label}",
+                    'line_date' => $invoice->invoice_date,
                     'debit' => $cogsTotal,
                     'credit' => '0',
                 ]);
@@ -115,6 +119,7 @@ class SalesInvoiceService
                 $entry->lines()->create([
                     'account_id' => $this->account($invoice->company, '660')->id,
                     'description' => "COGS for {$label}",
+                    'line_date' => $invoice->invoice_date,
                     'debit' => '0',
                     'credit' => $cogsTotal,
                 ]);
@@ -172,6 +177,7 @@ class SalesInvoiceService
                     'account_id' => $originalLine->account_id,
                     'partner_id' => $originalLine->partner_id,
                     'description' => 'Reversal: '.$originalLine->description,
+                    'line_date' => $reversal->entry_date,
                     'debit' => $originalLine->credit,
                     'credit' => $originalLine->debit,
                 ]);
@@ -218,6 +224,7 @@ class SalesInvoiceService
                 'account_id' => $this->account($invoice->company, $cashOrBankCode)->id,
                 'partner_id' => $invoice->partner_id,
                 'description' => $label,
+                'line_date' => $paymentDate,
                 'debit' => $amount,
                 'credit' => '0',
             ]);
@@ -226,6 +233,7 @@ class SalesInvoiceService
                 'account_id' => $this->account($invoice->company, '120')->id,
                 'partner_id' => $invoice->partner_id,
                 'description' => $label,
+                'line_date' => $paymentDate,
                 'debit' => '0',
                 'credit' => $amount,
             ]);
