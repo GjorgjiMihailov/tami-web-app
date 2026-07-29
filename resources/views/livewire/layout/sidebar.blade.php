@@ -52,6 +52,8 @@
                            class="block px-4 py-1.5 text-sm {{ request()->routeIs('inventory.warehouses.*') ? 'text-white font-medium' : 'text-gray-400 hover:text-white' }}">Магацини</a>
                         <a href="{{ route('inventory.items.index', $company) }}" wire:navigate
                            class="block px-4 py-1.5 text-sm {{ request()->routeIs('inventory.items.*') ? 'text-white font-medium' : 'text-gray-400 hover:text-white' }}">Артикли</a>
+                        <a href="{{ route('inventory.items.bulk-import', $company) }}" wire:navigate
+                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('inventory.items.bulk-import') ? 'text-white font-medium' : 'text-gray-400 hover:text-white' }}">Масовен внес артикли</a>
                         <a href="{{ route('inventory.reports.stock-on-hand', $company) }}" wire:navigate
                            class="block px-4 py-1.5 text-sm {{ request()->routeIs('inventory.reports.stock-on-hand') ? 'text-white font-medium' : 'text-gray-400 hover:text-white' }}">Залиха</a>
                         <a href="{{ route('inventory.reports.item-movement-card', $company) }}" wire:navigate

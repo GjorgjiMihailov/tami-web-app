@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\ItemImportTemplateController;
 use App\Http\Controllers\JournalEntryPdfController;
 use App\Http\Controllers\PartnerListPdfController;
 use App\Http\Controllers\SalesInvoicePdfController;
@@ -14,6 +15,7 @@ use App\Livewire\CompanyDashboard;
 use App\Livewire\CompanyIndex;
 use App\Livewire\Dashboard;
 use App\Livewire\DocumentIndex;
+use App\Livewire\Inventory\ItemBulkImport;
 use App\Livewire\Inventory\ItemIndex;
 use App\Livewire\Inventory\ItemMovementCardReport;
 use App\Livewire\Inventory\StockMovementForm;
@@ -79,6 +81,8 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('accounting.')-
 Route::middleware(['auth'])->prefix('companies/{company}')->name('inventory.')->group(function () {
     Route::get('/warehouses', [WarehouseIndex::class, '__invoke'])->name('warehouses.index');
     Route::get('/items', [ItemIndex::class, '__invoke'])->name('items.index');
+    Route::get('/items/bulk-import', [ItemBulkImport::class, '__invoke'])->name('items.bulk-import');
+    Route::get('/items/bulk-import/template', [ItemImportTemplateController::class, '__invoke'])->name('items.bulk-import.template');
     Route::get('/stock-movements/create/{type}', [StockMovementForm::class, '__invoke'])->name('stock-movements.create');
     Route::get('/reports/stock-on-hand', [StockOnHandReport::class, '__invoke'])->name('reports.stock-on-hand');
     Route::get('/reports/item-movement-card', [ItemMovementCardReport::class, '__invoke'])->name('reports.item-movement-card');

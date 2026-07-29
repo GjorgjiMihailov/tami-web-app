@@ -1,13 +1,11 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-4">Артикли — {{ $company->name }}</h1>
 
-    @if (Route::has('inventory.items.bulk-import'))
-        <div class="mb-4">
-            <a href="{{ route('inventory.items.bulk-import', $company) }}" wire:navigate class="text-brand text-sm hover:underline">
-                Масовен внес преку табела
-            </a>
-        </div>
-    @endif
+    <div class="mb-4">
+        <a href="{{ route('inventory.items.bulk-import', $company) }}" wire:navigate class="text-brand text-sm hover:underline">
+            Масовен внес преку табела
+        </a>
+    </div>
 
     @can('create', \App\Models\Item::class)
         <x-card class="mb-6">
