@@ -13,6 +13,7 @@ use App\Services\ExchangeRateService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -62,6 +63,7 @@ class JournalEntryForm extends Component
                 'currency_code' => $line->currency_code,
                 'exchange_rate' => (string) $line->exchange_rate,
                 'foreign_amount' => $line->foreign_amount === null ? null : (string) $line->foreign_amount,
+                '_key' => (string) Str::uuid(),
             ])->toArray();
 
             $this->isForeignCurrency = collect($this->lines)->contains(fn ($line) => $line['currency_code'] !== 'MKD');
@@ -100,6 +102,7 @@ class JournalEntryForm extends Component
             'currency_code' => 'MKD',
             'exchange_rate' => '1',
             'foreign_amount' => null,
+            '_key' => (string) Str::uuid(),
         ];
     }
 

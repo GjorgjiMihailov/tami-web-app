@@ -51,7 +51,7 @@
             </div>
             <div>
                 <x-input-label for="entryDate" value="Датум" />
-                <input type="date" id="entryDate" wire:model="entryDate" class="border-gray-300 rounded-md shadow-sm w-full" @disabled(! $canEdit) />
+                <input type="date" id="entryDate" wire:model.live="entryDate" class="border-gray-300 rounded-md shadow-sm w-full" @disabled(! $canEdit) />
                 @error('entryDate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
             <div>
@@ -70,6 +70,7 @@
         @error('lines') <p class="text-red-600 text-sm mb-2">{{ $message }}</p> @enderror
         @error('delete') <p class="text-red-600 text-sm mb-2">{{ $message }}</p> @enderror
 
+        <div x-data="{ jepAccounts: @js($accountsForJs), jepPartners: @js($partnersForJs) }">
         <table class="min-w-full divide-y divide-gray-200 mb-4 hidden md:table">
             <thead>
                 <tr class="text-left text-sm text-gray-500">
@@ -89,12 +90,12 @@
             </thead>
             <tbody>
                 @foreach ($lines as $index => $line)
-                    <tr>
+                    <tr wire:key="line-{{ $line['_key'] }}">
                         @php
                             $selectedAccount = $accounts->firstWhere('id', $line['account_id']);
                             $accountLabel = $selectedAccount ? $selectedAccount->code.' — '.$selectedAccount->name : '';
                         @endphp
-                        <td class="py-1 pr-2 relative" x-data="journalEntryPicker(@js($accountsForJs), 'lines.{{ $index }}.account_id', @js($accountLabel))" @click.outside="open = false">
+                        <td class="py-1 pr-2 relative" x-data="journalEntryPicker(jepAccounts, 'lines.{{ $index }}.account_id', @js($accountLabel))" @click.outside="open = false">
                             <input type="text" x-model="query" @focus="open = true" @input="open = true"
                                    placeholder="Код или име..." class="border-gray-300 rounded-md text-sm w-40" @disabled(! $canEdit) />
                             <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-gray-200 rounded-md shadow-md mt-1 max-h-48 overflow-y-auto w-64">
@@ -107,7 +108,7 @@
                             $selectedPartner = $partners->firstWhere('id', $line['partner_id']);
                             $partnerLabel = $selectedPartner?->name ?? '';
                         @endphp
-                        <td class="py-1 pr-2 relative" x-data="journalEntryPicker(@js($partnersForJs), 'lines.{{ $index }}.partner_id', @js($partnerLabel))" @click.outside="open = false">
+                        <td class="py-1 pr-2 relative" x-data="journalEntryPicker(jepPartners, 'lines.{{ $index }}.partner_id', @js($partnerLabel))" @click.outside="open = false">
                             <input type="text" x-model="query" @focus="open = true" @input="open = true"
                                    placeholder="Партнер..." class="border-gray-300 rounded-md text-sm w-40" @disabled(! $canEdit) />
                             <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-gray-200 rounded-md shadow-md mt-1 max-h-48 overflow-y-auto w-64">
@@ -119,12 +120,12 @@
                         <td class="py-1 pr-2"><input type="text" wire:model="lines.{{ $index }}.description" class="border-gray-300 rounded-md text-sm w-32" @disabled(! $canEdit) /></td>
                         @php $isLate = $line['line_date'] > $entryDate; @endphp
                         <td class="py-1 pr-2 {{ $isLate ? 'bg-red-50' : '' }}">
-                            <input type="date" wire:model="lines.{{ $index }}.line_date"
+                            <input type="date" wire:model.live="lines.{{ $index }}.line_date"
                                    class="rounded-md text-sm {{ $isLate ? 'border-red-400 text-red-700' : 'border-gray-300' }}"
                                    @disabled(! $canEdit) />
                         </td>
-                        <td class="py-1 pr-2"><input type="number" step="0.01" wire:model="lines.{{ $index }}.debit" class="border-gray-300 rounded-md text-sm w-24" @disabled(! $canEdit) /></td>
-                        <td class="py-1 pr-2"><input type="number" step="0.01" wire:model="lines.{{ $index }}.credit" class="border-gray-300 rounded-md text-sm w-24" @disabled(! $canEdit) /></td>
+                        <td class="py-1 pr-2"><input type="number" step="0.01" wire:model.live.debounce.300ms="lines.{{ $index }}.debit" class="border-gray-300 rounded-md text-sm w-24" @disabled(! $canEdit) /></td>
+                        <td class="py-1 pr-2"><input type="number" step="0.01" wire:model.live.debounce.300ms="lines.{{ $index }}.credit" class="border-gray-300 rounded-md text-sm w-24" @disabled(! $canEdit) /></td>
                         @if ($isForeignCurrency)
                             <td class="py-1 pr-2">
                                 <select wire:model="lines.{{ $index }}.currency_code" class="border-gray-300 rounded-md text-sm" @disabled(! $canEdit)>
@@ -156,7 +157,7 @@
         <div class="md:hidden space-y-3 mb-4">
             @foreach ($lines as $index => $line)
                 @php $isLate = $line['line_date'] > $entryDate; @endphp
-                <div class="border border-gray-200 rounded-lg p-3 text-sm {{ $isLate ? 'bg-red-50' : '' }}">
+                <div wire:key="line-{{ $line['_key'] }}" class="border border-gray-200 rounded-lg p-3 text-sm {{ $isLate ? 'bg-red-50' : '' }}">
                     <div class="flex justify-between items-start mb-2">
                         <span class="font-medium text-gray-500">Ставка {{ $index + 1 }}</span>
                         @if ($canEdit)
@@ -166,7 +167,7 @@
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="text-xs text-gray-500">Сметка</label>
-                            <div x-data="journalEntryPicker(@js($accountsForJs), 'lines.{{ $index }}.account_id', @js($accounts->firstWhere('id', $line['account_id'])?->code.' — '.$accounts->firstWhere('id', $line['account_id'])?->name ?? ''))" @click.outside="open = false" class="relative">
+                            <div x-data="journalEntryPicker(jepAccounts, 'lines.{{ $index }}.account_id', @js($accounts->firstWhere('id', $line['account_id'])?->code.' — '.$accounts->firstWhere('id', $line['account_id'])?->name ?? ''))" @click.outside="open = false" class="relative">
                                 <input type="text" x-model="query" @focus="open = true" @input="open = true" class="border-gray-300 rounded-md text-sm w-full" @disabled(! $canEdit) />
                                 <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-gray-200 rounded-md shadow-md mt-1 max-h-40 overflow-y-auto w-full">
                                     <template x-for="item in filtered" :key="item.id">
@@ -177,19 +178,20 @@
                         </div>
                         <div>
                             <label class="text-xs text-gray-500">Датум</label>
-                            <input type="date" wire:model="lines.{{ $index }}.line_date" class="rounded-md text-sm w-full {{ $isLate ? 'border-red-400 text-red-700' : 'border-gray-300' }}" @disabled(! $canEdit) />
+                            <input type="date" wire:model.live="lines.{{ $index }}.line_date" class="rounded-md text-sm w-full {{ $isLate ? 'border-red-400 text-red-700' : 'border-gray-300' }}" @disabled(! $canEdit) />
                         </div>
                         <div>
                             <label class="text-xs text-gray-500">Должи</label>
-                            <input type="number" step="0.01" wire:model="lines.{{ $index }}.debit" class="border-gray-300 rounded-md text-sm w-full" @disabled(! $canEdit) />
+                            <input type="number" step="0.01" wire:model.live.debounce.300ms="lines.{{ $index }}.debit" class="border-gray-300 rounded-md text-sm w-full" @disabled(! $canEdit) />
                         </div>
                         <div>
                             <label class="text-xs text-gray-500">Побарува</label>
-                            <input type="number" step="0.01" wire:model="lines.{{ $index }}.credit" class="border-gray-300 rounded-md text-sm w-full" @disabled(! $canEdit) />
+                            <input type="number" step="0.01" wire:model.live.debounce.300ms="lines.{{ $index }}.credit" class="border-gray-300 rounded-md text-sm w-full" @disabled(! $canEdit) />
                         </div>
                     </div>
                 </div>
             @endforeach
+        </div>
         </div>
 
         @if ($canEdit)

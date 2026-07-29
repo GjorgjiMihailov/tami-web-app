@@ -799,4 +799,59 @@ class JournalEntryFormTest extends TestCase
             ->assertSeeHtml('sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 flex flex-wrap justify-end gap-6 text-sm font-semibold text-gray-800')
             ->assertDontSeeHtml('sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 flex flex-wrap justify-end gap-6 text-sm font-semibold text-red-600');
     }
+
+    public function test_the_account_list_is_rendered_only_once_regardless_of_line_count(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $component = Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->call('addLine')
+            ->call('addLine');
+
+        $account = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $html = $component->html();
+
+        // The account's "{code} — {name}" label text survives @js() encoding
+        // of the accounts array verbatim (only the surrounding JSON quote
+        // characters get escaped, not the label content), so a plain
+        // substring match against the rendered HTML is a reliable, distinctive
+        // needle. It should appear exactly once — proving the account list is
+        // hoisted into the outer wrapper's x-data rather than duplicated once
+        // per line (desktop row + mobile card) as it was before this fix.
+        $needle = $account->code.' — '.$account->name;
+        $this->assertSame(1, substr_count($html, $needle));
+    }
+
+    public function test_each_lines_key_is_stable_and_distinct_after_removing_a_line(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $component = Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->call('addLine');
+
+        $keys = collect($component->get('lines'))->pluck('_key');
+        $this->assertCount(3, $keys);
+        $this->assertCount(3, $keys->unique());
+        $this->assertTrue($keys->every(fn ($key) => is_string($key) && $key !== ''));
+
+        $middleKey = $keys[1];
+        $lastKey = $keys[2];
+
+        $component->call('removeLine', 1);
+
+        $remainingKeys = collect($component->get('lines'))->pluck('_key');
+        $this->assertCount(2, $remainingKeys);
+        // The line that used to be at index 2 shifts down to index 1 after
+        // removal, but its _key must travel WITH it (not be reset to the
+        // key that used to occupy index 1) — that's what keeps Livewire's
+        // wire:key stable for Alpine's client-side state across the removal.
+        $this->assertSame($lastKey, $remainingKeys[1]);
+        $this->assertNotContains($middleKey, $remainingKeys);
+    }
 }
