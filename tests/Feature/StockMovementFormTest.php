@@ -284,4 +284,37 @@ class StockMovementFormTest extends TestCase
             ->assertHasErrors(['scannedCode'])
             ->assertSet('itemId', '');
     }
+
+    public function test_a_service_type_item_does_not_appear_in_the_item_picker(): void
+    {
+        $company = Company::factory()->create();
+        $product = Item::factory()->for($company)->create(['name' => 'Physical Widget']);
+        Item::factory()->for($company)->service()->create(['name' => 'Consulting Hour']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(StockMovementForm::class, ['company' => $company, 'type' => 'receipt'])
+            ->assertSee('Physical Widget')
+            ->assertDontSee('Consulting Hour');
+    }
+
+    public function test_submitting_a_service_type_item_id_directly_is_rejected(): void
+    {
+        $company = Company::factory()->create();
+        $service = Item::factory()->for($company)->service()->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(StockMovementForm::class, ['company' => $company, 'type' => 'receipt'])
+            ->set('itemId', (string) $service->id)
+            ->set('warehouseId', (string) $warehouse->id)
+            ->set('quantity', '1')
+            ->set('unitCost', '10.00')
+            ->set('movementDate', '2026-01-10')
+            ->call('save')
+            ->assertHasErrors(['itemId']);
+    }
 }

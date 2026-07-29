@@ -137,7 +137,7 @@ class PurchaseInvoiceForm extends Component
             'invoiceDate' => 'required|date',
             'dueDate' => 'required|date|after_or_equal:invoiceDate',
             'lines' => 'required|array|min:1',
-            'lines.*.item_id' => ['nullable', Rule::exists('items', 'id')->where('company_id', $this->company->id)],
+            'lines.*.item_id' => ['nullable', Rule::exists('items', 'id')->where('company_id', $this->company->id)->where('type', 'product')],
             'lines.*.account_id' => ['nullable', Rule::exists('accounts', 'id')->where('company_id', $this->company->id)],
             'lines.*.description' => 'nullable|string|max:255',
             'lines.*.quantity' => 'required|numeric|min:0.001',
@@ -207,7 +207,7 @@ class PurchaseInvoiceForm extends Component
         return view('livewire.invoicing.purchase-invoice-form', [
             'partners' => Partner::where('company_id', $this->company->id)->orderBy('name')->get(),
             'warehouses' => Warehouse::where('company_id', $this->company->id)->where('is_active', true)->orderBy('name')->get(),
-            'items' => Item::where('company_id', $this->company->id)->where('is_active', true)->orderBy('name')->get(),
+            'items' => Item::where('company_id', $this->company->id)->where('is_active', true)->where('type', 'product')->orderBy('name')->get(),
             'accounts' => Account::where('company_id', $this->company->id)->where('is_active', true)->orderBy('code')->get(),
         ]);
     }

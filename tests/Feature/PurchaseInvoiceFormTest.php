@@ -180,4 +180,40 @@ class PurchaseInvoiceFormTest extends TestCase
 
         $this->assertDatabaseHas('purchase_invoices', ['company_id' => $company->id, 'supplier_invoice_number' => 'SUP-2026-048']);
     }
+
+    public function test_a_service_type_item_does_not_appear_in_the_item_picker(): void
+    {
+        $company = Company::factory()->create();
+        $product = Item::factory()->for($company)->create(['name' => 'Physical Widget']);
+        Item::factory()->for($company)->service()->create(['name' => 'Consulting Hour']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->assertSee('Physical Widget')
+            ->assertDontSee('Consulting Hour');
+    }
+
+    public function test_a_service_type_item_id_is_rejected_on_a_purchase_invoice_line(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $service = Item::factory()->for($company)->service()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('partnerId', (string) $partner->id)
+            ->set('supplierInvoiceNumber', 'SUP-2026-050')
+            ->set('invoiceDate', '2026-03-01')
+            ->set('dueDate', '2026-03-15')
+            ->set('lines.0.item_id', (string) $service->id)
+            ->set('lines.0.quantity', '1')
+            ->set('lines.0.unit_price', '10.00')
+            ->set('lines.0.vat_rate', '18.00')
+            ->call('save')
+            ->assertHasErrors(['lines.0.item_id']);
+    }
 }

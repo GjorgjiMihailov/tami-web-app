@@ -385,4 +385,28 @@ class StockMovementServiceTest extends TestCase
 
         $this->service->transfer($item, $fromWarehouse, $toWarehouse, '1', '2026-01-15', $user->id);
     }
+
+    public function test_receipt_rejects_a_service_type_item(): void
+    {
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->service()->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $user = User::factory()->create();
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
+    }
+
+    public function test_issue_rejects_a_service_type_item(): void
+    {
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->service()->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $user = User::factory()->create();
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->service->issue($item, $warehouse, '1', '2026-01-10', $user->id);
+    }
 }

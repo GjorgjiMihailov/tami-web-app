@@ -70,7 +70,7 @@ class StockMovementForm extends Component
         Gate::authorize('create', StockMovement::class);
 
         $rules = [
-            'itemId' => ['required', Rule::exists('items', 'id')->where('company_id', $this->company->id)],
+            'itemId' => ['required', Rule::exists('items', 'id')->where('company_id', $this->company->id)->where('type', 'product')],
             'warehouseId' => ['required', Rule::exists('warehouses', 'id')->where('company_id', $this->company->id)],
             'movementDate' => 'required|date',
             'quantity' => 'required|numeric|gt:0',
@@ -125,7 +125,7 @@ class StockMovementForm extends Component
     public function render()
     {
         return view('livewire.inventory.stock-movement-form', [
-            'items' => Item::where('company_id', $this->company->id)->where('is_active', true)->orderBy('name')->get(),
+            'items' => Item::where('company_id', $this->company->id)->where('is_active', true)->where('type', 'product')->orderBy('name')->get(),
             'warehouses' => Warehouse::where('company_id', $this->company->id)->where('is_active', true)->orderBy('name')->get(),
         ]);
     }

@@ -19,6 +19,7 @@ class StockMovementService
 
     public function receipt(Item $item, Warehouse $warehouse, string $quantity, string $unitCost, string $movementDate, int $createdBy): StockMovement
     {
+        $this->assertNotService($item);
         $this->assertSameCompany($item, $warehouse);
 
         return DB::transaction(function () use ($item, $warehouse, $quantity, $unitCost, $movementDate, $createdBy) {
@@ -47,6 +48,7 @@ class StockMovementService
 
     public function issue(Item $item, Warehouse $warehouse, string $quantity, string $movementDate, int $createdBy): StockMovement
     {
+        $this->assertNotService($item);
         $this->assertSameCompany($item, $warehouse);
 
         return DB::transaction(function () use ($item, $warehouse, $quantity, $movementDate, $createdBy) {
@@ -80,6 +82,7 @@ class StockMovementService
             throw new \InvalidArgumentException('Не може да се трансферира стока во истиот магацин.');
         }
 
+        $this->assertNotService($item);
         $this->assertSameCompany($item, $fromWarehouse);
         $this->assertSameCompany($item, $toWarehouse);
 
@@ -130,6 +133,7 @@ class StockMovementService
 
     public function adjustment(Item $item, Warehouse $warehouse, string $quantityDelta, string $reason, string $movementDate, int $createdBy): StockMovement
     {
+        $this->assertNotService($item);
         $this->assertSameCompany($item, $warehouse);
 
         return DB::transaction(function () use ($item, $warehouse, $quantityDelta, $reason, $movementDate, $createdBy) {
@@ -181,6 +185,13 @@ class StockMovementService
     {
         if ($item->company_id !== $warehouse->company_id) {
             throw new \InvalidArgumentException('Артиклот и магацинот мора да припаѓаат на иста фирма.');
+        }
+    }
+
+    private function assertNotService(Item $item): void
+    {
+        if ($item->isService()) {
+            throw new \InvalidArgumentException("Артикл #{$item->id} е услуга и не учествува во движења на залиха.");
         }
     }
 
