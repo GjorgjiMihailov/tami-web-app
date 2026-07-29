@@ -100,4 +100,10 @@ class FormatTest extends TestCase
         $this->assertSame('Физичко лице', Format::partnerType('individual'));
         $this->assertSame('Правно лице', Format::partnerType('legal_entity'));
     }
+
+    public function test_item_type_maps_to_macedonian_labels(): void
+    {
+        $this->assertSame('Производ', Format::itemType('product'));
+        $this->assertSame('Услуга', Format::itemType('service'));
+    }
 }

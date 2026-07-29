@@ -90,4 +90,13 @@ class Format
             default => ucfirst($type),
         };
     }
+
+    public static function itemType(string $type): string
+    {
+        return match ($type) {
+            'product' => 'Производ',
+            'service' => 'Услуга',
+            default => ucfirst($type),
+        };
+    }
 }
