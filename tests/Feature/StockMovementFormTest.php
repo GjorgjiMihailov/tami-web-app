@@ -317,4 +317,30 @@ class StockMovementFormTest extends TestCase
             ->call('save')
             ->assertHasErrors(['itemId']);
     }
+
+    public function test_lookup_by_code_falls_back_to_barcode(): void
+    {
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create(['code' => 'SKU-9', 'barcode' => '3800000000048']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(StockMovementForm::class, ['company' => $company, 'type' => 'receipt'])
+            ->call('lookupByCode', '3800000000048')
+            ->assertSet('itemId', (string) $item->id)
+            ->assertHasNoErrors('scannedCode');
+    }
+
+    public function test_lookup_by_code_still_errors_when_neither_code_nor_barcode_matches(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(StockMovementForm::class, ['company' => $company, 'type' => 'receipt'])
+            ->call('lookupByCode', 'NOTHING-HERE')
+            ->assertHasErrors('scannedCode');
+    }
 }
