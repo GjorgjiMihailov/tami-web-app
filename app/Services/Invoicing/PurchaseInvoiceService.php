@@ -25,7 +25,7 @@ class PurchaseInvoiceService
             throw new InvalidInvoiceStateException("Влезна фактура #{$invoice->id} не е нацрт и не може да се потврди.");
         }
 
-        $invoice->loadMissing(['lines', 'company']);
+        $invoice->loadMissing(['lines.item', 'company']);
 
         if ($invoice->lines->isEmpty()) {
             throw new InvalidInvoiceStateException('Влезната фактура мора да содржи барем една ставка пред да се потврди.');
@@ -39,6 +39,10 @@ class PurchaseInvoiceService
 
         foreach ($invoice->lines as $index => $line) {
             $position = $index + 1;
+
+            if ($line->item_id !== null && $line->item->isService()) {
+                throw new InvalidInvoiceStateException("Артиклот на ставка {$position} е услуга и не може да прими залиха — потврдувањето не е можно (ставка на позиција {$position}).");
+            }
 
             if ($line->item_id !== null && $line->vat_deductible === false) {
                 throw new InvalidInvoiceStateException("ДДВ без право на одбивка не е поддржано за ставки со артикл од залиха (ставка на позиција {$position}).");

@@ -19,7 +19,6 @@ class StockMovementService
 
     public function receipt(Item $item, Warehouse $warehouse, string $quantity, string $unitCost, string $movementDate, int $createdBy): StockMovement
     {
-        $this->assertNotService($item);
         $this->assertSameCompany($item, $warehouse);
 
         return DB::transaction(function () use ($item, $warehouse, $quantity, $unitCost, $movementDate, $createdBy) {
@@ -48,7 +47,6 @@ class StockMovementService
 
     public function issue(Item $item, Warehouse $warehouse, string $quantity, string $movementDate, int $createdBy): StockMovement
     {
-        $this->assertNotService($item);
         $this->assertSameCompany($item, $warehouse);
 
         return DB::transaction(function () use ($item, $warehouse, $quantity, $movementDate, $createdBy) {

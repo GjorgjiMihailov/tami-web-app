@@ -53,8 +53,8 @@ class StockMovementForm extends Component
 
     public function lookupByCode(string $code): void
     {
-        $item = Item::where('company_id', $this->company->id)->where('code', $code)->first()
-            ?? Item::where('company_id', $this->company->id)->where('barcode', $code)->first();
+        $item = Item::where('company_id', $this->company->id)->where('type', 'product')->where('code', $code)->first()
+            ?? Item::where('company_id', $this->company->id)->where('type', 'product')->where('barcode', $code)->first();
 
         if (! $item) {
             $this->addError('scannedCode', "Не е пронајден артикл со шифра или баркод \"{$code}\".");

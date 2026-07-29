@@ -149,6 +149,96 @@ class ItemBulkImportTest extends TestCase
             ->assertHasErrors(['importFile']);
     }
 
+    public function test_the_preview_shows_the_resolved_values_for_a_new_row(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $rows = [
+            ['Шифра', 'Назив', 'Мерна единица', 'Категорија', 'ДДВ стапка', 'Продажна цена', 'Тип', 'МК-производство', 'Баркод'],
+            ['SKU-SHOW', 'Show Values', 'парче', 'Алат', '5', '99.90', 'услуга', 'Да', '3800000000099'],
+        ];
+
+        Livewire::test(ItemBulkImport::class, ['company' => $company])
+            ->set('importFile', $this->makeXlsxUpload($rows))
+            ->call('preview')
+            ->assertSee('Алат')
+            ->assertSee('5.00')
+            ->assertSee('Услуга')
+            ->assertSee('3800000000099');
+    }
+
+    public function test_the_preview_shows_no_change_for_untouched_fields_on_an_update_row(): void
+    {
+        $company = Company::factory()->create();
+        \App\Models\Item::factory()->for($company)->create(['code' => 'SKU-NOCHANGE', 'vat_rate' => '5.00']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $rows = [
+            ['Шифра', 'Назив', 'Мерна единица', 'Категорија', 'ДДВ стапка', 'Продажна цена', 'Тип', 'МК-производство', 'Баркод'],
+            ['SKU-NOCHANGE', 'Renamed Only', 'парче', '', '', '', '', '', ''],
+        ];
+
+        Livewire::test(ItemBulkImport::class, ['company' => $company])
+            ->set('importFile', $this->makeXlsxUpload($rows))
+            ->call('preview')
+            ->assertSee('(без промена)');
+    }
+
+    public function test_confirming_retains_error_rows_with_their_reasons_for_review(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $rows = [
+            ['Шифра', 'Назив', 'Мерна единица', 'Категорија', 'ДДВ стапка', 'Продажна цена', 'Тип', 'МК-производство', 'Баркод'],
+            ['SKU-OK', 'Good Item', 'парче', '', '', '', '', '', ''],
+            ['', 'No Code', 'парче', '', '', '', '', '', ''],
+        ];
+
+        $component = Livewire::test(ItemBulkImport::class, ['company' => $company])
+            ->set('importFile', $this->makeXlsxUpload($rows))
+            ->call('preview')
+            ->call('confirmImport');
+
+        $component->assertSee('Шифрата е задолжителна.');
+        $this->assertCount(1, $component->get('parsedRows'));
+        $this->assertSame('error', $component->get('parsedRows')[0]['action']);
+    }
+
+    public function test_a_database_failure_during_confirm_shows_a_friendly_error_and_rolls_back(): void
+    {
+        $company = Company::factory()->create();
+        \App\Models\Item::factory()->for($company)->create(['code' => 'SKU-RACE']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $rows = [
+            ['Шифра', 'Назив', 'Мерна единица', 'Категорија', 'ДДВ стапка', 'Продажна цена', 'Тип', 'МК-производство', 'Баркод'],
+            ['SKU-RACE', 'Will race', 'парче', '', '', '', '', '', ''],
+        ];
+
+        $component = Livewire::test(ItemBulkImport::class, ['company' => $company])
+            ->set('importFile', $this->makeXlsxUpload($rows))
+            ->call('preview');
+
+        // Simulate a concurrent delete of the matched item between preview() and confirmImport()
+        // so confirmImport()'s findOrFail() throws mid-transaction — proves the try/catch
+        // produces a friendly error instead of a raw 500, and nothing partial persists.
+        \App\Models\Item::where('code', 'SKU-RACE')->delete();
+
+        $component->call('confirmImport')->assertHasErrors(['confirm']);
+
+        $this->assertDatabaseCount('items', 0);
+    }
+
     public function test_a_client_can_upload_and_confirm_for_their_own_company(): void
     {
         $company = Company::factory()->create();

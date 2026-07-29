@@ -441,4 +441,27 @@ class SalesInvoiceServiceTest extends TestCase
 
         $this->assertSame('cancelled', $cancelled->status);
     }
+
+    public function test_cancelling_still_reverses_stock_after_the_item_becomes_a_service(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $item = Item::factory()->for($company)->create();
+        $user = User::factory()->create();
+
+        app(StockMovementService::class)->receipt($item, $warehouse, '2', '10.00', '2026-01-01', $user->id);
+
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'warehouse_id' => $warehouse->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['item_id' => $item->id, 'description' => $item->name, 'quantity' => '2', 'unit_price' => '10.00', 'vat_rate' => '18.00']);
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+
+        $item->update(['type' => 'service']);
+
+        $cancelled = $this->service->cancel($confirmed->fresh(), $user->id);
+
+        $this->assertSame('cancelled', $cancelled->status);
+        $this->assertSame('2.000', (string) \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->quantity_on_hand);
+    }
 }

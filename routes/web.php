@@ -75,9 +75,10 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('accounting.')-
 });
 
 // Array-callable form (not bare class-string) for the same reason as the
-// accounting.* group above: five of these six target classes don't exist
-// until later Inventory tasks, and a bare class-string would crash route
-// registration immediately.
+// accounting.* group above. (Historically some of these target classes
+// didn't exist yet during earlier Inventory tasks, which would have
+// crashed route registration with a bare class-string; all classes in
+// this group exist now.)
 Route::middleware(['auth'])->prefix('companies/{company}')->name('inventory.')->group(function () {
     Route::get('/warehouses', [WarehouseIndex::class, '__invoke'])->name('warehouses.index');
     Route::get('/items', [ItemIndex::class, '__invoke'])->name('items.index');

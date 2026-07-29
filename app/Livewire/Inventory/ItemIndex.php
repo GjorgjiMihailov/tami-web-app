@@ -116,6 +116,7 @@ class ItemIndex extends Component
         $item = Item::where('company_id', $this->company->id)->findOrFail($itemId);
         Gate::authorize('update', $item);
 
+        $this->resetErrorBag();
         $this->editingItemId = $itemId;
         $this->editCode = $item->code;
         $this->editName = $item->name;
