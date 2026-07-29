@@ -1,12 +1,66 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-4">Масовен внес артикли — {{ $company->name }}</h1>
 
+    @if ($summary)
+        <x-card class="mb-6 bg-green-50">
+            <p class="text-sm text-green-700">{{ $summary }}</p>
+        </x-card>
+    @endif
+
     <x-card class="mb-6">
         <p class="text-sm text-gray-600 mb-3">
             Прво преземете го образецот, пополнете го во Excel и прикачете го овде.
         </p>
-        <a href="{{ route('inventory.items.bulk-import.template', $company) }}" class="text-brand text-sm hover:underline">
+        <a href="{{ route('inventory.items.bulk-import.template', $company) }}" class="text-brand text-sm hover:underline mb-4 block">
             Преземи образец
         </a>
+
+        <form wire:submit="preview" class="flex items-end gap-3">
+            <div>
+                <x-input-label for="importFile" value="Фајл (.xlsx или .csv)" />
+                <input type="file" id="importFile" wire:model="importFile" accept=".xlsx,.csv" class="text-sm">
+                @error('importFile') <span class="text-red-600 text-sm block">{{ $message }}</span> @enderror
+            </div>
+            <x-primary-button type="submit">Прикажи преглед</x-primary-button>
+        </form>
     </x-card>
+
+    @if (! empty($parsedRows))
+        <x-card padding="p-0" class="overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr class="text-left text-sm text-gray-500">
+                        <th class="py-2 px-4">Ред</th>
+                        <th class="py-2 px-4">Статус</th>
+                        <th class="py-2 px-4">Шифра</th>
+                        <th class="py-2 px-4">Назив</th>
+                        <th class="py-2 px-4">Забелешка</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach ($parsedRows as $row)
+                        <tr class="text-sm" wire:key="preview-row-{{ $row['row_number'] }}">
+                            <td class="py-2 px-4">{{ $row['row_number'] }}</td>
+                            <td class="py-2 px-4">
+                                @if ($row['action'] === 'new')
+                                    <span class="text-green-700">Ново</span>
+                                @elseif ($row['action'] === 'update')
+                                    <span class="text-blue-700">Ажурирање</span>
+                                @else
+                                    <span class="text-red-600">Грешка</span>
+                                @endif
+                            </td>
+                            <td class="py-2 px-4 font-mono">{{ $row['code'] }}</td>
+                            <td class="py-2 px-4">{{ $row['name'] }}</td>
+                            <td class="py-2 px-4 text-red-600">{{ implode(' ', $row['errors']) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </x-card>
+
+        <div class="mt-4">
+            <x-primary-button type="button" wire:click="confirmImport">Потврди и зачувај</x-primary-button>
+        </div>
+    @endif
 </div>

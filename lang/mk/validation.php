@@ -141,5 +141,6 @@ return [
         'editType' => 'тип',
         'editBarcode' => 'баркод',
         'reason' => 'причина',
+        'importFile' => 'фајл',
     ],
 ];
