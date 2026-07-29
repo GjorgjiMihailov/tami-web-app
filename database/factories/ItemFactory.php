@@ -18,6 +18,15 @@ class ItemFactory extends Factory
             'vat_rate' => 18.00,
             'preferred_partner_id' => null,
             'is_active' => true,
+            'selling_price' => null,
+            'type' => 'product',
+            'is_made_in_mk' => false,
+            'barcode' => null,
         ];
+    }
+
+    public function service(): Factory
+    {
+        return $this->state(fn () => ['type' => 'service']);
     }
 }
