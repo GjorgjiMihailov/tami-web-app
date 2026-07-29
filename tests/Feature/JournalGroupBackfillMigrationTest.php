@@ -24,17 +24,22 @@ class JournalGroupBackfillMigrationTest extends TestCase
         // Roll the schema back to its pre-migration shape (this migration is
         // part of the baseline, so by the time this test runs the target
         // schema -- journal_group_id column + the new 4-column unique index
-        // -- already exists). Drop the new unique index and the column, and
-        // restore the original 3-column unique index the migration itself
-        // drops in up(), matching this project's established pattern for
-        // testing a data-backfill migration that's already baked into the
-        // schema baseline (see CompanyBankAccountMigrationTest).
+        // -- already exists). Restore the original 3-column unique index
+        // FIRST, then drop the new one and the column -- the same
+        // FK-needs-a-supporting-index ordering constraint the migration
+        // itself works around: company_id's foreign key must always have
+        // at least one covering index, so the old 3-column unique has to
+        // exist again before the new 4-column one (currently the only
+        // thing covering company_id) can be dropped. Matches this
+        // project's established pattern for testing a data-backfill
+        // migration that's already baked into the schema baseline (see
+        // CompanyBankAccountMigrationTest).
+        Schema::table('journal_entries', function (Blueprint $table) {
+            $table->unique(['company_id', 'fiscal_year', 'entry_number']);
+        });
         Schema::table('journal_entries', function (Blueprint $table) {
             $table->dropUnique('journal_entries_number_per_group_unique');
             $table->dropConstrainedForeignId('journal_group_id');
-        });
-        Schema::table('journal_entries', function (Blueprint $table) {
-            $table->unique(['company_id', 'fiscal_year', 'entry_number']);
         });
 
         // Seed three legacy entries whose entry_number order deliberately does
