@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Company;
 use App\Models\Partner;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -14,6 +15,28 @@ class PartnerShow extends Component
     public Company $company;
 
     public Partner $partner;
+
+    public bool $editing = false;
+
+    public string $editName = '';
+
+    public string $editType = 'legal_entity';
+
+    public string $editTaxId = '';
+
+    public string $editRegistrationNumber = '';
+
+    public string $editDirectorName = '';
+
+    public bool $editIsVatRegistered = false;
+
+    public string $editVatNumber = '';
+
+    public string $editEmail = '';
+
+    public string $editPhone = '';
+
+    public string $editAddress = '';
 
     public function mount(Company $company, Partner $partner): void
     {
@@ -25,6 +48,65 @@ class PartnerShow extends Component
 
         $this->company = $company;
         $this->partner = $partner;
+    }
+
+    public function startEdit(): void
+    {
+        Gate::authorize('update', $this->partner);
+
+        $this->editName = $this->partner->name;
+        $this->editType = $this->partner->type;
+        $this->editTaxId = (string) $this->partner->tax_id;
+        $this->editRegistrationNumber = (string) $this->partner->registration_number;
+        $this->editDirectorName = (string) $this->partner->director_name;
+        $this->editIsVatRegistered = $this->partner->is_vat_registered;
+        $this->editVatNumber = (string) $this->partner->vat_number;
+        $this->editEmail = (string) $this->partner->email;
+        $this->editPhone = (string) $this->partner->phone;
+        $this->editAddress = (string) $this->partner->address;
+
+        $this->editing = true;
+    }
+
+    public function cancelEdit(): void
+    {
+        $this->editing = false;
+    }
+
+    public function save(): void
+    {
+        Gate::authorize('update', $this->partner);
+
+        $validated = $this->validate([
+            'editName' => 'required|string|max:255',
+            'editType' => ['required', Rule::in(['individual', 'legal_entity'])],
+            'editTaxId' => 'nullable|string|max:255',
+            'editRegistrationNumber' => 'nullable|string|max:255',
+            'editDirectorName' => 'nullable|string|max:255',
+            'editIsVatRegistered' => 'boolean',
+            'editVatNumber' => 'nullable|string|max:255',
+            'editEmail' => 'nullable|email|max:255',
+            'editPhone' => 'nullable|string|max:255',
+            'editAddress' => 'nullable|string|max:255',
+        ]);
+
+        $isLegalEntity = $validated['editType'] === 'legal_entity';
+        $isVatRegistered = $isLegalEntity && $validated['editIsVatRegistered'];
+
+        $this->partner->update([
+            'name' => $validated['editName'],
+            'type' => $validated['editType'],
+            'tax_id' => $validated['editTaxId'] ?: null,
+            'registration_number' => $isLegalEntity ? ($validated['editRegistrationNumber'] ?: null) : null,
+            'director_name' => $isLegalEntity ? ($validated['editDirectorName'] ?: null) : null,
+            'is_vat_registered' => $isVatRegistered,
+            'vat_number' => $isVatRegistered ? ($validated['editVatNumber'] ?: null) : null,
+            'email' => $validated['editEmail'] ?: null,
+            'phone' => $validated['editPhone'] ?: null,
+            'address' => $validated['editAddress'] ?: null,
+        ]);
+
+        $this->editing = false;
     }
 
     public function render()
