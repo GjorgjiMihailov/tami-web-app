@@ -41,10 +41,10 @@ return new class extends Migration
                     $number = 0;
                     foreach ($entriesInYear as $entry) {
                         $number++;
-                        $entry->update([
+                        $entry->forceFill([
                             'journal_group_id' => $legacyGroup->id,
                             'entry_number' => $number,
-                        ]);
+                        ])->save();
                     }
                 });
         });
