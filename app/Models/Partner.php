@@ -11,7 +11,16 @@ class Partner extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['company_id', 'name', 'tax_id', 'email', 'phone', 'address'];
+    protected $fillable = [
+        'company_id', 'name', 'type', 'tax_id', 'registration_number',
+        'director_name', 'is_vat_registered', 'vat_number',
+        'email', 'phone', 'address',
+    ];
+
+    protected function casts(): array
+    {
+        return ['is_vat_registered' => 'boolean'];
+    }
 
     public function company(): BelongsTo
     {

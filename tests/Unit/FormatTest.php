@@ -94,4 +94,10 @@ class FormatTest extends TestCase
         $this->assertSame('Somethingnew', Format::invoiceStatus('somethingnew'));
         $this->assertSame('Unknown', Format::documentCategory('Unknown'));
     }
+
+    public function test_partner_type_maps_to_macedonian_labels(): void
+    {
+        $this->assertSame('Физичко лице', Format::partnerType('individual'));
+        $this->assertSame('Правно лице', Format::partnerType('legal_entity'));
+    }
 }

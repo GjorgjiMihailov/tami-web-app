@@ -81,4 +81,13 @@ class Format
             default => $category,
         };
     }
+
+    public static function partnerType(string $type): string
+    {
+        return match ($type) {
+            'individual' => 'Физичко лице',
+            'legal_entity' => 'Правно лице',
+            default => ucfirst($type),
+        };
+    }
 }

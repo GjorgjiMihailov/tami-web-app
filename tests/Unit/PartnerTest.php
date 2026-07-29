@@ -32,4 +32,39 @@ class PartnerTest extends TestCase
         $this->assertSame('4030012345678', $partner->tax_id);
         $this->assertSame('contact@akaunt.mk', $partner->email);
     }
+
+    public function test_partner_defaults_to_legal_entity_type(): void
+    {
+        $partner = Partner::factory()->create();
+
+        $this->assertSame('legal_entity', $partner->type);
+        $this->assertFalse($partner->is_vat_registered);
+    }
+
+    public function test_partner_stores_legal_entity_fields(): void
+    {
+        $partner = Partner::factory()->create([
+            'type' => 'legal_entity',
+            'registration_number' => '7080123',
+            'director_name' => 'Марко Марковски',
+            'is_vat_registered' => true,
+            'vat_number' => 'MK4030012345678',
+        ]);
+
+        $this->assertSame('7080123', $partner->registration_number);
+        $this->assertSame('Марко Марковски', $partner->director_name);
+        $this->assertTrue($partner->is_vat_registered);
+        $this->assertSame('MK4030012345678', $partner->vat_number);
+    }
+
+    public function test_individual_factory_state_omits_legal_entity_fields(): void
+    {
+        $partner = Partner::factory()->individual()->create();
+
+        $this->assertSame('individual', $partner->type);
+        $this->assertNull($partner->registration_number);
+        $this->assertNull($partner->director_name);
+        $this->assertFalse($partner->is_vat_registered);
+        $this->assertNull($partner->vat_number);
+    }
 }
