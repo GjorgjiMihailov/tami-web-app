@@ -30,7 +30,7 @@ class JournalGroupBackfillMigrationTest extends TestCase
         // testing a data-backfill migration that's already baked into the
         // schema baseline (see CompanyBankAccountMigrationTest).
         Schema::table('journal_entries', function (Blueprint $table) {
-            $table->dropUnique(['company_id', 'fiscal_year', 'journal_group_id', 'entry_number']);
+            $table->dropUnique('journal_entries_number_per_group_unique');
             $table->dropConstrainedForeignId('journal_group_id');
         });
         Schema::table('journal_entries', function (Blueprint $table) {

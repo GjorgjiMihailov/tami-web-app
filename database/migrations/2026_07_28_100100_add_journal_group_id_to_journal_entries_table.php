@@ -31,8 +31,16 @@ return new class extends Migration
         // no duplicate-key error is possible here regardless of how
         // many rows share the same (company_id, fiscal_year, NULL,
         // entry_number) tuple.
+        //
+        // An explicit short name is required here too: Laravel's
+        // auto-generated name for this 4-column index exceeds MySQL's
+        // 64-character identifier limit (SQLite has no such limit,
+        // which is exactly the Phase 3b bug class referenced above).
         Schema::table('journal_entries', function (Blueprint $table) {
-            $table->unique(['company_id', 'fiscal_year', 'journal_group_id', 'entry_number']);
+            $table->unique(
+                ['company_id', 'fiscal_year', 'journal_group_id', 'entry_number'],
+                'journal_entries_number_per_group_unique'
+            );
         });
 
         Schema::table('journal_entries', function (Blueprint $table) {
