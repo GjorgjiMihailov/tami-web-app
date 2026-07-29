@@ -96,7 +96,7 @@
                             $accountLabel = $selectedAccount ? $selectedAccount->code.' — '.$selectedAccount->name : '';
                         @endphp
                         <td class="py-1 pr-2 relative" x-data="journalEntryPicker(jepAccounts, 'lines.{{ $index }}.account_id', @js($accountLabel))" @click.outside="open = false">
-                            <input type="text" x-model="query" @focus="open = true" @input="open = true"
+                            <input type="text" x-model="query" @focus="open = true" @input="onInput()"
                                    placeholder="Код или име..." class="border-gray-300 rounded-md text-sm w-40" @disabled(! $canEdit) />
                             <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-gray-200 rounded-md shadow-md mt-1 max-h-48 overflow-y-auto w-64">
                                 <template x-for="item in filtered" :key="item.id">
@@ -109,7 +109,7 @@
                             $partnerLabel = $selectedPartner?->name ?? '';
                         @endphp
                         <td class="py-1 pr-2 relative" x-data="journalEntryPicker(jepPartners, 'lines.{{ $index }}.partner_id', @js($partnerLabel))" @click.outside="open = false">
-                            <input type="text" x-model="query" @focus="open = true" @input="open = true"
+                            <input type="text" x-model="query" @focus="open = true" @input="onInput()"
                                    placeholder="Партнер..." class="border-gray-300 rounded-md text-sm w-40" @disabled(! $canEdit) />
                             <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-gray-200 rounded-md shadow-md mt-1 max-h-48 overflow-y-auto w-64">
                                 <template x-for="item in filtered" :key="item.id">
@@ -168,7 +168,7 @@
                         <div>
                             <label class="text-xs text-gray-500">Сметка</label>
                             <div x-data="journalEntryPicker(jepAccounts, 'lines.{{ $index }}.account_id', @js($accounts->firstWhere('id', $line['account_id'])?->code.' — '.$accounts->firstWhere('id', $line['account_id'])?->name ?? ''))" @click.outside="open = false" class="relative">
-                                <input type="text" x-model="query" @focus="open = true" @input="open = true" class="border-gray-300 rounded-md text-sm w-full" @disabled(! $canEdit) />
+                                <input type="text" x-model="query" @focus="open = true" @input="onInput()" class="border-gray-300 rounded-md text-sm w-full" @disabled(! $canEdit) />
                                 <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-gray-200 rounded-md shadow-md mt-1 max-h-40 overflow-y-auto w-full">
                                     <template x-for="item in filtered" :key="item.id">
                                         <div @click="select(item)" class="px-2 py-1 text-sm hover:bg-gray-100 cursor-pointer" x-text="item.label"></div>

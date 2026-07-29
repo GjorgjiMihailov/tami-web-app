@@ -854,4 +854,61 @@ class JournalEntryFormTest extends TestCase
         $this->assertSame($lastKey, $remainingKeys[1]);
         $this->assertNotContains($middleKey, $remainingKeys);
     }
+
+    public function test_an_empty_account_id_is_rejected_on_save(): void
+    {
+        // If the user retypes in the autocomplete box without picking a
+        // suggestion, the JS-side onInput() handler clears the bound
+        // account_id to '' (see resources/js/journal-entry-picker.js). This
+        // proves the server-side 'required' validation catches that state
+        // rather than silently posting against whatever account_id was
+        // previously selected.
+        $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $revenue = Account::where('company_id', $company->id)->where('code', '740')->first();
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('entryDate', '2026-03-15')
+            ->set('journalGroupId', $group->id)
+            ->set('lines.0.account_id', '')
+            ->set('lines.0.debit', '1000')
+            ->set('lines.1.account_id', $revenue->id)
+            ->set('lines.1.credit', '1000')
+            ->call('save')
+            ->assertHasErrors('lines.0.account_id');
+
+        $this->assertDatabaseCount('journal_entries', 0);
+    }
+
+    public function test_an_empty_partner_id_after_retyping_without_selecting_does_not_block_save(): void
+    {
+        // partner_id is nullable — clearing it (the same JS-side behavior as
+        // account_id) must NOT block save, since a line with no partner is a
+        // valid, normal case in this app.
+        $company = Company::factory()->create();
+        $group = JournalGroup::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
+        $revenue = Account::where('company_id', $company->id)->where('code', '740')->first();
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->set('entryDate', '2026-03-15')
+            ->set('journalGroupId', $group->id)
+            ->set('lines.0.account_id', $cash->id)
+            ->set('lines.0.debit', '1000')
+            ->set('lines.0.partner_id', '')
+            ->set('lines.1.account_id', $revenue->id)
+            ->set('lines.1.credit', '1000')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseCount('journal_entries', 1);
+    }
 }

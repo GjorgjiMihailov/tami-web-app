@@ -2,6 +2,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('journalEntryPicker', (items, wireModel, initialLabel) => ({
         items,
         query: initialLabel ?? '',
+        selectedLabel: initialLabel ?? '',
         open: false,
 
         get filtered() {
@@ -16,8 +17,17 @@ document.addEventListener('alpine:init', () => {
 
         select(item) {
             this.query = item.label;
+            this.selectedLabel = item.label;
             this.open = false;
             this.$wire.set(wireModel, item.id);
+        },
+
+        onInput() {
+            this.open = true;
+            if (this.query !== this.selectedLabel) {
+                this.selectedLabel = '';
+                this.$wire.set(wireModel, '');
+            }
         },
     }));
 });
