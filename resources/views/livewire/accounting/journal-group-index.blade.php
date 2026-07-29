@@ -33,13 +33,29 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($groups as $group)
-                <tr class="text-sm">
+                <tr class="text-sm" wire:key="group-{{ $group->id }}">
                     <td class="py-2 px-4 font-mono">{{ $group->code }}</td>
-                    <td class="py-2 px-4">{{ $group->name }}</td>
                     <td class="py-2 px-4">
-                        @can('delete', $group)
-                            <button type="button" wire:click="deleteGroup({{ $group->id }})" wire:confirm="Да се избрише журналот {{ $group->code }}?" class="text-red-600 text-sm hover:underline">Избриши</button>
-                        @endcan
+                        @if ($editingGroupId === $group->id)
+                            <form wire:submit="updateGroupName({{ $group->id }})" class="flex items-center gap-2">
+                                <x-text-input wire:model="editName" class="text-sm" autofocus />
+                                <button type="submit" class="text-brand text-sm hover:underline">Зачувај</button>
+                                <button type="button" wire:click="cancelEditingGroup" class="text-gray-500 text-sm hover:underline">Откажи</button>
+                            </form>
+                            @error('editName') <span class="text-red-600 text-sm block mt-1">{{ $message }}</span> @enderror
+                        @else
+                            {{ $group->name }}
+                        @endif
+                    </td>
+                    <td class="py-2 px-4 whitespace-nowrap">
+                        @if ($editingGroupId !== $group->id)
+                            @can('update', $group)
+                                <button type="button" wire:click="startEditingGroup({{ $group->id }}, @js($group->name))" class="text-brand text-sm hover:underline mr-3">Измени</button>
+                            @endcan
+                            @can('delete', $group)
+                                <button type="button" wire:click="deleteGroup({{ $group->id }})" wire:confirm="Да се избрише журналот {{ $group->code }}?" class="text-red-600 text-sm hover:underline">Избриши</button>
+                            @endcan
+                        @endif
                     </td>
                 </tr>
             @empty

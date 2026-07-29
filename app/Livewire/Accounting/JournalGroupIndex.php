@@ -18,6 +18,10 @@ class JournalGroupIndex extends Component
 
     public string $newName = '';
 
+    public ?int $editingGroupId = null;
+
+    public string $editName = '';
+
     public function mount(Company $company): void
     {
         Gate::authorize('view', $company);
@@ -29,7 +33,7 @@ class JournalGroupIndex extends Component
         Gate::authorize('create', JournalGroup::class);
 
         $validated = $this->validate([
-            'newCode' => ['required', 'string', 'size:2', Rule::unique('journal_groups', 'code')->where('company_id', $this->company->id)],
+            'newCode' => ['required', 'string', 'digits:2', Rule::unique('journal_groups', 'code')->where('company_id', $this->company->id)],
             'newName' => ['required', 'string', 'max:255'],
         ]);
 
@@ -41,6 +45,34 @@ class JournalGroupIndex extends Component
         ]);
 
         $this->reset(['newCode', 'newName']);
+    }
+
+    public function startEditingGroup(int $groupId, string $currentName): void
+    {
+        $group = JournalGroup::where('company_id', $this->company->id)->findOrFail($groupId);
+        Gate::authorize('update', $group);
+
+        $this->editingGroupId = $groupId;
+        $this->editName = $currentName;
+    }
+
+    public function cancelEditingGroup(): void
+    {
+        $this->editingGroupId = null;
+        $this->editName = '';
+    }
+
+    public function updateGroupName(int $groupId): void
+    {
+        $group = JournalGroup::where('company_id', $this->company->id)->findOrFail($groupId);
+        Gate::authorize('update', $group);
+
+        $validated = $this->validate(['editName' => 'required|string|max:255']);
+
+        $group->update(['name' => $validated['editName']]);
+
+        $this->editingGroupId = null;
+        $this->editName = '';
     }
 
     public function deleteGroup(int $groupId): void

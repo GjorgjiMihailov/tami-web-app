@@ -117,4 +117,61 @@ class JournalGroupIndexTest extends TestCase
 
         $this->assertDatabaseCount('journal_groups', 1);
     }
+
+    public function test_admin_can_rename_a_journal_group(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $group = JournalGroup::factory()->for($company)->create(['code' => '10', 'name' => 'Стар назив']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalGroupIndex::class, ['company' => $company])
+            ->call('startEditingGroup', $group->id, 'Стар назив')
+            ->set('editName', 'Нов назив')
+            ->call('updateGroupName', $group->id)
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('journal_groups', ['id' => $group->id, 'code' => '10', 'name' => 'Нов назив']);
+    }
+
+    public function test_client_cannot_rename_a_journal_group(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+        $group = JournalGroup::factory()->for($company)->create(['name' => 'Оригинален назив']);
+
+        $this->actingAs($client);
+
+        Livewire::test(JournalGroupIndex::class, ['company' => $company])
+            ->set('editName', 'Обид за измена')
+            ->call('updateGroupName', $group->id)
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('journal_groups', ['id' => $group->id, 'name' => 'Оригинален назив']);
+    }
+
+    public function test_the_code_cannot_be_changed_via_the_edit_path(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $group = JournalGroup::factory()->for($company)->create(['code' => '10', 'name' => 'Назив']);
+
+        $this->actingAs($admin);
+
+        // updateGroupName() only ever validates/writes the 'editName' Livewire
+        // property to the group's 'name' column -- there is no public method
+        // or exposed property that lets a client-side request influence
+        // 'code', matching the design intent that code is immutable once set.
+        Livewire::test(JournalGroupIndex::class, ['company' => $company])
+            ->call('startEditingGroup', $group->id, 'Назив')
+            ->set('editName', 'Нов назив')
+            ->call('updateGroupName', $group->id)
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('journal_groups', ['id' => $group->id, 'code' => '10']);
+    }
 }
