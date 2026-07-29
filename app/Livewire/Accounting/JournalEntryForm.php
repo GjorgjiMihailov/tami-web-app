@@ -235,6 +235,10 @@ class JournalEntryForm extends Component
 
     public function delete(): void
     {
+        if (! $this->journalEntry) {
+            return;
+        }
+
         Gate::authorize('delete', $this->journalEntry);
 
         if (SalesInvoice::where('journal_entry_id', $this->journalEntry->id)->exists()

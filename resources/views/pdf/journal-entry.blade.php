@@ -31,7 +31,7 @@
 
         <table class="header-table">
             <tr>
-                <td class="muted">Журнал: {{ $entry->journalGroup->code }} — {{ $entry->journalGroup->name }}</td>
+                <td class="muted">Журнал: @if ($entry->journalGroup) {{ $entry->journalGroup->code }} — {{ $entry->journalGroup->name }} @else — @endif</td>
                 <td class="muted" style="text-align: right;">Датум: {{ \App\Support\Format::date($entry->entry_date) }}</td>
             </tr>
             @if ($entry->description)

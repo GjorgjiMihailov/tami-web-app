@@ -34,7 +34,13 @@
             <div>
                 <x-input-label for="journalGroupId" value="Журнал" />
                 @if ($journalEntry)
-                    <div class="text-sm text-gray-700 py-2">{{ $journalEntry->journalGroup->code }} — {{ $journalEntry->journalGroup->name }}</div>
+                    <div class="text-sm text-gray-700 py-2">
+                        @if ($journalEntry->journalGroup)
+                            {{ $journalEntry->journalGroup->code }} — {{ $journalEntry->journalGroup->name }}
+                        @else
+                            —
+                        @endif
+                    </div>
                 @else
                     <select id="journalGroupId" wire:model="journalGroupId" class="border-gray-300 rounded-md text-sm w-full">
                         <option value="">—</option>
@@ -60,7 +66,7 @@
             </div>
         </div>
 
-        <div class="mb-4">
+        <div class="mb-4 hidden md:block">
             <label class="flex items-center gap-2 text-sm text-gray-700">
                 <input type="checkbox" wire:model.live="isForeignCurrency" @disabled(! $canEdit) />
                 Овој налог е во девизи

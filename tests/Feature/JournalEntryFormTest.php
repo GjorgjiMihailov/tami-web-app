@@ -911,4 +911,22 @@ class JournalEntryFormTest extends TestCase
 
         $this->assertDatabaseCount('journal_entries', 1);
     }
+
+    public function test_calling_delete_on_a_brand_new_unsaved_entry_does_not_crash(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        // The delete button only renders when an entry exists, but delete()
+        // itself should defensively no-op rather than TypeError on
+        // Gate::authorize('delete', null) if it's ever invoked without one.
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->call('delete')
+            ->assertNoRedirect();
+
+        $this->assertDatabaseCount('journal_entries', 0);
+    }
 }
