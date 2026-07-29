@@ -11,6 +11,13 @@
                     @error('newName') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <div>
+                    <x-input-label for="newType" value="Тип" />
+                    <select id="newType" wire:model="newType" class="border-gray-300 rounded-md text-sm">
+                        <option value="legal_entity">Правно лице</option>
+                        <option value="individual">Физичко лице</option>
+                    </select>
+                </div>
+                <div>
                     <x-input-label for="newTaxId" value="ЕДБ" />
                     <x-text-input id="newTaxId" wire:model="newTaxId" class="w-40" />
                 </div>

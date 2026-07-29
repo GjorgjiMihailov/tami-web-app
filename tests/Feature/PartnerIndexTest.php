@@ -81,4 +81,43 @@ class PartnerIndexTest extends TestCase
             ->get(route('partners.index', $company))
             ->assertOk();
     }
+
+    public function test_quick_add_form_persists_the_selected_type(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PartnerIndex::class, ['company' => $company])
+            ->set('newName', 'Марко Петровски')
+            ->set('newType', 'individual')
+            ->call('addPartner')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('partners', [
+            'company_id' => $company->id,
+            'name' => 'Марко Петровски',
+            'type' => 'individual',
+        ]);
+    }
+
+    public function test_quick_add_form_defaults_to_legal_entity(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PartnerIndex::class, ['company' => $company])
+            ->set('newName', 'Бета ДООЕЛ')
+            ->call('addPartner')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('partners', [
+            'company_id' => $company->id,
+            'name' => 'Бета ДООЕЛ',
+            'type' => 'legal_entity',
+        ]);
+    }
 }
