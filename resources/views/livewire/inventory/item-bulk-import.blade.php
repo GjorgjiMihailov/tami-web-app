@@ -116,6 +116,7 @@
         </x-card>
 
         @php $hasActionableRows = collect($parsedRows)->contains(fn ($row) => $row['action'] !== 'error'); @endphp
+        @error('confirm') <p class="text-red-600 text-sm mt-4">{{ $message }}</p> @enderror
         @if ($hasActionableRows)
             <div class="mt-4">
                 <x-primary-button type="button" wire:click="confirmImport">Потврди и зачувај</x-primary-button>

@@ -222,6 +222,7 @@ class ItemBulkImportTest extends TestCase
 
         $rows = [
             ['Шифра', 'Назив', 'Мерна единица', 'Категорија', 'ДДВ стапка', 'Продажна цена', 'Тип', 'МК-производство', 'Баркод'],
+            ['SKU-NEW', 'Created First', 'парче', '', '', '', '', '', ''],
             ['SKU-RACE', 'Will race', 'парче', '', '', '', '', '', ''],
         ];
 
@@ -231,7 +232,9 @@ class ItemBulkImportTest extends TestCase
 
         // Simulate a concurrent delete of the matched item between preview() and confirmImport()
         // so confirmImport()'s findOrFail() throws mid-transaction — proves the try/catch
-        // produces a friendly error instead of a raw 500, and nothing partial persists.
+        // produces a friendly error instead of a raw 500, and nothing partial persists. SKU-NEW
+        // is processed before SKU-RACE in the same transaction, so if the rollback didn't
+        // genuinely work, SKU-NEW would have survived as a committed row.
         \App\Models\Item::where('code', 'SKU-RACE')->delete();
 
         $component->call('confirmImport')->assertHasErrors(['confirm']);
