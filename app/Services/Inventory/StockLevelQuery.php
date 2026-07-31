@@ -21,6 +21,7 @@ class StockLevelQuery
                 'items.id as item_id',
                 'items.code as item_code',
                 'items.name as item_name',
+                'items.selling_price',
                 'warehouses.id as warehouse_id',
                 'warehouses.name as warehouse_name',
                 'stock_levels.quantity_on_hand',
@@ -35,6 +36,7 @@ class StockLevelQuery
                 'quantity_on_hand' => (float) $row->quantity_on_hand,
                 'average_cost' => (float) $row->average_cost,
                 'value' => round((float) $row->quantity_on_hand * (float) $row->average_cost, 2),
+                'selling_value' => round((float) $row->quantity_on_hand * (float) ($row->selling_price ?? 0), 2),
             ])
             ->values();
     }
@@ -46,7 +48,7 @@ class StockLevelQuery
             ->join('warehouses', 'warehouses.id', '=', 'stock_levels.warehouse_id')
             ->where('items.company_id', $company->id)
             ->where('warehouses.company_id', $company->id)
-            ->selectRaw('items.id as item_id, items.code as item_code, items.name as item_name, SUM(stock_levels.quantity_on_hand) as total_quantity, SUM(stock_levels.quantity_on_hand * stock_levels.average_cost) as total_value')
+            ->selectRaw('items.id as item_id, items.code as item_code, items.name as item_name, SUM(stock_levels.quantity_on_hand) as total_quantity, SUM(stock_levels.quantity_on_hand * stock_levels.average_cost) as total_value, SUM(stock_levels.quantity_on_hand * COALESCE(items.selling_price, 0)) as total_selling_value')
             ->groupBy('items.id', 'items.code', 'items.name')
             ->orderBy('items.name')
             ->get()
@@ -56,6 +58,7 @@ class StockLevelQuery
                 'item_name' => $row->item_name,
                 'total_quantity' => (float) $row->total_quantity,
                 'total_value' => round((float) $row->total_value, 2),
+                'total_selling_value' => round((float) $row->total_selling_value, 2),
             ])
             ->values();
     }

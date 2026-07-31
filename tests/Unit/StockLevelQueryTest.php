@@ -65,6 +65,60 @@ class StockLevelQueryTest extends TestCase
         $this->assertSame(1500.0, $rows[0]['total_value']);
     }
 
+    public function test_stock_on_hand_includes_selling_value(): void
+    {
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create(['selling_price' => '80.00']);
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $user = User::factory()->create();
+        app(StockMovementService::class)->receipt($item, $warehouse, '10', '50.00', '2026-01-01', $user->id);
+
+        $rows = StockLevelQuery::stockOnHand($company);
+
+        $this->assertSame(800.0, $rows[0]['selling_value']);
+    }
+
+    public function test_stock_on_hand_selling_value_is_zero_when_item_has_no_selling_price(): void
+    {
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create(['selling_price' => null]);
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $user = User::factory()->create();
+        app(StockMovementService::class)->receipt($item, $warehouse, '10', '50.00', '2026-01-01', $user->id);
+
+        $rows = StockLevelQuery::stockOnHand($company);
+
+        $this->assertSame(0.0, $rows[0]['selling_value']);
+    }
+
+    public function test_stock_on_hand_totals_includes_selling_value(): void
+    {
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create(['selling_price' => '80.00']);
+        $warehouseA = Warehouse::factory()->for($company)->create();
+        $warehouseB = Warehouse::factory()->for($company)->create();
+        $user = User::factory()->create();
+        app(StockMovementService::class)->receipt($item, $warehouseA, '10', '50.00', '2026-01-01', $user->id);
+        app(StockMovementService::class)->receipt($item, $warehouseB, '20', '50.00', '2026-01-01', $user->id);
+
+        $rows = StockLevelQuery::stockOnHandTotals($company);
+
+        $this->assertSame(2400.0, $rows[0]['total_selling_value']);
+    }
+
+    public function test_stock_on_hand_totals_selling_value_is_zero_when_item_has_no_selling_price(): void
+    {
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create(['selling_price' => null]);
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $user = User::factory()->create();
+        app(StockMovementService::class)->receipt($item, $warehouse, '10', '50.00', '2026-01-01', $user->id);
+
+        $rows = StockLevelQuery::stockOnHandTotals($company);
+
+        $this->assertSame(0.0, $rows[0]['total_selling_value']);
+    }
+
     public function test_stock_on_hand_and_totals_exclude_rows_whose_item_and_warehouse_belong_to_different_companies(): void
     {
         // A stock_levels row like this should never be created by
