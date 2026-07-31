@@ -14,6 +14,8 @@ class CompanyFactory extends Factory
             'email' => $this->faker->companyEmail(),
             'phone' => $this->faker->phoneNumber(),
             'address' => $this->faker->address(),
+            'efaktura_credential_mode' => 'firm',
+            'efaktura_firm_access_status' => 'none',
         ];
     }
 }

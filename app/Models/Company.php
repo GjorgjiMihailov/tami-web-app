@@ -11,15 +11,29 @@ class Company extends Model
 {
     use HasFactory;
 
+    public const EFAKTURA_MODE_OWN = 'own';
+    public const EFAKTURA_MODE_FIRM = 'firm';
+
+    public const EFAKTURA_STATUS_NONE = 'none';
+    public const EFAKTURA_STATUS_REQUESTED = 'requested';
+    public const EFAKTURA_STATUS_APPROVED = 'approved';
+    public const EFAKTURA_STATUS_REJECTED = 'rejected';
+
     protected $fillable = [
         'name', 'short_name', 'tax_id', 'registration_number', 'nkd_code', 'nkd_name',
         'email', 'phone', 'address', 'website', 'director_name', 'director_phone', 'director_email',
         'logo_path', 'logo_position', 'is_vat_registered', 'invoice_footer_note',
+        'efaktura_credential_mode', 'efaktura_eujp_id', 'efaktura_certificate_path',
+        'efaktura_certificate_password', 'efaktura_firm_access_status',
     ];
 
     protected function casts(): array
     {
-        return ['is_vat_registered' => 'boolean'];
+        return [
+            'is_vat_registered' => 'boolean',
+            'efaktura_certificate_path' => 'encrypted',
+            'efaktura_certificate_password' => 'encrypted',
+        ];
     }
 
     public function clients(): HasMany
@@ -35,5 +49,14 @@ class Company extends Model
     public function bankAccounts(): HasMany
     {
         return $this->hasMany(CompanyBankAccount::class)->orderBy('position');
+    }
+
+    public function hasEfakturaAccess(): bool
+    {
+        if ($this->efaktura_credential_mode === self::EFAKTURA_MODE_OWN) {
+            return filled($this->efaktura_eujp_id) && filled($this->efaktura_certificate_path);
+        }
+
+        return $this->efaktura_firm_access_status === self::EFAKTURA_STATUS_APPROVED;
     }
 }
