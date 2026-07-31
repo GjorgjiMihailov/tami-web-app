@@ -36,6 +36,7 @@ class InventoryRoutesTest extends TestCase
         $this->get(route('inventory.stock-movements.create', [$company, 'transfer']))->assertOk();
         $this->get(route('inventory.stock-movements.create', [$company, 'adjustment']))->assertOk();
         $this->get(route('inventory.reports.stock-on-hand', $company))->assertOk();
+        $this->get(route('inventory.reports.stock-on-hand.pdf', $company))->assertOk();
         $this->get(route('inventory.reports.item-movement-card', $company))->assertOk();
         $this->get(route('inventory.reports.stock-valuation', $company))->assertOk();
     }
