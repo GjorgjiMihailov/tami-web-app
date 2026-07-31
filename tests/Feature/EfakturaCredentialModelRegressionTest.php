@@ -40,7 +40,7 @@ class EfakturaCredentialModelRegressionTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(EfakturaAccessRequests::class)
-            ->call('approve', $company->fresh());
+            ->call('approve', $company->fresh()->id);
 
         $this->assertTrue($company->fresh()->hasEfakturaAccess());
     }

@@ -11,19 +11,27 @@ class EfakturaAccessRequests extends Component
 {
     public function mount(): void
     {
-        abort_unless(auth()->user()->hasRole('admin'), 403);
+        abort_unless(auth()->check() && auth()->user()->hasRole('admin'), 403);
     }
 
     public function approve(Company $company): void
     {
-        abort_unless(auth()->user()->hasRole('admin'), 403);
-        $company->update(['efaktura_firm_access_status' => Company::EFAKTURA_STATUS_APPROVED]);
+        abort_unless(auth()->check() && auth()->user()->hasRole('admin'), 403);
+        $company->update([
+            'efaktura_firm_access_status' => Company::EFAKTURA_STATUS_APPROVED,
+            'efaktura_firm_access_decided_by' => auth()->id(),
+            'efaktura_firm_access_decided_at' => now(),
+        ]);
     }
 
     public function reject(Company $company): void
     {
-        abort_unless(auth()->user()->hasRole('admin'), 403);
-        $company->update(['efaktura_firm_access_status' => Company::EFAKTURA_STATUS_REJECTED]);
+        abort_unless(auth()->check() && auth()->user()->hasRole('admin'), 403);
+        $company->update([
+            'efaktura_firm_access_status' => Company::EFAKTURA_STATUS_REJECTED,
+            'efaktura_firm_access_decided_by' => auth()->id(),
+            'efaktura_firm_access_decided_at' => now(),
+        ]);
     }
 
     public function render()

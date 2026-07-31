@@ -42,9 +42,21 @@ class CompanyEfakturaAccessTest extends TestCase
         $company->update([
             'efaktura_eujp_id' => 'EUJP-123',
             'efaktura_certificate_path' => 'efaktura-certs/1/cert.p12',
+            'efaktura_certificate_password' => 'pw-123',
         ]);
 
         $this->assertTrue($company->fresh()->hasEfakturaAccess());
+    }
+
+    public function test_own_mode_without_certificate_password_has_no_access(): void
+    {
+        $company = Company::factory()->create([
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'EUJP-123',
+            'efaktura_certificate_path' => 'efaktura-certs/1/cert.p12',
+        ]);
+
+        $this->assertFalse($company->fresh()->hasEfakturaAccess());
     }
 
     public function test_certificate_path_and_password_are_encrypted_at_rest(): void

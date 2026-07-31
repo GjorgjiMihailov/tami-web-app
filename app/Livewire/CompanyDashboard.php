@@ -167,9 +167,39 @@ class CompanyDashboard extends Component
                 Company::EFAKTURA_MODE_OWN, Company::EFAKTURA_MODE_FIRM,
             ])],
             'editEfakturaEujpId' => 'nullable|string|max:100',
-            'newEfakturaCertificate' => 'nullable|file|max:5120|mimes:p12,pfx',
+            'newEfakturaCertificate' => ['nullable', 'file', 'max:5120', 'extensions:p12,pfx'],
             'editEfakturaCertificatePassword' => 'nullable|string|max:255',
         ]);
+
+        // Laravel's validator skips non-implicit rules (including closures) for a field
+        // that carries "nullable" whenever its value is blank, so the own-mode-required
+        // checks below run as a manual post-validation pass instead of inline closures —
+        // this is the only way to guarantee they fire on an empty submission.
+        if ($validated['editEfakturaMode'] === Company::EFAKTURA_MODE_OWN) {
+            if (blank($validated['editEfakturaEujpId'])) {
+                $this->addError('editEfakturaEujpId', 'X-EUJP-ID е задолжителен за сопствен е-Фактура пристап.');
+            }
+            if (! $this->newEfakturaCertificate && blank($this->company->efaktura_certificate_path)) {
+                $this->addError('newEfakturaCertificate', 'Мора да прикачиш сертификат за сопствен е-Фактура пристап.');
+            }
+            if (blank($validated['editEfakturaCertificatePassword']) && blank($this->company->efaktura_certificate_password)) {
+                $this->addError('editEfakturaCertificatePassword', 'Лозинката за сертификатот е задолжителна за сопствен е-Фактура пристап.');
+            }
+
+            if ($this->getErrorBag()->isNotEmpty()) {
+                return;
+            }
+        }
+
+        if ($this->newEfakturaCertificate) {
+            $password = $validated['editEfakturaCertificatePassword'] ?: $this->company->efaktura_certificate_password;
+            $contents = file_get_contents($this->newEfakturaCertificate->getRealPath());
+            if (! openssl_pkcs12_read($contents, $certs, (string) $password)) {
+                $this->addError('newEfakturaCertificate', 'Сертификатот не може да се отвори со дадената лозинка — провери дали фајлот и лозинката се точни.');
+
+                return;
+            }
+        }
 
         DB::transaction(function () use ($validated) {
             $companyData = [

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -12,11 +13,15 @@ class Company extends Model
     use HasFactory;
 
     public const EFAKTURA_MODE_OWN = 'own';
+
     public const EFAKTURA_MODE_FIRM = 'firm';
 
     public const EFAKTURA_STATUS_NONE = 'none';
+
     public const EFAKTURA_STATUS_REQUESTED = 'requested';
+
     public const EFAKTURA_STATUS_APPROVED = 'approved';
+
     public const EFAKTURA_STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
@@ -25,6 +30,7 @@ class Company extends Model
         'logo_path', 'logo_position', 'is_vat_registered', 'invoice_footer_note',
         'efaktura_credential_mode', 'efaktura_eujp_id', 'efaktura_certificate_path',
         'efaktura_certificate_password', 'efaktura_firm_access_status',
+        'efaktura_firm_access_decided_by', 'efaktura_firm_access_decided_at',
     ];
 
     protected function casts(): array
@@ -51,10 +57,17 @@ class Company extends Model
         return $this->hasMany(CompanyBankAccount::class)->orderBy('position');
     }
 
+    public function decidedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'efaktura_firm_access_decided_by');
+    }
+
     public function hasEfakturaAccess(): bool
     {
         if ($this->efaktura_credential_mode === self::EFAKTURA_MODE_OWN) {
-            return filled($this->efaktura_eujp_id) && filled($this->efaktura_certificate_path);
+            return filled($this->efaktura_eujp_id)
+                && filled($this->efaktura_certificate_path)
+                && filled($this->efaktura_certificate_password);
         }
 
         return $this->efaktura_firm_access_status === self::EFAKTURA_STATUS_APPROVED;

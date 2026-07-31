@@ -34,7 +34,7 @@ class EfakturaAccessRequestsTest extends TestCase
         Livewire::actingAs($admin)
             ->test(EfakturaAccessRequests::class)
             ->assertSee('Побарана')
-            ->assertSeeHtml((string) $requested->id);
+            ->assertSeeHtml('wire:click="approve('.$requested->id.')"');
     }
 
     public function test_admin_can_approve_a_request(): void
@@ -45,9 +45,12 @@ class EfakturaAccessRequestsTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(EfakturaAccessRequests::class)
-            ->call('approve', $company);
+            ->call('approve', $company->id);
 
-        $this->assertSame(Company::EFAKTURA_STATUS_APPROVED, $company->fresh()->efaktura_firm_access_status);
+        $company->refresh();
+        $this->assertSame(Company::EFAKTURA_STATUS_APPROVED, $company->efaktura_firm_access_status);
+        $this->assertSame($admin->id, $company->efaktura_firm_access_decided_by);
+        $this->assertNotNull($company->efaktura_firm_access_decided_at);
     }
 
     public function test_admin_can_reject_a_request(): void
@@ -58,9 +61,12 @@ class EfakturaAccessRequestsTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(EfakturaAccessRequests::class)
-            ->call('reject', $company);
+            ->call('reject', $company->id);
 
-        $this->assertSame(Company::EFAKTURA_STATUS_REJECTED, $company->fresh()->efaktura_firm_access_status);
+        $company->refresh();
+        $this->assertSame(Company::EFAKTURA_STATUS_REJECTED, $company->efaktura_firm_access_status);
+        $this->assertSame($admin->id, $company->efaktura_firm_access_decided_by);
+        $this->assertNotNull($company->efaktura_firm_access_decided_at);
     }
 
     public function test_non_admin_cannot_view_the_screen(): void
