@@ -20,9 +20,9 @@
                     Побарај користење на фирмениот сертификат
                 </button>
             @elseif ($company->efaktura_firm_access_status === \App\Models\Company::EFAKTURA_STATUS_REQUESTED)
-                <x-badge status="amber">Чека одобрување</x-badge>
+                <x-badge status="pending">Чека одобрување</x-badge>
             @elseif ($company->efaktura_firm_access_status === \App\Models\Company::EFAKTURA_STATUS_APPROVED)
-                <x-badge status="green">Одобрено</x-badge>
+                <x-badge status="active">Одобрено</x-badge>
             @endif
         </x-card>
     @endif
