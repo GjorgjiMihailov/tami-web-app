@@ -15,6 +15,13 @@
             Фирми
         </a>
 
+        @if (auth()->check() && auth()->user()->hasRole('admin'))
+            <a href="{{ route('efaktura.access-requests') }}" wire:navigate
+               class="block px-4 py-2 text-sm font-medium {{ request()->routeIs('efaktura.access-requests') ? 'bg-brand text-white rounded-r-full mr-3' : 'text-gray-300 hover:text-white' }}">
+                е-Фактура барања
+            </a>
+        @endif
+
         @if ($company)
             <div class="pt-4 mt-3 border-t border-gray-700">
                 <div class="px-4 pb-2 text-xs uppercase tracking-wide text-gray-400">{{ $company->name }}</div>
