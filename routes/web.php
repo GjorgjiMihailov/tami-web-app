@@ -5,6 +5,7 @@ use App\Http\Controllers\ItemImportTemplateController;
 use App\Http\Controllers\JournalEntryPdfController;
 use App\Http\Controllers\PartnerListPdfController;
 use App\Http\Controllers\SalesInvoicePdfController;
+use App\Http\Controllers\StockOnHandPdfController;
 use App\Livewire\Accounting\AccountIndex;
 use App\Livewire\Accounting\JournalEntryForm;
 use App\Livewire\Accounting\JournalEntryIndex;
@@ -86,6 +87,7 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('inventory.')->
     Route::get('/items/bulk-import/template', [ItemImportTemplateController::class, '__invoke'])->name('items.bulk-import.template');
     Route::get('/stock-movements/create/{type}', [StockMovementForm::class, '__invoke'])->name('stock-movements.create');
     Route::get('/reports/stock-on-hand', [StockOnHandReport::class, '__invoke'])->name('reports.stock-on-hand');
+    Route::get('/reports/stock-on-hand/pdf', [StockOnHandPdfController::class, '__invoke'])->name('reports.stock-on-hand.pdf');
     Route::get('/reports/item-movement-card', [ItemMovementCardReport::class, '__invoke'])->name('reports.item-movement-card');
     Route::get('/reports/stock-valuation', [StockValuationReport::class, '__invoke'])->name('reports.stock-valuation');
 });
