@@ -55,6 +55,14 @@ class CompanyDashboard extends Component
 
     public $newLogo = null;
 
+    public string $editEfakturaMode = 'firm';
+
+    public string $editEfakturaEujpId = '';
+
+    public $newEfakturaCertificate = null;
+
+    public string $editEfakturaCertificatePassword = '';
+
     public function mount(Company $company): void
     {
         Gate::authorize('view', $company);
@@ -91,6 +99,11 @@ class CompanyDashboard extends Component
         $this->editLogoPosition = $this->company->logo_position ?: 'left';
         $this->editInvoiceFooterNote = (string) $this->company->invoice_footer_note;
         $this->newLogo = null;
+
+        $this->editEfakturaMode = $this->company->efaktura_credential_mode;
+        $this->editEfakturaEujpId = (string) $this->company->efaktura_eujp_id;
+        $this->editEfakturaCertificatePassword = '';
+        $this->newEfakturaCertificate = null;
 
         $this->editing = true;
     }
@@ -139,10 +152,16 @@ class CompanyDashboard extends Component
             'editLogoPosition' => ['required', Rule::in(['left', 'center', 'right'])],
             'editInvoiceFooterNote' => 'nullable|string|max:2000',
             'newLogo' => 'nullable|image|max:25600',
+            'editEfakturaMode' => ['required', Rule::in([
+                Company::EFAKTURA_MODE_OWN, Company::EFAKTURA_MODE_FIRM,
+            ])],
+            'editEfakturaEujpId' => 'nullable|string|max:100',
+            'newEfakturaCertificate' => 'nullable|file|max:5120|mimes:p12,pfx',
+            'editEfakturaCertificatePassword' => 'nullable|string|max:255',
         ]);
 
         DB::transaction(function () use ($validated) {
-            $this->company->update([
+            $companyData = [
                 'name' => $validated['editName'],
                 'short_name' => $validated['editShortName'] ?: null,
                 'tax_id' => $validated['editTaxId'] ?: null,
@@ -159,7 +178,28 @@ class CompanyDashboard extends Component
                 'is_vat_registered' => $validated['editIsVatRegistered'],
                 'logo_position' => $validated['editLogoPosition'],
                 'invoice_footer_note' => $validated['editInvoiceFooterNote'] ?: null,
-            ]);
+                'efaktura_credential_mode' => $validated['editEfakturaMode'],
+            ];
+
+            if ($validated['editEfakturaMode'] === Company::EFAKTURA_MODE_OWN) {
+                if (filled($validated['editEfakturaEujpId'])) {
+                    $companyData['efaktura_eujp_id'] = $validated['editEfakturaEujpId'];
+                }
+                if ($this->newEfakturaCertificate) {
+                    $companyData['efaktura_certificate_path'] = $this->newEfakturaCertificate
+                        ->store('efaktura-certs/'.$this->company->id, 'local');
+                }
+                if (filled($validated['editEfakturaCertificatePassword'])) {
+                    $companyData['efaktura_certificate_password'] = $validated['editEfakturaCertificatePassword'];
+                }
+            } else {
+                $companyData['efaktura_eujp_id'] = null;
+                $companyData['efaktura_certificate_path'] = null;
+                $companyData['efaktura_certificate_password'] = null;
+            }
+
+            $this->company->update($companyData);
+            $this->newEfakturaCertificate = null;
 
             $keptRows = collect($validated['bankAccounts'])
                 ->filter(fn ($row) => trim((string) ($row['bank_name'] ?? '')) !== '' || trim((string) ($row['account_number'] ?? '')) !== '')

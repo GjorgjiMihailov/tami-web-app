@@ -122,6 +122,43 @@
                     </div>
 
                     <div>
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">е-Фактура акредитиви</h3>
+                        <div class="flex gap-4 mb-3">
+                            <label class="inline-flex items-center gap-2">
+                                <input type="radio" wire:model="editEfakturaMode" value="firm">
+                                <span>Користи го фирменото</span>
+                            </label>
+                            <label class="inline-flex items-center gap-2">
+                                <input type="radio" wire:model="editEfakturaMode" value="own">
+                                <span>Сопствени акредитиви</span>
+                            </label>
+                        </div>
+
+                        @if ($editEfakturaMode === 'own')
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm text-gray-600 mb-1">X-EUJP-ID</label>
+                                    <input type="text" wire:model="editEfakturaEujpId" class="w-full rounded-lg border-gray-300">
+                                    @error('editEfakturaEujpId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-gray-600 mb-1">Лозинка на сертификат</label>
+                                    <input type="password" wire:model="editEfakturaCertificatePassword" class="w-full rounded-lg border-gray-300" placeholder="Остави празно за да ја задржиш постојната">
+                                    @error('editEfakturaCertificatePassword') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label class="block text-sm text-gray-600 mb-1">Сертификат (.p12/.pfx)</label>
+                                    <input type="file" wire:model="newEfakturaCertificate" accept=".p12,.pfx" class="text-sm">
+                                    @if ($company->efaktura_certificate_path)
+                                        <p class="text-xs text-gray-500 mt-1">Веќе е поставен сертификат — избери нов фајл само ако сакаш да го замениш.</p>
+                                    @endif
+                                    @error('newEfakturaCertificate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+
+                    <div>
                         <x-input-label for="editInvoiceFooterNote" value="Забелешка за фуснота на фактура" />
                         <textarea id="editInvoiceFooterNote" wire:model="editInvoiceFooterNote" rows="3" class="border-gray-300 rounded-md w-full text-sm"></textarea>
                     </div>
