@@ -11,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{AF4C83A5
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EfakturaBridge.Core.Tests", "tests\EfakturaBridge.Core.Tests\EfakturaBridge.Core.Tests.csproj", "{55900678-89A7-496C-BA41-4C951386918B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EfakturaBridge.Spike", "src\EfakturaBridge.Spike\EfakturaBridge.Spike.csproj", "{F5057A66-83D0-4048-B4DE-E9E15164F855}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,9 +30,14 @@ Global
 		{55900678-89A7-496C-BA41-4C951386918B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{55900678-89A7-496C-BA41-4C951386918B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{55900678-89A7-496C-BA41-4C951386918B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F5057A66-83D0-4048-B4DE-E9E15164F855}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5057A66-83D0-4048-B4DE-E9E15164F855}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5057A66-83D0-4048-B4DE-E9E15164F855}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5057A66-83D0-4048-B4DE-E9E15164F855}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{F0E2EA29-E31D-4B31-8649-0CC0E2AD0B6E} = {857758D3-E083-47AF-BA2A-5E06A73C94EC}
 		{55900678-89A7-496C-BA41-4C951386918B} = {AF4C83A5-DCE3-433E-ADCE-2A6511ED0E76}
+		{F5057A66-83D0-4048-B4DE-E9E15164F855} = {857758D3-E083-47AF-BA2A-5E06A73C94EC}
 	EndGlobalSection
 EndGlobal
