@@ -113,6 +113,17 @@ class CompanyDashboard extends Component
         $this->editing = false;
     }
 
+    public function requestFirmEfakturaAccess(): void
+    {
+        Gate::authorize('view', $this->company);
+
+        if ($this->company->efaktura_credential_mode !== Company::EFAKTURA_MODE_FIRM) {
+            return;
+        }
+
+        $this->company->update(['efaktura_firm_access_status' => Company::EFAKTURA_STATUS_REQUESTED]);
+    }
+
     public function updated(string $name, $value): void
     {
         if (! str_ends_with($name, '.account_number')) {

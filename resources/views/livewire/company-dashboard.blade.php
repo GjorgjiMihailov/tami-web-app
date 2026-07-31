@@ -9,6 +9,24 @@
     </div>
     <p class="text-sm text-gray-500 mb-6">Изберете модул подолу за да започнете.</p>
 
+    @if ($company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_FIRM)
+        <x-card class="mb-6">
+            <h3 class="text-sm font-semibold text-gray-700 mb-2">е-Фактура пристап</h3>
+            @if (in_array($company->efaktura_firm_access_status, [
+                    \App\Models\Company::EFAKTURA_STATUS_NONE,
+                    \App\Models\Company::EFAKTURA_STATUS_REJECTED,
+                ]))
+                <button wire:click="requestFirmEfakturaAccess" type="button" class="rounded-full bg-orange-600 text-white px-4 py-2 text-sm">
+                    Побарај користење на фирмениот сертификат
+                </button>
+            @elseif ($company->efaktura_firm_access_status === \App\Models\Company::EFAKTURA_STATUS_REQUESTED)
+                <x-badge status="amber">Чека одобрување</x-badge>
+            @elseif ($company->efaktura_firm_access_status === \App\Models\Company::EFAKTURA_STATUS_APPROVED)
+                <x-badge status="green">Одобрено</x-badge>
+            @endif
+        </x-card>
+    @endif
+
     @can('update', $company)
         @if ($editing)
             <x-card class="mb-6">
