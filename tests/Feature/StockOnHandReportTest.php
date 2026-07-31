@@ -87,6 +87,19 @@ class StockOnHandReportTest extends TestCase
             ->assertSee(route('inventory.reports.stock-on-hand.pdf', $company), false);
     }
 
+    public function test_it_links_to_the_pdf_download_with_the_selected_warehouse(): void
+    {
+        $company = Company::factory()->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(StockOnHandReport::class, ['company' => $company])
+            ->set('warehouseId', $warehouse->id)
+            ->assertSee(route('inventory.reports.stock-on-hand.pdf', $company).'?warehouseId='.$warehouse->id, false);
+    }
+
     public function test_the_stock_on_hand_page_renders_successfully_over_http(): void
     {
         $company = Company::factory()->create();
