@@ -73,6 +73,31 @@ class CompanyDashboardEfakturaCredentialsTest extends TestCase
         $this->assertNull($company->efaktura_certificate_password);
     }
 
+    public function test_editing_unrelated_field_preserves_existing_efaktura_secrets(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $company = Company::factory()->create([
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'EUJP-999',
+            'efaktura_certificate_path' => 'efaktura-certs/1/cert.p12',
+            'efaktura_certificate_password' => 'pw-123',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(CompanyDashboard::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('editName', 'Renamed Company Ltd')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $company->refresh();
+        $this->assertSame('Renamed Company Ltd', $company->name);
+        $this->assertSame('EUJP-999', $company->efaktura_eujp_id);
+        $this->assertSame('efaktura-certs/1/cert.p12', $company->efaktura_certificate_path);
+        $this->assertSame('pw-123', $company->efaktura_certificate_password);
+    }
+
     public function test_client_cannot_edit_efaktura_credentials(): void
     {
         $company = Company::factory()->create();
