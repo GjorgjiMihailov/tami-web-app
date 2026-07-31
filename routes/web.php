@@ -16,6 +16,7 @@ use App\Livewire\CompanyDashboard;
 use App\Livewire\CompanyIndex;
 use App\Livewire\Dashboard;
 use App\Livewire\DocumentIndex;
+use App\Livewire\EfakturaAccessRequests;
 use App\Livewire\Inventory\ItemBulkImport;
 use App\Livewire\Inventory\ItemIndex;
 use App\Livewire\Inventory\ItemMovementCardReport;
@@ -47,6 +48,11 @@ Route::view('profile', 'profile')
 Route::middleware(['auth'])->group(function () {
     Route::get('/companies', CompanyIndex::class)->name('companies.index');
 });
+
+// Array-callable form (not bare class-string) for the same reason noted
+// below for the accounting.* group: avoids an eager method_exists() check
+// at route registration time.
+Route::middleware(['auth'])->get('/efaktura/access-requests', [EfakturaAccessRequests::class, '__invoke'])->name('efaktura.access-requests');
 
 Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
     Route::get('/dashboard', [CompanyDashboard::class, '__invoke'])->name('companies.dashboard');
