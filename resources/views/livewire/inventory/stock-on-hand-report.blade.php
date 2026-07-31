@@ -34,7 +34,7 @@
                     <tr class="text-sm">
                         <td class="py-2 px-4 font-mono">{{ $row['item_code'] }}</td>
                         <td class="py-2 px-4">{{ $row['item_name'] }}</td>
-                        <td class="py-2 px-4 text-right">{{ number_format($row['quantity_on_hand'], 3) }}</td>
+                        <td class="py-2 px-4 text-right">{{ number_format($row['quantity_on_hand'], 3, ',', '.') }}</td>
                         <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['average_cost'], currency: '', decimals: 4) }}</td>
                         <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['value'], currency: '') }}</td>
                         <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['selling_value'], currency: '') }}</td>
@@ -62,7 +62,7 @@
                     <tr class="text-sm">
                         <td class="py-2 px-4 font-mono">{{ $row['item_code'] }}</td>
                         <td class="py-2 px-4">{{ $row['item_name'] }}</td>
-                        <td class="py-2 px-4 text-right">{{ number_format($row['total_quantity'], 3) }}</td>
+                        <td class="py-2 px-4 text-right">{{ number_format($row['total_quantity'], 3, ',', '.') }}</td>
                         <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['total_value'], currency: '') }}</td>
                         <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['total_selling_value'], currency: '') }}</td>
                     </tr>
