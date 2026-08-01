@@ -14,10 +14,24 @@ class SalesInvoice extends Model
     use HasFactory;
     use HasInvoiceTotals;
 
+    public const PAYMENT_TYPES = [
+        'P10' => 'Готово',
+        'P11' => 'Картичка',
+        'P12' => 'Плаќање преку банка',
+        'P13' => 'Рати',
+        'P14' => 'Онлајн-банка',
+        'P15' => 'Мобилна апликација',
+        'P16' => 'Без надомест',
+        'P17' => 'Компензација',
+        'P18' => 'Ваучер',
+        'P19' => 'Друго',
+    ];
+
     protected $fillable = [
         'company_id', 'partner_id', 'warehouse_id', 'journal_entry_id',
         'fiscal_year', 'invoice_number', 'invoice_date', 'due_date',
-        'status', 'sent_at', 'notes', 'created_by',
+        'status', 'payment_type_code', 'sent_at', 'notes', 'created_by',
+        'efaktura_status', 'efaktura_doc_id', 'efaktura_sent_at', 'efaktura_error',
     ];
 
     protected function casts(): array
@@ -26,6 +40,7 @@ class SalesInvoice extends Model
             'invoice_date' => 'date',
             'due_date' => 'date',
             'sent_at' => 'datetime',
+            'efaktura_sent_at' => 'datetime',
         ];
     }
 
