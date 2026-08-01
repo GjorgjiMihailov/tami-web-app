@@ -12,6 +12,7 @@ public sealed class RequestRouter
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     private readonly IPkcs11SigningService _signingService;
@@ -67,7 +68,7 @@ public sealed class RequestRouter
         try
         {
             CertificateInfo info = _signingService.GetCertificateInfo();
-            return new BridgeResponse { StatusCode = 200, Body = JsonSerializer.Serialize(info) };
+            return new BridgeResponse { StatusCode = 200, Body = JsonSerializer.Serialize(info, JsonOptions) };
         }
         catch (Exception ex)
         {
@@ -110,7 +111,7 @@ public sealed class RequestRouter
         try
         {
             byte[] signature = _signingService.Sign(dataToSign);
-            string json = JsonSerializer.Serialize(new SignResponse(Base64Url.Encode(signature)));
+            string json = JsonSerializer.Serialize(new SignResponse(Base64Url.Encode(signature)), JsonOptions);
             return new BridgeResponse { StatusCode = 200, Body = json };
         }
         catch (Exception ex)

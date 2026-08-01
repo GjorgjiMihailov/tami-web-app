@@ -11,39 +11,69 @@ RequestRouter router = new RequestRouter(signingService);
 
 using HttpListener listener = new HttpListener();
 listener.Prefixes.Add("http://127.0.0.1:9847/");
-listener.Start();
+
+try
+{
+    listener.Start();
+}
+catch (HttpListenerException ex)
+{
+    Console.WriteLine($"Не може да се стартува на порт 9847: {ex.Message}");
+    Console.WriteLine("Веројатно мостот веќе работи. Притиснете Enter за затворање.");
+    Console.ReadLine();
+    return 1;
+}
+
 Console.WriteLine("Локалниот мост слуша на http://127.0.0.1:9847 (Ctrl+C за прекин)");
 
 while (true)
 {
-    HttpListenerContext context = listener.GetContext();
-    HttpListenerRequest req = context.Request;
-
-    string? body = null;
-    if (req.HasEntityBody)
+    HttpListenerContext context;
+    try
     {
-        using StreamReader reader = new StreamReader(req.InputStream, req.ContentEncoding);
-        body = reader.ReadToEnd();
+        context = listener.GetContext();
+    }
+    catch (HttpListenerException)
+    {
+        break;
     }
 
-    BridgeRequest bridgeRequest = new BridgeRequest
+    try
     {
-        Method = req.HttpMethod,
-        Path = req.Url?.AbsolutePath ?? "/",
-        OriginHeader = req.Headers["Origin"],
-        Body = body,
-    };
+        HttpListenerRequest req = context.Request;
 
-    BridgeResponse response = router.Handle(bridgeRequest);
+        string? body = null;
+        if (req.HasEntityBody)
+        {
+            using StreamReader reader = new StreamReader(req.InputStream, req.ContentEncoding);
+            body = reader.ReadToEnd();
+        }
 
-    HttpListenerResponse res = context.Response;
-    res.StatusCode = response.StatusCode;
-    res.ContentType = response.ContentType;
-    foreach (System.Collections.Generic.KeyValuePair<string, string> header in response.Headers)
-        res.Headers[header.Key] = header.Value;
+        BridgeRequest bridgeRequest = new BridgeRequest
+        {
+            Method = req.HttpMethod,
+            Path = req.Url?.AbsolutePath ?? "/",
+            OriginHeader = req.Headers["Origin"],
+            Body = body,
+        };
 
-    byte[] bytes = Encoding.UTF8.GetBytes(response.Body);
-    res.ContentLength64 = bytes.Length;
-    res.OutputStream.Write(bytes, 0, bytes.Length);
-    res.OutputStream.Close();
+        BridgeResponse response = router.Handle(bridgeRequest);
+
+        HttpListenerResponse res = context.Response;
+        res.StatusCode = response.StatusCode;
+        res.ContentType = response.ContentType;
+        foreach (System.Collections.Generic.KeyValuePair<string, string> header in response.Headers)
+            res.Headers[header.Key] = header.Value;
+
+        byte[] bytes = Encoding.UTF8.GetBytes(response.Body);
+        res.ContentLength64 = bytes.Length;
+        res.OutputStream.Write(bytes, 0, bytes.Length);
+        res.OutputStream.Close();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Грешка при обработка на барање: {ex.Message}");
+    }
 }
+
+return 0;

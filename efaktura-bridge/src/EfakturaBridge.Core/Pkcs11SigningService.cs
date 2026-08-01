@@ -21,7 +21,8 @@ public sealed class Pkcs11SigningService : IPkcs11SigningService
         using IPkcs11Library library = LoadLibrary();
         ISlot slot = GetFirstSlotWithToken(library);
         using ISession session = slot.OpenSession(SessionType.ReadOnly);
-        byte[] certDer = ReadCertificateDer(session);
+        IObjectHandle certObject = FindCertificateObject(session);
+        byte[] certDer = ReadCertificateDer(session, certObject);
 
         using X509Certificate2 cert = new X509Certificate2(certDer);
         return new CertificateInfo(
@@ -52,7 +53,8 @@ public sealed class Pkcs11SigningService : IPkcs11SigningService
 
         try
         {
-            IObjectHandle privateKey = FindPrivateKey(session);
+            byte[]? certId = TryGetCertificateId(session);
+            IObjectHandle privateKey = FindPrivateKey(session, certId);
             IMechanism mechanism = _factories.MechanismFactory.Create(CKM.CKM_SHA256_RSA_PKCS);
             return session.Sign(mechanism, privateKey, data);
         }
@@ -75,7 +77,7 @@ public sealed class Pkcs11SigningService : IPkcs11SigningService
         return slots[0];
     }
 
-    private byte[] ReadCertificateDer(ISession session)
+    private IObjectHandle FindCertificateObject(ISession session)
     {
         List<IObjectAttribute> searchAttrs = new List<IObjectAttribute>
         {
@@ -84,13 +86,54 @@ public sealed class Pkcs11SigningService : IPkcs11SigningService
         List<IObjectHandle> certObjects = session.FindAllObjects(searchAttrs);
         if (certObjects.Count == 0)
             throw new InvalidOperationException("Не е најден сертификат на токенот.");
+        return certObjects[0];
+    }
 
-        List<IObjectAttribute> values = session.GetAttributeValue(certObjects[0], new List<CKA> { CKA.CKA_VALUE });
+    private byte[] ReadCertificateDer(ISession session, IObjectHandle certObject)
+    {
+        List<IObjectAttribute> values = session.GetAttributeValue(certObject, new List<CKA> { CKA.CKA_VALUE });
         return values[0].GetValueAsByteArray();
     }
 
-    private IObjectHandle FindPrivateKey(ISession session)
+    /// <summary>
+    /// Reads the CKA_ID of the token's certificate object, so the matching private key
+    /// can be located. Returns null if the certificate can't be found or has no CKA_ID
+    /// set, in which case the caller falls back to selecting the first private key.
+    /// </summary>
+    private byte[]? TryGetCertificateId(ISession session)
     {
+        try
+        {
+            IObjectHandle certObject = FindCertificateObject(session);
+            List<IObjectAttribute> values = session.GetAttributeValue(certObject, new List<CKA> { CKA.CKA_ID });
+            byte[] id = values[0].GetValueAsByteArray();
+            return id.Length > 0 ? id : null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Finds the private key matching the certificate's CKA_ID, when available. Falls back
+    /// to the first private key object on the token when certId is null or no key shares
+    /// that CKA_ID, preserving the original behavior for tokens that don't set CKA_ID.
+    /// </summary>
+    private IObjectHandle FindPrivateKey(ISession session, byte[]? certId)
+    {
+        if (certId is not null)
+        {
+            List<IObjectAttribute> matchingAttrs = new List<IObjectAttribute>
+            {
+                _factories.ObjectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PRIVATE_KEY),
+                _factories.ObjectAttributeFactory.Create(CKA.CKA_ID, certId)
+            };
+            List<IObjectHandle> matchingKeys = session.FindAllObjects(matchingAttrs);
+            if (matchingKeys.Count > 0)
+                return matchingKeys[0];
+        }
+
         List<IObjectAttribute> searchAttrs = new List<IObjectAttribute>
         {
             _factories.ObjectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PRIVATE_KEY)
