@@ -13,6 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EfakturaBridge.Core.Tests",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EfakturaBridge.Spike", "src\EfakturaBridge.Spike\EfakturaBridge.Spike.csproj", "{F5057A66-83D0-4048-B4DE-E9E15164F855}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EfakturaBridge.Server", "src\EfakturaBridge.Server\EfakturaBridge.Server.csproj", "{A232A851-2B04-4DAE-9AE5-53AD3CF69CEA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EfakturaBridge.Server.Tests", "tests\EfakturaBridge.Server.Tests\EfakturaBridge.Server.Tests.csproj", "{5CC93D6D-8D1E-4FBD-B371-BD0EF8348E4C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,10 +38,20 @@ Global
 		{F5057A66-83D0-4048-B4DE-E9E15164F855}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F5057A66-83D0-4048-B4DE-E9E15164F855}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F5057A66-83D0-4048-B4DE-E9E15164F855}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A232A851-2B04-4DAE-9AE5-53AD3CF69CEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A232A851-2B04-4DAE-9AE5-53AD3CF69CEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A232A851-2B04-4DAE-9AE5-53AD3CF69CEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A232A851-2B04-4DAE-9AE5-53AD3CF69CEA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5CC93D6D-8D1E-4FBD-B371-BD0EF8348E4C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CC93D6D-8D1E-4FBD-B371-BD0EF8348E4C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5CC93D6D-8D1E-4FBD-B371-BD0EF8348E4C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5CC93D6D-8D1E-4FBD-B371-BD0EF8348E4C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{F0E2EA29-E31D-4B31-8649-0CC0E2AD0B6E} = {857758D3-E083-47AF-BA2A-5E06A73C94EC}
 		{55900678-89A7-496C-BA41-4C951386918B} = {AF4C83A5-DCE3-433E-ADCE-2A6511ED0E76}
 		{F5057A66-83D0-4048-B4DE-E9E15164F855} = {857758D3-E083-47AF-BA2A-5E06A73C94EC}
+		{A232A851-2B04-4DAE-9AE5-53AD3CF69CEA} = {857758D3-E083-47AF-BA2A-5E06A73C94EC}
+		{5CC93D6D-8D1E-4FBD-B371-BD0EF8348E4C} = {AF4C83A5-DCE3-433E-ADCE-2A6511ED0E76}
 	EndGlobalSection
 EndGlobal
