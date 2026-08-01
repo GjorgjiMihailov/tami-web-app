@@ -133,6 +133,41 @@ public class RequestRouterTests
     }
 
     [Fact]
+    public void Options_PrivateNetworkRequested_IncludesPnaHeader()
+    {
+        RequestRouter router = CreateRouter();
+
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "OPTIONS",
+            Path = "/sign",
+            OriginHeader = AllowedOrigin,
+            HostHeader = "127.0.0.1:9847",
+            PrivateNetworkRequested = true,
+        });
+
+        Assert.Equal(204, response.StatusCode);
+        Assert.Equal("true", response.Headers["Access-Control-Allow-Private-Network"]);
+    }
+
+    [Fact]
+    public void Options_NoPrivateNetworkRequested_OmitsPnaHeader()
+    {
+        RequestRouter router = CreateRouter();
+
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "OPTIONS",
+            Path = "/sign",
+            OriginHeader = AllowedOrigin,
+            HostHeader = "127.0.0.1:9847",
+        });
+
+        Assert.Equal(204, response.StatusCode);
+        Assert.False(response.Headers.ContainsKey("Access-Control-Allow-Private-Network"));
+    }
+
+    [Fact]
     public void Certificate_ReturnsSigningServiceInfoAsJson()
     {
         FakeSigningService fake = new FakeSigningService();

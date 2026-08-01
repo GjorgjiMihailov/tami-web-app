@@ -33,7 +33,12 @@ public sealed class RequestRouter
             return new BridgeResponse { StatusCode = 403, Body = """{"error":"origin_not_allowed"}""" };
 
         if (request.Method == "OPTIONS")
+        {
+            if (request.PrivateNetworkRequested)
+                corsHeaders["Access-Control-Allow-Private-Network"] = "true";
+
             return new BridgeResponse { StatusCode = 204, Body = "", Headers = corsHeaders };
+        }
 
         BridgeResponse response = (request.Method, request.Path) switch
         {

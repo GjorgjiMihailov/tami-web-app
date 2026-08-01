@@ -55,6 +55,7 @@ while (true)
             Path = req.Url?.AbsolutePath ?? "/",
             OriginHeader = req.Headers["Origin"],
             HostHeader = req.Headers["Host"],
+            PrivateNetworkRequested = req.Headers["Access-Control-Request-Private-Network"] == "true",
             Body = body,
         };
 
