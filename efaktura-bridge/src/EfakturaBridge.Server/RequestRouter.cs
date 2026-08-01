@@ -8,6 +8,7 @@ namespace EfakturaBridge.Server;
 public sealed class RequestRouter
 {
     private const string AllowedOrigin = "https://portal.financebuddy.mk";
+    private static readonly string[] AllowedHosts = { "127.0.0.1:9847", "localhost:9847" };
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -24,6 +25,9 @@ public sealed class RequestRouter
 
     public BridgeResponse Handle(BridgeRequest request)
     {
+        if (request.HostHeader is null || Array.IndexOf(AllowedHosts, request.HostHeader) < 0)
+            return new BridgeResponse { StatusCode = 403, Body = """{"error":"host_not_allowed"}""" };
+
         Dictionary<string, string>? corsHeaders = BuildCorsHeaders(request.OriginHeader);
         if (corsHeaders is null)
             return new BridgeResponse { StatusCode = 403, Body = """{"error":"origin_not_allowed"}""" };

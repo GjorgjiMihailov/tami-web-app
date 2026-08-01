@@ -54,6 +54,7 @@ while (true)
             Method = req.HttpMethod,
             Path = req.Url?.AbsolutePath ?? "/",
             OriginHeader = req.Headers["Origin"],
+            HostHeader = req.Headers["Host"],
             Body = body,
         };
 

@@ -17,7 +17,12 @@ public class RequestRouterTests
     {
         RequestRouter router = CreateRouter();
 
-        BridgeResponse response = router.Handle(new BridgeRequest { Method = "GET", Path = "/health" });
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "GET",
+            Path = "/health",
+            HostHeader = "127.0.0.1:9847",
+        });
 
         Assert.Equal(200, response.StatusCode);
         Assert.Contains("\"status\":\"ok\"", response.Body);
@@ -33,6 +38,7 @@ public class RequestRouterTests
             Method = "GET",
             Path = "/health",
             OriginHeader = AllowedOrigin,
+            HostHeader = "127.0.0.1:9847",
         });
 
         Assert.Equal(200, response.StatusCode);
@@ -55,6 +61,61 @@ public class RequestRouterTests
     }
 
     [Fact]
+    public void Health_UnexpectedHost_Returns403()
+    {
+        RequestRouter router = CreateRouter();
+
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "GET",
+            Path = "/health",
+            HostHeader = "attacker.example",
+        });
+
+        Assert.Equal(403, response.StatusCode);
+    }
+
+    [Fact]
+    public void Health_LoopbackHost_Returns200()
+    {
+        RequestRouter router = CreateRouter();
+
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "GET",
+            Path = "/health",
+            HostHeader = "127.0.0.1:9847",
+        });
+
+        Assert.Equal(200, response.StatusCode);
+    }
+
+    [Fact]
+    public void Health_LocalhostHost_Returns200()
+    {
+        RequestRouter router = CreateRouter();
+
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "GET",
+            Path = "/health",
+            HostHeader = "localhost:9847",
+        });
+
+        Assert.Equal(200, response.StatusCode);
+    }
+
+    [Fact]
+    public void Health_MissingHost_Returns403()
+    {
+        RequestRouter router = CreateRouter();
+
+        BridgeResponse response = router.Handle(new BridgeRequest { Method = "GET", Path = "/health" });
+
+        Assert.Equal(403, response.StatusCode);
+    }
+
+    [Fact]
     public void Options_AllowedOrigin_Returns204WithCorsHeaders()
     {
         RequestRouter router = CreateRouter();
@@ -64,6 +125,7 @@ public class RequestRouterTests
             Method = "OPTIONS",
             Path = "/sign",
             OriginHeader = AllowedOrigin,
+            HostHeader = "127.0.0.1:9847",
         });
 
         Assert.Equal(204, response.StatusCode);
@@ -76,7 +138,12 @@ public class RequestRouterTests
         FakeSigningService fake = new FakeSigningService();
         RequestRouter router = CreateRouter(fake);
 
-        BridgeResponse response = router.Handle(new BridgeRequest { Method = "GET", Path = "/certificate" });
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "GET",
+            Path = "/certificate",
+            HostHeader = "127.0.0.1:9847",
+        });
 
         Assert.Equal(200, response.StatusCode);
         Assert.Contains(fake.CertificateToReturn.SerialNumber, response.Body);
@@ -88,7 +155,12 @@ public class RequestRouterTests
         FakeSigningService fake = new FakeSigningService { ThrowOnCertificateRead = true };
         RequestRouter router = CreateRouter(fake);
 
-        BridgeResponse response = router.Handle(new BridgeRequest { Method = "GET", Path = "/certificate" });
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "GET",
+            Path = "/certificate",
+            HostHeader = "127.0.0.1:9847",
+        });
 
         Assert.Equal(500, response.StatusCode);
     }
@@ -105,6 +177,7 @@ public class RequestRouterTests
             Method = "POST",
             Path = "/sign",
             Body = $"{{\"data\":\"{encodedInput}\"}}",
+            HostHeader = "127.0.0.1:9847",
         });
 
         Assert.Equal(200, response.StatusCode);
@@ -118,7 +191,13 @@ public class RequestRouterTests
     {
         RequestRouter router = CreateRouter();
 
-        BridgeResponse response = router.Handle(new BridgeRequest { Method = "POST", Path = "/sign", Body = null });
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "POST",
+            Path = "/sign",
+            Body = null,
+            HostHeader = "127.0.0.1:9847",
+        });
 
         Assert.Equal(400, response.StatusCode);
     }
@@ -128,7 +207,13 @@ public class RequestRouterTests
     {
         RequestRouter router = CreateRouter();
 
-        BridgeResponse response = router.Handle(new BridgeRequest { Method = "POST", Path = "/sign", Body = "not json" });
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "POST",
+            Path = "/sign",
+            Body = "not json",
+            HostHeader = "127.0.0.1:9847",
+        });
 
         Assert.Equal(400, response.StatusCode);
     }
@@ -143,6 +228,7 @@ public class RequestRouterTests
             Method = "POST",
             Path = "/sign",
             Body = "{\"data\":\"not-valid-base64!!\"}",
+            HostHeader = "127.0.0.1:9847",
         });
 
         Assert.Equal(400, response.StatusCode);
@@ -153,7 +239,12 @@ public class RequestRouterTests
     {
         RequestRouter router = CreateRouter();
 
-        BridgeResponse response = router.Handle(new BridgeRequest { Method = "GET", Path = "/nope" });
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "GET",
+            Path = "/nope",
+            HostHeader = "127.0.0.1:9847",
+        });
 
         Assert.Equal(404, response.StatusCode);
     }
