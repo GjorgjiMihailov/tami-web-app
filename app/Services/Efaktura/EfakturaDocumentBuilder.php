@@ -16,8 +16,14 @@ class EfakturaDocumentBuilder
 
         $items = $invoice->lines->values()->map(fn ($line, $index) => $this->buildItem($line, $index + 1))->all();
 
-        $netAmount = array_sum(array_column($items, 'docItemTotalPriceWoVat'));
-        $vatAmount = array_sum(array_column($items, 'docItemTotalVat'));
+        $netAmount = (float) Bcmath::roundHalfUp(
+            $invoice->lines->reduce(fn ($carry, $line) => bcadd($carry, $line->lineTotal(), 10), '0'),
+            2
+        );
+        $vatAmount = (float) Bcmath::roundHalfUp(
+            $invoice->lines->reduce(fn ($carry, $line) => bcadd($carry, $line->vatAmount(), 10), '0'),
+            2
+        );
         $grossAmount = round($netAmount + $vatAmount, 2);
 
         return [

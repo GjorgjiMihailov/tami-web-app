@@ -80,4 +80,27 @@ class EfakturaDocumentBuilderTest extends TestCase
         $this->assertSame(10.0, $ddv7i['vatTaxableAmount']);
         $this->assertSame(0.0, $ddv7i['vatAmount']);
     }
+
+    public function test_doc_totals_avoid_float_summation_drift_across_many_lines(): void
+    {
+        // Classic IEEE-754 drift trigger: array_sum([0.10, 0.20, 0.30]) !== 0.6 in PHP
+        // when the individual addends are already float-cast values. docNetAmount must
+        // be aggregated via bcmath (like buildVatTotals() already does) rather than by
+        // summing the per-item float-cast docItemTotalPriceWoVat values, or this drifts.
+        $company = Company::factory()->create(['tax_id' => '4030001234567']);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id, 'fiscal_year' => 2026, 'invoice_number' => 2,
+            'invoice_date' => '2026-03-01', 'status' => 'confirmed',
+        ]);
+        $invoice->lines()->create(['description' => 'A', 'quantity' => '1', 'unit_price' => '0.10', 'vat_rate' => '0.00', 'vat_treatment' => 'export']);
+        $invoice->lines()->create(['description' => 'B', 'quantity' => '1', 'unit_price' => '0.20', 'vat_rate' => '0.00', 'vat_treatment' => 'export']);
+        $invoice->lines()->create(['description' => 'C', 'quantity' => '1', 'unit_price' => '0.30', 'vat_rate' => '0.00', 'vat_treatment' => 'export']);
+
+        $document = (new EfakturaDocumentBuilder)->build($invoice->fresh(['lines', 'company', 'partner']));
+
+        $this->assertSame(0.6, $document['document']['docTotals']['docNetAmount']);
+        $this->assertSame(0.0, $document['document']['docTotals']['docVatAmount']);
+        $this->assertSame(0.6, $document['document']['docTotals']['docGrossAmount']);
+    }
 }
