@@ -46,6 +46,22 @@
                             <x-input-label for="editAddress" value="Адреса" />
                             <x-text-input id="editAddress" wire:model="editAddress" class="w-full" />
                         </div>
+                        <div>
+                            <x-input-label for="editStreetAddress" value="Улица (за е-Фактура)" />
+                            <x-text-input id="editStreetAddress" wire:model="editStreetAddress" class="w-full" />
+                        </div>
+                        <div>
+                            <x-input-label for="editStreetNumber" value="Број" />
+                            <x-text-input id="editStreetNumber" wire:model="editStreetNumber" class="w-full" />
+                        </div>
+                        <div>
+                            <x-input-label for="editPostalCode" value="Поштенски број" />
+                            <x-text-input id="editPostalCode" wire:model="editPostalCode" class="w-full" />
+                        </div>
+                        <div>
+                            <x-input-label for="editCity" value="Град" />
+                            <x-text-input id="editCity" wire:model="editCity" class="w-full" />
+                        </div>
 
                         @if ($editType === 'legal_entity')
                             <div>
