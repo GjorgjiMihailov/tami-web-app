@@ -40,16 +40,11 @@ public sealed class Pkcs11SigningService : IPkcs11SigningService
         ITokenInfo tokenInfo = slot.GetTokenInfo();
         using ISession session = slot.OpenSession(SessionType.ReadWrite);
 
-        if (tokenInfo.TokenFlags.ProtectedAuthenticationPath)
-        {
-            session.Login(CKU.CKU_USER, (string?)null);
-        }
-        else
-        {
-            Console.Write("Внесете PIN за токенот: ");
-            string? pin = Console.ReadLine();
-            session.Login(CKU.CKU_USER, pin);
-        }
+        // SafeNet's own popup handles PIN entry regardless of what ProtectedAuthenticationPath
+        // reports (confirmed against the real token in plan 8b-i) — a console-input fallback
+        // here would silently block the single-threaded HTTP accept loop forever, since the
+        // console prompt receives no input while SafeNet's popup has focus.
+        session.Login(CKU.CKU_USER, (string?)null);
 
         try
         {
