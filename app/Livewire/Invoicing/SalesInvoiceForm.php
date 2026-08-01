@@ -31,6 +31,8 @@ class SalesInvoiceForm extends Component
 
     public string $notes = '';
 
+    public string $paymentTypeCode = 'P12';
+
     public array $lines = [];
 
     public function mount(Company $company, ?SalesInvoice $salesInvoice = null): void
@@ -59,6 +61,7 @@ class SalesInvoiceForm extends Component
             $this->invoiceDate = $salesInvoice->invoice_date->toDateString();
             $this->dueDate = $salesInvoice->due_date->toDateString();
             $this->notes = (string) $salesInvoice->notes;
+            $this->paymentTypeCode = $salesInvoice->payment_type_code;
             $this->lines = $salesInvoice->lines->map(fn ($line) => [
                 'item_id' => $line->item_id === null ? '' : (string) $line->item_id,
                 'description' => (string) $line->description,
@@ -135,6 +138,7 @@ class SalesInvoiceForm extends Component
             'warehouseId' => ['nullable', Rule::exists('warehouses', 'id')->where('company_id', $this->company->id)],
             'invoiceDate' => 'required|date',
             'dueDate' => 'required|date|after_or_equal:invoiceDate',
+            'paymentTypeCode' => ['required', Rule::in(array_keys(SalesInvoice::PAYMENT_TYPES))],
             'lines' => 'required|array|min:1',
             'lines.*.item_id' => ['nullable', Rule::exists('items', 'id')->where('company_id', $this->company->id)],
             'lines.*.description' => 'nullable|string|max:255',
@@ -178,6 +182,7 @@ class SalesInvoiceForm extends Component
             $invoice->invoice_date = $this->invoiceDate;
             $invoice->due_date = $this->dueDate;
             $invoice->notes = $this->notes ?: null;
+            $invoice->payment_type_code = $this->paymentTypeCode;
 
             if (! $invoice->exists) {
                 $invoice->status = 'draft';
