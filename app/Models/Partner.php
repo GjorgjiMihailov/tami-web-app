@@ -15,7 +15,7 @@ class Partner extends Model
     protected $fillable = [
         'company_id', 'name', 'type', 'tax_id', 'registration_number',
         'director_name', 'is_vat_registered', 'vat_number',
-        'email', 'phone', 'address',
+        'email', 'phone', 'address', 'street_address', 'street_number', 'postal_code', 'city',
     ];
 
     protected function casts(): array

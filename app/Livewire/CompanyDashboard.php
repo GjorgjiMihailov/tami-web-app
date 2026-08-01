@@ -39,6 +39,14 @@ class CompanyDashboard extends Component
 
     public string $editAddress = '';
 
+    public string $editStreetAddress = '';
+
+    public string $editStreetNumber = '';
+
+    public string $editPostalCode = '';
+
+    public string $editCity = '';
+
     public string $editDirectorName = '';
 
     public string $editDirectorPhone = '';
@@ -83,6 +91,10 @@ class CompanyDashboard extends Component
         $this->editPhone = (string) $this->company->phone;
         $this->editWebsite = (string) $this->company->website;
         $this->editAddress = (string) $this->company->address;
+        $this->editStreetAddress = (string) $this->company->street_address;
+        $this->editStreetNumber = (string) $this->company->street_number;
+        $this->editPostalCode = (string) $this->company->postal_code;
+        $this->editCity = (string) $this->company->city;
         $this->editDirectorName = (string) $this->company->director_name;
         $this->editDirectorPhone = (string) $this->company->director_phone;
         $this->editDirectorEmail = (string) $this->company->director_email;
@@ -153,6 +165,10 @@ class CompanyDashboard extends Component
             'editPhone' => 'nullable|string|max:255',
             'editWebsite' => 'nullable|string|max:255',
             'editAddress' => 'nullable|string|max:255',
+            'editStreetAddress' => 'nullable|string|max:255',
+            'editStreetNumber' => 'nullable|string|max:50',
+            'editPostalCode' => 'nullable|string|max:20',
+            'editCity' => 'nullable|string|max:255',
             'editDirectorName' => 'nullable|string|max:255',
             'editDirectorPhone' => 'nullable|string|max:255',
             'editDirectorEmail' => 'nullable|email|max:255',
@@ -213,6 +229,10 @@ class CompanyDashboard extends Component
                 'phone' => $validated['editPhone'] ?: null,
                 'website' => $validated['editWebsite'] ?: null,
                 'address' => $validated['editAddress'] ?: null,
+                'street_address' => $validated['editStreetAddress'] ?: null,
+                'street_number' => $validated['editStreetNumber'] ?: null,
+                'postal_code' => $validated['editPostalCode'] ?: null,
+                'city' => $validated['editCity'] ?: null,
                 'director_name' => $validated['editDirectorName'] ?: null,
                 'director_phone' => $validated['editDirectorPhone'] ?: null,
                 'director_email' => $validated['editDirectorEmail'] ?: null,

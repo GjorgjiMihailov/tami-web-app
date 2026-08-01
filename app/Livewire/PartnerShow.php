@@ -39,6 +39,14 @@ class PartnerShow extends Component
 
     public string $editAddress = '';
 
+    public string $editStreetAddress = '';
+
+    public string $editStreetNumber = '';
+
+    public string $editPostalCode = '';
+
+    public string $editCity = '';
+
     public array $bankAccounts = [];
 
     public function mount(Company $company, Partner $partner): void
@@ -67,6 +75,10 @@ class PartnerShow extends Component
         $this->editEmail = (string) $this->partner->email;
         $this->editPhone = (string) $this->partner->phone;
         $this->editAddress = (string) $this->partner->address;
+        $this->editStreetAddress = (string) $this->partner->street_address;
+        $this->editStreetNumber = (string) $this->partner->street_number;
+        $this->editPostalCode = (string) $this->partner->postal_code;
+        $this->editCity = (string) $this->partner->city;
 
         $existing = $this->partner->bankAccounts()->get();
         $this->bankAccounts = $existing->isEmpty()
@@ -113,6 +125,10 @@ class PartnerShow extends Component
             'editEmail' => 'nullable|email|max:255',
             'editPhone' => 'nullable|string|max:255',
             'editAddress' => 'nullable|string|max:255',
+            'editStreetAddress' => 'nullable|string|max:255',
+            'editStreetNumber' => 'nullable|string|max:50',
+            'editPostalCode' => 'nullable|string|max:20',
+            'editCity' => 'nullable|string|max:255',
             'bankAccounts' => 'array|max:5',
             'bankAccounts.*.bank_name' => 'nullable|string|max:255',
             'bankAccounts.*.account_number' => 'nullable|string|max:255',
@@ -133,6 +149,10 @@ class PartnerShow extends Component
                 'email' => $validated['editEmail'] ?: null,
                 'phone' => $validated['editPhone'] ?: null,
                 'address' => $validated['editAddress'] ?: null,
+                'street_address' => $validated['editStreetAddress'] ?: null,
+                'street_number' => $validated['editStreetNumber'] ?: null,
+                'postal_code' => $validated['editPostalCode'] ?: null,
+                'city' => $validated['editCity'] ?: null,
             ]);
 
             $keptRows = collect($validated['bankAccounts'])
