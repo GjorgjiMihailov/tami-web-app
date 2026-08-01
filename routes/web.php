@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\EfakturaSendController;
 use App\Http\Controllers\ItemImportTemplateController;
 use App\Http\Controllers\JournalEntryPdfController;
 use App\Http\Controllers\PartnerListPdfController;
@@ -114,6 +115,11 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('sales-invoices
     Route::get('/sales-invoices/{salesInvoice}/edit', [SalesInvoiceForm::class, '__invoke'])->name('edit');
     Route::get('/sales-invoices/{salesInvoice}', [SalesInvoiceShow::class, '__invoke'])->name('show');
     Route::get('/sales-invoices/{salesInvoice}/pdf', [SalesInvoicePdfController::class, '__invoke'])->name('pdf');
+});
+
+Route::middleware(['auth'])->prefix('companies/{company}/sales-invoices/{salesInvoice}')->name('sales-invoices.efaktura.')->group(function () {
+    Route::post('/efaktura/signing-input', [EfakturaSendController::class, 'signingInput'])->name('signing-input');
+    Route::post('/efaktura/send', [EfakturaSendController::class, 'send'])->name('send');
 });
 
 // Array-callable form (not bare class-string) for the same reason as the
