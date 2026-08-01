@@ -29,17 +29,19 @@ class Company extends Model
         'email', 'phone', 'address', 'street_address', 'street_number', 'postal_code', 'city',
         'website', 'director_name', 'director_phone', 'director_email',
         'logo_path', 'logo_position', 'is_vat_registered', 'invoice_footer_note',
-        'efaktura_credential_mode', 'efaktura_eujp_id', 'efaktura_certificate_path',
-        'efaktura_certificate_password', 'efaktura_firm_access_status',
+        'efaktura_credential_mode', 'efaktura_eujp_id', 'efaktura_firm_access_status',
         'efaktura_firm_access_decided_by', 'efaktura_firm_access_decided_at',
+        'efaktura_token_serial_number', 'efaktura_token_subject_name',
+        'efaktura_token_not_before', 'efaktura_token_not_after', 'efaktura_token_registered_at',
     ];
 
     protected function casts(): array
     {
         return [
             'is_vat_registered' => 'boolean',
-            'efaktura_certificate_path' => 'encrypted',
-            'efaktura_certificate_password' => 'encrypted',
+            'efaktura_token_not_before' => 'datetime',
+            'efaktura_token_not_after' => 'datetime',
+            'efaktura_token_registered_at' => 'datetime',
         ];
     }
 
@@ -66,9 +68,7 @@ class Company extends Model
     public function hasEfakturaAccess(): bool
     {
         if ($this->efaktura_credential_mode === self::EFAKTURA_MODE_OWN) {
-            return filled($this->efaktura_eujp_id)
-                && filled($this->efaktura_certificate_path)
-                && filled($this->efaktura_certificate_password);
+            return filled($this->efaktura_eujp_id) && filled($this->efaktura_token_serial_number);
         }
 
         return $this->efaktura_firm_access_status === self::EFAKTURA_STATUS_APPROVED;
