@@ -27,6 +27,74 @@
         </x-card>
     @endif
 
+    @if (auth()->user()->hasAnyRole(['admin', 'accountant']))
+        <x-card class="mb-6" x-data="signingDeviceRegistration()">
+            <h3 class="text-sm font-semibold text-gray-700 mb-2">Потпишувачки уред (USB токен)</h3>
+
+            @if ($company->efaktura_token_serial_number)
+                <p class="text-sm text-gray-600 mb-1">Регистриран: <span class="font-medium">{{ $company->efaktura_token_subject_name }}</span> (сериски бр. {{ $company->efaktura_token_serial_number }})</p>
+                <p class="text-xs text-gray-500 mb-3">Важи до {{ optional($company->efaktura_token_not_after)->format('d.m.Y') }}</p>
+            @else
+                <p class="text-sm text-gray-500 mb-3">Нема регистриран потпишувачки уред за оваа компанија.</p>
+            @endif
+
+            <div class="flex items-center gap-3">
+                <button type="button" @click="check()" :disabled="busy" class="rounded-full bg-gray-100 text-gray-700 px-4 py-2 text-sm disabled:opacity-50">
+                    <span x-show="!busy">Провери токен</span>
+                    <span x-show="busy">Читам...</span>
+                </button>
+                <a href="{{ asset('downloads/efaktura-bridge/EfakturaBridge.Server.exe') }}" class="text-brand hover:underline text-sm">Преземи локален потпишувач</a>
+            </div>
+
+            <div x-show="detected" class="mt-3 border rounded-lg p-3 bg-gray-50">
+                <p class="text-sm">Пронајден: <span x-text="subjectName" class="font-medium"></span></p>
+                <p class="text-xs text-gray-500">Сериски бр. <span x-text="serialNumber"></span>, важи до <span x-text="notAfter"></span></p>
+                <button type="button" @click="confirmRegister()" class="mt-2 rounded-full bg-brand text-white px-4 py-1.5 text-sm">Потврди — ова е точниот уред</button>
+            </div>
+
+            <p x-show="error" x-text="error" class="text-red-600 text-sm mt-2"></p>
+        </x-card>
+
+        @script
+        <script>
+            Alpine.data('signingDeviceRegistration', () => ({
+                busy: false,
+                detected: false,
+                error: '',
+                serialNumber: '',
+                subjectName: '',
+                notBefore: '',
+                notAfter: '',
+                async check() {
+                    this.busy = true; this.error = ''; this.detected = false;
+                    try {
+                        const health = await fetch('http://127.0.0.1:9847/health').catch(() => null);
+                        if (!health || !health.ok) {
+                            throw new Error('Локалниот потпишувач не работи. Стартувај го (преземи го копчето погоре) и обиди се повторно.');
+                        }
+                        const certRes = await fetch('http://127.0.0.1:9847/certificate');
+                        if (!certRes.ok) throw new Error('Не можам да ги прочитам податоците од токенот — провери дали е приклучен.');
+                        const cert = await certRes.json();
+                        this.serialNumber = cert.serialNumber;
+                        this.subjectName = cert.subjectName;
+                        this.notBefore = cert.notBefore;
+                        this.notAfter = cert.notAfter;
+                        this.detected = true;
+                    } catch (e) {
+                        this.error = e.message;
+                    } finally {
+                        this.busy = false;
+                    }
+                },
+                async confirmRegister() {
+                    await $wire.registerSigningDevice(this.serialNumber, this.subjectName, this.notBefore, this.notAfter);
+                    this.detected = false;
+                },
+            }));
+        </script>
+        @endscript
+    @endif
+
     @can('update', $company)
         @if ($editing)
             <x-card class="mb-6">
@@ -72,8 +140,24 @@
                             <x-text-input id="editWebsite" wire:model="editWebsite" class="w-full" />
                         </div>
                         <div class="sm:col-span-2">
-                            <x-input-label for="editAddress" value="Адреса" />
+                            <x-input-label for="editAddress" value="Адреса (слободен текст)" />
                             <x-text-input id="editAddress" wire:model="editAddress" class="w-full" />
+                        </div>
+                        <div>
+                            <x-input-label for="editStreetAddress" value="Улица (за е-Фактура)" />
+                            <x-text-input id="editStreetAddress" wire:model="editStreetAddress" class="w-full" />
+                        </div>
+                        <div>
+                            <x-input-label for="editStreetNumber" value="Број" />
+                            <x-text-input id="editStreetNumber" wire:model="editStreetNumber" class="w-full" />
+                        </div>
+                        <div>
+                            <x-input-label for="editPostalCode" value="Поштенски број" />
+                            <x-text-input id="editPostalCode" wire:model="editPostalCode" class="w-full" />
+                        </div>
+                        <div>
+                            <x-input-label for="editCity" value="Град" />
+                            <x-text-input id="editCity" wire:model="editCity" class="w-full" />
                         </div>
                         <div>
                             <x-input-label for="editDirectorName" value="Управител - име" />
@@ -153,25 +237,11 @@
                         </div>
 
                         @if ($editEfakturaMode === 'own')
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm text-gray-600 mb-1">X-EUJP-ID</label>
-                                    <input type="text" wire:model="editEfakturaEujpId" class="w-full rounded-lg border-gray-300">
-                                    @error('editEfakturaEujpId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-sm text-gray-600 mb-1">Лозинка на сертификат</label>
-                                    <input type="password" wire:model="editEfakturaCertificatePassword" class="w-full rounded-lg border-gray-300" placeholder="Остави празно за да ја задржиш постојната">
-                                    @error('editEfakturaCertificatePassword') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                                </div>
-                                <div class="sm:col-span-2">
-                                    <label class="block text-sm text-gray-600 mb-1">Сертификат (.p12/.pfx)</label>
-                                    <input type="file" wire:model="newEfakturaCertificate" accept=".p12,.pfx" class="text-sm">
-                                    @if ($company->efaktura_certificate_path)
-                                        <p class="text-xs text-gray-500 mt-1">Веќе е поставен сертификат — избери нов фајл само ако сакаш да го замениш.</p>
-                                    @endif
-                                    @error('newEfakturaCertificate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                                </div>
+                            <div>
+                                <label class="block text-sm text-gray-600 mb-1">X-EUJP-ID</label>
+                                <input type="text" wire:model="editEfakturaEujpId" class="w-full rounded-lg border-gray-300">
+                                @error('editEfakturaEujpId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                <p class="text-xs text-gray-500 mt-1">Потпишувачкиот уред (USB токен) се регистрира одделно, подолу на страницата — не преку овој формулар.</p>
                             </div>
                         @endif
                     </div>

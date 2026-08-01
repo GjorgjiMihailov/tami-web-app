@@ -67,10 +67,6 @@ class CompanyDashboard extends Component
 
     public string $editEfakturaEujpId = '';
 
-    public $newEfakturaCertificate = null;
-
-    public string $editEfakturaCertificatePassword = '';
-
     public function mount(Company $company): void
     {
         Gate::authorize('view', $company);
@@ -114,8 +110,6 @@ class CompanyDashboard extends Component
 
         $this->editEfakturaMode = $this->company->efaktura_credential_mode;
         $this->editEfakturaEujpId = (string) $this->company->efaktura_eujp_id;
-        $this->editEfakturaCertificatePassword = '';
-        $this->newEfakturaCertificate = null;
 
         $this->editing = true;
     }
@@ -134,6 +128,29 @@ class CompanyDashboard extends Component
         }
 
         $this->company->update(['efaktura_firm_access_status' => Company::EFAKTURA_STATUS_REQUESTED]);
+    }
+
+    public function registerSigningDevice(string $serialNumber, string $subjectName, string $notBefore, string $notAfter): void
+    {
+        abort_unless(
+            auth()->user()->hasAnyRole(['admin', 'accountant'])
+                && auth()->user()->visibleCompanies()->whereKey($this->company->id)->exists(),
+            403
+        );
+
+        if (blank($serialNumber)) {
+            $this->addError('signingDevice', 'Не е добиен сериски број од токенот.');
+
+            return;
+        }
+
+        $this->company->update([
+            'efaktura_token_serial_number' => $serialNumber,
+            'efaktura_token_subject_name' => $subjectName,
+            'efaktura_token_not_before' => $notBefore,
+            'efaktura_token_not_after' => $notAfter,
+            'efaktura_token_registered_at' => now(),
+        ]);
     }
 
     public function updated(string $name, $value): void
@@ -183,38 +200,12 @@ class CompanyDashboard extends Component
                 Company::EFAKTURA_MODE_OWN, Company::EFAKTURA_MODE_FIRM,
             ])],
             'editEfakturaEujpId' => 'nullable|string|max:100',
-            'newEfakturaCertificate' => ['nullable', 'file', 'max:5120', 'extensions:p12,pfx'],
-            'editEfakturaCertificatePassword' => 'nullable|string|max:255',
         ]);
 
-        // Laravel's validator skips non-implicit rules (including closures) for a field
-        // that carries "nullable" whenever its value is blank, so the own-mode-required
-        // checks below run as a manual post-validation pass instead of inline closures —
-        // this is the only way to guarantee they fire on an empty submission.
-        if ($validated['editEfakturaMode'] === Company::EFAKTURA_MODE_OWN) {
-            if (blank($validated['editEfakturaEujpId'])) {
-                $this->addError('editEfakturaEujpId', 'X-EUJP-ID е задолжителен за сопствен е-Фактура пристап.');
-            }
-            if (! $this->newEfakturaCertificate && blank($this->company->efaktura_certificate_path)) {
-                $this->addError('newEfakturaCertificate', 'Мора да прикачиш сертификат за сопствен е-Фактура пристап.');
-            }
-            if (blank($validated['editEfakturaCertificatePassword']) && blank($this->company->efaktura_certificate_password)) {
-                $this->addError('editEfakturaCertificatePassword', 'Лозинката за сертификатот е задолжителна за сопствен е-Фактура пристап.');
-            }
+        if ($validated['editEfakturaMode'] === Company::EFAKTURA_MODE_OWN && blank($validated['editEfakturaEujpId'])) {
+            $this->addError('editEfakturaEujpId', 'X-EUJP-ID е задолжителен за сопствен е-Фактура пристап.');
 
-            if ($this->getErrorBag()->isNotEmpty()) {
-                return;
-            }
-        }
-
-        if ($this->newEfakturaCertificate) {
-            $password = $validated['editEfakturaCertificatePassword'] ?: $this->company->efaktura_certificate_password;
-            $contents = file_get_contents($this->newEfakturaCertificate->getRealPath());
-            if (! openssl_pkcs12_read($contents, $certs, (string) $password)) {
-                $this->addError('newEfakturaCertificate', 'Сертификатот не може да се отвори со дадената лозинка — провери дали фајлот и лозинката се точни.');
-
-                return;
-            }
+            return;
         }
 
         DB::transaction(function () use ($validated) {
@@ -246,21 +237,11 @@ class CompanyDashboard extends Component
                 if (filled($validated['editEfakturaEujpId'])) {
                     $companyData['efaktura_eujp_id'] = $validated['editEfakturaEujpId'];
                 }
-                if ($this->newEfakturaCertificate) {
-                    $companyData['efaktura_certificate_path'] = $this->newEfakturaCertificate
-                        ->store('efaktura-certs/'.$this->company->id, 'local');
-                }
-                if (filled($validated['editEfakturaCertificatePassword'])) {
-                    $companyData['efaktura_certificate_password'] = $validated['editEfakturaCertificatePassword'];
-                }
             } else {
                 $companyData['efaktura_eujp_id'] = null;
-                $companyData['efaktura_certificate_path'] = null;
-                $companyData['efaktura_certificate_password'] = null;
             }
 
             $this->company->update($companyData);
-            $this->newEfakturaCertificate = null;
 
             $keptRows = collect($validated['bankAccounts'])
                 ->filter(fn ($row) => trim((string) ($row['bank_name'] ?? '')) !== '' || trim((string) ($row['account_number'] ?? '')) !== '')
