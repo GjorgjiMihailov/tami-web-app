@@ -64,6 +64,98 @@
         @endif
     </div>
 
+    @if ($invoice->status === 'confirmed' && auth()->user()->hasAnyRole(['admin', 'accountant']))
+        <div class="mt-4 border-t pt-4" x-data="efakturaSend()">
+            @if ($invoice->efaktura_status === 'sent')
+                <x-badge status="active">Испратена до УЈП ({{ optional($invoice->efaktura_sent_at)->format('d.m.Y H:i') }})</x-badge>
+            @elseif (! $company->hasEfakturaAccess() || $company->efaktura_credential_mode !== \App\Models\Company::EFAKTURA_MODE_OWN)
+                <p class="text-xs text-gray-500">Регистрирај потпишувачки уред за оваа компанија (Профил на фирма) за да можеш да праќаш е-Фактура.</p>
+            @else
+                <button type="button" @click="run()" :disabled="busy" class="bg-brand text-white px-3 py-1.5 rounded-md text-sm disabled:opacity-50">
+                    <span x-show="!busy">Потпиши и испрати до УЈП</span>
+                    <span x-show="busy" x-text="statusText"></span>
+                </button>
+                @if ($invoice->efaktura_status === 'failed')
+                    <p class="text-red-600 text-sm mt-2">Претходен обид не успеа: {{ Str::limit($invoice->efaktura_error, 200) }}</p>
+                @endif
+                <p x-show="error" x-text="error" class="text-red-600 text-sm mt-2"></p>
+                <p x-show="success" class="text-green-700 text-sm mt-2">Фактурата е успешно испратена до УЈП.</p>
+            @endif
+        </div>
+
+        @script
+        <script>
+            Alpine.data('efakturaSend', () => ({
+                busy: false,
+                error: '',
+                success: false,
+                statusText: '',
+                async run() {
+                    this.busy = true; this.error = ''; this.success = false;
+                    try {
+                        this.statusText = 'Проверувам мост...';
+                        const health = await fetch('http://127.0.0.1:9847/health').catch(() => null);
+                        if (!health || !health.ok) {
+                            throw new Error('Локалниот потпишувач не работи. Стартувај го и обиди се повторно.');
+                        }
+
+                        this.statusText = 'Читам токен...';
+                        const certRes = await fetch('http://127.0.0.1:9847/certificate');
+                        if (!certRes.ok) throw new Error('Не можам да ги прочитам податоците од токенот.');
+                        const cert = await certRes.json();
+
+                        if (cert.serialNumber !== @js($company->efaktura_token_serial_number)) {
+                            throw new Error('Приклучениот токен не одговара на регистрираниот за оваа компанија.');
+                        }
+
+                        this.statusText = 'Подготвувам текст за потпишување...';
+                        const signingRes = await fetch(@js(route('sales-invoices.efaktura.signing-input', [$company, $invoice])), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({ certificateBase64: cert.certificateBase64 }),
+                        });
+                        if (!signingRes.ok) throw new Error('Серверот не можеше да го подготви текстот за потпишување.');
+                        const { token, signingInput } = await signingRes.json();
+
+                        this.statusText = 'Потпишувам (проверете го прозорецот на SafeNet)...';
+                        const signRes = await fetch('http://127.0.0.1:9847/sign', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ data: signingInput }),
+                        });
+                        if (!signRes.ok) throw new Error('Потпишувањето не успеа — провери го PIN-от на токенот.');
+                        const { signature } = await signRes.json();
+
+                        this.statusText = 'Праќам до УЈП...';
+                        const sendRes = await fetch(@js(route('sales-invoices.efaktura.send', [$company, $invoice])), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({ token, signature }),
+                        });
+                        const sendBody = await sendRes.json();
+                        if (!sendRes.ok) {
+                            throw new Error(sendBody.error === 'ujp_rejected' ? `УЈП го одби барањето: ${sendBody.body}` : 'Праќањето не успеа.');
+                        }
+
+                        this.success = true;
+                        setTimeout(() => window.location.reload(), 1500);
+                    } catch (e) {
+                        this.error = e.message;
+                    } finally {
+                        this.busy = false;
+                    }
+                },
+            }));
+        </script>
+        @endscript
+    @endif
+
     @if ($invoice->status === 'confirmed')
         <x-card>
             <h2 class="font-semibold text-gray-700 mb-2">Плаќања</h2>
