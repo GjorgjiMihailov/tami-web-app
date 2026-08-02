@@ -23,6 +23,7 @@ class EfakturaTaxIndicator
             $vatTreatment === 'standard' && bccomp($vatRate, '18.00', 2) === 0 => ['DDV-A', 18.0],
             $vatTreatment === 'standard' && bccomp($vatRate, '10.00', 2) === 0 => ['DDV-V', 10.0],
             $vatTreatment === 'standard' && bccomp($vatRate, '5.00', 2) === 0 => ['DDV-B', 5.0],
+            $vatTreatment === 'standard' && bccomp($vatRate, '0.00', 2) === 0 => ['DDV-G', 0.0],
             $vatTreatment === 'export' => ['DDV-7-I', 0.0],
             $vatTreatment === 'exempt_with_credit' => ['DDV-8', 0.0],
             $vatTreatment === 'exempt_without_credit' => ['DDV-9', 0.0],
