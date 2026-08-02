@@ -241,7 +241,7 @@
                                 <label class="block text-sm text-gray-600 mb-1">X-EUJP-ID</label>
                                 <input type="text" wire:model="editEfakturaEujpId" class="w-full rounded-lg border-gray-300">
                                 @error('editEfakturaEujpId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                                <p class="text-xs text-gray-500 mt-1">Потпишувачкиот уред (USB токен) се регистрира одделно, подолу на страницата — не преку овој формулар.</p>
+                                <p class="text-xs text-gray-500 mt-1">Потпишувачкиот уред (USB токен) се регистрира одделно, погоре на страницата — не преку овој формулар.</p>
                             </div>
                         @endif
                     </div>

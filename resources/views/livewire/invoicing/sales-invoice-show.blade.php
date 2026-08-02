@@ -85,6 +85,10 @@
 
         @script
         <script>
+            function toBase64Url(str) {
+                return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            }
+
             Alpine.data('efakturaSend', () => ({
                 busy: false,
                 error: '',
@@ -117,14 +121,17 @@
                             },
                             body: JSON.stringify({ certificateBase64: cert.certificateBase64 }),
                         });
-                        if (!signingRes.ok) throw new Error('Серверот не можеше да го подготви текстот за потпишување.');
+                        if (!signingRes.ok) {
+                            const errorBody = await signingRes.json().catch(() => null);
+                            throw new Error(errorBody?.message ?? errorBody?.error ?? 'Серверот не можеше да го подготви текстот за потпишување.');
+                        }
                         const { token, signingInput } = await signingRes.json();
 
                         this.statusText = 'Потпишувам (проверете го прозорецот на SafeNet)...';
                         const signRes = await fetch('http://127.0.0.1:9847/sign', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ data: signingInput }),
+                            body: JSON.stringify({ data: toBase64Url(signingInput) }),
                         });
                         if (!signRes.ok) throw new Error('Потпишувањето не успеа — провери го PIN-от на токенот.');
                         const { signature } = await signRes.json();
@@ -138,9 +145,12 @@
                             },
                             body: JSON.stringify({ token, signature }),
                         });
-                        const sendBody = await sendRes.json();
                         if (!sendRes.ok) {
-                            throw new Error(sendBody.error === 'ujp_rejected' ? `УЈП го одби барањето: ${sendBody.body}` : 'Праќањето не успеа.');
+                            const sendBody = await sendRes.json().catch(() => null);
+                            const message = sendBody?.error === 'ujp_rejected'
+                                ? `УЈП го одби барањето: ${sendBody.body}`
+                                : (sendBody?.message ?? sendBody?.error ?? 'Праќањето не успеа.');
+                            throw new Error(message);
                         }
 
                         this.success = true;

@@ -41,6 +41,6 @@ class EfakturaJwsService
             'X-EUJP-ID' => $company->efaktura_eujp_id,
             'X-EDB' => $company->tax_id,
             'X-SERIAL-NUMBER' => $company->efaktura_token_serial_number,
-        ])->withBody($compact, 'application/jose')->post($url);
+        ])->timeout(20)->withBody($compact, 'application/jose')->post($url);
     }
 }

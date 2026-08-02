@@ -58,6 +58,52 @@ class EfakturaDocumentBuilderTest extends TestCase
         $this->assertSame(36.0, $document['document']['vatTotals'][0]['vatAmount']);
     }
 
+    public function test_vat_number_uses_latin_mk_prefix_when_party_is_vat_registered(): void
+    {
+        $company = Company::factory()->create([
+            'tax_id' => '4030001234567',
+            'is_vat_registered' => true,
+        ]);
+        $partner = Partner::factory()->for($company)->create([
+            'tax_id' => '4030007654321',
+            'is_vat_registered' => true,
+        ]);
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id, 'fiscal_year' => 2026, 'invoice_number' => 3,
+            'invoice_date' => '2026-03-01', 'status' => 'confirmed',
+        ]);
+        $invoice->lines()->create(['description' => 'A', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00', 'vat_treatment' => 'standard']);
+
+        $document = (new EfakturaDocumentBuilder)->build($invoice->fresh(['lines', 'company', 'partner']));
+
+        $this->assertSame('MK4030001234567', $document['document']['seller']['sellerVatNumber']);
+        $this->assertSame('MK4030007654321', $document['document']['buyer']['buyerVatNumber']);
+        // Must be the Latin "MK" (U+004D U+004B), not the visually-identical Cyrillic "МК".
+        $this->assertNotSame("\u{041C}\u{041A}4030001234567", $document['document']['seller']['sellerVatNumber']);
+    }
+
+    public function test_vat_number_is_null_when_party_is_not_vat_registered(): void
+    {
+        $company = Company::factory()->create([
+            'tax_id' => '4030001234567',
+            'is_vat_registered' => false,
+        ]);
+        $partner = Partner::factory()->for($company)->create([
+            'tax_id' => '4030007654321',
+            'is_vat_registered' => false,
+        ]);
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id, 'fiscal_year' => 2026, 'invoice_number' => 4,
+            'invoice_date' => '2026-03-01', 'status' => 'confirmed',
+        ]);
+        $invoice->lines()->create(['description' => 'A', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00', 'vat_treatment' => 'standard']);
+
+        $document = (new EfakturaDocumentBuilder)->build($invoice->fresh(['lines', 'company', 'partner']));
+
+        $this->assertNull($document['document']['seller']['sellerVatNumber']);
+        $this->assertNull($document['document']['buyer']['buyerVatNumber']);
+    }
+
     public function test_groups_vat_totals_by_distinct_tax_indicator(): void
     {
         $company = Company::factory()->create(['tax_id' => '4030001234567']);

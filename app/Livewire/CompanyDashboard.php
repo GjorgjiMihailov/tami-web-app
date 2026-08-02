@@ -144,11 +144,20 @@ class CompanyDashboard extends Component
             return;
         }
 
+        try {
+            $notBeforeParsed = \Illuminate\Support\Carbon::parse($notBefore);
+            $notAfterParsed = \Illuminate\Support\Carbon::parse($notAfter);
+        } catch (\Exception) {
+            $this->addError('signingDevice', 'Датумите од сертификатот не можат да се прочитаат.');
+
+            return;
+        }
+
         $this->company->update([
             'efaktura_token_serial_number' => $serialNumber,
-            'efaktura_token_subject_name' => $subjectName,
-            'efaktura_token_not_before' => $notBefore,
-            'efaktura_token_not_after' => $notAfter,
+            'efaktura_token_subject_name' => \Illuminate\Support\Str::limit($subjectName, 250, ''),
+            'efaktura_token_not_before' => $notBeforeParsed,
+            'efaktura_token_not_after' => $notAfterParsed,
             'efaktura_token_registered_at' => now(),
         ]);
     }

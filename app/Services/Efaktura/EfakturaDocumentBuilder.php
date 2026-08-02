@@ -41,8 +41,8 @@ class EfakturaDocumentBuilder
                     'docHeader' => null,
                     'docFooter' => null,
                 ],
-                'seller' => $this->buildParty($company->name, $company->tax_id, $company->street_address, $company->street_number, $company->postal_code, $company->city, 'seller'),
-                'buyer' => $this->buildParty($partner->name, $partner->tax_id, $partner->street_address, $partner->street_number, $partner->postal_code, $partner->city, 'buyer'),
+                'seller' => $this->buildParty($company->name, $company->tax_id, $company->street_address, $company->street_number, $company->postal_code, $company->city, $company->is_vat_registered, 'seller'),
+                'buyer' => $this->buildParty($partner->name, $partner->tax_id, $partner->street_address, $partner->street_number, $partner->postal_code, $partner->city, $partner->is_vat_registered, 'buyer'),
                 'docPayment' => [
                     'docPaymentTypeCode' => $invoice->payment_type_code,
                     'docPaymentTypeDesc' => SalesInvoice::PAYMENT_TYPES[$invoice->payment_type_code] ?? $invoice->payment_type_code,
@@ -73,14 +73,14 @@ class EfakturaDocumentBuilder
         ];
     }
 
-    private function buildParty(?string $name, ?string $taxId, ?string $streetAddress, ?string $streetNumber, ?string $postalCode, ?string $city, string $prefix): array
+    private function buildParty(?string $name, ?string $taxId, ?string $streetAddress, ?string $streetNumber, ?string $postalCode, ?string $city, bool $isVatRegistered, string $prefix): array
     {
         return [
             "{$prefix}CCode" => 'MK',
             "{$prefix}CName" => 'Северна Македонија',
             "{$prefix}Tin" => $taxId,
             "{$prefix}ForeignTin" => null,
-            "{$prefix}VatNumber" => $taxId ? 'МК'.$taxId : null,
+            "{$prefix}VatNumber" => ($isVatRegistered && $taxId) ? 'MK'.$taxId : null,
             "{$prefix}Name" => $name,
             "{$prefix}Address" => [
                 'streetAddress' => $streetAddress ?? '',

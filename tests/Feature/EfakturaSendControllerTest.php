@@ -30,8 +30,13 @@ class EfakturaSendControllerTest extends TestCase
             'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
             'efaktura_eujp_id' => 'EUJP-1',
             'efaktura_token_serial_number' => '1A2B3C',
+            'street_address' => 'Мајка Тереза', 'street_number' => '12',
+            'postal_code' => '1000', 'city' => 'Скопје',
         ]);
-        $partner = Partner::factory()->for($company)->create();
+        $partner = Partner::factory()->for($company)->create([
+            'street_address' => 'Партизанска', 'street_number' => '5',
+            'postal_code' => '1000', 'city' => 'Скопје',
+        ]);
         $invoice = SalesInvoice::factory()->for($company)->create([
             'partner_id' => $partner->id, 'fiscal_year' => 2026, 'invoice_number' => 1,
             'invoice_date' => '2026-03-01', 'status' => 'confirmed',
@@ -164,5 +169,105 @@ class EfakturaSendControllerTest extends TestCase
         );
 
         $response->assertStatus(403);
+        // Fix 2 coverage: bootstrap/app.php's shouldRenderJsonWhen must cover efaktura routes,
+        // otherwise this 403 would render as HTML and $response->json() would throw.
+        $response->assertHeader('Content-Type', 'application/json');
+        $this->assertIsArray($response->json());
+    }
+
+    public function test_second_send_attempt_on_already_sent_invoice_is_rejected(): void
+    {
+        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
+        $invoice->update(['efaktura_status' => 'sent', 'efaktura_sent_at' => now()]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $response = $this->actingAs($admin)->postJson(
+            route('sales-invoices.efaktura.signing-input', [$company, $invoice]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        );
+
+        $response->assertStatus(422);
+    }
+
+    public function test_efaktura_doc_id_is_populated_from_ujp_response(): void
+    {
+        Http::fake(['*' => Http::response(['status' => 'ok', 'docId' => 'UJP-DOC-12345'], 200)]);
+        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $signingResponse = $this->actingAs($admin)->postJson(
+            route('sales-invoices.efaktura.signing-input', [$company, $invoice]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->json();
+
+        $sendResponse = $this->actingAs($admin)->postJson(
+            route('sales-invoices.efaktura.send', [$company, $invoice]),
+            ['token' => $signingResponse['token'], 'signature' => 'ZmFrZS1zaWc']
+        );
+
+        $sendResponse->assertOk();
+        $this->assertSame('UJP-DOC-12345', $invoice->fresh()->efaktura_doc_id);
+    }
+
+    public function test_incomplete_company_address_is_rejected_before_signing_input_generated(): void
+    {
+        $company = Company::factory()->create([
+            'tax_id' => '4030001234567',
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'EUJP-1',
+            'efaktura_token_serial_number' => '1A2B3C',
+            'street_address' => null, 'street_number' => null,
+            'postal_code' => null, 'city' => null,
+        ]);
+        $partner = Partner::factory()->for($company)->create([
+            'street_address' => 'Партизанска', 'street_number' => '5',
+            'postal_code' => '1000', 'city' => 'Скопје',
+        ]);
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id, 'fiscal_year' => 2026, 'invoice_number' => 1,
+            'invoice_date' => '2026-03-01', 'status' => 'confirmed',
+        ]);
+        $invoice->lines()->create(['description' => 'A', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00', 'vat_treatment' => 'standard']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $response = $this->actingAs($admin)->postJson(
+            route('sales-invoices.efaktura.signing-input', [$company, $invoice->fresh(['lines'])]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        );
+
+        $response->assertStatus(422)->assertJson(['error' => 'incomplete_address']);
+    }
+
+    public function test_incomplete_partner_address_is_rejected_before_signing_input_generated(): void
+    {
+        $company = Company::factory()->create([
+            'tax_id' => '4030001234567',
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'EUJP-1',
+            'efaktura_token_serial_number' => '1A2B3C',
+            'street_address' => 'Мајка Тереза', 'street_number' => '12',
+            'postal_code' => '1000', 'city' => 'Скопје',
+        ]);
+        $partner = Partner::factory()->for($company)->create([
+            'street_address' => null, 'street_number' => null,
+            'postal_code' => null, 'city' => null,
+        ]);
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id, 'fiscal_year' => 2026, 'invoice_number' => 1,
+            'invoice_date' => '2026-03-01', 'status' => 'confirmed',
+        ]);
+        $invoice->lines()->create(['description' => 'A', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00', 'vat_treatment' => 'standard']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $response = $this->actingAs($admin)->postJson(
+            route('sales-invoices.efaktura.signing-input', [$company, $invoice->fresh(['lines'])]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        );
+
+        $response->assertStatus(422)->assertJson(['error' => 'incomplete_address']);
     }
 }
