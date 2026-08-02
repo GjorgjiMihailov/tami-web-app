@@ -85,9 +85,7 @@
 
         @script
         <script>
-            function toBase64Url(str) {
-                return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-            }
+            const toBase64Url = (str) => btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
             Alpine.data('efakturaSend', () => ({
                 busy: false,
