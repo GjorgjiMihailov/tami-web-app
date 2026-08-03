@@ -157,6 +157,32 @@ class EfakturaSendControllerTest extends TestCase
         $response->assertStatus(422);
     }
 
+    public function test_send_when_ujp_is_unreachable_records_failure_instead_of_500(): void
+    {
+        Http::fake(function () {
+            throw new \Illuminate\Http\Client\ConnectionException(
+                'cURL error 28: Connection timeout after 10001 ms for https://efakturatest.ujp.gov.mk/JSONReceiver/api/v1/sales-invoices/send'
+            );
+        });
+        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $signingResponse = $this->actingAs($admin)->postJson(
+            route('sales-invoices.efaktura.signing-input', [$company, $invoice]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->json();
+
+        $sendResponse = $this->actingAs($admin)->postJson(
+            route('sales-invoices.efaktura.send', [$company, $invoice]),
+            ['token' => $signingResponse['token'], 'signature' => 'ZmFrZS1zaWc']
+        );
+
+        $sendResponse->assertStatus(503)->assertJson(['error' => 'ujp_unreachable']);
+        $this->assertSame('failed', $invoice->fresh()->efaktura_status);
+        $this->assertStringContainsString('cURL error 28', $invoice->fresh()->efaktura_error);
+    }
+
     public function test_client_role_is_forbidden(): void
     {
         [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();

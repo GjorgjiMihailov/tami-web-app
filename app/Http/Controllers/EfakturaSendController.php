@@ -50,7 +50,16 @@ class EfakturaSendController extends Controller
             return response()->json(['error' => 'expired_or_invalid_token'], 410);
         }
 
-        $response = $jwsService->send($company, $cached['signing_input'], $validated['signature']);
+        try {
+            $response = $jwsService->send($company, $cached['signing_input'], $validated['signature']);
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            $salesInvoice->update(['efaktura_status' => 'failed', 'efaktura_error' => $e->getMessage()]);
+
+            return response()->json([
+                'error' => 'ujp_unreachable',
+                'message' => 'Не можам да се поврзам со серверот на УЈП — провери ја интернет-врската или обиди се подоцна.',
+            ], 503);
+        }
 
         if (! $response->successful()) {
             $salesInvoice->update(['efaktura_status' => 'failed', 'efaktura_error' => $response->body()]);
