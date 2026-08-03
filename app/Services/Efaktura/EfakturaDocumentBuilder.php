@@ -27,7 +27,11 @@ class EfakturaDocumentBuilder
         $grossAmount = round($netAmount + $vatAmount, 2);
 
         return [
-            'requestTimestamp' => now()->utc()->format('Y-m-d\TH:i:s\Z'),
+            // UJP requires Skopje local time with no "Z" suffix (confirmed in
+            // efakturawiki.ujp.gov.mk's 27.05.2026 changelog entry and every worked
+            // example in primer_za_json_3.pdf) — the app's default timezone is UTC
+            // (config/app.php), so this must convert explicitly, not just append "Z".
+            'requestTimestamp' => now()->timezone('Europe/Skopje')->format('Y-m-d\TH:i:s'),
             'document' => [
                 'header' => [
                     'docStorno' => 0,
@@ -41,6 +45,7 @@ class EfakturaDocumentBuilder
                     'docHeader' => null,
                     'docFooter' => null,
                 ],
+                'docReferences' => [],
                 'seller' => $this->buildParty($company->name, $company->tax_id, $company->street_address, $company->street_number, $company->postal_code, $company->city, $company->is_vat_registered, 'seller'),
                 'buyer' => $this->buildParty($partner->name, $partner->tax_id, $partner->street_address, $partner->street_number, $partner->postal_code, $partner->city, $partner->is_vat_registered, 'buyer'),
                 'docPayment' => [
@@ -80,7 +85,10 @@ class EfakturaDocumentBuilder
             "{$prefix}CName" => 'Северна Македонија',
             "{$prefix}Tin" => $taxId,
             "{$prefix}ForeignTin" => null,
-            "{$prefix}VatNumber" => ($isVatRegistered && $taxId) ? 'MK'.$taxId : null,
+            // "МК" here is the Cyrillic М/К (U+041C/U+041A), confirmed against a real
+            // UJP-supplied example ("sellerVatNumber": "МК4030995135699" in
+            // primer_za_json_3.pdf) — not the visually-identical Latin "MK".
+            "{$prefix}VatNumber" => ($isVatRegistered && $taxId) ? "\u{041C}\u{041A}".$taxId : null,
             "{$prefix}Name" => $name,
             "{$prefix}Address" => [
                 'streetAddress' => $streetAddress ?? '',
@@ -101,6 +109,11 @@ class EfakturaDocumentBuilder
         $vatAmount = (float) $line->vatAmount();
         $vatPercent = EfakturaTaxIndicator::percent($line->vat_treatment, (string) $line->vat_rate);
         $taxIndicator = EfakturaTaxIndicator::code($line->vat_treatment, (string) $line->vat_rate);
+        // docItemUnitVat is the per-unit VAT AMOUNT (unitPrice * rate/100), not the rate —
+        // confirmed against primer_za_json_3.pdf (unit price 95.2381 @ 5% -> 4.7619, while
+        // docItemVat, a separate field, carries the rate itself, 5). A round unit price
+        // like 100.00 makes the two coincide by chance, which is why this was wrong before.
+        $unitVatAmount = $unitPrice * $vatPercent / 100;
 
         return [
             'docItemLineNo' => $lineNo,
@@ -113,7 +126,7 @@ class EfakturaDocumentBuilder
             'docItemUnitOriginalPriceWoVat' => $unitPrice,
             'docItemUnitDiscountAmount' => 0,
             'docItemUnitPriceWoVat' => $unitPrice,
-            'docItemUnitVat' => $vatPercent,
+            'docItemUnitVat' => $unitVatAmount,
             'docItemVat' => $vatPercent,
             'docItemVatGroup' => $taxIndicator,
             'docItemTotalOriginalPriceWoVat' => $lineTotal,
@@ -138,7 +151,7 @@ class EfakturaDocumentBuilder
 
                 return [
                     'vatTaxIndicator' => $code,
-                    'vatTaxIndicatorNote' => '',
+                    'vatTaxIndicatorNote' => $code === 'DDV-G' ? 'не е ДДВ обврзник' : '',
                     'vatCode' => $code,
                     'vatPercent' => $percent,
                     'vatTaxableAmount' => $base,
