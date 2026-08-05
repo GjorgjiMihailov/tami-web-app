@@ -88,6 +88,32 @@ class EfakturaDocumentBuilderTest extends TestCase
         $this->assertNotSame('MK4030001234567', $document['document']['seller']['sellerVatNumber']);
     }
 
+    public function test_tin_and_vat_number_strip_a_pre_existing_mk_prefix_in_tax_id(): void
+    {
+        // Real Task 18 bug: a partner's tax_id was stored as "MK4032025569672" (Latin MK
+        // already baked in, likely copied from a VAT-number display), which produced
+        // buyerTin "MK4032025569672" and a double-prefixed buyerVatNumber
+        // "МКMK4032025569672" — UJP rejected the whole request with a generic 500.
+        $company = Company::factory()->create([
+            'tax_id' => '4030001234567',
+            'is_vat_registered' => true,
+        ]);
+        $partner = Partner::factory()->for($company)->create([
+            'tax_id' => 'MK4032025569672',
+            'is_vat_registered' => true,
+        ]);
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id, 'fiscal_year' => 2026, 'invoice_number' => 8,
+            'invoice_date' => '2026-03-01', 'status' => 'confirmed',
+        ]);
+        $invoice->lines()->create(['description' => 'A', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00', 'vat_treatment' => 'standard']);
+
+        $document = (new EfakturaDocumentBuilder)->build($invoice->fresh(['lines', 'company', 'partner']));
+
+        $this->assertSame('4032025569672', $document['document']['buyer']['buyerTin']);
+        $this->assertSame("\u{041C}\u{041A}4032025569672", $document['document']['buyer']['buyerVatNumber']);
+    }
+
     public function test_vat_number_is_null_when_party_is_not_vat_registered(): void
     {
         $company = Company::factory()->create([

@@ -80,6 +80,11 @@ class EfakturaDocumentBuilder
 
     private function buildParty(?string $name, ?string $taxId, ?string $streetAddress, ?string $streetNumber, ?string $postalCode, ?string $city, bool $isVatRegistered, string $prefix): array
     {
+        // Some partner records have "MK"/"МК" typed directly into tax_id (copied from a
+        // VAT-number display elsewhere) — strip it so Tin stays plain digits and
+        // VatNumber doesn't end up double-prefixed ("МКMK...").
+        $taxId = $taxId !== null ? preg_replace('/^(mk|мк)/iu', '', $taxId) : $taxId;
+
         return [
             "{$prefix}CCode" => 'MK',
             "{$prefix}CName" => 'Северна Македонија',
