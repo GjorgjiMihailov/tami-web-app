@@ -57,11 +57,15 @@ class EfakturaJwsServiceTest extends TestCase
 
         $this->assertTrue($response->successful());
         Http::assertSent(function ($request) {
+            $body = $request->data();
+
             return $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/JSONReceiver/api/v1/sales-invoices/send'
                 && $request->hasHeader('X-EUJP-ID', 'EUJP-1')
                 && $request->hasHeader('X-EDB', '4030001234567')
                 && $request->hasHeader('X-SERIAL-NUMBER', '1A2B3C')
-                && $request->body() === 'header.payload.c2ln';
+                && $request->hasHeader('X-DOC-TYPE-CODE', '100')
+                && $body['jws'] === 'header.payload.c2ln'
+                && isset($body['requestTimestamp']);
         });
     }
 }

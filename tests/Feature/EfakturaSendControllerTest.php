@@ -218,7 +218,7 @@ class EfakturaSendControllerTest extends TestCase
 
     public function test_efaktura_doc_id_is_populated_from_ujp_response(): void
     {
-        Http::fake(['*' => Http::response(['status' => 'ok', 'docId' => 'UJP-DOC-12345'], 200)]);
+        Http::fake(['*' => Http::response(['euid' => '019b8d43-7840-7433-b358-08891b53605c', 'message' => 'Фактура успешно зачувана'], 200)]);
         [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
@@ -234,7 +234,7 @@ class EfakturaSendControllerTest extends TestCase
         );
 
         $sendResponse->assertOk();
-        $this->assertSame('UJP-DOC-12345', $invoice->fresh()->efaktura_doc_id);
+        $this->assertSame('019b8d43-7840-7433-b358-08891b53605c', $invoice->fresh()->efaktura_doc_id);
     }
 
     public function test_incomplete_company_address_is_rejected_before_signing_input_generated(): void

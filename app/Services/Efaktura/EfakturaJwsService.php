@@ -41,12 +41,16 @@ class EfakturaJwsService
             'X-EUJP-ID' => $company->efaktura_eujp_id,
             'X-EDB' => $company->tax_id,
             'X-SERIAL-NUMBER' => $company->efaktura_token_serial_number,
+            'X-DOC-TYPE-CODE' => '100',
         ])->timeout(20);
 
         if ($connectTo = config('services.efaktura.connect_to')) {
             $request = $request->withOptions(['curl' => [CURLOPT_CONNECT_TO => [$connectTo]]]);
         }
 
-        return $request->withBody($compact, 'application/jose')->post($url);
+        return $request->post($url, [
+            'requestTimestamp' => now()->timezone('Europe/Skopje')->format('Y-m-d\TH:i:s'),
+            'jws' => $compact,
+        ]);
     }
 }

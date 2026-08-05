@@ -67,12 +67,11 @@ class EfakturaSendController extends Controller
             return response()->json(['error' => 'ujp_rejected', 'status' => $response->status(), 'body' => $response->body()], 422);
         }
 
-        // Field name is a best guess pending Task 18's live-UJP confirmation of the real success response shape.
         $salesInvoice->update([
             'efaktura_status' => 'sent',
             'efaktura_sent_at' => now(),
             'efaktura_error' => null,
-            'efaktura_doc_id' => $response->json('docId') ?? $response->json('documentId') ?? $response->json('id'),
+            'efaktura_doc_id' => $response->json('euid'),
         ]);
 
         return response()->json(['status' => 'sent']);
