@@ -7,6 +7,7 @@ use App\Models\SalesInvoice;
 use App\Support\Base64Url;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class EfakturaJwsService
 {
@@ -48,9 +49,33 @@ class EfakturaJwsService
             $request = $request->withOptions(['curl' => [CURLOPT_CONNECT_TO => [$connectTo]]]);
         }
 
-        return $request->post($url, [
-            'requestTimestamp' => now()->timezone('Europe/Skopje')->format('Y-m-d\TH:i:s'),
+        $requestTimestamp = now()->timezone('Europe/Skopje')->format('Y-m-d\TH:i:s');
+        [$headerPart, $payloadPart] = explode('.', $signingInput);
+
+        Log::info('EFAKTURA_DEBUG_TASK18 request', [
+            'url' => $url,
+            'headers' => [
+                'X-EUJP-ID' => $company->efaktura_eujp_id,
+                'X-EDB' => $company->tax_id,
+                'X-SERIAL-NUMBER' => $company->efaktura_token_serial_number,
+                'X-DOC-TYPE-CODE' => '100',
+            ],
+            'requestTimestamp' => $requestTimestamp,
+            'jwsHeader' => Base64Url::decode($headerPart),
+            'jwsPayload' => Base64Url::decode($payloadPart),
+            'signatureLength' => strlen($signatureBase64Url),
+        ]);
+
+        $response = $request->post($url, [
+            'requestTimestamp' => $requestTimestamp,
             'jws' => $compact,
         ]);
+
+        Log::info('EFAKTURA_DEBUG_TASK18 response', [
+            'status' => $response->status(),
+            'body' => $response->body(),
+        ]);
+
+        return $response;
     }
 }
