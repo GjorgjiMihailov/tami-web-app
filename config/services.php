@@ -37,6 +37,7 @@ return [
 
     'efaktura' => [
         'base_url' => env('EFAKTURA_BASE_URL', 'https://efakturatest.ujp.gov.mk'),
+        'connect_to' => env('EFAKTURA_CONNECT_TO'),
     ],
 
 ];

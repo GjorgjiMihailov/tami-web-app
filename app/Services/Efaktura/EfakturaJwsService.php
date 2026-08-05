@@ -37,10 +37,16 @@ class EfakturaJwsService
         $baseUrl = config('services.efaktura.base_url');
         $url = rtrim($baseUrl, '/').'/JSONReceiver/api/v1/sales-invoices/send';
 
-        return Http::withHeaders([
+        $request = Http::withHeaders([
             'X-EUJP-ID' => $company->efaktura_eujp_id,
             'X-EDB' => $company->tax_id,
             'X-SERIAL-NUMBER' => $company->efaktura_token_serial_number,
-        ])->timeout(20)->withBody($compact, 'application/jose')->post($url);
+        ])->timeout(20);
+
+        if ($connectTo = config('services.efaktura.connect_to')) {
+            $request = $request->withOptions(['curl' => [CURLOPT_CONNECT_TO => [$connectTo]]]);
+        }
+
+        return $request->withBody($compact, 'application/jose')->post($url);
     }
 }
