@@ -42,14 +42,16 @@ class EfakturaJwsService
         return ['signingInput' => $signingInput, 'payloadJson' => $payloadJson];
     }
 
-    // Best-guess paths from the approved design doc's prose (efakturawiki.ujp.gov.mk hasn't
-    // been checked for these two specifically the way it was for /sales-invoices/send) — same
-    // /JSONReceiver/api/v1/... base as the confirmed-working send endpoint, since both are
-    // document-management operations requiring JWS, not the read-only /einvoice_api/... ones.
-    // VERIFY against a real response in Task 8; fix here if wrong.
-    private const STATUS_REFRESH_PATH = '/JSONReceiver/api/v1/documents/sales-invoice/invoices-status';
+    // Confirmed live via Task 8 (2026-08-06): unlike /sales-invoices/send, these two document-
+    // management endpoints live under /einvoice_api/, not /JSONReceiver/ — confirmed by curl'ing
+    // both bases directly against efakturatest.ujp.gov.mk (via the SSH tunnel): /JSONReceiver/...
+    // returned a bare 404 (route doesn't exist there), while /einvoice_api/... returned a real
+    // "JWS must not be null or empty string" validation error, proving the route exists there and
+    // is being processed. The original guess (per the design doc's prose) had both under
+    // /JSONReceiver/ purely by analogy with /sales-invoices/send — wrong for this pair.
+    private const STATUS_REFRESH_PATH = '/einvoice_api/api/v1/documents/sales-invoice/invoices-status';
 
-    private const PDF_FETCH_PATH = '/JSONReceiver/api/v1/documents/sales-invoice/pdf';
+    private const PDF_FETCH_PATH = '/einvoice_api/api/v1/documents/sales-invoice/pdf';
 
     public function send(Company $company, string $signingInput, string $signatureBase64Url): Response
     {

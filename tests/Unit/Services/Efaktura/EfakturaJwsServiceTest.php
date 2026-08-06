@@ -99,7 +99,7 @@ class EfakturaJwsServiceTest extends TestCase
         Http::assertSent(function ($request) {
             $body = $request->data();
 
-            return $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/JSONReceiver/api/v1/documents/sales-invoice/invoices-status'
+            return $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/sales-invoice/invoices-status'
                 && $request->hasHeader('X-EUJP-ID', 'EUJP-1')
                 && $request->hasHeader('X-EDB', '4030001234567')
                 && $request->hasHeader('X-SERIAL-NUMBER', '1A2B3C')
@@ -121,7 +121,7 @@ class EfakturaJwsServiceTest extends TestCase
         Http::assertSent(function ($request) {
             $body = $request->data();
 
-            return $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/JSONReceiver/api/v1/documents/sales-invoice/pdf'
+            return $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/sales-invoice/pdf'
                 && $request->hasHeader('X-EUJP-ID', 'EUJP-1')
                 && $body['jws'] === 'header.payload.c2ln'
                 && isset($body['requestTimestamp']);
