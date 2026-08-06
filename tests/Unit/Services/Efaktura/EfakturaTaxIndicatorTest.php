@@ -56,4 +56,40 @@ class EfakturaTaxIndicatorTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         EfakturaTaxIndicator::code('standard', '7.00');
     }
+
+    public function test_from_code_maps_ddv_a_to_18_percent(): void
+    {
+        $this->assertSame('18.00', EfakturaTaxIndicator::fromCode('DDV-A'));
+    }
+
+    public function test_from_code_maps_ddv_v_to_10_percent(): void
+    {
+        $this->assertSame('10.00', EfakturaTaxIndicator::fromCode('DDV-V'));
+    }
+
+    public function test_from_code_maps_ddv_b_to_5_percent(): void
+    {
+        $this->assertSame('5.00', EfakturaTaxIndicator::fromCode('DDV-B'));
+    }
+
+    public function test_from_code_maps_ddv_g_and_exempt_codes_to_0_percent(): void
+    {
+        $this->assertSame('0.00', EfakturaTaxIndicator::fromCode('DDV-G'));
+        $this->assertSame('0.00', EfakturaTaxIndicator::fromCode('DDV-7-I'));
+        $this->assertSame('0.00', EfakturaTaxIndicator::fromCode('DDV-8'));
+        $this->assertSame('0.00', EfakturaTaxIndicator::fromCode('DDV-9'));
+    }
+
+    public function test_from_code_returns_null_for_an_unsupported_member_32_code(): void
+    {
+        // DDV-11-A (member-32-а reverse charge) is a real code a supplier could legally send
+        // on an incoming invoice — this app doesn't model reverse-charge, so it must come back
+        // null (caller flags the line needs_review) rather than throw or silently default.
+        $this->assertNull(EfakturaTaxIndicator::fromCode('DDV-11-A'));
+    }
+
+    public function test_from_code_returns_null_for_an_unknown_code(): void
+    {
+        $this->assertNull(EfakturaTaxIndicator::fromCode('NOT-A-REAL-CODE'));
+    }
 }
