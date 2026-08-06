@@ -85,4 +85,46 @@ class EfakturaJwsServiceTest extends TestCase
         $this->assertSame($payload, $decodedPayload);
         $this->assertSame($result['payloadJson'], Base64Url::decode($payloadPart));
     }
+
+    public function test_send_status_refresh_posts_compact_jws_to_the_status_endpoint(): void
+    {
+        Http::fake(['*' => Http::response(['invoices' => []], 200)]);
+        $company = Company::factory()->create([
+            'tax_id' => '4030001234567', 'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+
+        $response = (new EfakturaJwsService)->sendStatusRefresh($company, 'header.payload', 'c2ln');
+
+        $this->assertTrue($response->successful());
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+
+            return $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/JSONReceiver/api/v1/documents/sales-invoice/invoices-status'
+                && $request->hasHeader('X-EUJP-ID', 'EUJP-1')
+                && $request->hasHeader('X-EDB', '4030001234567')
+                && $request->hasHeader('X-SERIAL-NUMBER', '1A2B3C')
+                && $body['jws'] === 'header.payload.c2ln'
+                && isset($body['requestTimestamp']);
+        });
+    }
+
+    public function test_send_pdf_fetch_posts_compact_jws_to_the_pdf_endpoint(): void
+    {
+        Http::fake(['*' => Http::response(['pdfBase64' => base64_encode('fake-pdf-bytes')], 200)]);
+        $company = Company::factory()->create([
+            'tax_id' => '4030001234567', 'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+
+        $response = (new EfakturaJwsService)->sendPdfFetch($company, 'header.payload', 'c2ln');
+
+        $this->assertTrue($response->successful());
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+
+            return $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/JSONReceiver/api/v1/documents/sales-invoice/pdf'
+                && $request->hasHeader('X-EUJP-ID', 'EUJP-1')
+                && $body['jws'] === 'header.payload.c2ln'
+                && isset($body['requestTimestamp']);
+        });
+    }
 }

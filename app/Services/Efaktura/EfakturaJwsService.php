@@ -42,18 +42,47 @@ class EfakturaJwsService
         return ['signingInput' => $signingInput, 'payloadJson' => $payloadJson];
     }
 
+    // Best-guess paths from the approved design doc's prose (efakturawiki.ujp.gov.mk hasn't
+    // been checked for these two specifically the way it was for /sales-invoices/send) — same
+    // /JSONReceiver/api/v1/... base as the confirmed-working send endpoint, since both are
+    // document-management operations requiring JWS, not the read-only /einvoice_api/... ones.
+    // VERIFY against a real response in Task 8; fix here if wrong.
+    private const STATUS_REFRESH_PATH = '/JSONReceiver/api/v1/documents/sales-invoice/invoices-status';
+
+    private const PDF_FETCH_PATH = '/JSONReceiver/api/v1/documents/sales-invoice/pdf';
+
     public function send(Company $company, string $signingInput, string $signatureBase64Url): Response
+    {
+        return $this->postSignedRequest(
+            $company,
+            '/JSONReceiver/api/v1/sales-invoices/send',
+            $signingInput,
+            $signatureBase64Url,
+            ['X-DOC-TYPE-CODE' => '100'],
+        );
+    }
+
+    public function sendStatusRefresh(Company $company, string $signingInput, string $signatureBase64Url): Response
+    {
+        return $this->postSignedRequest($company, self::STATUS_REFRESH_PATH, $signingInput, $signatureBase64Url);
+    }
+
+    public function sendPdfFetch(Company $company, string $signingInput, string $signatureBase64Url): Response
+    {
+        return $this->postSignedRequest($company, self::PDF_FETCH_PATH, $signingInput, $signatureBase64Url);
+    }
+
+    private function postSignedRequest(Company $company, string $path, string $signingInput, string $signatureBase64Url, array $extraHeaders = []): Response
     {
         $compact = $signingInput.'.'.$signatureBase64Url;
         $baseUrl = config('services.efaktura.base_url');
-        $url = rtrim($baseUrl, '/').'/JSONReceiver/api/v1/sales-invoices/send';
+        $url = rtrim($baseUrl, '/').$path;
 
-        $request = Http::withHeaders([
+        $request = Http::withHeaders(array_merge([
             'X-EUJP-ID' => $company->efaktura_eujp_id,
             'X-EDB' => $company->tax_id,
             'X-SERIAL-NUMBER' => $company->efaktura_token_serial_number,
-            'X-DOC-TYPE-CODE' => '100',
-        ])->timeout(20);
+        ], $extraHeaders))->timeout(20);
 
         if ($connectTo = config('services.efaktura.connect_to')) {
             $request = $request->withOptions(['curl' => [CURLOPT_CONNECT_TO => [$connectTo]]]);
