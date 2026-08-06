@@ -27,11 +27,17 @@ class SalesInvoice extends Model
         'P19' => 'Друго',
     ];
 
+    // Per the approved design doc (2026-08-05-efaktura-status-and-pdf-design.md §Д) — not yet
+    // independently re-verified against a live УЈП response. If Task 8's live test surfaces
+    // different codes for "Прифатена"/"Автоматски прифатена", fix them here only.
+    public const EFAKTURA_ACCEPTED_STATUS_CODES = ['03', '04'];
+
     protected $fillable = [
         'company_id', 'partner_id', 'warehouse_id', 'journal_entry_id',
         'fiscal_year', 'invoice_number', 'invoice_date', 'due_date',
         'status', 'payment_type_code', 'sent_at', 'notes', 'created_by',
         'efaktura_status', 'efaktura_doc_id', 'efaktura_sent_at', 'efaktura_error',
+        'efaktura_ujp_status_code', 'efaktura_ujp_status_name', 'efaktura_pdf_path',
     ];
 
     protected function casts(): array
@@ -42,6 +48,11 @@ class SalesInvoice extends Model
             'sent_at' => 'datetime',
             'efaktura_sent_at' => 'datetime',
         ];
+    }
+
+    public function isEfakturaAccepted(): bool
+    {
+        return in_array($this->efaktura_ujp_status_code, self::EFAKTURA_ACCEPTED_STATUS_CODES, true);
     }
 
     public function company(): BelongsTo
