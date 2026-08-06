@@ -53,6 +53,21 @@ class EfakturaJwsService
 
     private const PDF_FETCH_PATH = '/einvoice_api/api/v1/documents/sales-invoice/pdf';
 
+    // Same /einvoice_api/ base confirmed for the sales-invoice status/PDF pair (see comment
+    // above) — assumed to generalize to the whole "Управување со Документи" endpoint family per
+    // efakturawiki.ujp.gov.mk's endpoint list, but NOT yet live-tested for these five specific
+    // purchase-invoice paths. Response shapes are best guesses; see the controllers that call
+    // these methods for exactly which JSON keys are assumed.
+    private const PURCHASE_IDS_PATH = '/einvoice_api/api/v1/documents/purchase-invoice/ids';
+
+    private const PURCHASE_PAYLOAD_LIST_PATH = '/einvoice_api/api/v1/documents/purchase-invoice/payload/list';
+
+    private const PURCHASE_STATUS_PATH = '/einvoice_api/api/v1/documents/purchase-invoice/current-status';
+
+    private const PURCHASE_ACCEPT_REJECT_PATH = '/einvoice_api/api/v1/documents/purchase-invoice/accept-reject';
+
+    private const PURCHASE_PDF_PATH = '/einvoice_api/api/v1/documents/purchase-invoice/pdf';
+
     public function send(Company $company, string $signingInput, string $signatureBase64Url): Response
     {
         return $this->postSignedRequest(
@@ -72,6 +87,31 @@ class EfakturaJwsService
     public function sendPdfFetch(Company $company, string $signingInput, string $signatureBase64Url): Response
     {
         return $this->postSignedRequest($company, self::PDF_FETCH_PATH, $signingInput, $signatureBase64Url);
+    }
+
+    public function sendPurchaseInvoiceIds(Company $company, string $signingInput, string $signatureBase64Url): Response
+    {
+        return $this->postSignedRequest($company, self::PURCHASE_IDS_PATH, $signingInput, $signatureBase64Url);
+    }
+
+    public function sendPurchaseInvoicePayloadList(Company $company, string $signingInput, string $signatureBase64Url): Response
+    {
+        return $this->postSignedRequest($company, self::PURCHASE_PAYLOAD_LIST_PATH, $signingInput, $signatureBase64Url);
+    }
+
+    public function sendPurchaseInvoiceStatus(Company $company, string $signingInput, string $signatureBase64Url): Response
+    {
+        return $this->postSignedRequest($company, self::PURCHASE_STATUS_PATH, $signingInput, $signatureBase64Url);
+    }
+
+    public function sendPurchaseInvoiceAcceptReject(Company $company, string $signingInput, string $signatureBase64Url): Response
+    {
+        return $this->postSignedRequest($company, self::PURCHASE_ACCEPT_REJECT_PATH, $signingInput, $signatureBase64Url);
+    }
+
+    public function sendPurchaseInvoicePdfFetch(Company $company, string $signingInput, string $signatureBase64Url): Response
+    {
+        return $this->postSignedRequest($company, self::PURCHASE_PDF_PATH, $signingInput, $signatureBase64Url);
     }
 
     private function postSignedRequest(Company $company, string $path, string $signingInput, string $signatureBase64Url, array $extraHeaders = []): Response

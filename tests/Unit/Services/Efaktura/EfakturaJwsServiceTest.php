@@ -127,4 +127,69 @@ class EfakturaJwsServiceTest extends TestCase
                 && isset($body['requestTimestamp']);
         });
     }
+
+    public function test_send_purchase_invoice_ids_posts_to_the_ids_endpoint(): void
+    {
+        Http::fake(['*' => Http::response(['euids' => []], 200)]);
+        $company = Company::factory()->create([
+            'tax_id' => '4030001234567', 'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+
+        $response = (new EfakturaJwsService)->sendPurchaseInvoiceIds($company, 'header.payload', 'c2ln');
+
+        $this->assertTrue($response->successful());
+        Http::assertSent(fn ($request) => $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/purchase-invoice/ids');
+    }
+
+    public function test_send_purchase_invoice_payload_list_posts_to_the_payload_list_endpoint(): void
+    {
+        Http::fake(['*' => Http::response(['documents' => []], 200)]);
+        $company = Company::factory()->create([
+            'tax_id' => '4030001234567', 'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+
+        $response = (new EfakturaJwsService)->sendPurchaseInvoicePayloadList($company, 'header.payload', 'c2ln');
+
+        $this->assertTrue($response->successful());
+        Http::assertSent(fn ($request) => $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/purchase-invoice/payload/list');
+    }
+
+    public function test_send_purchase_invoice_status_posts_to_the_current_status_endpoint(): void
+    {
+        Http::fake(['*' => Http::response(['invoices' => []], 200)]);
+        $company = Company::factory()->create([
+            'tax_id' => '4030001234567', 'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+
+        $response = (new EfakturaJwsService)->sendPurchaseInvoiceStatus($company, 'header.payload', 'c2ln');
+
+        $this->assertTrue($response->successful());
+        Http::assertSent(fn ($request) => $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/purchase-invoice/current-status');
+    }
+
+    public function test_send_purchase_invoice_accept_reject_posts_to_the_accept_reject_endpoint(): void
+    {
+        Http::fake(['*' => Http::response(['status' => 'ok'], 200)]);
+        $company = Company::factory()->create([
+            'tax_id' => '4030001234567', 'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+
+        $response = (new EfakturaJwsService)->sendPurchaseInvoiceAcceptReject($company, 'header.payload', 'c2ln');
+
+        $this->assertTrue($response->successful());
+        Http::assertSent(fn ($request) => $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/purchase-invoice/accept-reject');
+    }
+
+    public function test_send_purchase_invoice_pdf_fetch_posts_to_the_purchase_invoice_pdf_endpoint(): void
+    {
+        Http::fake(['*' => Http::response(['pdfBase64' => base64_encode('fake-pdf-bytes')], 200)]);
+        $company = Company::factory()->create([
+            'tax_id' => '4030001234567', 'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+
+        $response = (new EfakturaJwsService)->sendPurchaseInvoicePdfFetch($company, 'header.payload', 'c2ln');
+
+        $this->assertTrue($response->successful());
+        Http::assertSent(fn ($request) => $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/purchase-invoice/pdf');
+    }
 }
