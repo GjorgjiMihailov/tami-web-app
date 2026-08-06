@@ -47,10 +47,12 @@ class IncomingPurchaseInvoiceBuilder
         // registry data can carry the same dirty-data pattern this app already hit once.
         $incomingTaxId = preg_replace('/^(mk|мк)/iu', '', (string) ($seller['sellerTin'] ?? ''));
 
-        // Check for existing partners, normalizing stored tax_ids as well to handle dirty data
-        $partner = Partner::where('company_id', $company->id)->get()
+        // Check for existing partners, normalizing stored tax_ids as well to handle dirty data.
+        // Query only needed columns (id, tax_id); Eloquent lazy-loads others on access if needed.
+        // Null-guard the tax_id since partners.tax_id is nullable (e.g., walk-in records).
+        $partner = Partner::where('company_id', $company->id)->select('id', 'tax_id')->get()
             ->first(function ($p) use ($incomingTaxId) {
-                $storedNormalized = preg_replace('/^(mk|мк)/iu', '', $p->tax_id);
+                $storedNormalized = preg_replace('/^(mk|мк)/iu', '', (string) ($p->tax_id ?? ''));
                 return $storedNormalized === $incomingTaxId;
             });
 
