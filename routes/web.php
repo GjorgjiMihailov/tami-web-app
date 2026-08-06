@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\EfakturaPdfController;
 use App\Http\Controllers\EfakturaSendController;
 use App\Http\Controllers\EfakturaStatusController;
 use App\Http\Controllers\ItemImportTemplateController;
@@ -121,6 +122,9 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('sales-invoices
 Route::middleware(['auth'])->prefix('companies/{company}/sales-invoices/{salesInvoice}')->name('sales-invoices.efaktura.')->group(function () {
     Route::post('/efaktura/signing-input', [EfakturaSendController::class, 'signingInput'])->name('signing-input');
     Route::post('/efaktura/send', [EfakturaSendController::class, 'send'])->name('send');
+    Route::post('/efaktura/pdf/signing-input', [EfakturaPdfController::class, 'signingInput'])->name('pdf.signing-input');
+    Route::post('/efaktura/pdf', [EfakturaPdfController::class, 'store'])->name('pdf.store');
+    Route::get('/efaktura/pdf/download', [EfakturaPdfController::class, 'download'])->name('pdf.download');
 });
 
 Route::middleware(['auth'])->prefix('companies/{company}/sales-invoices')->name('sales-invoices.efaktura.')->group(function () {
