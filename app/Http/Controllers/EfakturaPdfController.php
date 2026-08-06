@@ -78,7 +78,7 @@ class EfakturaPdfController extends Controller
     {
         Gate::authorize('view', $salesInvoice);
         abort_if($salesInvoice->company_id !== $company->id, 404);
-        abort_unless($salesInvoice->efaktura_pdf_path, 404);
+        abort_unless($salesInvoice->efaktura_pdf_path && Storage::disk('local')->exists($salesInvoice->efaktura_pdf_path), 404);
 
         $filename = "faktura-{$salesInvoice->fiscal_year}-{$salesInvoice->invoice_number}.pdf";
 
@@ -95,7 +95,7 @@ class EfakturaPdfController extends Controller
             422,
             'Преземање на официјален ПДФ преку фирмениот сертификат сè уште не е поддржано.'
         );
-        abort_if($salesInvoice->efaktura_pdf_path, 422, 'ПДФ-от е веќе преземен.');
+        abort_if($salesInvoice->efaktura_pdf_path && Storage::disk('local')->exists($salesInvoice->efaktura_pdf_path), 422, 'ПДФ-от е веќе преземен.');
         abort_unless($salesInvoice->isEfakturaAccepted(), 422, 'Фактурата сè уште не е прифатена кај УЈП.');
     }
 }

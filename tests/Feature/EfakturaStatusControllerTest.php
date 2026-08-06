@@ -62,6 +62,30 @@ class EfakturaStatusControllerTest extends TestCase
         $response->assertOk()->assertJsonStructure(['token', 'signingInput']);
     }
 
+    public function test_signing_input_ignores_pending_invoice_with_null_sent_at(): void
+    {
+        $company = $this->makeOwnModeCompany();
+        $partner = Partner::factory()->for($company)->create();
+        SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'status' => 'confirmed',
+            'invoice_date' => '2026-08-01',
+            'efaktura_status' => 'sent',
+            'efaktura_sent_at' => null,
+            'efaktura_doc_id' => 'euid-null-sent-at',
+            'efaktura_ujp_status_code' => null,
+        ]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $response = $this->actingAs($admin)->postJson(
+            route('sales-invoices.efaktura.refresh-statuses.signing-input', $company),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        );
+
+        $response->assertStatus(422)->assertJson(['error' => 'nothing_pending']);
+    }
+
     public function test_signing_input_returns_422_when_nothing_pending(): void
     {
         $company = $this->makeOwnModeCompany();

@@ -97,7 +97,9 @@ class EfakturaPdfControllerTest extends TestCase
     public function test_signing_input_rejects_when_pdf_already_cached(): void
     {
         [$company, $invoice] = $this->makeAcceptedInvoice();
-        $invoice->update(['efaktura_pdf_path' => 'efaktura-pdfs/1/1.pdf']);
+        $path = "efaktura-pdfs/{$company->id}/{$invoice->id}.pdf";
+        Storage::disk('local')->put($path, '%PDF-fake-bytes');
+        $invoice->update(['efaktura_pdf_path' => $path]);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
 
@@ -107,6 +109,37 @@ class EfakturaPdfControllerTest extends TestCase
         );
 
         $response->assertStatus(422);
+    }
+
+    public function test_signing_input_allows_refetch_when_cached_path_set_but_file_missing(): void
+    {
+        [$company, $invoice] = $this->makeAcceptedInvoice();
+        // DB column points at a path but no file was ever written there (lost/deleted file) —
+        // this must be self-healing, not a permanent dead-end (see Finding 2 fix).
+        $invoice->update(['efaktura_pdf_path' => "efaktura-pdfs/{$company->id}/{$invoice->id}.pdf"]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $response = $this->actingAs($admin)->postJson(
+            route('sales-invoices.efaktura.pdf.signing-input', [$company, $invoice]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        );
+
+        $response->assertOk();
+    }
+
+    public function test_download_returns_404_when_path_set_but_file_missing(): void
+    {
+        [$company, $invoice] = $this->makeAcceptedInvoice();
+        $invoice->update(['efaktura_pdf_path' => "efaktura-pdfs/{$company->id}/{$invoice->id}.pdf"]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $response = $this->actingAs($admin)->get(
+            route('sales-invoices.efaktura.pdf.download', [$company, $invoice])
+        );
+
+        $response->assertStatus(404);
     }
 
     public function test_download_serves_the_cached_file_without_any_ujp_call(): void

@@ -96,6 +96,10 @@ class EfakturaStatusController extends Controller
     {
         return SalesInvoice::where('company_id', $company->id)
             ->where('efaktura_status', 'sent')
+            // efaktura_sent_at is nullable; NULL sorts first in the orderBy() below in both
+            // SQLite and MySQL, which would permanently pin a never-sent row as "earliest
+            // pending" and fatal on ->timezone() in signingInput(). Exclude NULLs explicitly.
+            ->whereNotNull('efaktura_sent_at')
             // whereNotIn() treats a NULL column as excluded (SQL: "NULL NOT IN (...)" is NULL,
             // not true) — an invoice never checked before (status_code still null) must count
             // as pending too, so it needs an explicit whereNull() branch alongside whereNotIn().

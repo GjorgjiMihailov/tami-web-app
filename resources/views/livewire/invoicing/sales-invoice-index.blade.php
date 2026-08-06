@@ -104,6 +104,10 @@
                     if (!certRes.ok) throw new Error('Не можам да ги прочитам податоците од токенот.');
                     const cert = await certRes.json();
 
+                    if (cert.serialNumber !== @js($company->efaktura_token_serial_number)) {
+                        throw new Error('Приклучениот токен не одговара на регистрираниот за оваа компанија.');
+                    }
+
                     this.statusText = 'Подготвувам текст за потпишување...';
                     const signingRes = await fetch(@js(route('sales-invoices.efaktura.refresh-statuses.signing-input', $company)), {
                         method: 'POST',
@@ -139,7 +143,10 @@
                     });
                     if (!refreshRes.ok) {
                         const refreshBody = await refreshRes.json().catch(() => null);
-                        throw new Error(refreshBody?.message ?? refreshBody?.error ?? 'Освежувањето не успеа.');
+                        const message = refreshBody?.error === 'ujp_rejected'
+                            ? `УЈП го одби барањето: ${refreshBody.body}`
+                            : (refreshBody?.message ?? refreshBody?.error ?? 'Освежувањето не успеа.');
+                        throw new Error(message);
                     }
 
                     window.location.reload();
@@ -168,6 +175,10 @@
                     const certRes = await fetch('http://127.0.0.1:9847/certificate');
                     if (!certRes.ok) throw new Error('Не можам да ги прочитам податоците од токенот.');
                     const cert = await certRes.json();
+
+                    if (cert.serialNumber !== @js($company->efaktura_token_serial_number)) {
+                        throw new Error('Приклучениот токен не одговара на регистрираниот за оваа компанија.');
+                    }
 
                     this.statusText = 'Подготвувам текст за потпишување...';
                     const signingRes = await fetch(`/companies/{{ $company->id }}/sales-invoices/${invoiceId}/efaktura/pdf/signing-input`, {
@@ -204,7 +215,10 @@
                     });
                     if (!storeRes.ok) {
                         const storeBody = await storeRes.json().catch(() => null);
-                        throw new Error(storeBody?.message ?? storeBody?.error ?? 'Преземањето не успеа.');
+                        const message = storeBody?.error === 'ujp_rejected'
+                            ? `УЈП го одби барањето: ${storeBody.body}`
+                            : (storeBody?.message ?? storeBody?.error ?? 'Преземањето не успеа.');
+                        throw new Error(message);
                     }
 
                     window.location.reload();
