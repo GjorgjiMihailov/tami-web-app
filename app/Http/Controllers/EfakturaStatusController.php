@@ -70,12 +70,6 @@ class EfakturaStatusController extends Controller
             return response()->json(['error' => 'ujp_rejected', 'status' => $response->status(), 'body' => $response->body()], 422);
         }
 
-        \Illuminate\Support\Facades\Log::info('EFAKTURA_DEBUG_STATUS_REFRESH', [
-            'company_id' => $company->id,
-            'raw_body' => $response->body(),
-            'known_efaktura_doc_ids' => SalesInvoice::where('company_id', $company->id)->whereNotNull('efaktura_doc_id')->pluck('efaktura_doc_id', 'id'),
-        ]);
-
         // Response shape ("invoices" array of {euid, statusCode, statusName}) is a best guess —
         // not yet confirmed live (see Global Constraints). If Task 8 finds a different shape,
         // this is the only place that needs to change.
