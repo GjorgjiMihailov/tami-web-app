@@ -26,7 +26,12 @@ class EfakturaStatusController extends Controller
 
         $payload = [
             'requestTimestamp' => now()->timezone('Europe/Skopje')->format('Y-m-d\TH:i:s'),
-            'dateFrom' => $earliestPending->efaktura_sent_at->timezone('Europe/Skopje')->toDateString(),
+            // Task 8 live finding (2026-08-06): УЈП filters /invoices-status by the document's own
+            // docDate (our invoice_date), not by when we transmitted it (efaktura_sent_at) — a
+            // real invoice sent 2026-08-05 with invoice_date 2026-08-02 returned an empty
+            // "invoices" array when dateFrom was based on efaktura_sent_at (2026-08-05), because
+            // the actual document date fell outside that window.
+            'dateFrom' => $earliestPending->invoice_date->timezone('Europe/Skopje')->toDateString(),
             'dateTo' => now()->timezone('Europe/Skopje')->toDateString(),
         ];
         $result = $jwsService->buildSigningInputForPayload($payload, $validated['certificateBase64']);
@@ -113,7 +118,10 @@ class EfakturaStatusController extends Controller
                 $query->whereNull('efaktura_ujp_status_code')
                     ->orWhereNotIn('efaktura_ujp_status_code', SalesInvoice::EFAKTURA_ACCEPTED_STATUS_CODES);
             })
-            ->orderBy('efaktura_sent_at')
+            // Order by invoice_date (the document's own date, what УЈП's date-range filter
+            // actually keys on — see the dateFrom comment in signingInput()), not efaktura_sent_at,
+            // so the computed dateFrom genuinely covers every pending invoice's document date.
+            ->orderBy('invoice_date')
             ->first();
     }
 
