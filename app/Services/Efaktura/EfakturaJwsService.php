@@ -20,7 +20,18 @@ class EfakturaJwsService
      */
     public function buildSigningInput(SalesInvoice $invoice, string $certificateBase64Der): array
     {
-        $payload = $this->documentBuilder->build($invoice);
+        return $this->buildSigningInputForPayload($this->documentBuilder->build($invoice), $certificateBase64Der);
+    }
+
+    /**
+     * Same base64url(header) + "." + base64url(payload) assembly as buildSigningInput(),
+     * but for the small, non-invoice JSON bodies the status-refresh and PDF-fetch endpoints
+     * sign (e.g. {requestTimestamp, dateFrom, dateTo} or {requestTimestamp, euid}).
+     *
+     * @return array{signingInput: string, payloadJson: string}
+     */
+    public function buildSigningInputForPayload(array $payload, string $certificateBase64Der): array
+    {
         $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         $header = ['alg' => 'RS256', 'x5c' => [$certificateBase64Der]];

@@ -68,4 +68,21 @@ class EfakturaJwsServiceTest extends TestCase
                 && isset($body['requestTimestamp']);
         });
     }
+
+    public function test_build_signing_input_for_payload_works_for_an_arbitrary_json_body(): void
+    {
+        $certDer = base64_encode('fake-der-bytes');
+        $payload = ['requestTimestamp' => '2026-08-06T10:00:00', 'dateFrom' => '2026-08-01', 'dateTo' => '2026-08-06'];
+
+        $result = (new EfakturaJwsService)->buildSigningInputForPayload($payload, $certDer);
+
+        [$headerPart, $payloadPart] = explode('.', $result['signingInput']);
+        $header = json_decode(Base64Url::decode($headerPart), true);
+        $decodedPayload = json_decode(Base64Url::decode($payloadPart), true);
+
+        $this->assertSame('RS256', $header['alg']);
+        $this->assertSame([$certDer], $header['x5c']);
+        $this->assertSame($payload, $decodedPayload);
+        $this->assertSame($result['payloadJson'], Base64Url::decode($payloadPart));
+    }
 }
