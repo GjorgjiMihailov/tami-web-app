@@ -11,7 +11,7 @@ class PurchaseInvoiceLine extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['purchase_invoice_id', 'item_id', 'account_id', 'stock_movement_id', 'description', 'quantity', 'unit_price', 'vat_rate', 'vat_deductible'];
+    protected $fillable = ['purchase_invoice_id', 'item_id', 'account_id', 'stock_movement_id', 'description', 'quantity', 'unit_price', 'vat_rate', 'vat_deductible', 'needs_review'];
 
     protected function casts(): array
     {
@@ -20,6 +20,7 @@ class PurchaseInvoiceLine extends Model
             'unit_price' => 'decimal:2',
             'vat_rate' => 'decimal:2',
             'vat_deductible' => 'boolean',
+            'needs_review' => 'boolean',
         ];
     }
 
