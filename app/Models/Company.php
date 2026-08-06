@@ -33,6 +33,7 @@ class Company extends Model
         'efaktura_firm_access_decided_by', 'efaktura_firm_access_decided_at',
         'efaktura_token_serial_number', 'efaktura_token_subject_name',
         'efaktura_token_not_before', 'efaktura_token_not_after', 'efaktura_token_registered_at',
+        'efaktura_purchase_last_checked_at',
     ];
 
     protected function casts(): array
@@ -42,6 +43,7 @@ class Company extends Model
             'efaktura_token_not_before' => 'datetime',
             'efaktura_token_not_after' => 'datetime',
             'efaktura_token_registered_at' => 'datetime',
+            'efaktura_purchase_last_checked_at' => 'datetime',
         ];
     }
 
@@ -58,6 +60,11 @@ class Company extends Model
     public function bankAccounts(): HasMany
     {
         return $this->hasMany(CompanyBankAccount::class)->orderBy('position');
+    }
+
+    public function incomingEfakturaDocuments(): HasMany
+    {
+        return $this->hasMany(IncomingEfakturaDocument::class);
     }
 
     public function decidedBy(): BelongsTo
