@@ -6,6 +6,7 @@ use App\Http\Controllers\EfakturaSendController;
 use App\Http\Controllers\EfakturaStatusController;
 use App\Http\Controllers\EfakturaIncomingDiscoveryController;
 use App\Http\Controllers\EfakturaIncomingAcceptController;
+use App\Http\Controllers\EfakturaIncomingRejectController;
 use App\Http\Controllers\ItemImportTemplateController;
 use App\Http\Controllers\JournalEntryPdfController;
 use App\Http\Controllers\PartnerListPdfController;
@@ -157,6 +158,8 @@ Route::middleware(['auth'])->prefix('companies/{company}/incoming-efaktura')->na
 Route::middleware(['auth'])->prefix('companies/{company}/incoming-efaktura/{incomingEfakturaDocument}')->name('incoming-efaktura.')->group(function () {
     Route::post('/accept/signing-input', [EfakturaIncomingAcceptController::class, 'signingInput'])->name('accept.signing-input');
     Route::post('/accept', [EfakturaIncomingAcceptController::class, 'store'])->name('accept');
+    Route::post('/reject/signing-input', [EfakturaIncomingRejectController::class, 'signingInput'])->name('reject.signing-input');
+    Route::post('/reject', [EfakturaIncomingRejectController::class, 'store'])->name('reject');
 });
 
 Route::middleware(['auth'])->prefix('companies/{company}')->name('documents.')->group(function () {
