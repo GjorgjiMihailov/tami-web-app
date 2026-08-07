@@ -18,10 +18,20 @@ class EfakturaIncomingDiscoveryController extends Controller
 
         $validated = $request->validate(['certificateBase64' => 'required|string']);
 
+        // УЈП live-confirmed constraint (Task 12, 2026-08-07): "Дозволениот временски опсег е 1
+        // месец" (E4014) — purchase-invoice/ids rejects any dateFrom more than 1 month before
+        // dateTo. A stale/never-checked watermark is clamped to the most recent month; the
+        // watermark still advances to dateTo after a successful discovery, so a backlog older
+        // than 1 month is caught up incrementally over multiple "Провери за нови фактури" clicks
+        // rather than in one call.
+        $dateTo = now()->timezone('Europe/Skopje')->toDateString();
+        $earliestAllowedFrom = now()->timezone('Europe/Skopje')->subMonth()->toDateString();
         $dateFrom = $company->efaktura_purchase_last_checked_at
             ? $company->efaktura_purchase_last_checked_at->timezone('Europe/Skopje')->toDateString()
             : now()->startOfYear()->toDateString();
-        $dateTo = now()->timezone('Europe/Skopje')->toDateString();
+        if ($dateFrom < $earliestAllowedFrom) {
+            $dateFrom = $earliestAllowedFrom;
+        }
 
         $payload = [
             'requestTimestamp' => now()->timezone('Europe/Skopje')->format('Y-m-d\TH:i:s'),
