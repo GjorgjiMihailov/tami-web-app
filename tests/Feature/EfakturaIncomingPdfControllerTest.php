@@ -92,6 +92,13 @@ class EfakturaIncomingPdfControllerTest extends TestCase
 
         $downloadResponse = $this->actingAs($admin)->get(route('incoming-efaktura.pdf.download', [$company, $document]));
         $downloadResponse->assertOk();
+
+        // Verify the actual PDF content matches the fake bytes
+        $storedContent = Storage::disk('local')->get($document->fresh()->efaktura_pdf_path);
+        $this->assertEquals('fake-pdf-bytes', $storedContent);
+
+        // Verify the filename in Content-Disposition header
+        $this->assertStringContainsString('vlezna-faktura-SUP-1.pdf', $downloadResponse->headers->get('Content-Disposition'));
     }
 
     public function test_client_role_is_forbidden(): void
