@@ -154,7 +154,7 @@ class EfakturaJwsServiceTest extends TestCase
         Http::assertSent(fn ($request) => $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/purchase-invoice/payload/list');
     }
 
-    public function test_send_purchase_invoice_status_posts_to_the_current_status_endpoint(): void
+    public function test_send_purchase_invoice_status_posts_to_the_invoices_status_endpoint(): void
     {
         Http::fake(['*' => Http::response(['invoices' => []], 200)]);
         $company = Company::factory()->create([
@@ -164,7 +164,9 @@ class EfakturaJwsServiceTest extends TestCase
         $response = (new EfakturaJwsService)->sendPurchaseInvoiceStatus($company, 'header.payload', 'c2ln');
 
         $this->assertTrue($response->successful());
-        Http::assertSent(fn ($request) => $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/purchase-invoice/current-status');
+        // Confirmed against efakturawiki.ujp.gov.mk 2026-08-07: "current-status" is a single-euid
+        // endpoint, NOT the date-ranged batch endpoint this app needs — "invoices-status" is.
+        Http::assertSent(fn ($request) => $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/purchase-invoice/invoices-status');
     }
 
     public function test_send_purchase_invoice_accept_reject_posts_to_the_accept_reject_endpoint(): void

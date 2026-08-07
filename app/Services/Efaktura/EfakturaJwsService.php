@@ -53,16 +53,21 @@ class EfakturaJwsService
 
     private const PDF_FETCH_PATH = '/einvoice_api/api/v1/documents/sales-invoice/pdf';
 
-    // Same /einvoice_api/ base confirmed for the sales-invoice status/PDF pair (see comment
-    // above) — assumed to generalize to the whole "Управување со Документи" endpoint family per
-    // efakturawiki.ujp.gov.mk's endpoint list, but NOT yet live-tested for these five specific
-    // purchase-invoice paths. Response shapes are best guesses; see the controllers that call
-    // these methods for exactly which JSON keys are assumed.
+    // /einvoice_api/ base confirmed for the whole "Управување со Документи" family. Paths and
+    // request/response shapes below were re-confirmed directly against efakturawiki.ujp.gov.mk's
+    // full "Управување со Документи" page content (pasted by the user 2026-08-07, Task 12 live
+    // testing) — this superseded an earlier guess. Live-testing correction found: "current-status"
+    // takes a single euid ({requestTimestamp, euid}) and returns one docStatus object — it is NOT
+    // the date-ranged batch endpoint. The batch-by-date-range endpoint (what this app's discovery
+    // flow actually needs, mirroring the already-shipped sales-invoice status refresh) is
+    // "invoices-status" — same request shape ({requestTimestamp, dateFrom, dateTo}) and same
+    // response shape ({invoices: [{euid, statusCode, statusName, ...}]}) this app already parses
+    // correctly for sales invoices.
     private const PURCHASE_IDS_PATH = '/einvoice_api/api/v1/documents/purchase-invoice/ids';
 
     private const PURCHASE_PAYLOAD_LIST_PATH = '/einvoice_api/api/v1/documents/purchase-invoice/payload/list';
 
-    private const PURCHASE_STATUS_PATH = '/einvoice_api/api/v1/documents/purchase-invoice/current-status';
+    private const PURCHASE_STATUS_PATH = '/einvoice_api/api/v1/documents/purchase-invoice/invoices-status';
 
     private const PURCHASE_ACCEPT_REJECT_PATH = '/einvoice_api/api/v1/documents/purchase-invoice/accept-reject';
 

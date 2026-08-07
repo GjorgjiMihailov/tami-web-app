@@ -77,13 +77,19 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
 
     public function test_payload_creates_new_incoming_documents_from_returned_documents(): void
     {
-        Http::fake(['*' => Http::response(['documents' => [
-            ['euid' => 'euid-2', 'document' => [
+        // Response shape confirmed against efakturawiki.ujp.gov.mk 2026-08-07: top-level
+        // "invoices" array of {euid, payload}, where payload is a JSON *string* (the raw JWS
+        // document body), not an object.
+        $payloadJson = json_encode([
+            'document' => [
                 'header' => ['docNumber' => 'SUP-1', 'docDate' => '2026-08-01'],
                 'seller' => ['sellerName' => 'Добавувач', 'sellerTin' => '4030009998887'],
                 'docTotals' => ['docGrossAmount' => 590],
                 'docItems' => [],
-            ]],
+            ],
+        ]);
+        Http::fake(['*' => Http::response(['invoices' => [
+            ['euid' => 'euid-2', 'payload' => $payloadJson],
         ]], 200)]);
         $company = $this->makeOwnModeCompany();
 

@@ -127,16 +127,23 @@ class EfakturaIncomingDiscoveryController extends Controller
             return response()->json(['error' => 'ujp_rejected', 'status' => $response->status(), 'body' => $response->body()], 422);
         }
 
-        // Response shape ("documents" array of {euid, document}) is a best guess — not yet
-        // confirmed live. If Task 12 finds a different shape, this is the only place that needs
-        // to change.
-        $items = $response->json('documents', []);
+        // Response shape confirmed against efakturawiki.ujp.gov.mk 2026-08-07: top-level key is
+        // "invoices" (not "documents"), each item is {euid, payload} where payload is a JSON
+        // *string* (not an object) — matches the raw JWS document body this app itself produces
+        // when signing an outgoing invoice, so it decodes to {requestTimestamp, document: {...}}.
+        $items = $response->json('invoices', []);
         $created = 0;
 
         foreach ($items as $item) {
             $euid = $item['euid'] ?? null;
-            $document = $item['document'] ?? null;
-            if (! $euid || ! $document || IncomingEfakturaDocument::where('company_id', $company->id)->where('euid', $euid)->exists()) {
+            $payloadJson = $item['payload'] ?? null;
+            if (! $euid || ! $payloadJson || IncomingEfakturaDocument::where('company_id', $company->id)->where('euid', $euid)->exists()) {
+                continue;
+            }
+
+            $decoded = json_decode($payloadJson, true);
+            $document = $decoded['document'] ?? null;
+            if (! $document) {
                 continue;
             }
 
