@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class PurchaseInvoice extends Model
@@ -61,6 +62,11 @@ class PurchaseInvoice extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(PurchaseInvoicePayment::class);
+    }
+
+    public function incomingEfakturaDocument(): HasOne
+    {
+        return $this->hasOne(IncomingEfakturaDocument::class);
     }
 
     public function documents(): MorphMany
