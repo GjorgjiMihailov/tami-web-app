@@ -90,7 +90,7 @@
 
                 {{-- Invoicing --}}
                 <button type="button" wire:click="toggleModule('invoicing')"
-                        class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium {{ (request()->routeIs('partners.*') || request()->routeIs('sales-invoices.*') || request()->routeIs('purchase-invoices.*')) ? 'bg-brand text-white rounded-r-full mr-3' : 'text-gray-300 hover:text-white' }}">
+                        class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium {{ (request()->routeIs('partners.*') || request()->routeIs('sales-invoices.*') || request()->routeIs('purchase-invoices.*') || request()->routeIs('incoming-efaktura.*')) ? 'bg-brand text-white rounded-r-full mr-3' : 'text-gray-300 hover:text-white' }}">
                     <span>Фактури</span>
                     <span>{{ $expandedModule === 'invoicing' ? '−' : '+' }}</span>
                 </button>
@@ -104,6 +104,8 @@
                            class="block px-4 py-1.5 text-sm {{ request()->routeIs('sales-invoices.create') ? 'text-white font-medium' : 'text-gray-400 hover:text-white' }}">Нова фактура</a>
                         <a href="{{ route('purchase-invoices.index', $company) }}" wire:navigate
                            class="block px-4 py-1.5 text-sm {{ request()->routeIs('purchase-invoices.index') ? 'text-white font-medium' : 'text-gray-400 hover:text-white' }}">Влезни фактури</a>
+                        <a href="{{ route('incoming-efaktura.index', $company) }}" wire:navigate
+                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('incoming-efaktura.*') ? 'text-white font-medium' : 'text-gray-400 hover:text-white' }}">Влезни е-Фактури</a>
                         <a href="{{ route('purchase-invoices.create', $company) }}" wire:navigate
                            class="block px-4 py-1.5 text-sm {{ request()->routeIs('purchase-invoices.create') ? 'text-white font-medium' : 'text-gray-400 hover:text-white' }}">Нова влезна фактура</a>
                     </div>
