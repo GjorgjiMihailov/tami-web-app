@@ -5,6 +5,7 @@ use App\Http\Controllers\EfakturaPdfController;
 use App\Http\Controllers\EfakturaSendController;
 use App\Http\Controllers\EfakturaStatusController;
 use App\Http\Controllers\EfakturaIncomingDiscoveryController;
+use App\Http\Controllers\EfakturaIncomingAcceptController;
 use App\Http\Controllers\ItemImportTemplateController;
 use App\Http\Controllers\JournalEntryPdfController;
 use App\Http\Controllers\PartnerListPdfController;
@@ -151,6 +152,11 @@ Route::middleware(['auth'])->prefix('companies/{company}/incoming-efaktura')->na
     Route::post('/discover/payload', [EfakturaIncomingDiscoveryController::class, 'payload'])->name('discover.payload');
     Route::post('/discover/status/signing-input', [EfakturaIncomingDiscoveryController::class, 'statusSigningInput'])->name('discover.status.signing-input');
     Route::post('/discover/status', [EfakturaIncomingDiscoveryController::class, 'status'])->name('discover.status');
+});
+
+Route::middleware(['auth'])->prefix('companies/{company}/incoming-efaktura/{incomingEfakturaDocument}')->name('incoming-efaktura.')->group(function () {
+    Route::post('/accept/signing-input', [EfakturaIncomingAcceptController::class, 'signingInput'])->name('accept.signing-input');
+    Route::post('/accept', [EfakturaIncomingAcceptController::class, 'store'])->name('accept');
 });
 
 Route::middleware(['auth'])->prefix('companies/{company}')->name('documents.')->group(function () {
