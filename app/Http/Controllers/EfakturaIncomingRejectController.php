@@ -22,15 +22,21 @@ class EfakturaIncomingRejectController extends Controller
             'comment' => 'nullable|string|max:255',
         ]);
 
-        // Validate reason code is known
+        // Validate reasonCode is a known rejection reason
         $reasonCodes = array_keys(IncomingEfakturaDocument::REJECT_REASONS);
         if (!in_array($validated['reasonCode'], $reasonCodes)) {
-            return response()->json(['errors' => ['reasonCode' => ['The selected reason code is invalid.']]], 422);
+            return response()->json([
+                'message' => 'Комбинираната е-фактура за одбивање не е валидна.',
+                'errors' => ['reasonCode' => ['Избраниот код на причина за одбивање не е валиден.']],
+            ], 422);
         }
 
-        // Validate comment is required for REJECT_REASON_OTHER
+        // Validate comment is required when reasonCode is REJECT_REASON_OTHER
         if ($validated['reasonCode'] === IncomingEfakturaDocument::REJECT_REASON_OTHER && !($validated['comment'] ?? null)) {
-            return response()->json(['errors' => ['comment' => ['Comment is required for this reason code.']]], 422);
+            return response()->json([
+                'message' => 'Комбинираната е-фактура за одбивање не е валидна.',
+                'errors' => ['comment' => ['Коментар е задолжителен за оваа причина за одбивање.']],
+            ], 422);
         }
 
         $payload = [
