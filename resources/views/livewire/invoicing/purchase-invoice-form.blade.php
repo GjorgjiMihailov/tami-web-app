@@ -46,6 +46,11 @@
             <h2 class="font-semibold text-gray-700 mb-3">Ставки</h2>
             @foreach ($lines as $index => $line)
                 <div class="flex flex-wrap gap-3 items-end mb-3 pb-3 border-b border-gray-100">
+                    @if (! empty($line['needs_review']))
+                        <div class="w-full">
+                            <x-badge status="pending" title="ДДВ стапката не можеше автоматски да се утврди — проверете рачно">⚠ Проверете ДДВ</x-badge>
+                        </div>
+                    @endif
                     <div class="w-48">
                         <x-input-label value="Артикл (опционално)" />
                         <select wire:change="selectItem({{ $index }}, $event.target.value)" class="w-full border-gray-300 rounded-md text-sm">

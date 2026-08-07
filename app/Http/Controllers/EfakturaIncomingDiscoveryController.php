@@ -68,8 +68,6 @@ class EfakturaIncomingDiscoveryController extends Controller
         $knownEuids = IncomingEfakturaDocument::where('company_id', $company->id)->whereIn('euid', $allEuids)->pluck('euid')->all();
         $newEuids = array_values(array_diff($allEuids, $knownEuids));
 
-        $company->update(['efaktura_purchase_last_checked_at' => now()]);
-
         return response()->json(['newEuids' => $newEuids, 'dateFrom' => $cached['date_from'], 'dateTo' => $cached['date_to']]);
     }
 
@@ -174,6 +172,7 @@ class EfakturaIncomingDiscoveryController extends Controller
         Cache::put("efaktura-incoming-status:{$token}", [
             'company_id' => $company->id,
             'signing_input' => $result['signingInput'],
+            'date_to' => $validated['dateTo'],
         ], now()->addMinutes(10));
 
         return response()->json(['token' => $token, 'signingInput' => $result['signingInput']]);
@@ -223,6 +222,8 @@ class EfakturaIncomingDiscoveryController extends Controller
             ]);
             $updated++;
         }
+
+        $company->update(['efaktura_purchase_last_checked_at' => $cached['date_to']]);
 
         return response()->json(['status' => 'refreshed', 'updated' => $updated]);
     }

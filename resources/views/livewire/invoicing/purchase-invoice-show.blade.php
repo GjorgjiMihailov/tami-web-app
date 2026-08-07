@@ -33,7 +33,12 @@
                         <td class="py-1">{{ $line->item?->name ?? $line->account?->code.' — '.$line->account?->name }}</td>
                         <td class="py-1">{{ $line->quantity }}</td>
                         <td class="py-1">{{ \App\Support\Format::money($line->unit_price) }}</td>
-                        <td class="py-1">{{ $line->vat_rate }}{{ $line->vat_deductible ? '' : ' (не се одбива)' }}</td>
+                        <td class="py-1">
+                            {{ $line->vat_rate }}{{ $line->vat_deductible ? '' : ' (не се одбива)' }}
+                            @if ($line->needs_review)
+                                <x-badge status="pending" title="ДДВ стапката не можеше автоматски да се утврди — проверете рачно">⚠</x-badge>
+                            @endif
+                        </td>
                         <td class="py-1">{{ \App\Support\Format::money($line->lineTotal()) }}</td>
                     </tr>
                 @endforeach

@@ -51,7 +51,7 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
         $response->assertOk()->assertJsonStructure(['token', 'signingInput']);
     }
 
-    public function test_ids_returns_only_new_euids_and_updates_last_checked_at(): void
+    public function test_ids_returns_only_new_euids_and_does_not_advance_watermark(): void
     {
         Http::fake(['*' => Http::response(['euids' => ['euid-1', 'euid-2']], 200)]);
         $company = $this->makeOwnModeCompany();
@@ -68,7 +68,11 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
         );
 
         $response->assertOk()->assertJson(['newEuids' => ['euid-2']]);
-        $this->assertNotNull($company->fresh()->efaktura_purchase_last_checked_at);
+        // ids() is only the first of three signed round-trips. If payload() or status() never
+        // complete (cancelled PIN prompt, network drop, УЈП 503), the newly-discovered euids are
+        // never persisted. The watermark must NOT move here, or those invoices become
+        // unrecoverable through the UI on the next run.
+        $this->assertNull($company->fresh()->efaktura_purchase_last_checked_at);
     }
 
     public function test_payload_creates_new_incoming_documents_from_returned_documents(): void
@@ -121,6 +125,10 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
 
         $response->assertOk()->assertJson(['status' => 'refreshed', 'updated' => 1]);
         $this->assertSame('01', $document->fresh()->status_code);
+        // status() is always the last of the three signed steps (unlike payload(), which is
+        // skipped when there are no new euids), so the watermark advances here — tied to the
+        // queried dateTo, not wall-clock time.
+        $this->assertSame('2026-08-06', $company->fresh()->efaktura_purchase_last_checked_at->toDateString());
     }
 
     public function test_firm_mode_company_is_rejected(): void

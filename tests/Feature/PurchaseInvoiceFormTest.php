@@ -7,6 +7,7 @@ use App\Models\Account;
 use App\Models\Company;
 use App\Models\Item;
 use App\Models\Partner;
+use App\Models\PurchaseInvoice;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -215,5 +216,37 @@ class PurchaseInvoiceFormTest extends TestCase
             ->set('lines.0.vat_rate', '18.00')
             ->call('save')
             ->assertHasErrors(['lines.0.item_id']);
+    }
+
+    public function test_a_needs_review_line_keeps_its_flag_after_an_unrelated_save(): void
+    {
+        Storage::fake('google');
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $account = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id]);
+        $invoice->lines()->create([
+            'account_id' => $account->id,
+            'description' => 'Unmapped VAT code line',
+            'quantity' => '1.000',
+            'unit_price' => '100.00',
+            'vat_rate' => '18.00',
+            'vat_deductible' => true,
+            'needs_review' => true,
+        ]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company, 'purchaseInvoice' => $invoice])
+            ->set('supplierInvoiceNumber', $invoice->supplier_invoice_number)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('purchase_invoice_lines', [
+            'purchase_invoice_id' => $invoice->id,
+            'description' => 'Unmapped VAT code line',
+            'needs_review' => true,
+        ]);
     }
 }

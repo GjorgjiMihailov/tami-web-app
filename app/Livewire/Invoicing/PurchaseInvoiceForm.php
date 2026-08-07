@@ -70,6 +70,7 @@ class PurchaseInvoiceForm extends Component
                 'unit_price' => (string) $line->unit_price,
                 'vat_rate' => (string) $line->vat_rate,
                 'vat_deductible' => $line->vat_deductible,
+                'needs_review' => $line->needs_review,
             ])->toArray();
         } else {
             $this->invoiceDate = now()->toDateString();
@@ -88,6 +89,7 @@ class PurchaseInvoiceForm extends Component
             'unit_price' => '0',
             'vat_rate' => $this->company->is_vat_registered ? '18.00' : '0.00',
             'vat_deductible' => true,
+            'needs_review' => false,
         ];
     }
 
@@ -193,6 +195,7 @@ class PurchaseInvoiceForm extends Component
                     'unit_price' => $line['unit_price'],
                     'vat_rate' => $line['vat_rate'],
                     'vat_deductible' => $line['vat_deductible'] ?? true,
+                    'needs_review' => $line['needs_review'] ?? false,
                 ]);
             }
 
