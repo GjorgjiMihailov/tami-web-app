@@ -3,6 +3,7 @@
 namespace App\Livewire\Invoicing;
 
 use App\Models\Company;
+use App\Models\IncomingEfakturaDocument;
 use App\Models\PurchaseInvoice;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
@@ -25,11 +26,20 @@ class PurchaseInvoiceIndex extends Component
     {
         $invoices = PurchaseInvoice::where('company_id', $this->company->id)
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
-            ->with(['partner', 'lines', 'payments'])
+            ->with(['partner', 'lines', 'payments', 'incomingEfakturaDocument'])
             ->orderByDesc('invoice_date')
             ->orderByDesc('id')
             ->get();
 
-        return view('livewire.invoicing.purchase-invoice-index', ['invoices' => $invoices]);
+        $pendingDocuments = IncomingEfakturaDocument::where('company_id', $this->company->id)
+            ->whereNull('decision')
+            ->orderByDesc('doc_date')
+            ->orderByDesc('id')
+            ->get();
+
+        return view('livewire.invoicing.purchase-invoice-index', [
+            'invoices' => $invoices,
+            'pendingDocuments' => $pendingDocuments,
+        ]);
     }
 }

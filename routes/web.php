@@ -31,7 +31,6 @@ use App\Livewire\Inventory\StockMovementForm;
 use App\Livewire\Inventory\StockOnHandReport;
 use App\Livewire\Inventory\StockValuationReport;
 use App\Livewire\Inventory\WarehouseIndex;
-use App\Livewire\Invoicing\IncomingEfakturaIndex;
 use App\Livewire\Invoicing\PurchaseInvoiceForm;
 use App\Livewire\Invoicing\PurchaseInvoiceIndex;
 use App\Livewire\Invoicing\PurchaseInvoiceShow;
@@ -146,10 +145,6 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('purchase-invoi
     Route::get('/purchase-invoices/create', [PurchaseInvoiceForm::class, '__invoke'])->name('create');
     Route::get('/purchase-invoices/{purchaseInvoice}/edit', [PurchaseInvoiceForm::class, '__invoke'])->name('edit');
     Route::get('/purchase-invoices/{purchaseInvoice}', [PurchaseInvoiceShow::class, '__invoke'])->name('show');
-});
-
-Route::middleware(['auth'])->prefix('companies/{company}')->name('incoming-efaktura.')->group(function () {
-    Route::get('/incoming-efaktura', [IncomingEfakturaIndex::class, '__invoke'])->name('index');
 });
 
 Route::middleware(['auth'])->prefix('companies/{company}/incoming-efaktura')->name('incoming-efaktura.')->group(function () {
