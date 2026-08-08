@@ -25,7 +25,7 @@
     <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
-            <tr class="text-left text-sm text-gray-500">
+            <tr class="text-left text-sm text-gray-500 bg-gray-50">
                 <th class="py-2 px-4">Код</th>
                 <th class="py-2 px-4">Име</th>
                 <th class="py-2 px-4"></th>
@@ -33,7 +33,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($groups as $group)
-                <tr class="text-sm" wire:key="group-{{ $group->id }}">
+                <tr class="text-sm hover:bg-orange-50" wire:key="group-{{ $group->id }}">
                     <td class="py-2 px-4 font-mono">{{ $group->code }}</td>
                     <td class="py-2 px-4">
                         @if ($editingGroupId === $group->id)

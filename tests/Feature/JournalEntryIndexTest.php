@@ -65,4 +65,18 @@ class JournalEntryIndexTest extends TestCase
             ->assertSee('Company A opening balances')
             ->assertDontSee('Company B opening balances');
     }
+
+    public function test_the_journal_entry_table_has_the_header_and_hover_treatment(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        JournalEntry::factory()->for($company)->create(['description' => 'Test Entry']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryIndex::class, ['company' => $company])
+            ->assertSee('bg-gray-50', false)
+            ->assertSee('hover:bg-orange-50', false);
+    }
 }

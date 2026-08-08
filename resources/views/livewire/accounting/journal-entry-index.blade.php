@@ -11,7 +11,7 @@
     <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
-            <tr class="text-left text-sm text-gray-500">
+            <tr class="text-left text-sm text-gray-500 bg-gray-50">
                 <th class="py-2 px-4">#</th>
                 <th class="py-2 px-4">Датум</th>
                 <th class="py-2 px-4">Опис</th>
@@ -20,7 +20,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($entries as $entry)
-                <tr class="text-sm">
+                <tr class="text-sm hover:bg-orange-50">
                     <td class="py-2 px-4 font-mono">{{ $entry->displayNumber() }}</td>
                     <td class="py-2 px-4">{{ \App\Support\Format::date($entry->entry_date) }}</td>
                     <td class="py-2 px-4">{{ $entry->description }}</td>

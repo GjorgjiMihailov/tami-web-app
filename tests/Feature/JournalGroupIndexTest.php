@@ -174,4 +174,18 @@ class JournalGroupIndexTest extends TestCase
 
         $this->assertDatabaseHas('journal_groups', ['id' => $group->id, 'code' => '10']);
     }
+
+    public function test_the_journal_group_table_has_the_header_and_hover_treatment(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        JournalGroup::factory()->for($company)->create(['code' => '10', 'name' => 'Test Group']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalGroupIndex::class, ['company' => $company])
+            ->assertSee('bg-gray-50', false)
+            ->assertSee('hover:bg-orange-50', false);
+    }
 }
