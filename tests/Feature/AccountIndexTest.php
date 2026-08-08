@@ -133,4 +133,18 @@ class AccountIndexTest extends TestCase
             ->get(route('accounting.accounts.index', $company))
             ->assertOk();
     }
+
+    public function test_the_account_table_is_wrapped_in_a_card_with_the_new_header_and_hover_treatment(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(AccountIndex::class, ['company' => $company])
+            ->assertSee('shadow-card', false)
+            ->assertSee('bg-gray-50', false)
+            ->assertSee('hover:bg-orange-50', false);
+    }
 }

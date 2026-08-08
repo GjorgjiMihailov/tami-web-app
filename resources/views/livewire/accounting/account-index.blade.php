@@ -27,23 +27,24 @@
 
     @foreach ($accountsByClass as $class => $accounts)
         <div class="mb-6">
-            <h3 class="text-lg font-semibold text-gray-700 border-b pb-1 mb-2">Класа {{ $class }}</h3>
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">Класа {{ $class }}</h3>
+            <x-card padding="p-0" class="overflow-hidden">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead>
-                    <tr class="text-left text-sm text-gray-500">
-                        <th class="py-1 pr-4">Шифра</th>
-                        <th class="py-1 pr-4">Назив</th>
-                        <th class="py-1 pr-4">Активна</th>
-                        <th class="py-1"></th>
+                    <tr class="text-left text-sm text-gray-500 bg-gray-50">
+                        <th class="py-2 px-4">Шифра</th>
+                        <th class="py-2 px-4">Назив</th>
+                        <th class="py-2 px-4">Активна</th>
+                        <th class="py-2 px-4"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach ($accounts as $account)
-                        <tr class="text-sm {{ $account->is_active ? '' : 'text-gray-400' }}">
-                            <td class="py-1 pr-4 font-mono">{{ $account->code }}</td>
-                            <td class="py-1 pr-4">{{ $account->name }}</td>
-                            <td class="py-1 pr-4">{{ $account->is_active ? 'Да' : 'Не' }}</td>
-                            <td class="py-1">
+                        <tr class="text-sm hover:bg-orange-50 {{ $account->is_active ? '' : 'text-gray-400' }}">
+                            <td class="py-2 px-4 font-mono">{{ $account->code }}</td>
+                            <td class="py-2 px-4">{{ $account->name }}</td>
+                            <td class="py-2 px-4">{{ $account->is_active ? 'Да' : 'Не' }}</td>
+                            <td class="py-2 px-4">
                                 @can('update', $account)
                                     <button type="button" wire:click="toggleActive({{ $account->id }})" class="text-brand hover:underline text-sm">
                                         {{ $account->is_active ? 'Деактивирај' : 'Активирај' }}
@@ -54,6 +55,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </x-card>
         </div>
     @endforeach
 </div>
