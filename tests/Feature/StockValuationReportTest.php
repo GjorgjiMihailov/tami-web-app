@@ -49,4 +49,20 @@ class StockValuationReportTest extends TestCase
             ->get(route('inventory.reports.stock-valuation', $company))
             ->assertOk();
     }
+
+    public function test_the_valuation_table_has_the_header_and_hover_treatment(): void
+    {
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        app(StockMovementService::class)->receipt($item, $warehouse, '10', '50.00', '2026-01-01', $admin->id);
+
+        $this->actingAs($admin);
+
+        Livewire::test(StockValuationReport::class, ['company' => $company])
+            ->assertSee('bg-gray-50', false)
+            ->assertSee('hover:bg-orange-50', false);
+    }
 }

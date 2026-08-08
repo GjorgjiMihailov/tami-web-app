@@ -15,14 +15,14 @@
     <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
-            <tr class="text-left text-sm text-gray-500">
+            <tr class="text-left text-sm text-gray-500 bg-gray-50">
                 <th class="py-2 px-4">{{ $groupBy === 'warehouse' ? 'Магацин' : ($groupBy === 'category' ? 'Категорија' : '') }}</th>
                 <th class="py-2 px-4 text-right">Вкупна вредност</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($rows as $row)
-                <tr class="text-sm">
+                <tr class="text-sm hover:bg-orange-50">
                     <td class="py-2 px-4">{{ $row['label'] }}</td>
                     <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['total_value'], currency: '') }}</td>
                 </tr>

@@ -20,7 +20,7 @@
         <x-card padding="p-0" class="overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200">
             <thead>
-                <tr class="text-left text-sm text-gray-500">
+                <tr class="text-left text-sm text-gray-500 bg-gray-50">
                     <th class="py-2 px-4">Шифра</th>
                     <th class="py-2 px-4">Артикл</th>
                     <th class="py-2 px-4 text-right">Количина</th>
@@ -31,7 +31,7 @@
             </thead>
             <tbody class="divide-y divide-gray-100">
                 @forelse ($rows as $row)
-                    <tr class="text-sm">
+                    <tr class="text-sm hover:bg-orange-50">
                         <td class="py-2 px-4 font-mono">{{ $row['item_code'] }}</td>
                         <td class="py-2 px-4">{{ $row['item_name'] }}</td>
                         <td class="py-2 px-4 text-right">{{ number_format($row['quantity_on_hand'], 3, ',', '.') }}</td>
@@ -49,7 +49,7 @@
         <x-card padding="p-0" class="overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200">
             <thead>
-                <tr class="text-left text-sm text-gray-500">
+                <tr class="text-left text-sm text-gray-500 bg-gray-50">
                     <th class="py-2 px-4">Шифра</th>
                     <th class="py-2 px-4">Артикл</th>
                     <th class="py-2 px-4 text-right">Вкупна количина</th>
@@ -59,7 +59,7 @@
             </thead>
             <tbody class="divide-y divide-gray-100">
                 @forelse ($totals as $row)
-                    <tr class="text-sm">
+                    <tr class="text-sm hover:bg-orange-50">
                         <td class="py-2 px-4 font-mono">{{ $row['item_code'] }}</td>
                         <td class="py-2 px-4">{{ $row['item_name'] }}</td>
                         <td class="py-2 px-4 text-right">{{ number_format($row['total_quantity'], 3, ',', '.') }}</td>
