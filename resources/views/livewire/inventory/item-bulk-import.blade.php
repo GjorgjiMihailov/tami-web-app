@@ -29,7 +29,7 @@
         <x-card padding="p-0" class="overflow-hidden">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead>
-                    <tr class="text-left text-sm text-gray-500">
+                    <tr class="text-left text-sm text-gray-500 bg-gray-50">
                         <th class="py-2 px-4">Ред</th>
                         <th class="py-2 px-4">Статус</th>
                         <th class="py-2 px-4">Шифра</th>
@@ -46,7 +46,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach ($parsedRows as $row)
-                        <tr class="text-sm" wire:key="preview-row-{{ $row['row_number'] }}">
+                        <tr class="text-sm hover:bg-orange-50" wire:key="preview-row-{{ $row['row_number'] }}">
                             <td class="py-2 px-4">{{ $row['row_number'] }}</td>
                             <td class="py-2 px-4">
                                 @if ($row['action'] === 'new')

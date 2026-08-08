@@ -262,4 +262,23 @@ class ItemBulkImportTest extends TestCase
 
         $this->assertDatabaseHas('items', ['company_id' => $company->id, 'code' => 'SKU-CLIENT']);
     }
+
+    public function test_the_preview_table_has_the_header_and_hover_treatment(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $rows = [
+            ['Шифра', 'Назив', 'Мерна единица', 'Категорија', 'ДДВ стапка', 'Продажна цена', 'Тип', 'МК-производство', 'Баркод'],
+            ['SKU-NEW', 'Brand New Item', 'парче', '', '18', '50.00', 'производ', 'Не', ''],
+        ];
+
+        Livewire::test(ItemBulkImport::class, ['company' => $company])
+            ->set('importFile', $this->makeXlsxUpload($rows))
+            ->call('preview')
+            ->assertSee('bg-gray-50', false)
+            ->assertSee('hover:bg-orange-50', false);
+    }
 }
