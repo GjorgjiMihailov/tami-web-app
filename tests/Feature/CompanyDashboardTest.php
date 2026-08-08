@@ -338,4 +338,17 @@ class CompanyDashboardTest extends TestCase
             ->call('startEdit')
             ->assertSet('editLogoPosition', 'left');
     }
+
+    public function test_module_launcher_cards_use_the_warm_hover_shadow_token(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $response = $this->actingAs($admin)->get(route('companies.dashboard', $company));
+
+        $response->assertOk();
+        $response->assertSee('hover:shadow-card-hover', false);
+        $response->assertDontSee('hover:shadow-md', false);
+    }
 }
