@@ -143,7 +143,12 @@ class AccountIndexTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(AccountIndex::class, ['company' => $company])
-            ->assertSee('shadow-card', false)
+            // 'shadow-card' alone is too weak: the admin-only "Додади аналитичка
+            // сметка" card above also renders it (with the default p-4 padding).
+            // 'shadow-card p-0' is unique to the table-wrapping <x-card
+            // padding="p-0" class="overflow-hidden"> and would fail if that
+            // wrapper were removed.
+            ->assertSeeHtml('shadow-card p-0')
             ->assertSee('bg-gray-50', false)
             ->assertSee('hover:bg-orange-50', false);
     }

@@ -812,6 +812,20 @@ class JournalEntryFormTest extends TestCase
             ->assertSee('bg-gray-50', false);
     }
 
+    public function test_the_lines_table_deliberately_has_no_row_hover_but_mobile_cards_get_the_new_radius(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            // deliberately no row-hover: these rows contain live editable inputs, not passive data
+            ->assertDontSee('hover:bg-orange-50', false)
+            ->assertSee('rounded-xl', false);
+    }
+
     public function test_the_account_list_is_rendered_only_once_regardless_of_line_count(): void
     {
         $company = Company::factory()->create();
