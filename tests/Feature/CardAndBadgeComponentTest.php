@@ -23,6 +23,14 @@ class CardAndBadgeComponentTest extends TestCase
         $this->assertStringNotContainsString('p-4', $html);
     }
 
+    public function test_card_uses_the_warm_card_shadow_token(): void
+    {
+        $html = Blade::render('<x-card>Hello</x-card>');
+
+        $this->assertStringContainsString('shadow-card', $html);
+        $this->assertStringNotContainsString('shadow-sm', $html);
+    }
+
     public function test_badge_maps_confirmed_and_paid_to_green(): void
     {
         $confirmed = Blade::render('<x-badge status="confirmed">Confirmed</x-badge>');
@@ -55,5 +63,16 @@ class CardAndBadgeComponentTest extends TestCase
         $html = Blade::render('<x-badge status="something-else">Something</x-badge>');
 
         $this->assertStringContainsString('bg-gray-100', $html);
+    }
+
+    public function test_badge_maps_info_sent_and_processing_to_blue(): void
+    {
+        $info = Blade::render('<x-badge status="info">Info</x-badge>');
+        $sent = Blade::render('<x-badge status="sent">Sent</x-badge>');
+        $processing = Blade::render('<x-badge status="processing">Processing</x-badge>');
+
+        $this->assertStringContainsString('bg-blue-100', $info);
+        $this->assertStringContainsString('bg-blue-100', $sent);
+        $this->assertStringContainsString('bg-blue-100', $processing);
     }
 }

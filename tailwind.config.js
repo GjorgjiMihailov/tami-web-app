@@ -20,6 +20,13 @@ export default {
                     light: '#ff8533',
                     dark: '#cc5200',
                 },
+                canvas: {
+                    DEFAULT: '#FFF8F3',
+                },
+            },
+            boxShadow: {
+                card: '0 1px 3px 0 rgba(15, 23, 42, 0.06)',
+                'card-hover': '0 10px 24px -6px rgba(255, 102, 0, 0.22)',
             },
         },
     },
