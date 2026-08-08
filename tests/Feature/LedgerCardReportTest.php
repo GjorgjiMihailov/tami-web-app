@@ -40,4 +40,23 @@ class LedgerCardReportTest extends TestCase
             ->assertSee('Фактура 01/26')
             ->assertSee('6.000,00');
     }
+
+    public function test_the_ledger_card_table_has_the_header_and_hover_treatment(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $account = Account::where('company_id', $company->id)->where('code', '120')->first();
+        $entry = JournalEntry::factory()->for($company)->create(['entry_date' => '2026-01-10']);
+        $entry->lines()->create(['account_id' => $account->id, 'debit' => 100, 'credit' => 0]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(LedgerCardReport::class, ['company' => $company])
+            ->set('accountId', $account->id)
+            ->set('from', '2026-01-01')
+            ->set('to', '2026-01-31')
+            ->assertSee('bg-gray-50', false)
+            ->assertSee('hover:bg-orange-50', false);
+    }
 }

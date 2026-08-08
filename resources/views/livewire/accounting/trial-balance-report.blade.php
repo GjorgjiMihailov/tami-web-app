@@ -24,7 +24,7 @@
     <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
-            <tr class="text-left text-sm text-gray-500">
+            <tr class="text-left text-sm text-gray-500 bg-gray-50">
                 <th class="py-2 px-4">Шифра</th>
                 <th class="py-2 px-4">Назив</th>
                 <th class="py-2 px-4 text-right">Почетно салдо</th>
@@ -35,7 +35,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($rows as $row)
-                <tr class="text-sm">
+                <tr class="text-sm hover:bg-orange-50">
                     <td class="py-2 px-4 font-mono">{{ $row['key'] }}</td>
                     <td class="py-2 px-4">{{ $row['label'] }}</td>
                     <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['opening_balance'], currency: '') }}</td>
@@ -48,7 +48,7 @@
             @endforelse
         </tbody>
         <tfoot>
-            <tr class="text-sm font-bold border-t border-gray-300">
+            <tr class="text-sm font-bold border-t border-gray-300 bg-gray-50">
                 <td class="py-2 px-4" colspan="2">Вкупно</td>
                 <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($totals['opening_balance'], currency: '') }}</td>
                 <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($totals['movement_debit'], currency: '') }}</td>
