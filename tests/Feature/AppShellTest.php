@@ -27,6 +27,7 @@ class AppShellTest extends TestCase
         $response = $this->actingAs($user)->get('/dashboard');
 
         $response->assertOk();
+        $response->assertSee('bg-white border-r border-gray-100', false);
         $response->assertDontSee('bg-gray-800', false);
     }
 }
