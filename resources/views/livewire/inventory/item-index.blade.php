@@ -75,7 +75,7 @@
     <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
-            <tr class="text-left text-sm text-gray-500">
+            <tr class="text-left text-sm text-gray-500 bg-gray-50">
                 <th class="py-2 px-4">Шифра</th>
                 <th class="py-2 px-4">Назив</th>
                 <th class="py-2 px-4">Мерна единица</th>
@@ -91,7 +91,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($items as $item)
-                <tr class="text-sm {{ $item->is_active ? '' : 'text-gray-400' }}" wire:key="item-{{ $item->id }}">
+                <tr class="text-sm hover:bg-orange-50 {{ $item->is_active ? '' : 'text-gray-400' }}" wire:key="item-{{ $item->id }}">
                     <td class="py-2 px-4 font-mono">{{ $item->code }}</td>
                     <td class="py-2 px-4">{{ $item->name }}</td>
                     <td class="py-2 px-4">{{ $item->unit_of_measure }}</td>

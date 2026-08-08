@@ -181,4 +181,18 @@ class ItemIndexTest extends TestCase
             ->assertSee('Услуга')
             ->assertSee('Да');
     }
+
+    public function test_the_item_table_has_the_header_and_hover_treatment(): void
+    {
+        $company = Company::factory()->create();
+        Item::factory()->for($company)->create(['name' => 'Widget A']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(ItemIndex::class, ['company' => $company])
+            ->assertSee('bg-gray-50', false)
+            ->assertSee('hover:bg-orange-50', false);
+    }
 }

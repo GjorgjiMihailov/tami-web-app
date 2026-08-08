@@ -17,7 +17,7 @@
     <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
-            <tr class="text-left text-sm text-gray-500">
+            <tr class="text-left text-sm text-gray-500 bg-gray-50">
                 <th class="py-2 px-4">Назив</th>
                 <th class="py-2 px-4">Активен</th>
                 <th class="py-2 px-4"></th>
@@ -25,7 +25,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($warehouses as $warehouse)
-                <tr class="text-sm {{ $warehouse->is_active ? '' : 'text-gray-400' }}">
+                <tr class="text-sm hover:bg-orange-50 {{ $warehouse->is_active ? '' : 'text-gray-400' }}">
                     <td class="py-2 px-4">{{ $warehouse->name }}</td>
                     <td class="py-2 px-4">{{ $warehouse->is_active ? 'Да' : 'Не' }}</td>
                     <td class="py-2 px-4">

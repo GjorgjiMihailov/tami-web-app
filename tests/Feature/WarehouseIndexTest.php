@@ -77,4 +77,18 @@ class WarehouseIndexTest extends TestCase
             ->get(route('inventory.warehouses.index', $company))
             ->assertOk();
     }
+
+    public function test_the_warehouse_table_has_the_header_and_hover_treatment(): void
+    {
+        $company = Company::factory()->create();
+        Warehouse::factory()->for($company)->create(['name' => 'Main Store']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(WarehouseIndex::class, ['company' => $company])
+            ->assertSee('bg-gray-50', false)
+            ->assertSee('hover:bg-orange-50', false);
+    }
 }
