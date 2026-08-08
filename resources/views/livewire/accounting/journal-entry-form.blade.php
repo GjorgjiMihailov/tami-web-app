@@ -79,7 +79,7 @@
         <div x-data="{ jepAccounts: @js($accountsForJs), jepPartners: @js($partnersForJs) }">
         <table class="min-w-full divide-y divide-gray-200 mb-4 hidden md:table">
             <thead>
-                <tr class="text-left text-sm text-gray-500">
+                <tr class="text-left text-sm text-gray-500 bg-gray-50">
                     <th class="py-1 pr-2">Сметка</th>
                     <th class="py-1 pr-2">Партнер</th>
                     <th class="py-1 pr-2">Опис</th>
@@ -163,7 +163,7 @@
         <div class="md:hidden space-y-3 mb-4">
             @foreach ($lines as $index => $line)
                 @php $isLate = $line['line_date'] > $entryDate; @endphp
-                <div wire:key="m-line-{{ $line['_key'] }}" class="border border-gray-200 rounded-lg p-3 text-sm {{ $isLate ? 'bg-red-50' : '' }}">
+                <div wire:key="m-line-{{ $line['_key'] }}" class="border border-gray-200 rounded-xl p-3 text-sm {{ $isLate ? 'bg-red-50' : '' }}">
                     <div class="flex justify-between items-start mb-2">
                         <span class="font-medium text-gray-500">Ставка {{ $index + 1 }}</span>
                         @if ($canEdit)

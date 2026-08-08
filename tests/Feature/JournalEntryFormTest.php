@@ -800,6 +800,18 @@ class JournalEntryFormTest extends TestCase
             ->assertDontSeeHtml('sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 flex flex-wrap justify-end gap-6 text-sm font-semibold text-red-600');
     }
 
+    public function test_the_desktop_lines_table_has_the_new_header_background(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->assertSee('bg-gray-50', false);
+    }
+
     public function test_the_account_list_is_rendered_only_once_regardless_of_line_count(): void
     {
         $company = Company::factory()->create();
