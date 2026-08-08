@@ -78,6 +78,7 @@ class ItemMovementCardReportTest extends TestCase
             ->set('warehouseId', $warehouse->id)
             ->set('from', '2026-01-01')
             ->set('to', '2026-01-31')
+            ->assertSeeHtml('shadow-card p-0')
             ->assertSee('bg-gray-50', false)
             ->assertSee('hover:bg-orange-50', false);
     }

@@ -278,6 +278,7 @@ class ItemBulkImportTest extends TestCase
         Livewire::test(ItemBulkImport::class, ['company' => $company])
             ->set('importFile', $this->makeXlsxUpload($rows))
             ->call('preview')
+            ->assertSeeHtml('shadow-card p-0')
             ->assertSee('bg-gray-50', false)
             ->assertSee('hover:bg-orange-50', false);
     }

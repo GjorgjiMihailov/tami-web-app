@@ -123,10 +123,12 @@ class StockOnHandReportTest extends TestCase
         $this->actingAs($admin);
 
         $test = Livewire::test(StockOnHandReport::class, ['company' => $company])
+            ->assertSeeHtml('shadow-card p-0')
             ->assertSee('bg-gray-50', false)
             ->assertSee('hover:bg-orange-50', false);
 
         $test->set('warehouseId', $warehouse->id)
+            ->assertSeeHtml('shadow-card p-0')
             ->assertSee('bg-gray-50', false)
             ->assertSee('hover:bg-orange-50', false);
     }

@@ -192,7 +192,23 @@ class ItemIndexTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(ItemIndex::class, ['company' => $company])
+            ->assertSeeHtml('shadow-card p-0')
             ->assertSee('bg-gray-50', false)
             ->assertSee('hover:bg-orange-50', false);
+    }
+
+    public function test_the_inline_edit_row_deliberately_has_no_hover_treatment(): void
+    {
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        // deliberately no row-hover: this row holds a live edit form, not passive data
+        Livewire::test(ItemIndex::class, ['company' => $company])
+            ->call('startEditingItem', $item->id)
+            ->assertSeeHtml('<tr wire:key="item-edit-'.$item->id.'">');
     }
 }

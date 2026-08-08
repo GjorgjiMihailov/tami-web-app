@@ -62,6 +62,7 @@ class StockValuationReportTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(StockValuationReport::class, ['company' => $company])
+            ->assertSeeHtml('shadow-card p-0')
             ->assertSee('bg-gray-50', false)
             ->assertSee('hover:bg-orange-50', false);
     }
