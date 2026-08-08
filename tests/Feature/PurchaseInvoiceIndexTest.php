@@ -77,6 +77,41 @@ class PurchaseInvoiceIndexTest extends TestCase
             ->assertDontSee('Неодлучени е-Фактури');
     }
 
+    public function test_it_shows_a_rejected_document_decided_within_the_last_10_days(): void
+    {
+        $company = Company::factory()->create();
+        IncomingEfakturaDocument::factory()->for($company)->create([
+            'seller_name' => 'Скорешно Одбиена ДООЕЛ',
+            'decision' => IncomingEfakturaDocument::DECISION_REJECTED,
+            'decided_at' => now()->subDays(3),
+            'reject_reason_code' => 'other',
+        ]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceIndex::class, ['company' => $company])
+            ->assertSee('Скорешно Одбиена ДООЕЛ')
+            ->assertSee('Одбиена');
+    }
+
+    public function test_it_hides_a_rejected_document_decided_more_than_10_days_ago(): void
+    {
+        $company = Company::factory()->create();
+        IncomingEfakturaDocument::factory()->for($company)->create([
+            'seller_name' => 'Одамна Одбиена ДООЕЛ',
+            'decision' => IncomingEfakturaDocument::DECISION_REJECTED,
+            'decided_at' => now()->subDays(11),
+            'reject_reason_code' => 'other',
+        ]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceIndex::class, ['company' => $company])
+            ->assertDontSee('Одамна Одбиена ДООЕЛ');
+    }
+
     public function test_it_shows_a_pdf_download_link_for_an_invoice_from_an_accepted_efaktura_document_with_a_cached_pdf(): void
     {
         $company = Company::factory()->create();

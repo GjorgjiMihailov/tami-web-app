@@ -32,7 +32,13 @@ class PurchaseInvoiceIndex extends Component
             ->get();
 
         $pendingDocuments = IncomingEfakturaDocument::where('company_id', $this->company->id)
-            ->whereNull('decision')
+            ->where(function ($query) {
+                $query->whereNull('decision')
+                    ->orWhere(function ($query) {
+                        $query->where('decision', IncomingEfakturaDocument::DECISION_REJECTED)
+                            ->where('decided_at', '>=', now()->subDays(10));
+                    });
+            })
             ->orderByDesc('doc_date')
             ->orderByDesc('id')
             ->get();

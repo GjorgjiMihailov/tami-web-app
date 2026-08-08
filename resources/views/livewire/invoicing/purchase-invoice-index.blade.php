@@ -49,33 +49,38 @@
                             @endif
                         </td>
                         <td class="py-2 px-4">
-                            @if ($company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN)
-                                <div x-data="incomingEfakturaAccept({{ $document->id }})" class="inline-block mr-2 align-top">
-                                    <button type="button" @click="run()" :disabled="busy" class="text-brand hover:underline disabled:opacity-50">
-                                        <span x-show="!busy">Прифати</span>
-                                        <span x-show="busy" x-text="statusText"></span>
-                                    </button>
-                                    <p x-show="error" x-text="error" class="text-red-600 text-xs mt-1"></p>
-                                </div>
-                                <div x-data="incomingEfakturaReject({{ $document->id }})" class="inline-block align-top">
-                                    <button type="button" @click="open = !open" class="text-red-600 hover:underline">Одбиј</button>
-                                    <div x-show="open" class="mt-2 p-2 border border-gray-200 rounded-md bg-gray-50 w-64">
-                                        <select x-model="reasonCode" class="border-gray-300 rounded-md text-sm w-full mb-1">
-                                            <option value="">Избери причина...</option>
-                                            @foreach (\App\Models\IncomingEfakturaDocument::REJECT_REASONS as $code => $label)
-                                                <option value="{{ $code }}">{{ $code }} — {{ $label }}</option>
-                                            @endforeach
-                                        </select>
-                                        <input x-show="reasonCode === @js(\App\Models\IncomingEfakturaDocument::REJECT_REASON_OTHER)" x-model="comment" type="text" placeholder="Причина (слободен текст)" class="border-gray-300 rounded-md text-sm w-full mb-1">
-                                        <button type="button" @click="run()" :disabled="busy || !reasonCode" class="text-red-600 text-sm disabled:opacity-50">
-                                            <span x-show="!busy">Потврди одбивање</span>
+                            @if ($document->decision === null)
+                                @if ($company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN)
+                                    <div x-data="incomingEfakturaAccept({{ $document->id }})" class="inline-block mr-2 align-top">
+                                        <button type="button" @click="run()" :disabled="busy" class="text-brand hover:underline disabled:opacity-50">
+                                            <span x-show="!busy">Прифати</span>
                                             <span x-show="busy" x-text="statusText"></span>
                                         </button>
                                         <p x-show="error" x-text="error" class="text-red-600 text-xs mt-1"></p>
                                     </div>
-                                </div>
-                            @else
-                                <span class="text-gray-400">—</span>
+                                    <div x-data="incomingEfakturaReject({{ $document->id }})" class="inline-block align-top">
+                                        <button type="button" @click="open = !open" class="text-red-600 hover:underline">Одбиј</button>
+                                        <div x-show="open" class="mt-2 p-2 border border-gray-200 rounded-md bg-gray-50 w-64">
+                                            <select x-model="reasonCode" class="border-gray-300 rounded-md text-sm w-full mb-1">
+                                                <option value="">Избери причина...</option>
+                                                @foreach (\App\Models\IncomingEfakturaDocument::REJECT_REASONS as $code => $label)
+                                                    <option value="{{ $code }}">{{ $code }} — {{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                            <input x-show="reasonCode === @js(\App\Models\IncomingEfakturaDocument::REJECT_REASON_OTHER)" x-model="comment" type="text" placeholder="Причина (слободен текст)" class="border-gray-300 rounded-md text-sm w-full mb-1">
+                                            <button type="button" @click="run()" :disabled="busy || !reasonCode" class="text-red-600 text-sm disabled:opacity-50">
+                                                <span x-show="!busy">Потврди одбивање</span>
+                                                <span x-show="busy" x-text="statusText"></span>
+                                            </button>
+                                            <p x-show="error" x-text="error" class="text-red-600 text-xs mt-1"></p>
+                                        </div>
+                                    </div>
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            @elseif ($document->decision === \App\Models\IncomingEfakturaDocument::DECISION_REJECTED)
+                                <x-badge status="overdue">Одбиена</x-badge>
+                                <span class="text-gray-400 text-xs block">{{ $document->reject_reason_code }}</span>
                             @endif
                         </td>
                     </tr>
