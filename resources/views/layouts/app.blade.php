@@ -15,7 +15,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased">
-        <div class="min-h-screen flex bg-gray-50">
+        <div class="min-h-screen flex bg-canvas">
             <livewire:layout.sidebar />
 
             <div class="flex-1 flex flex-col min-w-0">
