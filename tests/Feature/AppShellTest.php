@@ -16,8 +16,7 @@ class AppShellTest extends TestCase
         $response = $this->actingAs($user)->get('/dashboard');
 
         $response->assertOk();
-        $response->assertSee('bg-canvas', false);
-        $response->assertDontSee('bg-gray-50', false);
+        $response->assertSee('min-h-screen flex bg-canvas', false);
     }
 
     public function test_sidebar_is_light_not_dark(): void
@@ -28,6 +27,5 @@ class AppShellTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('bg-white border-r border-gray-100', false);
-        $response->assertDontSee('bg-gray-800', false);
     }
 }

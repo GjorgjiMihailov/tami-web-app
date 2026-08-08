@@ -16,7 +16,7 @@
                     \App\Models\Company::EFAKTURA_STATUS_NONE,
                     \App\Models\Company::EFAKTURA_STATUS_REJECTED,
                 ]))
-                <button wire:click="requestFirmEfakturaAccess" type="button" class="rounded-full bg-orange-600 text-white px-4 py-2 text-sm">
+                <button wire:click="requestFirmEfakturaAccess" type="button" class="rounded-full bg-brand text-white px-4 py-2 text-sm">
                     Побарај користење на фирмениот сертификат
                 </button>
             @elseif ($company->efaktura_firm_access_status === \App\Models\Company::EFAKTURA_STATUS_REQUESTED)

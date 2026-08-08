@@ -24,12 +24,11 @@
 
         @if ($company)
             <div class="pt-4 mt-3 border-t border-gray-100">
-                <div class="px-4 pb-2 text-xs uppercase tracking-wide text-gray-400">{{ $company->name }}</div>
+                <div class="px-4 pb-2 text-xs uppercase tracking-wide text-gray-500">{{ $company->name }}</div>
 
                 {{-- Accounting --}}
                 <button type="button" wire:click="toggleModule('accounting')"
-                        class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('accounting.*') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}"
-                        style="width: calc(100% - 1.5rem);">
+                        class="text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('accounting.*') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
                     <span>Сметководство</span>
                     <span>{{ $expandedModule === 'accounting' ? '−' : '+' }}</span>
                 </button>
@@ -50,8 +49,7 @@
 
                 {{-- Inventory --}}
                 <button type="button" wire:click="toggleModule('inventory')"
-                        class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('inventory.*') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}"
-                        style="width: calc(100% - 1.5rem);">
+                        class="text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('inventory.*') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
                     <span>Магацин</span>
                     <span>{{ $expandedModule === 'inventory' ? '−' : '+' }}</span>
                 </button>
@@ -92,8 +90,7 @@
 
                 {{-- Invoicing --}}
                 <button type="button" wire:click="toggleModule('invoicing')"
-                        class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ (request()->routeIs('partners.*') || request()->routeIs('sales-invoices.*') || request()->routeIs('purchase-invoices.*')) ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}"
-                        style="width: calc(100% - 1.5rem);">
+                        class="text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ (request()->routeIs('partners.*') || request()->routeIs('sales-invoices.*') || request()->routeIs('purchase-invoices.*')) ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
                     <span>Фактури</span>
                     <span>{{ $expandedModule === 'invoicing' ? '−' : '+' }}</span>
                 </button>
