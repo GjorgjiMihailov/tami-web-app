@@ -33,7 +33,7 @@
     <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
-            <tr class="text-left text-sm text-gray-500">
+            <tr class="text-left text-sm text-gray-500 bg-gray-50">
                 <th class="py-2 px-4">Датотека</th>
                 <th class="py-2 px-4">Категорија</th>
                 <th class="py-2 px-4">Запис</th>
@@ -52,7 +52,7 @@
                         default => null,
                     };
                 @endphp
-                <tr class="text-sm">
+                <tr class="text-sm hover:bg-orange-50">
                     <td class="py-2 px-4">
                         <a href="{{ route('documents.download', [$company, $document]) }}" class="text-brand hover:underline">{{ $document->original_filename }}</a>
                     </td>
