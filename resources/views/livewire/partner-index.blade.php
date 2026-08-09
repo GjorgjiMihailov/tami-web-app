@@ -45,7 +45,7 @@
     <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
-            <tr class="text-left text-sm text-gray-500">
+            <tr class="text-left text-sm text-gray-500 bg-gray-50">
                 <th class="py-2 px-4">Назив</th>
                 <th class="py-2 px-4">ЕДБ</th>
                 <th class="py-2 px-4">Е-пошта</th>
@@ -54,7 +54,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($partners as $partner)
-                <tr class="text-sm">
+                <tr class="text-sm hover:bg-orange-50">
                     <td class="py-2 px-4"><a href="{{ route('partners.show', [$company, $partner]) }}" class="text-brand hover:underline font-medium">{{ $partner->name }}</a></td>
                     <td class="py-2 px-4">{{ $partner->tax_id }}</td>
                     <td class="py-2 px-4">{{ $partner->email }}</td>

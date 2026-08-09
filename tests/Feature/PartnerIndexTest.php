@@ -120,4 +120,18 @@ class PartnerIndexTest extends TestCase
             'type' => 'legal_entity',
         ]);
     }
+
+    public function test_the_partner_table_has_the_header_and_hover_treatment(): void
+    {
+        $company = Company::factory()->create();
+        Partner::factory()->for($company)->create(['name' => 'Acme DOOEL']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(PartnerIndex::class, ['company' => $company])
+            ->assertSee('bg-gray-50', false)
+            ->assertSee('hover:bg-orange-50', false);
+    }
 }
