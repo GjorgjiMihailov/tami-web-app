@@ -129,4 +129,41 @@ class PurchaseInvoiceIndexTest extends TestCase
         Livewire::test(PurchaseInvoiceIndex::class, ['company' => $company])
             ->assertSee('Преземи ПДФ');
     }
+
+    public function test_the_purchase_invoice_table_has_the_header_and_hover_treatment(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceIndex::class, ['company' => $company])
+            ->assertSee('bg-gray-50', false)
+            ->assertSee('hover:bg-orange-50', false);
+    }
+
+    public function test_the_pending_documents_table_has_the_header_and_hover_treatment(): void
+    {
+        $company = Company::factory()->create();
+        \App\Models\IncomingEfakturaDocument::create([
+            'company_id' => $company->id,
+            'euid' => 'TEST-EUID-1',
+            'seller_name' => 'Test Seller',
+            'payload_json' => '{}',
+            'discovered_at' => now(),
+            'decision' => null,
+        ]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        $html = Livewire::test(PurchaseInvoiceIndex::class, ['company' => $company])->html();
+
+        $this->assertSame(2, substr_count($html, 'bg-gray-50'));
+        $this->assertGreaterThanOrEqual(1, substr_count($html, 'hover:bg-orange-50'));
+    }
 }

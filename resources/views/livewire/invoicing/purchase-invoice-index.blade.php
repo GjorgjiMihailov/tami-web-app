@@ -27,7 +27,7 @@
         <x-card padding="p-0" class="overflow-hidden mb-6">
         <table class="min-w-full divide-y divide-gray-200">
             <thead>
-                <tr class="text-left text-sm text-gray-500">
+                <tr class="text-left text-sm text-gray-500 bg-gray-50">
                     <th class="py-2 px-4">Добавувач</th>
                     <th class="py-2 px-4">Датум</th>
                     <th class="py-2 px-4">Износ</th>
@@ -37,7 +37,7 @@
             </thead>
             <tbody class="divide-y divide-gray-100">
                 @foreach ($pendingDocuments as $document)
-                    <tr class="text-sm">
+                    <tr class="text-sm hover:bg-orange-50">
                         <td class="py-2 px-4">{{ $document->seller_name }} <span class="text-gray-400">({{ $document->seller_tax_id }})</span></td>
                         <td class="py-2 px-4">{{ $document->doc_date ? \App\Support\Format::date($document->doc_date) : '—' }}</td>
                         <td class="py-2 px-4">{{ $document->total_amount !== null ? \App\Support\Format::money($document->total_amount) : '—' }}</td>
@@ -102,7 +102,7 @@
     <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
-            <tr class="text-left text-sm text-gray-500">
+            <tr class="text-left text-sm text-gray-500 bg-gray-50">
                 <th class="py-2 px-4">Бр. кај добавувач</th>
                 <th class="py-2 px-4">Добавувач</th>
                 <th class="py-2 px-4">Датум</th>
@@ -113,7 +113,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($invoices as $invoice)
-                <tr class="text-sm">
+                <tr class="text-sm hover:bg-orange-50">
                     <td class="py-2 px-4">{{ $invoice->supplier_invoice_number }}</td>
                     <td class="py-2 px-4">{{ $invoice->partner->name }}</td>
                     <td class="py-2 px-4">{{ \App\Support\Format::date($invoice->invoice_date) }}</td>
