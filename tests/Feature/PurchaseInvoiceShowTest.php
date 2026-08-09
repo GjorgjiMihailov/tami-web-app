@@ -73,4 +73,23 @@ class PurchaseInvoiceShowTest extends TestCase
 
         $this->assertSame('cancelled', $invoice->fresh()->status);
     }
+
+    public function test_the_line_items_table_gets_the_hover_treatment_but_the_payments_table_does_not(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
+        $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        // purchase_invoice_payments.created_by is a required (non-nullable) foreign key to users —
+        // create the payment AFTER $admin exists, and pass created_by explicitly.
+        $invoice->payments()->create(['amount' => '50.00', 'payment_date' => '2026-03-10', 'payment_method' => 'bank', 'created_by' => $admin->id]);
+        $this->actingAs($admin);
+
+        $html = Livewire::test(PurchaseInvoiceShow::class, ['company' => $company, 'purchaseInvoice' => $invoice])->html();
+
+        $this->assertSame(1, substr_count($html, 'bg-gray-50'));
+        $this->assertSame(1, substr_count($html, 'hover:bg-orange-50'));
+    }
 }

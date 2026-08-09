@@ -98,6 +98,31 @@ class SalesInvoiceShowTest extends TestCase
         $this->assertDatabaseHas('sales_invoice_payments', ['sales_invoice_id' => $invoice->id, 'amount' => '100.00']);
     }
 
+    public function test_the_line_items_table_gets_the_hover_treatment_but_the_payments_table_does_not(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01', 'status' => 'confirmed', 'fiscal_year' => 2026, 'invoice_number' => 1]);
+        $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+        $entry = \App\Models\JournalEntry::factory()->for($company)->create();
+        $invoice->update(['journal_entry_id' => $entry->id]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        // sales_invoice_payments.created_by is a required (non-nullable) foreign key to users —
+        // create the payment AFTER $admin exists, and pass created_by explicitly.
+        $invoice->payments()->create(['amount' => '50.00', 'payment_date' => '2026-03-10', 'payment_method' => 'bank', 'created_by' => $admin->id]);
+        $this->actingAs($admin);
+
+        $html = Livewire::test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])->html();
+
+        // The page has exactly one table with a <thead> (line items) — its header
+        // and its one data row should carry the pattern, and nothing else on the
+        // page should, or the payments table picked it up by accident.
+        $this->assertSame(1, substr_count($html, 'bg-gray-50'));
+        $this->assertSame(1, substr_count($html, 'hover:bg-orange-50'));
+    }
+
     public function test_mark_sent_sets_sent_at(): void
     {
         $company = Company::factory()->create();

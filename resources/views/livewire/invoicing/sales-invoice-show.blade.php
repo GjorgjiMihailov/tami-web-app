@@ -18,7 +18,7 @@
     <x-card class="mb-4">
         <table class="min-w-full text-sm">
             <thead>
-                <tr class="text-left text-gray-500">
+                <tr class="text-left text-gray-500 bg-gray-50">
                     <th class="py-1">Опис</th>
                     <th class="py-1">Кол.</th>
                     <th class="py-1">Ед. цена</th>
@@ -28,7 +28,7 @@
             </thead>
             <tbody>
                 @foreach ($invoice->lines as $line)
-                    <tr>
+                    <tr class="hover:bg-orange-50">
                         <td class="py-1">{{ $line->description }}</td>
                         <td class="py-1">{{ $line->quantity }}</td>
                         <td class="py-1">{{ \App\Support\Format::money($line->unit_price) }}</td>
