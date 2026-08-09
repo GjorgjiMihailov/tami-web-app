@@ -62,4 +62,19 @@ class SalesInvoiceIndexTest extends TestCase
             ->get(route('sales-invoices.index', $company))
             ->assertOk();
     }
+
+    public function test_the_invoice_table_has_the_header_and_hover_treatment(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceIndex::class, ['company' => $company])
+            ->assertSee('bg-gray-50', false)
+            ->assertSee('hover:bg-orange-50', false);
+    }
 }

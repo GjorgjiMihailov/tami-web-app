@@ -26,7 +26,7 @@
     <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
-            <tr class="text-left text-sm text-gray-500">
+            <tr class="text-left text-sm text-gray-500 bg-gray-50">
                 <th class="py-2 px-4">Број</th>
                 <th class="py-2 px-4">Купувач</th>
                 <th class="py-2 px-4">Датум</th>
@@ -39,7 +39,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($invoices as $invoice)
-                <tr class="text-sm">
+                <tr class="text-sm hover:bg-orange-50">
                     <td class="py-2 px-4">{{ $invoice->invoice_number ? "{$invoice->fiscal_year}/{$invoice->invoice_number}" : '—' }}</td>
                     <td class="py-2 px-4">{{ $invoice->partner->name }}</td>
                     <td class="py-2 px-4">{{ \App\Support\Format::date($invoice->invoice_date) }}</td>
