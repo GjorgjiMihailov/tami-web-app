@@ -26,7 +26,7 @@
 
     <table class="min-w-full text-sm">
         <thead>
-            <tr class="text-left text-gray-500">
+            <tr class="text-left text-gray-500 bg-gray-50">
                 <th class="py-1">Датотека</th>
                 <th class="py-1">Категорија</th>
                 <th class="py-1">Белешка</th>
@@ -37,7 +37,7 @@
         </thead>
         <tbody>
             @forelse ($documents as $document)
-                <tr>
+                <tr class="hover:bg-orange-50">
                     <td class="py-1">
                         <a href="{{ route('documents.download', [$documentable->company_id, $document]) }}" class="text-brand hover:underline">
                             {{ $document->original_filename }}

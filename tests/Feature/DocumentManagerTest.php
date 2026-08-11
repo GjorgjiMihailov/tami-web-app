@@ -158,4 +158,19 @@ class DocumentManagerTest extends TestCase
 
         $response->assertOk();
     }
+
+    public function test_the_document_table_has_the_header_and_hover_treatment(): void
+    {
+        $company = Company::factory()->create();
+        $invoice = PurchaseInvoice::factory()->for($company)->create();
+        Document::factory()->for($invoice, 'documentable')->create(['company_id' => $company->id, 'category' => 'Invoice', 'original_filename' => 'bill.pdf']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $html = Livewire::test(DocumentManager::class, ['documentable' => $invoice])->html();
+
+        $this->assertSame(1, substr_count($html, 'bg-gray-50'));
+        $this->assertSame(1, substr_count($html, 'hover:bg-orange-50'));
+    }
 }
