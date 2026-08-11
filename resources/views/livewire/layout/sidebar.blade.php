@@ -28,7 +28,8 @@
 
                 {{-- Accounting --}}
                 <button type="button" wire:click="toggleModule('accounting')"
-                        class="text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('accounting.*') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
+                        class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('accounting.*') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}"
+                        style="width: calc(100% - 1.5rem);">
                     <span>Сметководство</span>
                     <span>{{ $expandedModule === 'accounting' ? '−' : '+' }}</span>
                 </button>
@@ -49,7 +50,8 @@
 
                 {{-- Inventory --}}
                 <button type="button" wire:click="toggleModule('inventory')"
-                        class="text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('inventory.*') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
+                        class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('inventory.*') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}"
+                        style="width: calc(100% - 1.5rem);">
                     <span>Магацин</span>
                     <span>{{ $expandedModule === 'inventory' ? '−' : '+' }}</span>
                 </button>
@@ -90,7 +92,8 @@
 
                 {{-- Invoicing --}}
                 <button type="button" wire:click="toggleModule('invoicing')"
-                        class="text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ (request()->routeIs('partners.*') || request()->routeIs('sales-invoices.*') || request()->routeIs('purchase-invoices.*')) ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
+                        class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ (request()->routeIs('partners.*') || request()->routeIs('sales-invoices.*') || request()->routeIs('purchase-invoices.*')) ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}"
+                        style="width: calc(100% - 1.5rem);">
                     <span>Фактури</span>
                     <span>{{ $expandedModule === 'invoicing' ? '−' : '+' }}</span>
                 </button>
