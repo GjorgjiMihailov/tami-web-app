@@ -89,7 +89,13 @@ class PurchaseInvoiceShowTest extends TestCase
 
         $html = Livewire::test(PurchaseInvoiceShow::class, ['company' => $company, 'purchaseInvoice' => $invoice])->html();
 
-        $this->assertSame(1, substr_count($html, 'bg-gray-50'));
+        // Two tables on this page have a <thead> now: the invoice's own line-items
+        // table, and the document-manager component embedded at the bottom of the
+        // page (also styled with the pattern, as of a later plan). Both legitimately
+        // carry bg-gray-50. hover:bg-orange-50 should still be exactly 1, though —
+        // the payments table below never gets it, and document-manager's table is
+        // empty here (no documents seeded), so its own data-row hover never renders.
+        $this->assertSame(2, substr_count($html, 'bg-gray-50'));
         $this->assertSame(1, substr_count($html, 'hover:bg-orange-50'));
     }
 }

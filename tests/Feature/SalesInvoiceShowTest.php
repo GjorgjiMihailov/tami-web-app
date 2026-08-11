@@ -116,10 +116,13 @@ class SalesInvoiceShowTest extends TestCase
 
         $html = Livewire::test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])->html();
 
-        // The page has exactly one table with a <thead> (line items) — its header
-        // and its one data row should carry the pattern, and nothing else on the
-        // page should, or the payments table picked it up by accident.
-        $this->assertSame(1, substr_count($html, 'bg-gray-50'));
+        // Two tables on this page have a <thead> now: the invoice's own line-items
+        // table, and the document-manager component embedded at the bottom of the
+        // page (also styled with the pattern, as of a later plan). Both legitimately
+        // carry bg-gray-50. hover:bg-orange-50 should still be exactly 1, though —
+        // the payments table below never gets it, and document-manager's table is
+        // empty here (no documents seeded), so its own data-row hover never renders.
+        $this->assertSame(2, substr_count($html, 'bg-gray-50'));
         $this->assertSame(1, substr_count($html, 'hover:bg-orange-50'));
     }
 
