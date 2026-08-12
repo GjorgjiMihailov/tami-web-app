@@ -6,6 +6,7 @@ use App\Livewire\Reports\Ddv04Report;
 use App\Models\Company;
 use App\Models\SalesInvoice;
 use App\Models\User;
+use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -15,7 +16,7 @@ class Ddv04ReportTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -59,5 +60,32 @@ class Ddv04ReportTest extends TestCase
 
         Livewire::test(Ddv04Report::class, ['company' => $otherCompany])
             ->assertForbidden();
+    }
+
+    public function test_a_past_working_year_opens_on_december_of_that_year(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+        WorkingYear::set($company, 2024);
+
+        Livewire::test(Ddv04Report::class, ['company' => $company])
+            ->assertSet('from', '2024-12-01')
+            ->assertSet('to', '2024-12-31');
+    }
+
+    public function test_the_current_working_year_still_opens_on_this_month(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(Ddv04Report::class, ['company' => $company])
+            ->assertSet('from', now()->startOfMonth()->toDateString())
+            ->assertSet('to', now()->toDateString());
     }
 }

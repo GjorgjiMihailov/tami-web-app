@@ -8,6 +8,7 @@ use App\Models\Item;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Inventory\StockMovementService;
+use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -81,5 +82,19 @@ class ItemMovementCardReportTest extends TestCase
             ->assertSeeHtml('shadow-card p-0')
             ->assertSee('bg-gray-50', false)
             ->assertSee('hover:bg-orange-50', false);
+    }
+
+    public function test_a_past_working_year_opens_on_that_whole_year(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+        WorkingYear::set($company, 2024);
+
+        Livewire::test(ItemMovementCardReport::class, ['company' => $company])
+            ->assertSet('from', '2024-01-01')
+            ->assertSet('to', '2024-12-31');
     }
 }

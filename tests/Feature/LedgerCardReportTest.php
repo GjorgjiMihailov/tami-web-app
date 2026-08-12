@@ -7,6 +7,7 @@ use App\Models\Account;
 use App\Models\Company;
 use App\Models\JournalEntry;
 use App\Models\User;
+use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -16,7 +17,7 @@ class LedgerCardReportTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -58,5 +59,19 @@ class LedgerCardReportTest extends TestCase
             ->set('to', '2026-01-31')
             ->assertSee('bg-gray-50', false)
             ->assertSee('hover:bg-orange-50', false);
+    }
+
+    public function test_a_past_working_year_opens_on_that_whole_year(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+        WorkingYear::set($company, 2024);
+
+        Livewire::test(LedgerCardReport::class, ['company' => $company])
+            ->assertSet('from', '2024-01-01')
+            ->assertSet('to', '2024-12-31');
     }
 }

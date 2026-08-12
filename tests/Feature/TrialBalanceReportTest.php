@@ -7,6 +7,7 @@ use App\Models\Account;
 use App\Models\Company;
 use App\Models\JournalEntry;
 use App\Models\User;
+use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -16,7 +17,7 @@ class TrialBalanceReportTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -95,5 +96,19 @@ class TrialBalanceReportTest extends TestCase
             ->set('from', '2026-01-01')
             ->set('to', '2026-01-31')
             ->assertSeeHtml('<tr class="text-sm font-bold border-t border-gray-300 bg-gray-50">');
+    }
+
+    public function test_a_past_working_year_opens_on_that_whole_year(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+        WorkingYear::set($company, 2024);
+
+        Livewire::test(TrialBalanceReport::class, ['company' => $company])
+            ->assertSet('from', '2024-01-01')
+            ->assertSet('to', '2024-12-31');
     }
 }

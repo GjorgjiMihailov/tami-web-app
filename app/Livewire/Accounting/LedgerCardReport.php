@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\Company;
 use App\Models\Partner;
 use App\Services\Accounting\LedgerCardQuery;
+use App\Support\WorkingYear;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
@@ -24,12 +25,15 @@ class LedgerCardReport extends Component
 
     public string $to = '';
 
+    public int $workingYear = 0;
+
     public function mount(Company $company): void
     {
         Gate::authorize('view', $company);
         $this->company = $company;
-        $this->from = now()->startOfYear()->toDateString();
-        $this->to = now()->toDateString();
+        $this->workingYear = WorkingYear::for($company);
+        $this->from = WorkingYear::startOf($this->workingYear);
+        $this->to = WorkingYear::defaultDate($this->workingYear);
     }
 
     public function render()
