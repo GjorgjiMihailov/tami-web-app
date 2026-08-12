@@ -1,13 +1,13 @@
 <?php
 
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\EfakturaIncomingAcceptController;
+use App\Http\Controllers\EfakturaIncomingDiscoveryController;
+use App\Http\Controllers\EfakturaIncomingPdfController;
+use App\Http\Controllers\EfakturaIncomingRejectController;
 use App\Http\Controllers\EfakturaPdfController;
 use App\Http\Controllers\EfakturaSendController;
 use App\Http\Controllers\EfakturaStatusController;
-use App\Http\Controllers\EfakturaIncomingDiscoveryController;
-use App\Http\Controllers\EfakturaIncomingAcceptController;
-use App\Http\Controllers\EfakturaIncomingRejectController;
-use App\Http\Controllers\EfakturaIncomingPdfController;
 use App\Http\Controllers\ItemImportTemplateController;
 use App\Http\Controllers\JournalEntryPdfController;
 use App\Http\Controllers\PartnerListPdfController;
@@ -19,6 +19,7 @@ use App\Livewire\Accounting\JournalEntryIndex;
 use App\Livewire\Accounting\JournalGroupIndex;
 use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
+use App\Livewire\ComingSoon;
 use App\Livewire\CompanyDashboard;
 use App\Livewire\CompanyIndex;
 use App\Livewire\Dashboard;
@@ -164,6 +165,10 @@ Route::middleware(['auth'])->prefix('companies/{company}/incoming-efaktura/{inco
     Route::post('/pdf/signing-input', [EfakturaIncomingPdfController::class, 'signingInput'])->name('pdf.signing-input');
     Route::post('/pdf', [EfakturaIncomingPdfController::class, 'store'])->name('pdf.store');
     Route::get('/pdf/download', [EfakturaIncomingPdfController::class, 'download'])->name('pdf.download');
+});
+
+Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
+    Route::get('/naskoro/{feature}', [ComingSoon::class, '__invoke'])->name('coming-soon');
 });
 
 Route::middleware(['auth'])->prefix('companies/{company}')->name('documents.')->group(function () {
