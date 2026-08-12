@@ -1,8 +1,16 @@
-<div class="w-60 shrink-0 bg-white border-r border-gray-100 text-gray-700 flex flex-col min-h-screen">
-    <div class="px-4 py-4 border-b border-gray-100">
+<div class="w-60 shrink-0 bg-white border-r border-gray-100 text-gray-700 flex flex-col min-h-screen app-sidebar"
+     :class="{ 'is-open': sidebarOpen }">
+    <div class="px-4 py-4 border-b border-gray-100 flex items-center justify-between gap-2">
         <a href="{{ route('dashboard') }}" wire:navigate class="font-bold text-brand text-sm">
             {{ config('app.name', 'Laravel') }}
         </a>
+        <button type="button" @click="sidebarOpen = false"
+                aria-label="Затвори мени"
+                class="-me-2 p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition lg:hidden">
+            <svg class="h-5 w-5" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
     </div>
 
     <nav class="flex-1 py-3 space-y-1">
@@ -19,21 +27,27 @@
 
         @if ($company)
             <div class="pt-4 mt-3 border-t border-gray-100">
+                {{-- Both selectors stack their label above the control. A
+                     <select> is as wide as its longest <option>, and real
+                     company names ("ФАЈНЕНС БАДИ ДООЕЛ СКОПЈЕ") are far wider
+                     than the 240px rail — so it needs the full width, plus
+                     min-w-0 to defeat the default min-width:auto that stops a
+                     flex/grid child from shrinking below its content. --}}
                 <div class="px-4 pb-3 space-y-2">
-                    <label class="flex items-center gap-2 text-xs text-gray-500">
-                        <span>Фирма</span>
+                    <label class="block text-xs text-gray-500">
+                        <span class="block mb-1">Фирма</span>
                         <select onchange="if (this.value) window.location.href = this.value"
-                                class="flex-1 rounded-lg border-gray-200 text-sm py-1 text-gray-700 focus:border-brand focus:ring-brand">
+                                class="block w-full min-w-0 truncate rounded-lg border-gray-200 text-sm py-1 text-gray-700 focus:border-brand focus:ring-brand">
                             @foreach ($companyOptions as $option)
                                 <option value="{{ route('companies.dashboard', $option['id']) }}"
                                         @selected($option['id'] === $company->id)>{{ $option['name'] }}</option>
                             @endforeach
                         </select>
                     </label>
-                    <label class="flex items-center gap-2 text-xs text-gray-500">
-                        <span>Година</span>
+                    <label class="block text-xs text-gray-500">
+                        <span class="block mb-1">Година</span>
                         <select wire:model.live="workingYear"
-                                class="flex-1 rounded-lg border-gray-200 text-sm py-1 text-gray-700 focus:border-brand focus:ring-brand">
+                                class="block w-full min-w-0 rounded-lg border-gray-200 text-sm py-1 text-gray-700 focus:border-brand focus:ring-brand">
                             @foreach ($availableYears as $year)
                                 <option value="{{ $year }}">{{ $year }}</option>
                             @endforeach

@@ -19,6 +19,18 @@ new class extends Component
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
     <div class="px-4 sm:px-6 lg:px-8">
         <div class="flex justify-end h-14 items-center">
+            {{-- Opens the sidebar drawer. Hidden at lg and up, where the
+                 sidebar is a permanent column. me-auto keeps it on the left
+                 without disturbing the desktop layout, since display:none
+                 takes it out of the flex row entirely. --}}
+            <button type="button" @click="sidebarOpen = true"
+                    aria-label="Отвори мени"
+                    class="me-auto inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition lg:hidden">
+                <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center">
                 <x-dropdown align="right" width="48">

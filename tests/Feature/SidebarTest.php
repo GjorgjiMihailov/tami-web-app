@@ -185,6 +185,18 @@ class SidebarTest extends TestCase
             ->assertDontSee('Туѓа Фирма');
     }
 
+    public function test_the_company_selector_cannot_overflow_the_rail(): void
+    {
+        $company = Company::factory()->create(['name' => 'ФАЈНЕНС БАДИ ДООЕЛ СКОПЈЕ']);
+        $this->actingAs($this->admin());
+
+        // A <select> is as wide as its longest <option>, so without w-full +
+        // min-w-0 a real company name pushes it straight out of the 240px rail.
+        Livewire::test(Sidebar::class, ['company' => $company])
+            ->assertSee('ФАЈНЕНС БАДИ ДООЕЛ СКОПЈЕ')
+            ->assertSee('block w-full min-w-0 truncate', false);
+    }
+
     public function test_opening_a_company_remembers_it_for_next_time(): void
     {
         $company = Company::factory()->create();

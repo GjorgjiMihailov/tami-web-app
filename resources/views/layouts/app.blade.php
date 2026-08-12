@@ -15,8 +15,17 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased">
-        <div class="min-h-screen flex bg-canvas">
+        {{-- sidebarOpen lives here so both the sidebar itself and the toggle
+             button inside layout.navigation can reach it through Alpine's
+             DOM scope. It resets to false on every wire:navigate, which is
+             what we want: following a menu link closes the drawer. --}}
+        <div x-data="{ sidebarOpen: false }" class="min-h-screen flex bg-canvas">
             <livewire:layout.sidebar />
+
+            {{-- Backdrop, mobile only: tapping outside the drawer closes it. --}}
+            <div x-show="sidebarOpen" x-cloak x-transition.opacity
+                 @click="sidebarOpen = false"
+                 class="fixed inset-0 z-30 bg-gray-900/50 lg:hidden"></div>
 
             <div class="flex-1 flex flex-col min-w-0">
                 <livewire:layout.navigation />
