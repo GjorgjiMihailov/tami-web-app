@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Accounting\JournalGroupIndex;
 use App\Models\Company;
+use App\Models\JournalEntry;
 use App\Models\JournalGroup;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,11 +16,25 @@ class JournalGroupIndexTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('client');
+    }
+
+    public function test_each_group_links_to_its_own_entries(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $group = JournalGroup::factory()->create(['company_id' => $company->id, 'code' => '10', 'name' => 'Банка']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalGroupIndex::class, ['company' => $company])
+            ->assertSee('Главна книга')
+            ->assertSeeHtml(route('accounting.journal-groups.entries', [$company, $group]));
     }
 
     public function test_it_lists_the_companys_journal_groups(): void
@@ -107,7 +122,7 @@ class JournalGroupIndexTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $group = JournalGroup::factory()->for($company)->create();
-        \App\Models\JournalEntry::factory()->for($company)->create(['journal_group_id' => $group->id, 'created_by' => $admin->id]);
+        JournalEntry::factory()->for($company)->create(['journal_group_id' => $group->id, 'created_by' => $admin->id]);
 
         $this->actingAs($admin);
 

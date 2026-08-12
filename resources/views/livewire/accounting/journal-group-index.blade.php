@@ -1,5 +1,5 @@
 <div>
-    <h1 class="text-2xl font-bold text-gray-800 mb-4">Журнали — {{ $company->name }}</h1>
+    <h1 class="text-2xl font-bold text-gray-800 mb-4">Главна книга — {{ $company->name }}</h1>
 
     @error('delete') <p class="text-red-600 text-sm mb-4">{{ $message }}</p> @enderror
 
@@ -44,7 +44,9 @@
                             </form>
                             @error('editName') <span class="text-red-600 text-sm block mt-1">{{ $message }}</span> @enderror
                         @else
-                            {{ $group->name }}
+                            <a href="{{ route('accounting.journal-groups.entries', [$company, $group]) }}" wire:navigate class="text-brand hover:underline">
+                                {{ $group->name }}
+                            </a>
                         @endif
                     </td>
                     <td class="py-2 px-4 whitespace-nowrap">

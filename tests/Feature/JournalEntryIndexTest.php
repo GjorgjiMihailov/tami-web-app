@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Accounting\JournalEntryIndex;
 use App\Models\Company;
 use App\Models\JournalEntry;
+use App\Models\JournalGroup;
 use App\Models\User;
 use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -138,5 +139,66 @@ class JournalEntryIndexTest extends TestCase
         Livewire::test(JournalEntryIndex::class, ['company' => $company])
             ->assertSet('workingYear', 2024)
             ->assertSee('Entry in 2024');
+    }
+
+    public function test_a_group_shows_only_its_own_entries(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $groupA = JournalGroup::factory()->create(['company_id' => $company->id, 'code' => '10', 'name' => 'Банка']);
+        $groupB = JournalGroup::factory()->create(['company_id' => $company->id, 'code' => '20', 'name' => 'Каса']);
+        JournalEntry::factory()->for($company)->create(['journal_group_id' => $groupA->id, 'description' => 'Bank entry']);
+        JournalEntry::factory()->for($company)->create(['journal_group_id' => $groupB->id, 'description' => 'Cash entry']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryIndex::class, ['company' => $company, 'journalGroup' => $groupA])
+            ->assertSee('Bank entry')
+            ->assertDontSee('Cash entry')
+            ->assertSee('Банка');
+    }
+
+    public function test_without_a_group_every_entry_in_the_year_is_listed(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $groupA = JournalGroup::factory()->create(['company_id' => $company->id, 'code' => '10', 'name' => 'Банка']);
+        $groupB = JournalGroup::factory()->create(['company_id' => $company->id, 'code' => '20', 'name' => 'Каса']);
+        JournalEntry::factory()->for($company)->create(['journal_group_id' => $groupA->id, 'description' => 'Bank entry']);
+        JournalEntry::factory()->for($company)->create(['journal_group_id' => $groupB->id, 'description' => 'Cash entry']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryIndex::class, ['company' => $company])
+            ->assertSee('Bank entry')
+            ->assertSee('Cash entry');
+    }
+
+    public function test_a_group_from_another_company_is_a_404(): void
+    {
+        $company = Company::factory()->create();
+        $otherCompany = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $foreignGroup = JournalGroup::factory()->create(['company_id' => $otherCompany->id, 'code' => '10', 'name' => 'Туѓа']);
+
+        $this->actingAs($admin);
+
+        $this->get(route('accounting.journal-groups.entries', [$company, $foreignGroup]))->assertNotFound();
+    }
+
+    public function test_an_empty_group_uses_the_working_year_empty_state(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $group = JournalGroup::factory()->create(['company_id' => $company->id, 'code' => '10', 'name' => 'Банка']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryIndex::class, ['company' => $company, 'journalGroup' => $group])
+            ->assertSee('Нема записи за '.now()->year.' — провери дали работиш во вистинската година');
     }
 }

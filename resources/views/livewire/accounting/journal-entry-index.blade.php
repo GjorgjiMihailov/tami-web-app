@@ -1,12 +1,22 @@
 <div>
     <div class="flex items-center justify-between mb-4">
-        <h1 class="text-2xl font-bold text-gray-800">Налози за книжење — {{ $company->name }}</h1>
+        <h1 class="text-2xl font-bold text-gray-800">
+            {{ $journalGroup ? $journalGroup->code.' — '.$journalGroup->name : 'Налози за книжење' }} — {{ $company->name }}
+        </h1>
         @can('create', \App\Models\JournalEntry::class)
             <a href="{{ route('accounting.journal-entries.create', $company) }}">
                 <x-primary-button type="button">Нов налог</x-primary-button>
             </a>
         @endcan
     </div>
+
+    @if ($journalGroup)
+        <div class="mb-4">
+            <a href="{{ route('accounting.journal-groups.index', $company) }}" wire:navigate class="text-brand text-sm hover:underline">
+                ← Назад на Главна книга
+            </a>
+        </div>
+    @endif
 
     <x-card padding="p-0" class="overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
