@@ -35,26 +35,26 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead>
                 <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                    <th class="py-2 px-4">Датум</th>
-                    <th class="py-2 px-4">Опис</th>
-                    <th class="py-2 px-4">Партнер</th>
-                    <th class="py-2 px-4 text-right">Должи</th>
-                    <th class="py-2 px-4 text-right">Побарува</th>
-                    <th class="py-2 px-4 text-right">Салдо</th>
+                    <th class="py-1 px-3">Датум</th>
+                    <th class="py-1 px-3">Опис</th>
+                    <th class="py-1 px-3">Партнер</th>
+                    <th class="py-1 px-3 text-right">Должи</th>
+                    <th class="py-1 px-3 text-right">Побарува</th>
+                    <th class="py-1 px-3 text-right">Салдо</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
                 @forelse ($rows as $row)
                     <tr class="text-sm hover:bg-orange-50">
-                        <td class="py-2 px-4">{{ \App\Support\Format::date($row['date']) }}</td>
-                        <td class="py-2 px-4">{{ $row['description'] }}</td>
-                        <td class="py-2 px-4">{{ $row['partner'] }}</td>
-                        <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['debit'], currency: '') }}</td>
-                        <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['credit'], currency: '') }}</td>
-                        <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['balance'], currency: '') }}</td>
+                        <td class="py-1 px-3">{{ \App\Support\Format::date($row['date']) }}</td>
+                        <td class="py-1 px-3">{{ $row['description'] }}</td>
+                        <td class="py-1 px-3">{{ $row['partner'] }}</td>
+                        <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($row['debit'], currency: '') }}</td>
+                        <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($row['credit'], currency: '') }}</td>
+                        <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($row['balance'], currency: '') }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="py-4 px-4 text-gray-500">Нема трансакции во овој период.</td></tr>
+                    <tr><td colspan="6" class="py-4 px-3 text-gray-500">Нема трансакции во овој период.</td></tr>
                 @endforelse
             </tbody>
         </table>

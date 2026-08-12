@@ -46,22 +46,22 @@
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                <th class="py-2 px-4">Назив</th>
-                <th class="py-2 px-4">ЕДБ</th>
-                <th class="py-2 px-4">Е-пошта</th>
-                <th class="py-2 px-4">Телефон</th>
+                <th class="py-1 px-3">Назив</th>
+                <th class="py-1 px-3">ЕДБ</th>
+                <th class="py-1 px-3">Е-пошта</th>
+                <th class="py-1 px-3">Телефон</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($partners as $partner)
                 <tr class="text-sm hover:bg-orange-50">
-                    <td class="py-2 px-4"><a href="{{ route('partners.show', [$company, $partner]) }}" class="text-brand hover:underline font-medium">{{ $partner->name }}</a></td>
-                    <td class="py-2 px-4">{{ $partner->tax_id }}</td>
-                    <td class="py-2 px-4">{{ $partner->email }}</td>
-                    <td class="py-2 px-4">{{ $partner->phone }}</td>
+                    <td class="py-1 px-3"><a href="{{ route('partners.show', [$company, $partner]) }}" class="text-brand hover:underline font-medium">{{ $partner->name }}</a></td>
+                    <td class="py-1 px-3">{{ $partner->tax_id }}</td>
+                    <td class="py-1 px-3">{{ $partner->email }}</td>
+                    <td class="py-1 px-3">{{ $partner->phone }}</td>
                 </tr>
             @empty
-                <tr><td colspan="4" class="py-4 px-4 text-gray-500">Нема додадено партнери.</td></tr>
+                <tr><td colspan="4" class="py-4 px-3 text-gray-500">Нема додадено партнери.</td></tr>
             @endforelse
         </tbody>
     </table>

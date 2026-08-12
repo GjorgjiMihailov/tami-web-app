@@ -58,8 +58,8 @@ class TrialBalanceReportTest extends TestCase
             ->set('from', '2026-01-01')
             ->set('to', '2026-01-31')
             ->assertSee('Вкупно')
-            ->assertSeeHtml('<td class="py-2 px-4 text-right">1.000,00</td>')
-            ->assertSeeHtml('<td class="py-2 px-4 text-right">0,00</td>');
+            ->assertSeeHtml('<td class="py-1 px-3 text-right">1.000,00</td>')
+            ->assertSeeHtml('<td class="py-1 px-3 text-right">0,00</td>');
     }
 
     public function test_the_trial_balance_table_has_the_header_and_hover_treatment(): void

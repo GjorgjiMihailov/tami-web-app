@@ -28,27 +28,27 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead>
                 <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                    <th class="py-2 px-4">Добавувач</th>
-                    <th class="py-2 px-4">Датум</th>
-                    <th class="py-2 px-4">Износ</th>
-                    <th class="py-2 px-4">Статус кај УЈП</th>
-                    <th class="py-2 px-4"></th>
+                    <th class="py-1 px-3">Добавувач</th>
+                    <th class="py-1 px-3">Датум</th>
+                    <th class="py-1 px-3">Износ</th>
+                    <th class="py-1 px-3">Статус кај УЈП</th>
+                    <th class="py-1 px-3"></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
                 @foreach ($pendingDocuments as $document)
                     <tr class="text-sm hover:bg-orange-50">
-                        <td class="py-2 px-4">{{ $document->seller_name }} <span class="text-gray-400">({{ $document->seller_tax_id }})</span></td>
-                        <td class="py-2 px-4">{{ $document->doc_date ? \App\Support\Format::date($document->doc_date) : '—' }}</td>
-                        <td class="py-2 px-4">{{ $document->total_amount !== null ? \App\Support\Format::money($document->total_amount) : '—' }}</td>
-                        <td class="py-2 px-4">
+                        <td class="py-1 px-3">{{ $document->seller_name }} <span class="text-gray-400">({{ $document->seller_tax_id }})</span></td>
+                        <td class="py-1 px-3">{{ $document->doc_date ? \App\Support\Format::date($document->doc_date) : '—' }}</td>
+                        <td class="py-1 px-3">{{ $document->total_amount !== null ? \App\Support\Format::money($document->total_amount) : '—' }}</td>
+                        <td class="py-1 px-3">
                             @if ($document->status_name)
                                 <x-badge status="pending">{{ $document->status_name }}</x-badge>
                             @else
                                 <span class="text-gray-400">—</span>
                             @endif
                         </td>
-                        <td class="py-2 px-4">
+                        <td class="py-1 px-3">
                             @if ($document->decision === null)
                                 @if ($company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN)
                                     <div x-data="incomingEfakturaAccept({{ $document->id }})" class="inline-block mr-2 align-top">
@@ -103,23 +103,23 @@
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                <th class="py-2 px-4">Бр. кај добавувач</th>
-                <th class="py-2 px-4">Добавувач</th>
-                <th class="py-2 px-4">Датум</th>
-                <th class="py-2 px-4">Статус</th>
-                <th class="py-2 px-4">Вкупно</th>
-                <th class="py-2 px-4"></th>
+                <th class="py-1 px-3">Бр. кај добавувач</th>
+                <th class="py-1 px-3">Добавувач</th>
+                <th class="py-1 px-3">Датум</th>
+                <th class="py-1 px-3">Статус</th>
+                <th class="py-1 px-3">Вкупно</th>
+                <th class="py-1 px-3"></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($invoices as $invoice)
                 <tr class="text-sm hover:bg-orange-50">
-                    <td class="py-2 px-4">{{ $invoice->supplier_invoice_number }}</td>
-                    <td class="py-2 px-4">{{ $invoice->partner->name }}</td>
-                    <td class="py-2 px-4">{{ \App\Support\Format::date($invoice->invoice_date) }}</td>
-                    <td class="py-2 px-4"><x-badge :status="$invoice->status">{{ \App\Support\Format::invoiceStatus($invoice->status) }}</x-badge></td>
-                    <td class="py-2 px-4">{{ \App\Support\Format::money($invoice->grandTotal()) }}</td>
-                    <td class="py-2 px-4">
+                    <td class="py-1 px-3">{{ $invoice->supplier_invoice_number }}</td>
+                    <td class="py-1 px-3">{{ $invoice->partner->name }}</td>
+                    <td class="py-1 px-3">{{ \App\Support\Format::date($invoice->invoice_date) }}</td>
+                    <td class="py-1 px-3"><x-badge :status="$invoice->status">{{ \App\Support\Format::invoiceStatus($invoice->status) }}</x-badge></td>
+                    <td class="py-1 px-3">{{ \App\Support\Format::money($invoice->grandTotal()) }}</td>
+                    <td class="py-1 px-3">
                         <a href="{{ route('purchase-invoices.show', [$company, $invoice]) }}" class="text-brand hover:underline mr-2">Прегледај</a>
                         @if ($invoice->incomingEfakturaDocument)
                             @if ($invoice->incomingEfakturaDocument->efaktura_pdf_path)
@@ -137,7 +137,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="py-4 px-4 text-gray-500">Нема записи за {{ $workingYear }} — провери дали работиш во вистинската година</td></tr>
+                <tr><td colspan="6" class="py-4 px-3 text-gray-500">Нема записи за {{ $workingYear }} — провери дали работиш во вистинската година</td></tr>
             @endforelse
         </tbody>
     </table>

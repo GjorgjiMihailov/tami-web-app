@@ -34,11 +34,11 @@
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                <th class="py-2 px-4">Датотека</th>
-                <th class="py-2 px-4">Категорија</th>
-                <th class="py-2 px-4">Запис</th>
-                <th class="py-2 px-4">Прикачено од</th>
-                <th class="py-2 px-4">Датум</th>
+                <th class="py-1 px-3">Датотека</th>
+                <th class="py-1 px-3">Категорија</th>
+                <th class="py-1 px-3">Запис</th>
+                <th class="py-1 px-3">Прикачено од</th>
+                <th class="py-1 px-3">Датум</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
@@ -53,20 +53,20 @@
                     };
                 @endphp
                 <tr class="text-sm hover:bg-orange-50">
-                    <td class="py-2 px-4">
+                    <td class="py-1 px-3">
                         <a href="{{ route('documents.download', [$company, $document]) }}" class="text-brand hover:underline">{{ $document->original_filename }}</a>
                     </td>
-                    <td class="py-2 px-4">{{ \App\Support\Format::documentCategory($document->category) }}</td>
-                    <td class="py-2 px-4">
+                    <td class="py-1 px-3">{{ \App\Support\Format::documentCategory($document->category) }}</td>
+                    <td class="py-1 px-3">
                         @if ($recordUrl)
                             <a href="{{ $recordUrl }}" class="text-brand hover:underline">{{ $types[$document->documentable_type] }}</a>
                         @endif
                     </td>
-                    <td class="py-2 px-4">{{ $document->uploader?->name }}</td>
-                    <td class="py-2 px-4">{{ \App\Support\Format::date($document->created_at) }}</td>
+                    <td class="py-1 px-3">{{ $document->uploader?->name }}</td>
+                    <td class="py-1 px-3">{{ \App\Support\Format::date($document->created_at) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="5" class="py-4 px-4 text-gray-500">Нема прикачени документи.</td></tr>
+                <tr><td colspan="5" class="py-4 px-3 text-gray-500">Нема прикачени документи.</td></tr>
             @endforelse
         </tbody>
     </table>

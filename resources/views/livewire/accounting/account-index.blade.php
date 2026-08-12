@@ -32,19 +32,19 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead>
                     <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                        <th class="py-2 px-4">Шифра</th>
-                        <th class="py-2 px-4">Назив</th>
-                        <th class="py-2 px-4">Активна</th>
-                        <th class="py-2 px-4"></th>
+                        <th class="py-1 px-3">Шифра</th>
+                        <th class="py-1 px-3">Назив</th>
+                        <th class="py-1 px-3">Активна</th>
+                        <th class="py-1 px-3"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach ($accounts as $account)
                         <tr class="text-sm hover:bg-orange-50 {{ $account->is_active ? '' : 'text-gray-400' }}">
-                            <td class="py-2 px-4 font-mono">{{ $account->code }}</td>
-                            <td class="py-2 px-4">{{ $account->name }}</td>
-                            <td class="py-2 px-4">{{ $account->is_active ? 'Да' : 'Не' }}</td>
-                            <td class="py-2 px-4">
+                            <td class="py-1 px-3 font-mono">{{ $account->code }}</td>
+                            <td class="py-1 px-3">{{ $account->name }}</td>
+                            <td class="py-1 px-3">{{ $account->is_active ? 'Да' : 'Не' }}</td>
+                            <td class="py-1 px-3">
                                 @can('update', $account)
                                     <button type="button" wire:click="toggleActive({{ $account->id }})" class="text-brand hover:underline text-sm">
                                         {{ $account->is_active ? 'Деактивирај' : 'Активирај' }}

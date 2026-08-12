@@ -25,35 +25,35 @@
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                <th class="py-2 px-4">Шифра</th>
-                <th class="py-2 px-4">Назив</th>
-                <th class="py-2 px-4 text-right">Почетно салдо</th>
-                <th class="py-2 px-4 text-right">Промет должи</th>
-                <th class="py-2 px-4 text-right">Промет побарува</th>
-                <th class="py-2 px-4 text-right">Крајно салдо</th>
+                <th class="py-1 px-3">Шифра</th>
+                <th class="py-1 px-3">Назив</th>
+                <th class="py-1 px-3 text-right">Почетно салдо</th>
+                <th class="py-1 px-3 text-right">Промет должи</th>
+                <th class="py-1 px-3 text-right">Промет побарува</th>
+                <th class="py-1 px-3 text-right">Крајно салдо</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($rows as $row)
                 <tr class="text-sm hover:bg-orange-50">
-                    <td class="py-2 px-4 font-mono">{{ $row['key'] }}</td>
-                    <td class="py-2 px-4">{{ $row['label'] }}</td>
-                    <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['opening_balance'], currency: '') }}</td>
-                    <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['movement_debit'], currency: '') }}</td>
-                    <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['movement_credit'], currency: '') }}</td>
-                    <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['closing_balance'], currency: '') }}</td>
+                    <td class="py-1 px-3 font-mono">{{ $row['key'] }}</td>
+                    <td class="py-1 px-3">{{ $row['label'] }}</td>
+                    <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($row['opening_balance'], currency: '') }}</td>
+                    <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($row['movement_debit'], currency: '') }}</td>
+                    <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($row['movement_credit'], currency: '') }}</td>
+                    <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($row['closing_balance'], currency: '') }}</td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="py-4 px-4 text-gray-500">Нема промет во овој период.</td></tr>
+                <tr><td colspan="6" class="py-4 px-3 text-gray-500">Нема промет во овој период.</td></tr>
             @endforelse
         </tbody>
         <tfoot>
             <tr class="text-sm font-bold border-t border-gray-300 bg-gray-50">
-                <td class="py-2 px-4" colspan="2">Вкупно</td>
-                <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($totals['opening_balance'], currency: '') }}</td>
-                <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($totals['movement_debit'], currency: '') }}</td>
-                <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($totals['movement_credit'], currency: '') }}</td>
-                <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($totals['closing_balance'], currency: '') }}</td>
+                <td class="py-1 px-3" colspan="2">Вкупно</td>
+                <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($totals['opening_balance'], currency: '') }}</td>
+                <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($totals['movement_debit'], currency: '') }}</td>
+                <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($totals['movement_credit'], currency: '') }}</td>
+                <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($totals['closing_balance'], currency: '') }}</td>
             </tr>
         </tfoot>
     </table>

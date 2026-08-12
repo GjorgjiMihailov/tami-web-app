@@ -18,17 +18,17 @@
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                <th class="py-2 px-4">Назив</th>
-                <th class="py-2 px-4">Активен</th>
-                <th class="py-2 px-4"></th>
+                <th class="py-1 px-3">Назив</th>
+                <th class="py-1 px-3">Активен</th>
+                <th class="py-1 px-3"></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($warehouses as $warehouse)
                 <tr class="text-sm hover:bg-orange-50 {{ $warehouse->is_active ? '' : 'text-gray-400' }}">
-                    <td class="py-2 px-4">{{ $warehouse->name }}</td>
-                    <td class="py-2 px-4">{{ $warehouse->is_active ? 'Да' : 'Не' }}</td>
-                    <td class="py-2 px-4">
+                    <td class="py-1 px-3">{{ $warehouse->name }}</td>
+                    <td class="py-1 px-3">{{ $warehouse->is_active ? 'Да' : 'Не' }}</td>
+                    <td class="py-1 px-3">
                         @can('update', $warehouse)
                             <button type="button" wire:click="toggleActive({{ $warehouse->id }})" class="text-brand hover:underline text-sm">
                                 {{ $warehouse->is_active ? 'Деактивирај' : 'Активирај' }}
@@ -37,7 +37,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="3" class="py-4 px-4 text-gray-500">Нема додадено магацини.</td></tr>
+                <tr><td colspan="3" class="py-4 px-3 text-gray-500">Нема додадено магацини.</td></tr>
             @endforelse
         </tbody>
     </table>

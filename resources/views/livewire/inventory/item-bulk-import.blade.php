@@ -30,25 +30,25 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead>
                     <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                        <th class="py-2 px-4">Ред</th>
-                        <th class="py-2 px-4">Статус</th>
-                        <th class="py-2 px-4">Шифра</th>
-                        <th class="py-2 px-4">Назив</th>
-                        <th class="py-2 px-4">Мерна единица</th>
-                        <th class="py-2 px-4">Категорија</th>
-                        <th class="py-2 px-4">ДДВ %</th>
-                        <th class="py-2 px-4">Продажна цена</th>
-                        <th class="py-2 px-4">Тип</th>
-                        <th class="py-2 px-4">МК-производство</th>
-                        <th class="py-2 px-4">Баркод</th>
-                        <th class="py-2 px-4">Забелешка</th>
+                        <th class="py-1 px-3">Ред</th>
+                        <th class="py-1 px-3">Статус</th>
+                        <th class="py-1 px-3">Шифра</th>
+                        <th class="py-1 px-3">Назив</th>
+                        <th class="py-1 px-3">Мерна единица</th>
+                        <th class="py-1 px-3">Категорија</th>
+                        <th class="py-1 px-3">ДДВ %</th>
+                        <th class="py-1 px-3">Продажна цена</th>
+                        <th class="py-1 px-3">Тип</th>
+                        <th class="py-1 px-3">МК-производство</th>
+                        <th class="py-1 px-3">Баркод</th>
+                        <th class="py-1 px-3">Забелешка</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach ($parsedRows as $row)
                         <tr class="text-sm hover:bg-orange-50" wire:key="preview-row-{{ $row['row_number'] }}">
-                            <td class="py-2 px-4">{{ $row['row_number'] }}</td>
-                            <td class="py-2 px-4">
+                            <td class="py-1 px-3">{{ $row['row_number'] }}</td>
+                            <td class="py-1 px-3">
                                 @if ($row['action'] === 'new')
                                     <span class="text-green-700">Ново</span>
                                 @elseif ($row['action'] === 'update')
@@ -57,58 +57,58 @@
                                     <span class="text-red-600">Грешка</span>
                                 @endif
                             </td>
-                            <td class="py-2 px-4 font-mono">{{ $row['code'] }}</td>
-                            <td class="py-2 px-4">{{ $row['name'] }}</td>
-                            <td class="py-2 px-4">
+                            <td class="py-1 px-3 font-mono">{{ $row['code'] }}</td>
+                            <td class="py-1 px-3">{{ $row['name'] }}</td>
+                            <td class="py-1 px-3">
                                 @if ($row['action'] === 'update' && $row['unit_of_measure'] === null)
                                     <span class="text-gray-400 italic">(без промена)</span>
                                 @else
                                     {{ $row['unit_of_measure'] }}
                                 @endif
                             </td>
-                            <td class="py-2 px-4">
+                            <td class="py-1 px-3">
                                 @if ($row['action'] === 'update' && ! $row['category_provided'])
                                     <span class="text-gray-400 italic">(без промена)</span>
                                 @else
                                     {{ $row['category'] ?? '—' }}
                                 @endif
                             </td>
-                            <td class="py-2 px-4">
+                            <td class="py-1 px-3">
                                 @if ($row['action'] === 'update' && $row['vat_rate'] === null)
                                     <span class="text-gray-400 italic">(без промена)</span>
                                 @else
                                     {{ $row['vat_rate'] }}
                                 @endif
                             </td>
-                            <td class="py-2 px-4">
+                            <td class="py-1 px-3">
                                 @if ($row['action'] === 'update' && ! $row['selling_price_provided'])
                                     <span class="text-gray-400 italic">(без промена)</span>
                                 @else
                                     {{ $row['selling_price'] !== null ? \App\Support\Format::money($row['selling_price']) : '—' }}
                                 @endif
                             </td>
-                            <td class="py-2 px-4">
+                            <td class="py-1 px-3">
                                 @if ($row['action'] === 'update' && $row['type'] === null)
                                     <span class="text-gray-400 italic">(без промена)</span>
                                 @else
                                     {{ $row['type'] !== null ? \App\Support\Format::itemType($row['type']) : '—' }}
                                 @endif
                             </td>
-                            <td class="py-2 px-4">
+                            <td class="py-1 px-3">
                                 @if ($row['action'] === 'update' && $row['is_made_in_mk'] === null)
                                     <span class="text-gray-400 italic">(без промена)</span>
                                 @else
                                     {{ $row['is_made_in_mk'] === null ? '—' : ($row['is_made_in_mk'] ? 'Да' : 'Не') }}
                                 @endif
                             </td>
-                            <td class="py-2 px-4 font-mono">
+                            <td class="py-1 px-3 font-mono">
                                 @if ($row['action'] === 'update' && ! $row['barcode_provided'])
                                     <span class="text-gray-400 italic">(без промена)</span>
                                 @else
                                     {{ $row['barcode'] ?? '—' }}
                                 @endif
                             </td>
-                            <td class="py-2 px-4 text-red-600">{{ implode(' ', $row['errors']) }}</td>
+                            <td class="py-1 px-3 text-red-600">{{ implode(' ', $row['errors']) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

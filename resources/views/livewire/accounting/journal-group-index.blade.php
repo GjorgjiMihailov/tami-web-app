@@ -26,16 +26,16 @@
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                <th class="py-2 px-4">Код</th>
-                <th class="py-2 px-4">Име</th>
-                <th class="py-2 px-4"></th>
+                <th class="py-1 px-3">Код</th>
+                <th class="py-1 px-3">Име</th>
+                <th class="py-1 px-3"></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($groups as $group)
                 <tr class="text-sm hover:bg-orange-50" wire:key="group-{{ $group->id }}">
-                    <td class="py-2 px-4 font-mono">{{ $group->code }}</td>
-                    <td class="py-2 px-4">
+                    <td class="py-1 px-3 font-mono">{{ $group->code }}</td>
+                    <td class="py-1 px-3">
                         @if ($editingGroupId === $group->id)
                             <form wire:submit="updateGroupName({{ $group->id }})" class="flex items-center gap-2">
                                 <x-text-input wire:model="editName" class="text-sm" autofocus />
@@ -49,7 +49,7 @@
                             </a>
                         @endif
                     </td>
-                    <td class="py-2 px-4 whitespace-nowrap">
+                    <td class="py-1 px-3 whitespace-nowrap">
                         @if ($editingGroupId !== $group->id)
                             @can('update', $group)
                                 <button type="button" wire:click="startEditingGroup({{ $group->id }}, @js($group->name))" class="text-brand text-sm hover:underline mr-3">Измени</button>
@@ -61,7 +61,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="3" class="py-4 px-4 text-gray-500">Нема додадено журнали.</td></tr>
+                <tr><td colspan="3" class="py-4 px-3 text-gray-500">Нема додадено журнали.</td></tr>
             @endforelse
         </tbody>
     </table>

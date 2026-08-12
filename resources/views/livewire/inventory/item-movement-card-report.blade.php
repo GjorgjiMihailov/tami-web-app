@@ -35,26 +35,26 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead>
                 <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                    <th class="py-2 px-4">Датум</th>
-                    <th class="py-2 px-4">Тип</th>
-                    <th class="py-2 px-4">Спротивна страна</th>
-                    <th class="py-2 px-4 text-right">Количина</th>
-                    <th class="py-2 px-4 text-right">Единечна цена</th>
-                    <th class="py-2 px-4 text-right">Тековна количина</th>
+                    <th class="py-1 px-3">Датум</th>
+                    <th class="py-1 px-3">Тип</th>
+                    <th class="py-1 px-3">Спротивна страна</th>
+                    <th class="py-1 px-3 text-right">Количина</th>
+                    <th class="py-1 px-3 text-right">Единечна цена</th>
+                    <th class="py-1 px-3 text-right">Тековна количина</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
                 @forelse ($rows as $row)
                     <tr class="text-sm hover:bg-orange-50">
-                        <td class="py-2 px-4">{{ \App\Support\Format::date($row['date']) }}</td>
-                        <td class="py-2 px-4">{{ \App\Support\Format::movementType($row['type']) }}{{ $row['reason'] ? ' — '.$row['reason'] : '' }}</td>
-                        <td class="py-2 px-4">{{ $row['counterpart_warehouse'] }}</td>
-                        <td class="py-2 px-4 text-right">{{ number_format($row['quantity'], 3) }}</td>
-                        <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['unit_cost'], currency: '', decimals: 4) }}</td>
-                        <td class="py-2 px-4 text-right">{{ number_format($row['running_quantity'], 3) }}</td>
+                        <td class="py-1 px-3">{{ \App\Support\Format::date($row['date']) }}</td>
+                        <td class="py-1 px-3">{{ \App\Support\Format::movementType($row['type']) }}{{ $row['reason'] ? ' — '.$row['reason'] : '' }}</td>
+                        <td class="py-1 px-3">{{ $row['counterpart_warehouse'] }}</td>
+                        <td class="py-1 px-3 text-right">{{ number_format($row['quantity'], 3) }}</td>
+                        <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($row['unit_cost'], currency: '', decimals: 4) }}</td>
+                        <td class="py-1 px-3 text-right">{{ number_format($row['running_quantity'], 3) }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="py-4 px-4 text-gray-500">Нема движења во овој период.</td></tr>
+                    <tr><td colspan="6" class="py-4 px-3 text-gray-500">Нема движења во овој период.</td></tr>
                 @endforelse
             </tbody>
         </table>

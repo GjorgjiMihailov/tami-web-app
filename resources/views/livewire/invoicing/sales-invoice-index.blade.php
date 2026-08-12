@@ -27,24 +27,24 @@
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                <th class="py-2 px-4">Број</th>
-                <th class="py-2 px-4">Купувач</th>
-                <th class="py-2 px-4">Датум</th>
-                <th class="py-2 px-4">Статус</th>
-                <th class="py-2 px-4">е-Фактура</th>
-                <th class="py-2 px-4">ПДФ</th>
-                <th class="py-2 px-4">Вкупно</th>
-                <th class="py-2 px-4"></th>
+                <th class="py-1 px-3">Број</th>
+                <th class="py-1 px-3">Купувач</th>
+                <th class="py-1 px-3">Датум</th>
+                <th class="py-1 px-3">Статус</th>
+                <th class="py-1 px-3">е-Фактура</th>
+                <th class="py-1 px-3">ПДФ</th>
+                <th class="py-1 px-3">Вкупно</th>
+                <th class="py-1 px-3"></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($invoices as $invoice)
                 <tr class="text-sm hover:bg-orange-50">
-                    <td class="py-2 px-4">{{ $invoice->invoice_number ? "{$invoice->fiscal_year}/{$invoice->invoice_number}" : '—' }}</td>
-                    <td class="py-2 px-4">{{ $invoice->partner->name }}</td>
-                    <td class="py-2 px-4">{{ \App\Support\Format::date($invoice->invoice_date) }}</td>
-                    <td class="py-2 px-4"><x-badge :status="$invoice->status">{{ \App\Support\Format::invoiceStatus($invoice->status) }}</x-badge></td>
-                    <td class="py-2 px-4">
+                    <td class="py-1 px-3">{{ $invoice->invoice_number ? "{$invoice->fiscal_year}/{$invoice->invoice_number}" : '—' }}</td>
+                    <td class="py-1 px-3">{{ $invoice->partner->name }}</td>
+                    <td class="py-1 px-3">{{ \App\Support\Format::date($invoice->invoice_date) }}</td>
+                    <td class="py-1 px-3"><x-badge :status="$invoice->status">{{ \App\Support\Format::invoiceStatus($invoice->status) }}</x-badge></td>
+                    <td class="py-1 px-3">
                         @if ($invoice->efaktura_ujp_status_name)
                             <x-badge :status="$invoice->isEfakturaAccepted() ? 'active' : 'pending'">{{ $invoice->efaktura_ujp_status_name }}</x-badge>
                         @elseif ($invoice->efaktura_status === 'sent')
@@ -55,7 +55,7 @@
                             <span class="text-gray-400">—</span>
                         @endif
                     </td>
-                    <td class="py-2 px-4">
+                    <td class="py-1 px-3">
                         @if ($invoice->efaktura_pdf_path)
                             <a href="{{ route('sales-invoices.efaktura.pdf.download', [$company, $invoice]) }}" class="text-brand hover:underline">Преземи ПДФ</a>
                         @elseif ($invoice->isEfakturaAccepted() && $company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN)
@@ -70,13 +70,13 @@
                             <span class="text-gray-400">—</span>
                         @endif
                     </td>
-                    <td class="py-2 px-4">{{ \App\Support\Format::money($invoice->grandTotal()) }}</td>
-                    <td class="py-2 px-4">
+                    <td class="py-1 px-3">{{ \App\Support\Format::money($invoice->grandTotal()) }}</td>
+                    <td class="py-1 px-3">
                         <a href="{{ route('sales-invoices.show', [$company, $invoice]) }}" class="text-brand hover:underline">Прегледај</a>
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="py-4 px-4 text-gray-500">Нема записи за {{ $workingYear }} — провери дали работиш во вистинската година</td></tr>
+                <tr><td colspan="8" class="py-4 px-3 text-gray-500">Нема записи за {{ $workingYear }} — провери дали работиш во вистинската година</td></tr>
             @endforelse
         </tbody>
     </table>

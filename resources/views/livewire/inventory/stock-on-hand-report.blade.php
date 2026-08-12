@@ -25,26 +25,26 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead>
                 <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                    <th class="py-2 px-4">Шифра</th>
-                    <th class="py-2 px-4">Артикл</th>
-                    <th class="py-2 px-4 text-right">Количина</th>
-                    <th class="py-2 px-4 text-right">Просечна цена</th>
-                    <th class="py-2 px-4 text-right">Набавна вредност</th>
-                    <th class="py-2 px-4 text-right">Продажна вредност</th>
+                    <th class="py-1 px-3">Шифра</th>
+                    <th class="py-1 px-3">Артикл</th>
+                    <th class="py-1 px-3 text-right">Количина</th>
+                    <th class="py-1 px-3 text-right">Просечна цена</th>
+                    <th class="py-1 px-3 text-right">Набавна вредност</th>
+                    <th class="py-1 px-3 text-right">Продажна вредност</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
                 @forelse ($rows as $row)
                     <tr class="text-sm hover:bg-orange-50">
-                        <td class="py-2 px-4 font-mono">{{ $row['item_code'] }}</td>
-                        <td class="py-2 px-4">{{ $row['item_name'] }}</td>
-                        <td class="py-2 px-4 text-right">{{ number_format($row['quantity_on_hand'], 3, ',', '.') }}</td>
-                        <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['average_cost'], currency: '', decimals: 4) }}</td>
-                        <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['value'], currency: '') }}</td>
-                        <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['selling_value'], currency: '') }}</td>
+                        <td class="py-1 px-3 font-mono">{{ $row['item_code'] }}</td>
+                        <td class="py-1 px-3">{{ $row['item_name'] }}</td>
+                        <td class="py-1 px-3 text-right">{{ number_format($row['quantity_on_hand'], 3, ',', '.') }}</td>
+                        <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($row['average_cost'], currency: '', decimals: 4) }}</td>
+                        <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($row['value'], currency: '') }}</td>
+                        <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($row['selling_value'], currency: '') }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="py-4 px-4 text-gray-500">Нема залиха во овој магацин.</td></tr>
+                    <tr><td colspan="6" class="py-4 px-3 text-gray-500">Нема залиха во овој магацин.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -54,24 +54,24 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead>
                 <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                    <th class="py-2 px-4">Шифра</th>
-                    <th class="py-2 px-4">Артикл</th>
-                    <th class="py-2 px-4 text-right">Вкупна количина</th>
-                    <th class="py-2 px-4 text-right">Вкупна набавна вредност</th>
-                    <th class="py-2 px-4 text-right">Вкупна продажна вредност</th>
+                    <th class="py-1 px-3">Шифра</th>
+                    <th class="py-1 px-3">Артикл</th>
+                    <th class="py-1 px-3 text-right">Вкупна количина</th>
+                    <th class="py-1 px-3 text-right">Вкупна набавна вредност</th>
+                    <th class="py-1 px-3 text-right">Вкупна продажна вредност</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
                 @forelse ($totals as $row)
                     <tr class="text-sm hover:bg-orange-50">
-                        <td class="py-2 px-4 font-mono">{{ $row['item_code'] }}</td>
-                        <td class="py-2 px-4">{{ $row['item_name'] }}</td>
-                        <td class="py-2 px-4 text-right">{{ number_format($row['total_quantity'], 3, ',', '.') }}</td>
-                        <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['total_value'], currency: '') }}</td>
-                        <td class="py-2 px-4 text-right">{{ \App\Support\Format::money($row['total_selling_value'], currency: '') }}</td>
+                        <td class="py-1 px-3 font-mono">{{ $row['item_code'] }}</td>
+                        <td class="py-1 px-3">{{ $row['item_name'] }}</td>
+                        <td class="py-1 px-3 text-right">{{ number_format($row['total_quantity'], 3, ',', '.') }}</td>
+                        <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($row['total_value'], currency: '') }}</td>
+                        <td class="py-1 px-3 text-right">{{ \App\Support\Format::money($row['total_selling_value'], currency: '') }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="py-4 px-4 text-gray-500">Нема евидентирана залиха.</td></tr>
+                    <tr><td colspan="5" class="py-4 px-3 text-gray-500">Нема евидентирана залиха.</td></tr>
                 @endforelse
             </tbody>
         </table>

@@ -22,26 +22,26 @@
     <table class="min-w-full divide-y divide-gray-200">
         <thead>
             <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                <th class="py-2 px-4">#</th>
-                <th class="py-2 px-4">Датум</th>
-                <th class="py-2 px-4">Опис</th>
-                <th class="py-2 px-4"></th>
+                <th class="py-1 px-3">#</th>
+                <th class="py-1 px-3">Датум</th>
+                <th class="py-1 px-3">Опис</th>
+                <th class="py-1 px-3"></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($entries as $entry)
                 <tr class="text-sm hover:bg-orange-50">
-                    <td class="py-2 px-4 font-mono">{{ $entry->displayNumber() }}</td>
-                    <td class="py-2 px-4">{{ \App\Support\Format::date($entry->entry_date) }}</td>
-                    <td class="py-2 px-4">{{ $entry->description }}</td>
-                    <td class="py-2 px-4">
+                    <td class="py-1 px-3 font-mono">{{ $entry->displayNumber() }}</td>
+                    <td class="py-1 px-3">{{ \App\Support\Format::date($entry->entry_date) }}</td>
+                    <td class="py-1 px-3">{{ $entry->description }}</td>
+                    <td class="py-1 px-3">
                         <a href="{{ route('accounting.journal-entries.edit', [$company, $entry]) }}" class="text-brand hover:underline">
                             @can('update', $entry) Измени @else Прегледај @endcan
                         </a>
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="4" class="py-4 px-4 text-gray-500">Нема записи за {{ $workingYear }} — провери дали работиш во вистинската година</td></tr>
+                <tr><td colspan="4" class="py-4 px-3 text-gray-500">Нема записи за {{ $workingYear }} — провери дали работиш во вистинската година</td></tr>
             @endforelse
         </tbody>
     </table>
