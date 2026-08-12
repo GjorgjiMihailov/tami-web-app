@@ -17,7 +17,7 @@ class PurchaseInvoiceIndexTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -148,7 +148,7 @@ class PurchaseInvoiceIndexTest extends TestCase
     public function test_the_pending_documents_table_has_the_header_and_hover_treatment(): void
     {
         $company = Company::factory()->create();
-        \App\Models\IncomingEfakturaDocument::create([
+        IncomingEfakturaDocument::create([
             'company_id' => $company->id,
             'euid' => 'TEST-EUID-1',
             'seller_name' => 'Test Seller',
@@ -165,5 +165,66 @@ class PurchaseInvoiceIndexTest extends TestCase
 
         $this->assertSame(2, substr_count($html, 'bg-gray-50'));
         $this->assertGreaterThanOrEqual(1, substr_count($html, 'hover:bg-orange-50'));
+    }
+
+    public function test_it_only_lists_invoices_from_the_working_year(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $partner = Partner::factory()->for($company)->create(['name' => 'Добавувач ДОО']);
+        PurchaseInvoice::factory()->for($company)->for($partner)->create(['invoice_date' => now()->toDateString(), 'supplier_invoice_number' => 'ФВ-СЕГА']);
+        PurchaseInvoice::factory()->for($company)->for($partner)->create(['invoice_date' => '2024-04-04', 'supplier_invoice_number' => 'ФВ-2024']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceIndex::class, ['company' => $company])
+            ->assertSee('ФВ-СЕГА')
+            ->assertDontSee('ФВ-2024');
+    }
+
+    public function test_an_empty_year_says_so_instead_of_saying_there_is_no_data(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceIndex::class, ['company' => $company])
+            ->assertSee('Нема записи за '.now()->year.' — провери дали работиш во вистинската година');
+    }
+
+    public function test_changing_the_working_year_reloads_the_list(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $partner = Partner::factory()->for($company)->create(['name' => 'Добавувач ДОО']);
+        PurchaseInvoice::factory()->for($company)->for($partner)->create(['invoice_date' => '2024-04-04', 'supplier_invoice_number' => 'ФВ-2024']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceIndex::class, ['company' => $company])
+            ->assertDontSee('ФВ-2024')
+            ->dispatch('working-year-changed', year: 2024)
+            ->assertSee('ФВ-2024');
+    }
+
+    public function test_the_pending_efaktura_inbox_is_not_year_scoped(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        IncomingEfakturaDocument::factory()->for($company)->create([
+            'doc_date' => '2024-04-04',
+            'decision' => null,
+            'seller_name' => 'Стар Добавувач',
+        ]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceIndex::class, ['company' => $company])
+            ->assertSee('Стар Добавувач');
     }
 }
