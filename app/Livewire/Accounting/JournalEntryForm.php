@@ -10,6 +10,7 @@ use App\Models\Partner;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
 use App\Services\ExchangeRateService;
+use App\Support\WorkingYear;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -35,11 +36,14 @@ class JournalEntryForm extends Component
 
     public bool $isForeignCurrency = false;
 
+    public int $workingYear = 0;
+
     protected ?string $previousEntryDate = null;
 
     public function mount(Company $company, ?JournalEntry $journalEntry = null): void
     {
         $this->company = $company;
+        $this->workingYear = WorkingYear::for($company);
 
         Gate::authorize($journalEntry ? 'view' : 'create', $journalEntry ?? JournalEntry::class);
 
@@ -68,7 +72,7 @@ class JournalEntryForm extends Component
 
             $this->isForeignCurrency = collect($this->lines)->contains(fn ($line) => $line['currency_code'] !== 'MKD');
         } else {
-            $this->entryDate = now()->toDateString();
+            $this->entryDate = WorkingYear::defaultDate($this->workingYear);
             $this->lines = [$this->emptyLine(), $this->emptyLine()];
         }
     }

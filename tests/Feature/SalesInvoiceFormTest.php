@@ -8,7 +8,7 @@ use App\Models\Item;
 use App\Models\Partner;
 use App\Models\SalesInvoice;
 use App\Models\User;
-use App\Models\Warehouse;
+use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -18,7 +18,7 @@ class SalesInvoiceFormTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -189,5 +189,19 @@ class SalesInvoiceFormTest extends TestCase
             'vat_treatment' => 'export',
             'vat_rate' => '0.00',
         ]);
+    }
+
+    public function test_a_new_invoice_opens_dated_inside_the_working_year(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+        WorkingYear::set($company, 2024);
+
+        Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->assertSet('invoiceDate', '2024-12-31')
+            ->assertSet('dueDate', '2024-12-31');
     }
 }

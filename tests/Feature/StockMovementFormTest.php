@@ -7,6 +7,8 @@ use App\Models\Company;
 use App\Models\Item;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\Inventory\StockMovementService;
+use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -16,7 +18,7 @@ class StockMovementFormTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -54,7 +56,7 @@ class StockMovementFormTest extends TestCase
         $warehouseB = Warehouse::factory()->for($company)->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
-        app(\App\Services\Inventory\StockMovementService::class)->receipt($item, $warehouseA, '10', '100.00', '2026-01-01', $admin->id);
+        app(StockMovementService::class)->receipt($item, $warehouseA, '10', '100.00', '2026-01-01', $admin->id);
 
         $this->actingAs($admin);
 
@@ -97,7 +99,7 @@ class StockMovementFormTest extends TestCase
         $warehouse = Warehouse::factory()->for($company)->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
-        app(\App\Services\Inventory\StockMovementService::class)->receipt($item, $warehouse, '10', '100.00', '2026-01-01', $admin->id);
+        app(StockMovementService::class)->receipt($item, $warehouse, '10', '100.00', '2026-01-01', $admin->id);
 
         $this->actingAs($admin);
 
@@ -121,7 +123,7 @@ class StockMovementFormTest extends TestCase
         $warehouse = Warehouse::factory()->for($company)->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
-        app(\App\Services\Inventory\StockMovementService::class)->receipt($item, $warehouse, '5', '100.00', '2026-01-01', $admin->id);
+        app(StockMovementService::class)->receipt($item, $warehouse, '5', '100.00', '2026-01-01', $admin->id);
 
         $this->actingAs($admin);
 
@@ -204,7 +206,7 @@ class StockMovementFormTest extends TestCase
         $warehouseB = Warehouse::factory()->for($company)->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
-        app(\App\Services\Inventory\StockMovementService::class)->receipt($item, $warehouseA, '5', '100.00', '2026-01-01', $admin->id);
+        app(StockMovementService::class)->receipt($item, $warehouseA, '5', '100.00', '2026-01-01', $admin->id);
 
         $this->actingAs($admin);
 
@@ -225,7 +227,7 @@ class StockMovementFormTest extends TestCase
         $warehouse = Warehouse::factory()->for($company)->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
-        app(\App\Services\Inventory\StockMovementService::class)->receipt($item, $warehouse, '5', '100.00', '2026-01-01', $admin->id);
+        app(StockMovementService::class)->receipt($item, $warehouse, '5', '100.00', '2026-01-01', $admin->id);
 
         $this->actingAs($admin);
 
@@ -356,5 +358,18 @@ class StockMovementFormTest extends TestCase
             ->call('lookupByCode', '3800000000055')
             ->assertHasErrors('scannedCode')
             ->assertSet('itemId', '');
+    }
+
+    public function test_a_new_movement_opens_dated_inside_the_working_year(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+        WorkingYear::set($company, 2024);
+
+        Livewire::test(StockMovementForm::class, ['company' => $company, 'type' => 'receipt'])
+            ->assertSet('movementDate', '2024-12-31');
     }
 }

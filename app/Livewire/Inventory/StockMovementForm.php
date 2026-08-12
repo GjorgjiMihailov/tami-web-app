@@ -8,6 +8,7 @@ use App\Models\Item;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\Inventory\StockMovementService;
+use App\Support\WorkingYear;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -38,6 +39,8 @@ class StockMovementForm extends Component
 
     public string $movementDate = '';
 
+    public int $workingYear = 0;
+
     public function mount(Company $company, string $type): void
     {
         Gate::authorize('view', $company);
@@ -48,7 +51,8 @@ class StockMovementForm extends Component
 
         $this->company = $company;
         $this->type = $type;
-        $this->movementDate = now()->toDateString();
+        $this->workingYear = WorkingYear::for($company);
+        $this->movementDate = WorkingYear::defaultDate($this->workingYear);
     }
 
     public function lookupByCode(string $code): void

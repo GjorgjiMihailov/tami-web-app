@@ -8,7 +8,10 @@ use App\Models\Company;
 use App\Models\JournalEntry;
 use App\Models\JournalGroup;
 use App\Models\Partner;
+use App\Models\SalesInvoice;
 use App\Models\User;
+use App\Support\Format;
+use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
@@ -19,7 +22,7 @@ class JournalEntryFormTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -346,7 +349,7 @@ class JournalEntryFormTest extends TestCase
         $company = Company::factory()->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
-        $partner = \App\Models\Partner::factory()->for($company)->create(['name' => 'ABC Trading']);
+        $partner = Partner::factory()->for($company)->create(['name' => 'ABC Trading']);
 
         $this->actingAs($admin);
 
@@ -637,9 +640,9 @@ class JournalEntryFormTest extends TestCase
         $company = Company::factory()->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
-        $partner = \App\Models\Partner::factory()->for($company)->create();
+        $partner = Partner::factory()->for($company)->create();
         $entry = JournalEntry::factory()->for($company)->create(['created_by' => $admin->id]);
-        \App\Models\SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'journal_entry_id' => $entry->id]);
+        SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'journal_entry_id' => $entry->id]);
 
         $this->actingAs($admin);
 
@@ -762,8 +765,8 @@ class JournalEntryFormTest extends TestCase
             ->set('lines.0.debit', '1500')
             ->set('lines.1.account_id', $revenue->id)
             ->set('lines.1.credit', '1000')
-            ->assertSeeText(\App\Support\Format::money('1500.00'))
-            ->assertSeeText(\App\Support\Format::money('1000.00'));
+            ->assertSeeText(Format::money('1500.00'))
+            ->assertSeeText(Format::money('1000.00'));
     }
 
     public function test_footer_flags_red_when_unbalanced(): void
@@ -954,5 +957,30 @@ class JournalEntryFormTest extends TestCase
             ->assertNoRedirect();
 
         $this->assertDatabaseCount('journal_entries', 0);
+    }
+
+    public function test_a_new_entry_opens_dated_inside_the_working_year(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+        WorkingYear::set($company, 2024);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->assertSet('entryDate', '2024-12-31');
+    }
+
+    public function test_a_new_entry_in_the_current_working_year_still_opens_dated_today(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company])
+            ->assertSet('entryDate', now()->toDateString());
     }
 }

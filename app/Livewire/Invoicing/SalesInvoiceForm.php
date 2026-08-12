@@ -8,6 +8,7 @@ use App\Models\Partner;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceLine;
 use App\Models\Warehouse;
+use App\Support\WorkingYear;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -35,11 +36,14 @@ class SalesInvoiceForm extends Component
 
     public array $lines = [];
 
+    public int $workingYear = 0;
+
     public function mount(Company $company, ?SalesInvoice $salesInvoice = null): void
     {
         Gate::authorize('view', $company);
 
         $this->company = $company;
+        $this->workingYear = WorkingYear::for($company);
 
         Gate::authorize($salesInvoice ? 'update' : 'create', $salesInvoice ?? SalesInvoice::class);
 
@@ -71,8 +75,8 @@ class SalesInvoiceForm extends Component
                 'vat_treatment' => (string) $line->vat_treatment,
             ])->toArray();
         } else {
-            $this->invoiceDate = now()->toDateString();
-            $this->dueDate = now()->toDateString();
+            $this->invoiceDate = WorkingYear::defaultDate($this->workingYear);
+            $this->dueDate = WorkingYear::defaultDate($this->workingYear);
             $this->lines = [$this->emptyLine()];
         }
     }

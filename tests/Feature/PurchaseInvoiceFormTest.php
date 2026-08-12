@@ -10,6 +10,7 @@ use App\Models\Partner;
 use App\Models\PurchaseInvoice;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -20,7 +21,7 @@ class PurchaseInvoiceFormTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -139,7 +140,7 @@ class PurchaseInvoiceFormTest extends TestCase
         $company = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
         $account = Account::where('company_id', $company->id)->where('code', '462')->first();
-        \App\Models\PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'supplier_invoice_number' => 'DUP-1']);
+        PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'supplier_invoice_number' => 'DUP-1']);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $this->actingAs($admin);
@@ -248,5 +249,19 @@ class PurchaseInvoiceFormTest extends TestCase
             'description' => 'Unmapped VAT code line',
             'needs_review' => true,
         ]);
+    }
+
+    public function test_a_new_purchase_invoice_opens_dated_inside_the_working_year(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+        WorkingYear::set($company, 2024);
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->assertSet('invoiceDate', '2024-12-31')
+            ->assertSet('dueDate', '2024-12-31');
     }
 }
