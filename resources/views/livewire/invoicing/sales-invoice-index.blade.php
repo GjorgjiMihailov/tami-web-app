@@ -76,7 +76,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="py-4 px-4 text-gray-500">Нема издадено фактури.</td></tr>
+                <tr><td colspan="8" class="py-4 px-4 text-gray-500">Нема записи за {{ $workingYear }} — провери дали работиш во вистинската година</td></tr>
             @endforelse
         </tbody>
     </table>

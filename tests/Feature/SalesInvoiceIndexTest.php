@@ -16,7 +16,7 @@ class SalesInvoiceIndexTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -76,5 +76,71 @@ class SalesInvoiceIndexTest extends TestCase
         Livewire::test(SalesInvoiceIndex::class, ['company' => $company])
             ->assertSee('bg-gray-50', false)
             ->assertSee('hover:bg-orange-50', false);
+    }
+
+    public function test_it_only_lists_invoices_from_the_working_year(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $partnerNow = Partner::factory()->for($company)->create(['name' => 'Купувач СЕГА']);
+        $partnerOld = Partner::factory()->for($company)->create(['name' => 'Купувач 2024']);
+        SalesInvoice::factory()->for($company)->for($partnerNow)->create(['invoice_date' => now()->toDateString()]);
+        SalesInvoice::factory()->for($company)->for($partnerOld)->create(['invoice_date' => '2024-04-04']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceIndex::class, ['company' => $company])
+            ->assertSee('Купувач СЕГА')
+            ->assertDontSee('Купувач 2024');
+    }
+
+    public function test_a_draft_invoice_stays_visible_even_though_it_has_no_fiscal_year(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $partner = Partner::factory()->for($company)->create(['name' => 'Купувач ДОО']);
+        $draft = SalesInvoice::factory()->for($company)->for($partner)->create([
+            'invoice_date' => now()->toDateString(),
+            'status' => 'draft',
+            'fiscal_year' => null,
+        ]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceIndex::class, ['company' => $company])
+            ->assertSee('Купувач ДОО');
+
+        $this->assertNull($draft->fresh()->fiscal_year);
+    }
+
+    public function test_an_empty_year_says_so_instead_of_saying_there_is_no_data(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceIndex::class, ['company' => $company])
+            ->assertSee('Нема записи за '.now()->year.' — провери дали работиш во вистинската година');
+    }
+
+    public function test_changing_the_working_year_reloads_the_list(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $partner = Partner::factory()->for($company)->create(['name' => 'Купувач 2024']);
+        SalesInvoice::factory()->for($company)->for($partner)->create(['invoice_date' => '2024-04-04']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceIndex::class, ['company' => $company])
+            ->assertSee('Нема записи за '.now()->year)
+            ->dispatch('working-year-changed', year: 2024)
+            ->assertSet('workingYear', 2024)
+            ->assertSee('Купувач 2024');
     }
 }
