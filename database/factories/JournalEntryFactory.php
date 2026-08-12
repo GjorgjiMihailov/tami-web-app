@@ -14,7 +14,10 @@ class JournalEntryFactory extends Factory
     {
         return [
             'company_id' => Company::factory(),
-            'entry_date' => $this->faker->dateTimeBetween('-6 months', 'now')->format('Y-m-d'),
+            // Kept inside the current calendar year: journal entry lists are
+            // year-scoped, so a fixture that drifted into last year would
+            // vanish from the list depending on what month the suite runs in.
+            'entry_date' => $this->faker->dateTimeBetween(now()->startOfYear(), 'now')->format('Y-m-d'),
             'description' => $this->faker->sentence(),
             'created_by' => User::factory(),
         ];

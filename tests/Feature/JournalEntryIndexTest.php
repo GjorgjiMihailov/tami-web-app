@@ -6,6 +6,7 @@ use App\Livewire\Accounting\JournalEntryIndex;
 use App\Models\Company;
 use App\Models\JournalEntry;
 use App\Models\User;
+use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -15,7 +16,7 @@ class JournalEntryIndexTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -78,5 +79,64 @@ class JournalEntryIndexTest extends TestCase
         Livewire::test(JournalEntryIndex::class, ['company' => $company])
             ->assertSee('bg-gray-50', false)
             ->assertSee('hover:bg-orange-50', false);
+    }
+
+    public function test_it_only_lists_entries_from_the_working_year(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        JournalEntry::factory()->for($company)->create(['entry_date' => now()->toDateString(), 'description' => 'Entry this year']);
+        JournalEntry::factory()->for($company)->create(['entry_date' => '2024-04-04', 'description' => 'Entry in 2024']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryIndex::class, ['company' => $company])
+            ->assertSee('Entry this year')
+            ->assertDontSee('Entry in 2024');
+    }
+
+    public function test_changing_the_working_year_reloads_the_list(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        JournalEntry::factory()->for($company)->create(['entry_date' => now()->toDateString(), 'description' => 'Entry this year']);
+        JournalEntry::factory()->for($company)->create(['entry_date' => '2024-04-04', 'description' => 'Entry in 2024']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryIndex::class, ['company' => $company])
+            ->dispatch('working-year-changed', year: 2024)
+            ->assertSee('Entry in 2024')
+            ->assertDontSee('Entry this year');
+    }
+
+    public function test_an_empty_year_says_so_instead_of_saying_there_is_no_data(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        JournalEntry::factory()->for($company)->create(['entry_date' => '2024-04-04', 'description' => 'Entry in 2024']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryIndex::class, ['company' => $company])
+            ->assertSee('Нема записи за '.now()->year.' — провери дали работиш во вистинската година');
+    }
+
+    public function test_the_working_year_comes_from_the_session(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        JournalEntry::factory()->for($company)->create(['entry_date' => '2024-04-04', 'description' => 'Entry in 2024']);
+
+        $this->actingAs($admin);
+        WorkingYear::set($company, 2024);
+
+        Livewire::test(JournalEntryIndex::class, ['company' => $company])
+            ->assertSet('workingYear', 2024)
+            ->assertSee('Entry in 2024');
     }
 }

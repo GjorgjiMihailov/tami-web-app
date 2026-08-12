@@ -31,7 +31,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="4" class="py-4 px-4 text-gray-500">Нема внесени налози.</td></tr>
+                <tr><td colspan="4" class="py-4 px-4 text-gray-500">Нема записи за {{ $workingYear }} — провери дали работиш во вистинската година</td></tr>
             @endforelse
         </tbody>
     </table>
