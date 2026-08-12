@@ -219,7 +219,11 @@ class JournalEntryFormTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_client_can_view_an_existing_entry_belonging_to_their_company(): void
+    // Reversed deliberately in the menu-restructure plan: a journal entry is a
+    // bookkeeping record, and the client is the subject of the books rather
+    // than a reader of them. See App\Http\Middleware\EnsureAccountingAccess
+    // and JournalEntryPolicy::view().
+    public function test_client_cannot_view_an_existing_entry_belonging_to_their_company(): void
     {
         $company = Company::factory()->create();
         $admin = User::factory()->create();
@@ -238,14 +242,10 @@ class JournalEntryFormTest extends TestCase
         $this->actingAs($client);
 
         Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
-            ->assertSuccessful()
-            ->assertSee('Измени налог '.$entry->displayNumber())
-            ->assertSet('description', 'Rent payment for July')
-            ->assertSet('lines.0.account_id', $cash->id)
-            ->assertSet('lines.0.debit', '500.00');
+            ->assertForbidden();
     }
 
-    public function test_client_cannot_save_changes_to_an_entry_they_can_view(): void
+    public function test_client_cannot_save_changes_to_an_existing_entry(): void
     {
         $company = Company::factory()->create();
         $admin = User::factory()->create();
@@ -260,9 +260,9 @@ class JournalEntryFormTest extends TestCase
 
         $this->actingAs($client);
 
+        // Refused at mount now, which subsumes the old "can open it but cannot
+        // save" check — there is no longer an entry a client can view.
         Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
-            ->set('lines.0.debit', '750')
-            ->call('save')
             ->assertForbidden();
 
         $entry->refresh();
@@ -628,8 +628,8 @@ class JournalEntryFormTest extends TestCase
 
         $this->actingAs($client);
 
+        // Refused at mount now — a client cannot open the entry at all.
         Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
-            ->call('delete')
             ->assertForbidden();
 
         $this->assertDatabaseHas('journal_entries', ['id' => $entry->id]);

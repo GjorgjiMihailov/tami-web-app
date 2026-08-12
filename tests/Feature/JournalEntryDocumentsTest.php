@@ -15,7 +15,7 @@ class JournalEntryDocumentsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -30,8 +30,10 @@ class JournalEntryDocumentsTest extends TestCase
         $client->assignRole('client');
         $this->actingAs($client);
 
+        // Refused at mount: DocumentManager authorizes 'view' on the entry, and
+        // a client can no longer view a journal entry at all — see
+        // JournalEntryPolicy::view(). That subsumes the old upload check.
         Livewire::test(DocumentManager::class, ['documentable' => $entry])
-            ->call('upload')
             ->assertForbidden();
     }
 
