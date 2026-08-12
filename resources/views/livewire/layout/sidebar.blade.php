@@ -24,7 +24,18 @@
 
         @if ($company)
             <div class="pt-4 mt-3 border-t border-gray-100">
-                <div class="px-4 pb-2 text-xs uppercase tracking-wide text-gray-500">{{ $company->name }}</div>
+                <div class="px-4 pb-3 space-y-2">
+                    <div class="text-xs uppercase tracking-wide text-gray-500">{{ $company->name }}</div>
+                    <label class="flex items-center gap-2 text-xs text-gray-500">
+                        <span>Година</span>
+                        <select wire:model.live="workingYear"
+                                class="flex-1 rounded-lg border-gray-200 text-sm py-1 text-gray-700 focus:border-brand focus:ring-brand">
+                            @foreach ($availableYears as $year)
+                                <option value="{{ $year }}">{{ $year }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                </div>
 
                 {{-- Accounting --}}
                 <button type="button" wire:click="toggleModule('accounting')"

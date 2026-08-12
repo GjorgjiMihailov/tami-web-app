@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Livewire\Layout\Sidebar;
 use App\Models\Company;
+use App\Models\JournalEntry;
 use App\Models\User;
+use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -14,7 +16,7 @@ class SidebarTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -146,5 +148,47 @@ class SidebarTest extends TestCase
 
         $this->assertStringContainsString(route('inventory.items.index', $company), $updatedHtml);
         $this->assertStringContainsString(route('documents.index', $company), $updatedHtml);
+    }
+
+    public function test_the_sidebar_shows_a_year_selector_when_a_company_is_open(): void
+    {
+        $company = Company::factory()->create();
+        $this->actingAs($this->admin());
+
+        $this->get(route('accounting.journal-entries.index', $company))
+            ->assertOk()
+            ->assertSee('Година')
+            ->assertSee((string) now()->year);
+    }
+
+    public function test_there_is_no_year_selector_without_a_company(): void
+    {
+        $this->actingAs($this->admin());
+
+        $this->get('/dashboard')
+            ->assertOk()
+            ->assertDontSee('Година');
+    }
+
+    public function test_changing_the_year_stores_it_and_announces_it(): void
+    {
+        $company = Company::factory()->create();
+        $user = $this->admin();
+        $this->actingAs($user);
+
+        // Last year only becomes selectable once the company has data in it.
+        JournalEntry::factory()->for($company)->create([
+            'entry_date' => now()->subYear()->startOfYear()->toDateString(),
+        ]);
+
+        Livewire::test(Sidebar::class, ['company' => $company])
+            ->assertSet('workingYear', (int) now()->year)
+            ->set('workingYear', (int) now()->year - 1)
+            ->assertDispatched('working-year-changed', year: (int) now()->year - 1);
+
+        $this->assertSame(
+            (int) now()->year - 1,
+            session(WorkingYear::sessionKey($user->id, $company->id))
+        );
     }
 }
