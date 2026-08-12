@@ -12,9 +12,11 @@ class JournalEntryPolicy
         return true;
     }
 
+    // See AccountPolicy::view() — same rule, same reason.
     public function view(User $user, JournalEntry $journalEntry): bool
     {
-        return $user->visibleCompanies()->whereKey($journalEntry->company_id)->exists();
+        return $user->hasAnyRole(['admin', 'accountant'])
+            && $user->visibleCompanies()->whereKey($journalEntry->company_id)->exists();
     }
 
     public function create(User $user): bool

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\JournalEntry;
+use App\Models\JournalGroup;
 use App\Models\Partner;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,7 +16,7 @@ class AccountingPoliciesTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -23,14 +24,17 @@ class AccountingPoliciesTest extends TestCase
         Role::findOrCreate('client');
     }
 
-    public function test_client_can_view_but_not_edit_their_own_companys_accounts(): void
+    public function test_client_cannot_view_or_edit_their_own_companys_accounts(): void
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('client');
         $account = Account::factory()->for($company)->create();
 
-        $this->assertTrue($client->can('view', $account));
+        // Reversed deliberately in the menu-restructure plan: the chart of
+        // accounts is a bookkeeping screen, and the client is the subject of
+        // the books, not a reader of them.
+        $this->assertFalse($client->can('view', $account));
         $this->assertFalse($client->can('update', $account));
     }
 
@@ -112,9 +116,9 @@ class AccountingPoliciesTest extends TestCase
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('client');
-        $group = \App\Models\JournalGroup::factory()->for($company)->create();
+        $group = JournalGroup::factory()->for($company)->create();
 
-        $this->assertFalse($client->can('create', \App\Models\JournalGroup::class));
+        $this->assertFalse($client->can('create', JournalGroup::class));
         $this->assertFalse($client->can('update', $group));
         $this->assertFalse($client->can('delete', $group));
     }
@@ -125,9 +129,9 @@ class AccountingPoliciesTest extends TestCase
         $accountant = User::factory()->create();
         $accountant->assignRole('accountant');
         $accountant->assignedCompanies()->attach($company);
-        $group = \App\Models\JournalGroup::factory()->for($company)->create();
+        $group = JournalGroup::factory()->for($company)->create();
 
-        $this->assertTrue($accountant->can('create', \App\Models\JournalGroup::class));
+        $this->assertTrue($accountant->can('create', JournalGroup::class));
         $this->assertTrue($accountant->can('update', $group));
         $this->assertTrue($accountant->can('delete', $group));
     }

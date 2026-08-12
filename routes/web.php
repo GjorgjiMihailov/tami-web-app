@@ -13,6 +13,7 @@ use App\Http\Controllers\JournalEntryPdfController;
 use App\Http\Controllers\PartnerListPdfController;
 use App\Http\Controllers\SalesInvoicePdfController;
 use App\Http\Controllers\StockOnHandPdfController;
+use App\Http\Middleware\EnsureAccountingAccess;
 use App\Livewire\Accounting\AccountIndex;
 use App\Livewire\Accounting\JournalEntryForm;
 use App\Livewire\Accounting\JournalEntryIndex;
@@ -78,7 +79,7 @@ Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
 // classes (JournalEntryIndex, JournalEntryForm, LedgerCardReport,
 // TrialBalanceReport) are only built in later tasks. Both forms resolve to
 // the same action at dispatch time once the class exists.
-Route::middleware(['auth'])->prefix('companies/{company}')->name('accounting.')->group(function () {
+Route::middleware(['auth', EnsureAccountingAccess::class])->prefix('companies/{company}')->name('accounting.')->group(function () {
     Route::get('/accounts', [AccountIndex::class, '__invoke'])->name('accounts.index');
     Route::get('/journal-groups', [JournalGroupIndex::class, '__invoke'])->name('journal-groups.index');
     Route::get('/journal-entries', [JournalEntryIndex::class, '__invoke'])->name('journal-entries.index');
@@ -176,7 +177,7 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('documents.')->
     Route::get('/documents/{document}', [DocumentController::class, '__invoke'])->name('download');
 });
 
-Route::middleware(['auth'])->prefix('companies/{company}')->name('reports.')->group(function () {
+Route::middleware(['auth', EnsureAccountingAccess::class])->prefix('companies/{company}')->name('reports.')->group(function () {
     Route::get('/reports/ddv04', [Ddv04Report::class, '__invoke'])->name('ddv04');
 });
 

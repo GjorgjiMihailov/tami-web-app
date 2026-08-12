@@ -12,9 +12,13 @@ class AccountPolicy
         return true;
     }
 
+    // The bookkeeping screens are admin/accountant only — see
+    // App\Http\Middleware\EnsureAccountingAccess. A client's own company
+    // being visible to them is not, by itself, permission to read its books.
     public function view(User $user, Account $account): bool
     {
-        return $user->visibleCompanies()->whereKey($account->company_id)->exists();
+        return $user->hasAnyRole(['admin', 'accountant'])
+            && $user->visibleCompanies()->whereKey($account->company_id)->exists();
     }
 
     public function create(User $user): bool
