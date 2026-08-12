@@ -7,6 +7,7 @@ use App\Exceptions\InvalidInvoiceStateException;
 use App\Models\Company;
 use App\Models\PurchaseInvoice;
 use App\Services\Invoicing\PurchaseInvoiceService;
+use App\Support\WorkingYear;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -24,6 +25,8 @@ class PurchaseInvoiceShow extends Component
 
     public string $paymentMethod = 'bank';
 
+    public int $workingYear = 0;
+
     public function mount(Company $company, PurchaseInvoice $purchaseInvoice): void
     {
         Gate::authorize('view', $purchaseInvoice);
@@ -33,6 +36,7 @@ class PurchaseInvoiceShow extends Component
         }
 
         $this->company = $company;
+        $this->workingYear = WorkingYear::for($company);
         $this->purchaseInvoice = $purchaseInvoice;
         $this->paymentDate = now()->toDateString();
     }

@@ -9,6 +9,9 @@
                 {{ $invoice->isOverdue() ? 'Задоцнета' : \App\Support\Format::paymentStatus($invoice->paymentStatus()) }}
             </x-badge>
         @endif
+        @if ($invoice->invoice_date->year !== $workingYear)
+            <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">Запис од {{ $invoice->invoice_date->year }}</span>
+        @endif
     </p>
 
     @error('confirm') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror

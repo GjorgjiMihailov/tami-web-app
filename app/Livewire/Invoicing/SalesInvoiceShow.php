@@ -7,6 +7,7 @@ use App\Exceptions\InvalidInvoiceStateException;
 use App\Models\Company;
 use App\Models\SalesInvoice;
 use App\Services\Invoicing\SalesInvoiceService;
+use App\Support\WorkingYear;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -24,6 +25,8 @@ class SalesInvoiceShow extends Component
 
     public string $paymentMethod = 'bank';
 
+    public int $workingYear = 0;
+
     public function mount(Company $company, SalesInvoice $salesInvoice): void
     {
         Gate::authorize('view', $salesInvoice);
@@ -33,6 +36,7 @@ class SalesInvoiceShow extends Component
         }
 
         $this->company = $company;
+        $this->workingYear = WorkingYear::for($company);
         $this->salesInvoice = $salesInvoice;
         $this->paymentDate = now()->toDateString();
     }

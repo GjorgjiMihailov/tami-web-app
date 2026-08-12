@@ -7,8 +7,11 @@
 @endphp
 <div>
     <div class="flex items-center justify-between mb-4">
-        <h1 class="text-2xl font-bold text-gray-800">
-            {{ $journalEntry ? 'Измени налог '.$journalEntry->displayNumber() : 'Нов налог' }} — {{ $company->name }}
+        <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <span>{{ $journalEntry ? 'Измени налог '.$journalEntry->displayNumber() : 'Нов налог' }} — {{ $company->name }}</span>
+            @if ($journalEntry && (int) $journalEntry->fiscal_year !== $workingYear)
+                <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">Запис од {{ $journalEntry->fiscal_year }}</span>
+            @endif
         </h1>
 
         @if ($journalEntry)

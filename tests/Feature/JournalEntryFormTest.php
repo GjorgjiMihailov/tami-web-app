@@ -983,4 +983,31 @@ class JournalEntryFormTest extends TestCase
         Livewire::test(JournalEntryForm::class, ['company' => $company])
             ->assertSet('entryDate', now()->toDateString());
     }
+
+    public function test_an_entry_from_another_year_is_flagged_but_still_opens(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $entry = JournalEntry::factory()->for($company)->create(['entry_date' => '2024-04-04']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
+            ->assertOk()
+            ->assertSee('Запис од 2024');
+    }
+
+    public function test_an_entry_from_the_working_year_is_not_flagged(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $entry = JournalEntry::factory()->for($company)->create(['entry_date' => now()->toDateString()]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(JournalEntryForm::class, ['company' => $company, 'journalEntry' => $entry])
+            ->assertDontSee('Запис од');
+    }
 }

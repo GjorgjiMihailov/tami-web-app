@@ -3,13 +3,14 @@
 namespace Tests\Feature;
 
 use App\Livewire\Invoicing\SalesInvoiceShow;
+use App\Models\Account;
 use App\Models\Company;
 use App\Models\Item;
+use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\SalesInvoice;
 use App\Models\User;
 use App\Models\Warehouse;
-use App\Services\Inventory\StockMovementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -19,7 +20,7 @@ class SalesInvoiceShowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -29,7 +30,7 @@ class SalesInvoiceShowTest extends TestCase
     private function seedAccounts(Company $company): void
     {
         foreach (['120', '740', '230', '660', '701', '100', '102'] as $code) {
-            \App\Models\Account::firstOrCreate(
+            Account::firstOrCreate(
                 ['company_id' => $company->id, 'code' => $code],
                 ['name' => $code]
             );
@@ -81,7 +82,7 @@ class SalesInvoiceShowTest extends TestCase
         $partner = Partner::factory()->for($company)->create();
         $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01', 'status' => 'confirmed', 'fiscal_year' => 2026, 'invoice_number' => 1]);
         $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
-        $entry = \App\Models\JournalEntry::factory()->for($company)->create();
+        $entry = JournalEntry::factory()->for($company)->create();
         $invoice->update(['journal_entry_id' => $entry->id]);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
@@ -105,7 +106,7 @@ class SalesInvoiceShowTest extends TestCase
         $partner = Partner::factory()->for($company)->create();
         $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01', 'status' => 'confirmed', 'fiscal_year' => 2026, 'invoice_number' => 1]);
         $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
-        $entry = \App\Models\JournalEntry::factory()->for($company)->create();
+        $entry = JournalEntry::factory()->for($company)->create();
         $invoice->update(['journal_entry_id' => $entry->id]);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
@@ -166,5 +167,20 @@ class SalesInvoiceShowTest extends TestCase
 
         Livewire::test(SalesInvoiceShow::class, ['company' => $otherCompany, 'salesInvoice' => $invoice])
             ->assertForbidden();
+    }
+
+    public function test_an_invoice_from_another_year_is_flagged_but_still_opens(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->for($partner)->create(['invoice_date' => '2024-04-04']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->assertOk()
+            ->assertSee('Запис од 2024');
     }
 }

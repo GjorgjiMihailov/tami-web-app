@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Invoicing\PurchaseInvoiceShow;
 use App\Models\Account;
 use App\Models\Company;
+use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\PurchaseInvoice;
 use App\Models\User;
@@ -17,7 +18,7 @@ class PurchaseInvoiceShowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -60,7 +61,7 @@ class PurchaseInvoiceShowTest extends TestCase
             ?? Account::factory()->for($company)->create(['code' => '462', 'name' => 'Services']);
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
         $invoice->lines()->create(['account_id' => $account->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
-        $journalEntry = \App\Models\JournalEntry::factory()->for($company)->create();
+        $journalEntry = JournalEntry::factory()->for($company)->create();
         $journalEntry->lines()->create(['account_id' => $account->id, 'debit' => '100.00', 'credit' => '0']);
         $invoice->update(['journal_entry_id' => $journalEntry->id]);
         $admin = User::factory()->create();
@@ -97,5 +98,20 @@ class PurchaseInvoiceShowTest extends TestCase
         // empty here (no documents seeded), so its own data-row hover never renders.
         $this->assertSame(2, substr_count($html, 'bg-gray-50'));
         $this->assertSame(1, substr_count($html, 'hover:bg-orange-50'));
+    }
+
+    public function test_an_invoice_from_another_year_is_flagged_but_still_opens(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = PurchaseInvoice::factory()->for($company)->for($partner)->create(['invoice_date' => '2024-04-04']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceShow::class, ['company' => $company, 'purchaseInvoice' => $invoice])
+            ->assertOk()
+            ->assertSee('Запис од 2024');
     }
 }
