@@ -14,12 +14,25 @@ class CompanyIndexTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
         Role::findOrCreate('client');
+    }
+
+    public function test_only_an_admin_may_open_the_companies_screen(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+
+        $this->actingAs($client)->get(route('companies.index'))->assertForbidden();
+        $this->actingAs($accountant)->get(route('companies.index'))->assertForbidden();
     }
 
     public function test_admin_sees_all_companies(): void
@@ -36,36 +49,11 @@ class CompanyIndexTest extends TestCase
             ->assertSee('Beta Ltd');
     }
 
-    public function test_client_sees_only_their_own_company(): void
-    {
-        $companyA = Company::factory()->create(['name' => 'Alpha Ltd']);
-        $companyB = Company::factory()->create(['name' => 'Beta Ltd']);
-        $client = User::factory()->create(['company_id' => $companyA->id]);
-        $client->assignRole('client');
-
-        $this->actingAs($client);
-
-        Livewire::test(CompanyIndex::class)
-            ->assertSee('Alpha Ltd')
-            ->assertDontSee('Beta Ltd');
-    }
-
-    public function test_accountant_sees_only_assigned_companies(): void
-    {
-        $companyA = Company::factory()->create(['name' => 'Alpha Ltd']);
-        $companyB = Company::factory()->create(['name' => 'Beta Ltd']);
-        $companyC = Company::factory()->create(['name' => 'Gamma Ltd']);
-        $accountant = User::factory()->create();
-        $accountant->assignRole('accountant');
-        $accountant->assignedCompanies()->attach([$companyA->id, $companyB->id]);
-
-        $this->actingAs($accountant);
-
-        Livewire::test(CompanyIndex::class)
-            ->assertSee('Alpha Ltd')
-            ->assertSee('Beta Ltd')
-            ->assertDontSee('Gamma Ltd');
-    }
+    // The two per-role list-filtering tests that stood here are gone: Фирми is
+    // an admin-only screen now, so a client or accountant never sees a filtered
+    // list — they are refused outright. test_only_an_admin_may_open_the_companies_screen
+    // above is the replacement, and the accountant's own multi-company chooser
+    // is covered by DashboardTest.
 
     public function test_the_route_requires_authentication(): void
     {
@@ -125,10 +113,9 @@ class CompanyIndexTest extends TestCase
 
         $this->actingAs($client);
 
-        Livewire::test(CompanyIndex::class)
-            ->set('newName', 'Sneaky DOO')
-            ->call('addCompany')
-            ->assertForbidden();
+        // Refused at mount now — a client cannot even open the screen, let
+        // alone submit the form.
+        Livewire::test(CompanyIndex::class)->assertForbidden();
 
         $this->assertDatabaseMissing('companies', ['name' => 'Sneaky DOO']);
     }
@@ -141,8 +128,9 @@ class CompanyIndexTest extends TestCase
 
         $this->actingAs($client);
 
-        Livewire::test(CompanyIndex::class)
-            ->assertDontSee('Add company');
+        // The whole screen is refused to a non-admin, which subsumes hiding
+        // the form on it.
+        Livewire::test(CompanyIndex::class)->assertForbidden();
     }
 
     public function test_the_companies_list_no_longer_shows_per_company_module_links(): void

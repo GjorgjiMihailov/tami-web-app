@@ -20,6 +20,15 @@ class CompanyIndex extends Component
 
     public string $newAddress = '';
 
+    public function mount(): void
+    {
+        // Фирми is an admin screen — see the role table in
+        // docs/superpowers/specs/2026-08-11-sidebar-ia-and-working-year-design.md.
+        // An accountant with several companies reaches the chooser through
+        // App\Livewire\Dashboard instead, which is not a menu entry.
+        abort_unless(auth()->user()->hasRole('admin'), 403);
+    }
+
     public function addCompany(): void
     {
         Gate::authorize('create', Company::class);
