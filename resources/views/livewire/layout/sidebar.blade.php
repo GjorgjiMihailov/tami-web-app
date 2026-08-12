@@ -6,26 +6,30 @@
     </div>
 
     <nav class="flex-1 py-3 space-y-1">
-        <a href="{{ route('dashboard') }}" wire:navigate
-           class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('dashboard') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
-            Почетна
-        </a>
-        <a href="{{ route('companies.index') }}" wire:navigate
-           class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('companies.*') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
-            Фирми
-        </a>
-
         @if (auth()->check() && auth()->user()->hasRole('admin'))
-            <a href="{{ route('efaktura.access-requests') }}" wire:navigate
-               class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('efaktura.access-requests') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
-                е-Фактура барања
+            <a href="{{ route('dashboard') }}" wire:navigate
+               class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'dashboard' ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
+                Почетна
+            </a>
+            <a href="{{ route('companies.index') }}" wire:navigate
+               class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'companies.index' ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
+                Фирми
             </a>
         @endif
 
         @if ($company)
             <div class="pt-4 mt-3 border-t border-gray-100">
                 <div class="px-4 pb-3 space-y-2">
-                    <div class="text-xs uppercase tracking-wide text-gray-500">{{ $company->name }}</div>
+                    <label class="flex items-center gap-2 text-xs text-gray-500">
+                        <span>Фирма</span>
+                        <select onchange="if (this.value) window.location.href = this.value"
+                                class="flex-1 rounded-lg border-gray-200 text-sm py-1 text-gray-700 focus:border-brand focus:ring-brand">
+                            @foreach ($companyOptions as $option)
+                                <option value="{{ route('companies.dashboard', $option['id']) }}"
+                                        @selected($option['id'] === $company->id)>{{ $option['name'] }}</option>
+                            @endforeach
+                        </select>
+                    </label>
                     <label class="flex items-center gap-2 text-xs text-gray-500">
                         <span>Година</span>
                         <select wire:model.live="workingYear"
@@ -37,102 +41,31 @@
                     </label>
                 </div>
 
-                {{-- Accounting --}}
-                <button type="button" wire:click="toggleModule('accounting')"
-                        class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('accounting.*') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}"
-                        style="width: calc(100% - 1.5rem);">
-                    <span>Сметководство</span>
-                    <span>{{ $expandedModule === 'accounting' ? '−' : '+' }}</span>
-                </button>
-                @if ($expandedModule === 'accounting')
-                    <div class="pl-6">
-                        <a href="{{ route('accounting.accounts.index', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('accounting.accounts.*') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Контен план</a>
-                        <a href="{{ route('accounting.journal-groups.index', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('accounting.journal-groups.*') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Журнали</a>
-                        <a href="{{ route('accounting.journal-entries.index', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('accounting.journal-entries.*') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Налози</a>
-                        <a href="{{ route('accounting.reports.ledger-card', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('accounting.reports.ledger-card') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Аналитичка картица</a>
-                        <a href="{{ route('accounting.reports.trial-balance', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('accounting.reports.trial-balance') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Бруто биланс</a>
-                    </div>
-                @endif
+                @foreach ($menu as $group)
+                    <button type="button" wire:click="toggleGroup('{{ $group['key'] }}')"
+                            class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 text-gray-600 hover:bg-orange-50"
+                            style="width: calc(100% - 1.5rem);">
+                        <span>{{ $group['label'] }}</span>
+                        <span>{{ $expandedGroup === $group['key'] ? '−' : '+' }}</span>
+                    </button>
+                    @if ($expandedGroup === $group['key'])
+                        <div class="pl-6">
+                            @foreach ($group['items'] as $item)
+                                <a href="{{ $item['url'] }}" wire:navigate
+                                   class="flex items-center gap-2 px-4 py-1.5 text-sm {{ $this->isActive($item['pattern']) ? 'text-brand font-medium' : ($item['soon'] ? 'text-gray-400 hover:text-gray-600' : 'text-gray-500 hover:text-gray-800') }}">
+                                    <span>{{ $item['label'] }}</span>
+                                    @if ($item['soon'])
+                                        <span class="text-[10px] uppercase tracking-wide text-gray-400">наскоро</span>
+                                    @endif
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
+                @endforeach
 
-                {{-- Inventory --}}
-                <button type="button" wire:click="toggleModule('inventory')"
-                        class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('inventory.*') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}"
-                        style="width: calc(100% - 1.5rem);">
-                    <span>Магацин</span>
-                    <span>{{ $expandedModule === 'inventory' ? '−' : '+' }}</span>
-                </button>
-                @if ($expandedModule === 'inventory')
-                    <div class="pl-6">
-                        <a href="{{ route('inventory.warehouses.index', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('inventory.warehouses.*') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Магацини</a>
-                        <a href="{{ route('inventory.items.index', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('inventory.items.index') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Артикли</a>
-                        <a href="{{ route('inventory.items.bulk-import', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('inventory.items.bulk-import') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Масовен внес артикли</a>
-                        <a href="{{ route('inventory.reports.stock-on-hand', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('inventory.reports.stock-on-hand') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Залиха</a>
-                        <a href="{{ route('inventory.reports.item-movement-card', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('inventory.reports.item-movement-card') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Картица на движење</a>
-                        <a href="{{ route('inventory.reports.stock-valuation', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('inventory.reports.stock-valuation') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Вреднување на залихи</a>
-
-                        <button type="button" wire:click="toggleRecordMovement"
-                                class="w-full text-left flex items-center justify-between px-4 py-1.5 text-sm {{ request()->routeIs('inventory.stock-movements.create') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">
-                            <span>Движење на залиха</span>
-                            <span>{{ $recordMovementExpanded ? '−' : '+' }}</span>
-                        </button>
-                        @if ($recordMovementExpanded)
-                            <div class="pl-4">
-                                <a href="{{ route('inventory.stock-movements.create', [$company, 'receipt']) }}" wire:navigate
-                                   class="block px-4 py-1 text-sm text-gray-500 hover:text-gray-800">Прием</a>
-                                <a href="{{ route('inventory.stock-movements.create', [$company, 'issue']) }}" wire:navigate
-                                   class="block px-4 py-1 text-sm text-gray-500 hover:text-gray-800">Издавање</a>
-                                <a href="{{ route('inventory.stock-movements.create', [$company, 'transfer']) }}" wire:navigate
-                                   class="block px-4 py-1 text-sm text-gray-500 hover:text-gray-800">Трансфер</a>
-                                <a href="{{ route('inventory.stock-movements.create', [$company, 'adjustment']) }}" wire:navigate
-                                   class="block px-4 py-1 text-sm text-gray-500 hover:text-gray-800">Корекција</a>
-                            </div>
-                        @endif
-                    </div>
-                @endif
-
-                {{-- Invoicing --}}
-                <button type="button" wire:click="toggleModule('invoicing')"
-                        class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ (request()->routeIs('partners.*') || request()->routeIs('sales-invoices.*') || request()->routeIs('purchase-invoices.*')) ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}"
-                        style="width: calc(100% - 1.5rem);">
-                    <span>Фактури</span>
-                    <span>{{ $expandedModule === 'invoicing' ? '−' : '+' }}</span>
-                </button>
-                @if ($expandedModule === 'invoicing')
-                    <div class="pl-6">
-                        <a href="{{ route('partners.index', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('partners.*') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Партнери</a>
-                        <a href="{{ route('sales-invoices.index', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('sales-invoices.index') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Излезни фактури</a>
-                        <a href="{{ route('sales-invoices.create', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('sales-invoices.create') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Нова фактура</a>
-                        <a href="{{ route('purchase-invoices.index', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('purchase-invoices.index') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Влезни фактури</a>
-                        <a href="{{ route('purchase-invoices.create', $company) }}" wire:navigate
-                           class="block px-4 py-1.5 text-sm {{ request()->routeIs('purchase-invoices.create') ? 'text-brand font-medium' : 'text-gray-500 hover:text-gray-800' }}">Нова влезна фактура</a>
-                    </div>
-                @endif
-
-                {{-- Documents (no submenu) --}}
                 <a href="{{ route('documents.index', $company) }}" wire:navigate
-                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('documents.*') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 mt-1 {{ str_starts_with($currentRoute, 'documents.') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
                     Документи
-                </a>
-
-                {{-- Reports (no submenu) --}}
-                <a href="{{ route('reports.ddv04', $company) }}" wire:navigate
-                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ request()->routeIs('reports.*') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
-                    Извештаи
                 </a>
             </div>
         @endif

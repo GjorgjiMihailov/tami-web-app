@@ -1,7 +1,11 @@
 <div>
-    <div class="flex items-center justify-between mb-4">
-        <h1 class="text-2xl font-bold text-gray-800">Залиха — {{ $company->name }}</h1>
-        <a href="{{ route('inventory.reports.stock-on-hand.pdf', $company) }}{{ $warehouseId ? '?warehouseId='.$warehouseId : '' }}" class="text-brand hover:underline text-sm">Преземи PDF</a>
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h1 class="text-2xl font-bold text-gray-800">Состојба — {{ $company->name }}</h1>
+        <div class="flex flex-wrap items-center gap-4 text-sm">
+            <a href="{{ route('inventory.reports.item-movement-card', $company) }}" wire:navigate class="text-brand hover:underline">Картица на движење</a>
+            <a href="{{ route('inventory.reports.stock-valuation', $company) }}" wire:navigate class="text-brand hover:underline">Вреднување на залихи</a>
+            <a href="{{ route('inventory.reports.stock-on-hand.pdf', $company) }}{{ $warehouseId ? '?warehouseId='.$warehouseId : '' }}" class="text-brand hover:underline">Преземи PDF</a>
+        </div>
     </div>
 
     <x-card class="mb-4 flex flex-wrap gap-4 items-end">

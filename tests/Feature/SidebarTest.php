@@ -6,6 +6,7 @@ use App\Livewire\Layout\Sidebar;
 use App\Models\Company;
 use App\Models\JournalEntry;
 use App\Models\User;
+use App\Support\CurrentCompany;
 use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -20,6 +21,8 @@ class SidebarTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
+        Role::findOrCreate('accountant');
+        Role::findOrCreate('client');
     }
 
     private function admin(): User
@@ -41,113 +44,156 @@ class SidebarTest extends TestCase
         return htmlspecialchars_decode($matches[1], ENT_QUOTES | ENT_SUBSTITUTE);
     }
 
-    public function test_it_shows_no_module_links_when_no_company_is_selected(): void
+    public function test_it_shows_no_groups_when_no_company_is_selected(): void
     {
         $this->actingAs($this->admin());
 
         $this->get('/dashboard')
             ->assertOk()
-            ->assertDontSee('Сметководство')
-            ->assertDontSee('Магацин');
+            ->assertDontSee('ФИНАНСИИ')
+            ->assertDontSee('ЗАЛИХА');
     }
 
-    public function test_the_module_matching_the_current_route_auto_expands(): void
+    public function test_an_admin_sees_every_group_heading(): void
+    {
+        $company = Company::factory()->create();
+        $this->actingAs($this->admin());
+
+        $this->get(route('accounting.journal-entries.index', $company))
+            ->assertOk()
+            ->assertSee('ФИНАНСИИ')
+            ->assertSee('ПРОДАЖБА')
+            ->assertSee('ЗАЛИХА')
+            ->assertSee('ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ')
+            ->assertSee('ПОСТАВКИ');
+    }
+
+    public function test_a_client_sees_neither_finance_nor_the_admin_only_links(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+        $this->actingAs($client);
+
+        $this->get(route('sales-invoices.index', $company))
+            ->assertOk()
+            ->assertSee('ПРОДАЖБА')
+            ->assertDontSee('ФИНАНСИИ')
+            ->assertDontSee('ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ')
+            // Matched as a complete href: route('companies.index') is "/companies",
+            // which is a prefix of every company-scoped URL on the page, so a bare
+            // substring check can never pass.
+            ->assertDontSeeHtml('href="'.route('companies.index').'"')
+            ->assertDontSeeHtml(route('efaktura.access-requests'));
+    }
+
+    public function test_the_group_matching_the_current_route_auto_expands(): void
     {
         $company = Company::factory()->create();
         $this->actingAs($this->admin());
 
         $this->get(route('accounting.accounts.index', $company))
             ->assertOk()
-            ->assertSee('Сметководство')
-            ->assertSeeHtml(route('accounting.journal-entries.index', $company))
-            ->assertSeeHtml(route('accounting.reports.ledger-card', $company))
-            ->assertSeeHtml(route('accounting.reports.trial-balance', $company))
+            ->assertSeeHtml(route('companies.dashboard', $company))
             ->assertDontSeeHtml(route('inventory.warehouses.index', $company));
     }
 
-    public function test_documents_and_reports_stay_single_links_with_no_submenu(): void
+    public function test_clicking_a_different_group_collapses_the_previous_one(): void
     {
         $company = Company::factory()->create();
         $this->actingAs($this->admin());
 
-        $this->get(route('accounting.accounts.index', $company))
+        Livewire::test(Sidebar::class, ['company' => $company])
+            ->call('toggleGroup', 'finance')
+            ->assertSet('expandedGroup', 'finance')
+            ->call('toggleGroup', 'stock')
+            ->assertSet('expandedGroup', 'stock')
+            ->call('toggleGroup', 'stock')
+            ->assertSet('expandedGroup', null);
+    }
+
+    public function test_the_stock_group_is_flat_with_no_third_level(): void
+    {
+        $company = Company::factory()->create();
+        $this->actingAs($this->admin());
+
+        $this->get(route('inventory.warehouses.index', $company))
             ->assertOk()
-            ->assertSeeHtml(route('documents.index', $company))
-            ->assertSeeHtml(route('reports.ddv04', $company));
+            ->assertSee('Прием')
+            ->assertSee('Пренос')
+            ->assertDontSee('Движење на залиха')
+            ->assertDontSee('Корекција');
     }
 
-    public function test_clicking_a_different_module_collapses_the_previous_one(): void
-    {
-        Livewire::test(Sidebar::class)
-            ->call('toggleModule', 'accounting')
-            ->assertSet('expandedModule', 'accounting')
-            ->call('toggleModule', 'inventory')
-            ->assertSet('expandedModule', 'inventory');
-    }
-
-    public function test_clicking_the_open_module_again_collapses_it(): void
-    {
-        Livewire::test(Sidebar::class)
-            ->call('toggleModule', 'accounting')
-            ->assertSet('expandedModule', 'accounting')
-            ->call('toggleModule', 'accounting')
-            ->assertSet('expandedModule', null);
-    }
-
-    public function test_record_movement_nests_under_inventory_and_auto_expands_on_its_route(): void
+    public function test_partners_are_labelled_kooperanti(): void
     {
         $company = Company::factory()->create();
         $this->actingAs($this->admin());
 
-        $this->get(route('inventory.stock-movements.create', [$company, 'receipt']))
+        $this->get(route('sales-invoices.index', $company))
             ->assertOk()
-            ->assertSee('Движење на залиха')
-            ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'issue']))
-            ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'transfer']))
-            ->assertSeeHtml(route('inventory.stock-movements.create', [$company, 'adjustment']));
+            ->assertSee('Кооперанти')
+            ->assertSeeHtml(route('partners.index', $company));
     }
 
-    public function test_invoicing_submenu_expands_for_partners_and_invoice_routes(): void
+    public function test_the_two_reports_the_menu_dropped_are_reachable_from_the_stock_page(): void
     {
         $company = Company::factory()->create();
         $this->actingAs($this->admin());
 
-        $this->get(route('partners.index', $company))
+        // Not in the target menu any more — the Состојба page carries them.
+        $this->get(route('inventory.reports.stock-on-hand', $company))
             ->assertOk()
-            ->assertSeeHtml(route('sales-invoices.index', $company))
-            ->assertSeeHtml(route('sales-invoices.create', $company))
-            ->assertSeeHtml(route('purchase-invoices.index', $company))
-            ->assertSeeHtml(route('purchase-invoices.create', $company));
+            ->assertSeeHtml(route('inventory.reports.item-movement-card', $company))
+            ->assertSeeHtml(route('inventory.reports.stock-valuation', $company));
     }
 
-    public function test_toggling_a_module_via_livewire_still_shows_the_company_after_the_request(): void
+    public function test_the_stock_reports_are_no_longer_menu_entries(): void
     {
         $company = Company::factory()->create();
         $this->actingAs($this->admin());
 
-        // First request: a real full page load, exactly like a user visiting a company page.
-        // The Sidebar component mounts here with a real 'company' route parameter bound.
-        $html = $this->get(route('accounting.accounts.index', $company))->getContent();
-        $snapshot = $this->extractSidebarSnapshot($html);
+        $html = $this->get(route('inventory.warehouses.index', $company))->getContent();
+        $sidebar = substr($html, 0, strpos($html, '</nav>'));
 
-        // Second request: the real /livewire/update AJAX call the browser sends when a
-        // sidebar toggle button is clicked, replaying the Sidebar component's own snapshot.
-        // This exercises the actual request boundary a click crosses in production —
-        // unlike Livewire::test(), which only ever mounts against a synthetic dummy route.
-        $response = $this->withHeaders(['X-Livewire' => 'true'])
-            ->postJson(app('livewire')->getUpdateUri(), [
-                'components' => [[
-                    'snapshot' => $snapshot,
-                    'calls' => [['path' => '', 'method' => 'toggleModule', 'params' => ['inventory']]],
-                    'updates' => [],
-                ]],
-            ]);
+        $this->assertStringNotContainsString('Картица на движење', $sidebar);
+        $this->assertStringNotContainsString('Вреднување на залихи', $sidebar);
+    }
 
-        $response->assertOk();
-        $updatedHtml = $response->json('components.0.effects.html');
+    public function test_documents_stands_alone_outside_the_groups(): void
+    {
+        $company = Company::factory()->create();
+        $this->actingAs($this->admin());
 
-        $this->assertStringContainsString(route('inventory.items.index', $company), $updatedHtml);
-        $this->assertStringContainsString(route('documents.index', $company), $updatedHtml);
+        $this->get(route('inventory.warehouses.index', $company))
+            ->assertOk()
+            ->assertSeeHtml(route('documents.index', $company));
+    }
+
+    public function test_the_company_selector_lists_only_visible_companies(): void
+    {
+        $mine = Company::factory()->create(['name' => 'Моја Фирма']);
+        $other = Company::factory()->create(['name' => 'Туѓа Фирма']);
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $mine->accountants()->attach($accountant);
+
+        $this->actingAs($accountant);
+
+        Livewire::test(Sidebar::class, ['company' => $mine])
+            ->assertSee('Моја Фирма')
+            ->assertDontSee('Туѓа Фирма');
+    }
+
+    public function test_opening_a_company_remembers_it_for_next_time(): void
+    {
+        $company = Company::factory()->create();
+        $admin = $this->admin();
+        $this->actingAs($admin);
+
+        Livewire::test(Sidebar::class, ['company' => $company]);
+
+        $this->assertSame($company->id, CurrentCompany::lastFor($admin));
     }
 
     public function test_the_sidebar_shows_a_year_selector_when_a_company_is_open(): void
@@ -190,5 +236,35 @@ class SidebarTest extends TestCase
             (int) now()->year - 1,
             session(WorkingYear::sessionKey($user->id, $company->id))
         );
+    }
+
+    public function test_toggling_a_group_via_livewire_still_shows_the_company_after_the_request(): void
+    {
+        $company = Company::factory()->create();
+        $this->actingAs($this->admin());
+
+        // First request: a real full page load, exactly like a user visiting a company page.
+        // The Sidebar component mounts here with a real 'company' route parameter bound.
+        $html = $this->get(route('accounting.accounts.index', $company))->getContent();
+        $snapshot = $this->extractSidebarSnapshot($html);
+
+        // Second request: the real /livewire/update AJAX call the browser sends when a
+        // sidebar toggle button is clicked, replaying the Sidebar component's own snapshot.
+        // This exercises the actual request boundary a click crosses in production —
+        // unlike Livewire::test(), which only ever mounts against a synthetic dummy route.
+        $response = $this->withHeaders(['X-Livewire' => 'true'])
+            ->postJson(app('livewire')->getUpdateUri(), [
+                'components' => [[
+                    'snapshot' => $snapshot,
+                    'calls' => [['path' => '', 'method' => 'toggleGroup', 'params' => ['stock']]],
+                    'updates' => [],
+                ]],
+            ]);
+
+        $response->assertOk();
+        $updatedHtml = $response->json('components.0.effects.html');
+
+        $this->assertStringContainsString(route('inventory.items.index', $company), $updatedHtml);
+        $this->assertStringContainsString(route('documents.index', $company), $updatedHtml);
     }
 }
