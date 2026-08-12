@@ -42,6 +42,7 @@ use App\Livewire\Invoicing\SalesInvoiceShow;
 use App\Livewire\PartnerIndex;
 use App\Livewire\PartnerShow;
 use App\Livewire\Reports\Ddv04Report;
+use App\Livewire\Reports\ReportIndex;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome');
@@ -179,6 +180,7 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('documents.')->
 });
 
 Route::middleware(['auth', EnsureAccountingAccess::class])->prefix('companies/{company}')->name('reports.')->group(function () {
+    Route::get('/reports', [ReportIndex::class, '__invoke'])->name('index');
     Route::get('/reports/ddv04', [Ddv04Report::class, '__invoke'])->name('ddv04');
 });
 
