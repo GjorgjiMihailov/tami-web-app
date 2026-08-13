@@ -83,6 +83,33 @@ class PayrollParameterIndexTest extends TestCase
         $this->assertSame(20.5, PayrollParameter::forDate('2027-06-01')->rate_pension);
     }
 
+    public function test_a_duplicate_effective_from_shows_a_macedonian_error_message(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        // 2026-07-01 is already seeded by the payroll_parameters migration, so
+        // this exercises the uniqueness rule that protects the append-only
+        // design (periods are never edited, only added).
+        Livewire::test(PayrollParameterIndex::class, ['company' => $company])
+            ->set('effectiveFrom', '2026-07-01')
+            ->set('ratePension', '20.5')
+            ->set('rateHealth', '7.5')
+            ->set('rateInjury', '0.5')
+            ->set('rateUnemployment', '0.1')
+            ->set('rateTax', '10')
+            ->set('personalAllowance', '11500')
+            ->set('averageSalary', '72000')
+            ->set('minBase', '36000')
+            ->set('maxBase', '1152000')
+            ->set('minimumWage', '40000')
+            ->call('addPeriod')
+            ->assertHasErrors(['effectiveFrom' => 'unique'])
+            ->assertSee('Важи од веќе постои.');
+    }
+
     public function test_the_parameters_menu_entry_is_admin_only(): void
     {
         $company = Company::factory()->create();
