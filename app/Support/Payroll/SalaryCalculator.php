@@ -3,6 +3,7 @@
 namespace App\Support\Payroll;
 
 use App\Models\PayrollParameter;
+use InvalidArgumentException;
 
 class SalaryCalculator
 {
@@ -58,9 +59,14 @@ class SalaryCalculator
      */
     public static function fromNet(float $net, PayrollParameter $p): SalaryBreakdown
     {
+        if ($net < 0) {
+            throw new InvalidArgumentException('Нето платата не може да биде негативна.');
+        }
+
         $low = 0.0;
-        // Contributions plus tax can never take more than half, so twice the
-        // net plus a margin is always above the answer.
+        // Three times the net plus a margin is always above the answer, even
+        // though contributions plus tax never take more than half — the extra
+        // room absorbs the minimum-base top-up and keeps the bound simple.
         $high = $net * 3 + 1000;
 
         for ($i = 0; $i < 200; $i++) {

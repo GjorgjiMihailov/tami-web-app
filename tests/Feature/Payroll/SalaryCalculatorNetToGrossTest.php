@@ -5,6 +5,7 @@ namespace Tests\Feature\Payroll;
 use App\Models\PayrollParameter;
 use App\Support\Payroll\SalaryCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 class SalaryCalculatorNetToGrossTest extends TestCase
@@ -41,7 +42,10 @@ class SalaryCalculatorNetToGrossTest extends TestCase
     {
         $parameter = PayrollParameter::forDate('2026-07-31');
 
-        foreach ([15000, 25000, 40000, 75000, 250000] as $gross) {
+        // 8000 is below the 10 932 personal allowance, so it exercises the
+        // zero floor on the tax base — the other kink in the curve, distinct
+        // from the minimum-base kink the values above already cover.
+        foreach ([8000, 15000, 25000, 40000, 75000, 250000] as $gross) {
             $net = SalaryCalculator::fromGross($gross, $parameter)->whole()['net'];
             $recovered = SalaryCalculator::fromNet($net, $parameter)->whole()['gross'];
 
@@ -51,5 +55,19 @@ class SalaryCalculatorNetToGrossTest extends TestCase
                 "Net {$net} should have recovered a gross of {$gross}, got {$recovered}."
             );
         }
+    }
+
+    public function test_a_negative_net_is_rejected(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        SalaryCalculator::fromNet(-5000, PayrollParameter::forDate('2026-07-31'));
+    }
+
+    public function test_a_net_of_zero_is_not_caught_by_the_negative_guard(): void
+    {
+        $breakdown = SalaryCalculator::fromNet(0, PayrollParameter::forDate('2026-07-31'));
+
+        $this->assertSame(0, $breakdown->whole()['net']);
     }
 }
