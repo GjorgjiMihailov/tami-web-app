@@ -57,4 +57,18 @@ class PayrollParameterTest extends TestCase
 
         PayrollParameter::forDate('2019-01-01');
     }
+
+    public function test_the_exact_boundary_date_uses_the_new_period(): void
+    {
+        // The day before 2026-07-01: must use old rates (18.8, 1.2)
+        $p_before = PayrollParameter::forDate('2026-06-30');
+        $this->assertSame(18.8, $p_before->rate_pension);
+        $this->assertSame(1.2, $p_before->rate_unemployment);
+
+        // The exact boundary date 2026-07-01: must use new rates (19.9, 0.1)
+        // This catches off-by-one errors in forDate() that would flip <= to <
+        $p_on = PayrollParameter::forDate('2026-07-01');
+        $this->assertSame(19.9, $p_on->rate_pension);
+        $this->assertSame(0.1, $p_on->rate_unemployment);
+    }
 }
