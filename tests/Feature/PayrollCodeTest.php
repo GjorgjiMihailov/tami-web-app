@@ -1,0 +1,39 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\PayrollCode;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class PayrollCodeTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_the_migration_seeds_all_four_codebooks(): void
+    {
+        $this->assertSame(86, PayrollCode::ofType('opstina')->count());
+        $this->assertSame(30, PayrollCode::ofType('vid_staz')->count());
+        $this->assertSame(8, PayrollCode::ofType('sifra_dviz')->count());
+        $this->assertSame(10, PayrollCode::ofType('osloboduvanje')->count());
+    }
+
+    public function test_it_keeps_zero_padded_codes_as_strings(): void
+    {
+        // 0050 "Време поминато во работен однос со полно работно време" is the
+        // ordinary full-time code and the one nearly every employee carries.
+        // Stored as an integer it would become "50" and МПИН would reject it.
+        $code = PayrollCode::ofType('vid_staz')->firstWhere('code', '0050');
+
+        $this->assertNotNull($code, 'The full-time insurance code 0050 is missing.');
+        $this->assertSame('Време поминато во работен однос со полно работно време', $code->name);
+    }
+
+    public function test_it_exposes_a_known_municipality(): void
+    {
+        $this->assertSame(
+            'АЕРОДРОМ',
+            PayrollCode::ofType('opstina')->firstWhere('code', '175')?->name
+        );
+    }
+}
