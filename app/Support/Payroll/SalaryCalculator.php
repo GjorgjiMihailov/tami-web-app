@@ -51,6 +51,33 @@ class SalaryCalculator
         );
     }
 
+    /**
+     * Gross→net is monotone increasing, so a binary search converges. The
+     * closed formula does not exist: the minimum base and the zero floor on
+     * the tax base each put a kink in the curve.
+     */
+    public static function fromNet(float $net, PayrollParameter $p): SalaryBreakdown
+    {
+        $low = 0.0;
+        // Contributions plus tax can never take more than half, so twice the
+        // net plus a margin is always above the answer.
+        $high = $net * 3 + 1000;
+
+        for ($i = 0; $i < 200; $i++) {
+            $mid = ($low + $high) / 2;
+
+            if (self::fromGross($mid, $p)->net < $net) {
+                $low = $mid;
+            } else {
+                $high = $mid;
+            }
+        }
+
+        // Salaries are agreed in whole denars; recompute from the rounded gross
+        // so every figure in the breakdown belongs to the same gross.
+        return self::fromGross(round($high), $p);
+    }
+
     private static function share(float $base, float $ratePercent): float
     {
         return round($base * $ratePercent / 100, 2);
