@@ -60,7 +60,43 @@ class EmployeeFormTest extends TestCase
         Livewire::test(EmployeeForm::class, ['company' => $company])
             ->set('salaryEffectiveFrom', '2025-06-30')
             ->set('gross', '38507')
-            ->assertHasErrors(['salaryEffectiveFrom']);
+            ->assertHasErrors(['salaryEffectiveFrom'])
+            ->assertSee('Нема параметри за пресметка на плата за овој датум');
+    }
+
+    public function test_a_required_field_error_uses_the_macedonian_attribute_name(): void
+    {
+        $company = Company::factory()->create();
+        $this->actAsAdmin();
+
+        Livewire::test(EmployeeForm::class, ['company' => $company])
+            ->call('save')
+            ->assertHasErrors(['firstName' => 'required'])
+            ->assertSee('име полето е задолжително')
+            ->assertDontSee('firstName полето');
+    }
+
+    public function test_a_comma_typed_as_the_decimal_separator_is_not_truncated(): void
+    {
+        $company = Company::factory()->create();
+        $this->actAsAdmin();
+
+        Livewire::test(EmployeeForm::class, ['company' => $company])
+            ->set('embg', '3101980455019')
+            ->set('firstName', 'Ана')
+            ->set('lastName', 'Николовска')
+            ->set('bankAccount', '300000000000000')
+            ->set('insuranceTypeCode', '0050')
+            ->set('employedOn', '2026-07-01')
+            ->set('salaryEffectiveFrom', '2026-07-01')
+            ->set('net', '45000,50')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('employee_salaries', [
+            'amount' => 45000.50,
+            'basis' => 'net',
+        ]);
     }
 
     public function test_it_stores_only_the_side_that_was_typed(): void
@@ -138,6 +174,30 @@ class EmployeeFormTest extends TestCase
         Livewire::test(EmployeeForm::class, ['company' => $company, 'employee' => $employee])
             ->assertSee('30.000')
             ->assertSee('35.000');
+    }
+
+    public function test_editing_without_touching_salary_leaves_the_history_untouched(): void
+    {
+        $company = Company::factory()->create();
+        $employee = Employee::factory()->for($company)->create();
+
+        $salary = EmployeeSalary::factory()->for($employee)->create([
+            'effective_from' => '2026-01-01', 'amount' => 30000, 'basis' => 'net',
+        ]);
+
+        $this->actAsAdmin();
+
+        Livewire::test(EmployeeForm::class, ['company' => $company, 'employee' => $employee])
+            ->set('firstName', 'Ново Име')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseCount('employee_salaries', 1);
+        $this->assertDatabaseHas('employee_salaries', [
+            'id' => $salary->id,
+            'amount' => 30000,
+            'basis' => 'net',
+        ]);
     }
 
     public function test_a_client_may_edit_their_own_companys_employee(): void

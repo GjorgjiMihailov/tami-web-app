@@ -110,13 +110,30 @@ class EmployeeForm extends Component
         $this->recompute($value, from: 'net');
     }
 
+    /**
+     * Parses a typed amount using the screen's own display convention — the
+     * history table below writes it as number_format($amount, 0, ',', '.'),
+     * dot for thousands, comma for decimals. A plain (float) cast stops at
+     * the first comma, so "45000,50" would silently become 45000.0 without
+     * this: spaces are dropped, dots (thousands) are dropped, and a comma
+     * (decimals) becomes the decimal point.
+     */
+    private function parseAmount(string $value): float
+    {
+        $normalized = str_replace(' ', '', $value);
+        $normalized = str_replace('.', '', $normalized);
+        $normalized = str_replace(',', '.', $normalized);
+
+        return (float) $normalized;
+    }
+
     private function recompute(string $value, string $from): void
     {
         if ($this->syncing) {
             return;
         }
 
-        $amount = (float) str_replace([' ', '.'], '', $value);
+        $amount = $this->parseAmount($value);
 
         if ($amount <= 0) {
             return;
@@ -209,7 +226,7 @@ class EmployeeForm extends Component
         // Only the side the user typed is stored. Persisting both would let
         // them drift apart the moment a rate changes.
         $typed = $this->basisTyped === 'gross' ? $this->gross : $this->net;
-        $amount = (float) str_replace([' ', '.'], '', $typed);
+        $amount = $this->parseAmount($typed);
 
         if ($amount > 0 && $this->salaryEffectiveFrom !== '') {
             EmployeeSalary::updateOrCreate(

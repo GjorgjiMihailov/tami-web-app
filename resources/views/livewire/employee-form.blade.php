@@ -110,6 +110,7 @@
                 <div>
                     <x-input-label for="salaryEffectiveFrom" value="Важи од" />
                     <x-text-input id="salaryEffectiveFrom" type="date" wire:model.live="salaryEffectiveFrom" class="w-full" />
+                    @error('salaryEffectiveFrom') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <x-input-label for="gross" value="Бруто" />
