@@ -38,6 +38,20 @@ class EmployeeModelTest extends TestCase
         $this->assertNull($employee->salaryOn('2025-12-31'));
     }
 
+    public function test_salary_is_found_on_its_own_effective_from_date(): void
+    {
+        // Critical boundary test: a salary must be found on its own effective_from date,
+        // not only on later dates. This catches date/datetime comparison bugs where
+        // the column carries a time component in storage.
+        $employee = Employee::factory()->create();
+
+        EmployeeSalary::factory()->for($employee)->create([
+            'effective_from' => '2026-07-01', 'amount' => 45000, 'basis' => 'net',
+        ]);
+
+        $this->assertSame(45000.0, $employee->salaryOn('2026-07-01')?->amount);
+    }
+
     public function test_the_same_embg_may_exist_at_two_different_companies(): void
     {
         // One person can be employed by two of the firm's clients. Those are

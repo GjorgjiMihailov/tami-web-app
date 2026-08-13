@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,8 +42,7 @@ class Employee extends Model
     public function salaryOn(string $date): ?EmployeeSalary
     {
         return $this->salaries()
-            ->reorder()
-            ->whereDate('effective_from', '<=', $date)
+            ->where('effective_from', '<=', Carbon::parse($date)->endOfDay())
             ->orderByDesc('effective_from')
             ->first();
     }

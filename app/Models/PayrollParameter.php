@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 
@@ -36,7 +37,7 @@ class PayrollParameter extends Model
      */
     public static function forDate(string $date): self
     {
-        $parameter = static::where('effective_from', '<=', $date)
+        $parameter = static::where('effective_from', '<=', Carbon::parse($date)->endOfDay())
             ->orderByDesc('effective_from')
             ->first();
 

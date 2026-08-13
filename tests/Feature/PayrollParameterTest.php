@@ -71,4 +71,28 @@ class PayrollParameterTest extends TestCase
         $this->assertSame(19.9, $p_on->rate_pension);
         $this->assertSame(0.1, $p_on->rate_unemployment);
     }
+
+    public function test_parameter_created_through_model_is_found_on_its_effective_from_date(): void
+    {
+        // Critical test: verifies that parameters created through the model (which
+        // triggers the date cast on write) are still found by forDate() on their own
+        // effective_from date. This catches date/datetime serialization mismatches.
+        PayrollParameter::create([
+            'effective_from' => '2027-01-01',
+            'rate_pension' => 20.0,
+            'rate_health' => 8.0,
+            'rate_injury' => 0.5,
+            'rate_unemployment' => 0.5,
+            'rate_tax' => 10.0,
+            'personal_allowance' => 11000.0,
+            'average_salary' => 70000.0,
+            'min_base' => 35000.0,
+            'max_base' => 1120000.0,
+            'minimum_wage' => 40000.0,
+        ]);
+
+        $p = PayrollParameter::forDate('2027-01-01');
+
+        $this->assertSame(20.0, $p->rate_pension);
+    }
 }
