@@ -79,7 +79,11 @@ class SidebarTest extends TestCase
             ->assertOk()
             ->assertSee('ПРОДАЖБА')
             ->assertDontSee('ФИНАНСИИ')
-            ->assertDontSee('ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ')
+            // Вработени is built, so a client now sees the ПЛАТИ И ЧР group —
+            // just not the two still-unbuilt entries inside it.
+            ->assertSee('ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ')
+            ->assertDontSee('Плата (МПИН)')
+            ->assertDontSee('е-ПДД')
             // Matched as a complete href: route('companies.index') is "/companies",
             // which is a prefix of every company-scoped URL on the page, so a bare
             // substring check can never pass.

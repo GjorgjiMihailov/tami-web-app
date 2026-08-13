@@ -37,10 +37,6 @@ class Menu
             'label' => 'Попис',
             'sentence' => 'Овде ќе се прави годишен попис на залихите и ќе се книжат разликите.',
         ],
-        'vraboteni' => [
-            'label' => 'Вработени',
-            'sentence' => 'Овде ќе се води евиденција на вработените и нивните договори.',
-        ],
         'plata-mpin' => [
             'label' => 'Плата (МПИН)',
             'sentence' => 'Овде ќе се пресметуваат платите и ќе се генерира МПИН датотеката.',
@@ -162,7 +158,7 @@ class Menu
                 'key' => 'payroll',
                 'label' => 'ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ',
                 'items' => [
-                    self::soon($company, 'vraboteni'),
+                    ['label' => 'Вработени', 'url' => route('employees.index', $company), 'pattern' => 'employees.*', 'roles' => null],
                     self::soon($company, 'plata-mpin'),
                     self::soon($company, 'e-pdd'),
                 ],

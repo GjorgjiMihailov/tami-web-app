@@ -26,6 +26,8 @@ use App\Livewire\CompanyIndex;
 use App\Livewire\Dashboard;
 use App\Livewire\DocumentIndex;
 use App\Livewire\EfakturaAccessRequests;
+use App\Livewire\EmployeeForm;
+use App\Livewire\EmployeeIndex;
 use App\Livewire\Inventory\ItemBulkImport;
 use App\Livewire\Inventory\ItemIndex;
 use App\Livewire\Inventory\ItemMovementCardReport;
@@ -113,6 +115,16 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('partners.')->g
     Route::get('/partners', [PartnerIndex::class, '__invoke'])->name('index');
     Route::get('/partners/pdf', [PartnerListPdfController::class, '__invoke'])->name('pdf');
     Route::get('/partners/{partner}', [PartnerShow::class, '__invoke'])->name('show');
+});
+
+// Array-callable form (not bare class-string) for the same reason as the
+// accounting.* group above: EmployeeIndex and EmployeeForm don't exist until
+// Tasks 8 and 9, and a bare class-string would crash route registration
+// immediately.
+Route::middleware(['auth'])->prefix('companies/{company}')->name('employees.')->group(function () {
+    Route::get('/employees', [EmployeeIndex::class, '__invoke'])->name('index');
+    Route::get('/employees/create', [EmployeeForm::class, '__invoke'])->name('create');
+    Route::get('/employees/{employee}/edit', [EmployeeForm::class, '__invoke'])->name('edit');
 });
 
 // Array-callable form (not bare class-string) for the same reason as the

@@ -103,21 +103,22 @@ class MenuTest extends TestCase
         }
     }
 
-    // Follows from the two rules above rather than being hardcoded: every item in
-    // ПЛАТИ И ЧР is unbuilt today, clients do not see unbuilt items, and a group
-    // with no visible items is dropped. The day that module ships, the group
-    // reappears for clients with no change to Menu's role rules.
-    public function test_a_group_whose_items_are_all_hidden_disappears(): void
+    // Вработени is now built, so the ПЛАТИ И ЧР group survives for a client —
+    // carrying only that one item — while the two still-unbuilt entries stay
+    // admin/accountant-only. This is the same "drops when empty, survives
+    // once something is visible" rule as before; it just no longer applies
+    // to this group, since it is no longer empty for a client.
+    public function test_a_client_sees_the_payroll_group_with_only_the_built_item(): void
     {
         $company = Company::factory()->create();
 
-        $this->assertNotContains(
-            'ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ',
-            $this->groupLabels(Menu::for($this->userWithRole('client', $company), $company))
+        $this->assertSame(
+            ['Вработени'],
+            $this->itemLabels(Menu::for($this->userWithRole('client', $company), $company), 'payroll')
         );
-        $this->assertContains(
-            'ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ',
-            $this->groupLabels(Menu::for($this->userWithRole('admin'), $company))
+        $this->assertSame(
+            ['Вработени', 'Плата (МПИН)', 'е-ПДД'],
+            $this->itemLabels(Menu::for($this->userWithRole('admin'), $company), 'payroll')
         );
     }
 
