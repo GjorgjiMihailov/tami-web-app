@@ -13,6 +13,7 @@ use App\Support\WorkingYear;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use RuntimeException;
 
 #[Layout('layouts.app')]
 class EmployeeForm extends Component
@@ -121,7 +122,13 @@ class EmployeeForm extends Component
             return;
         }
 
-        $parameter = PayrollParameter::forDate($this->salaryEffectiveFrom ?: now()->toDateString());
+        try {
+            $parameter = PayrollParameter::forDate($this->salaryEffectiveFrom ?: now()->toDateString());
+        } catch (RuntimeException $e) {
+            $this->addError('salaryEffectiveFrom', 'Нема параметри за пресметка на плата за овој датум. Внесете ги параметрите во ПОСТАВКИ.');
+
+            return;
+        }
 
         $breakdown = $from === 'gross'
             ? SalaryCalculator::fromGross($amount, $parameter)
@@ -138,6 +145,8 @@ class EmployeeForm extends Component
         $this->syncing = false;
 
         $this->basisTyped = $from;
+
+        $this->resetErrorBag('salaryEffectiveFrom');
     }
 
     public function save(): void

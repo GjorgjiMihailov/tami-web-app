@@ -52,6 +52,17 @@ class EmployeeFormTest extends TestCase
             ->assertSet('gross', '38507');
     }
 
+    public function test_typing_an_amount_before_the_first_seeded_period_shows_a_validation_error(): void
+    {
+        $company = Company::factory()->create();
+        $this->actAsAdmin();
+
+        Livewire::test(EmployeeForm::class, ['company' => $company])
+            ->set('salaryEffectiveFrom', '2025-06-30')
+            ->set('gross', '38507')
+            ->assertHasErrors(['salaryEffectiveFrom']);
+    }
+
     public function test_it_stores_only_the_side_that_was_typed(): void
     {
         $company = Company::factory()->create();
