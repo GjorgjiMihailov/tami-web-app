@@ -23,27 +23,26 @@
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
-            @forelse ($employees as $employee)
-                @php $salary = $employee->salaryOn($asOf); @endphp
+            @forelse ($rows as $row)
                 <tr class="text-sm hover:bg-orange-50">
                     <td class="py-1 px-3">
-                        <a href="{{ route('employees.edit', [$company, $employee]) }}" class="text-brand hover:underline font-medium">{{ $employee->full_name }}</a>
+                        <a href="{{ route('employees.edit', [$company, $row['employee']]) }}" class="text-brand hover:underline font-medium">{{ $row['employee']->full_name }}</a>
                     </td>
-                    <td class="py-1 px-3">{{ $employee->embg }}</td>
-                    <td class="py-1 px-3">{{ $employee->employed_on?->format('d.m.Y') }}</td>
+                    <td class="py-1 px-3">{{ $row['employee']->embg }}</td>
+                    <td class="py-1 px-3">{{ $row['employee']->employed_on?->format('d.m.Y') }}</td>
                     <td class="py-1 px-3">
-                        @if ($salary)
-                            {{ number_format($salary->amount, 0, ',', '.') }}
-                            <span class="text-gray-400">{{ $salary->basis === 'gross' ? 'бруто' : 'нето' }}</span>
-                            @if ($salary->effective_from->year < $year)
-                                <span class="ml-1 inline-flex items-center rounded-full bg-gray-100 px-2 text-xs text-gray-600">Запис од {{ $salary->effective_from->year }}</span>
+                        @if ($row['salary'])
+                            {{ number_format($row['salary']->amount, 0, ',', '.') }}
+                            <span class="text-gray-400">{{ $row['salary']->basis === 'gross' ? 'бруто' : 'нето' }}</span>
+                            @if ($row['salary']->effective_from->year < $year)
+                                <span class="ml-1 inline-flex items-center rounded-full bg-gray-100 px-2 text-xs text-gray-600">Запис од {{ $row['salary']->effective_from->year }}</span>
                             @endif
                         @else
                             <span class="text-gray-400">—</span>
                         @endif
                     </td>
                     <td class="py-1 px-3">
-                        @if ($employee->isActiveOn($asOf))
+                        @if ($row['active'])
                             <span class="text-gray-500">Активен</span>
                         @else
                             <span class="inline-flex items-center rounded-full bg-gray-100 px-2 text-xs text-gray-600">Исклучен</span>
