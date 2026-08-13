@@ -63,7 +63,7 @@ class MenuTest extends TestCase
         $menu = Menu::for($this->userWithRole('admin'), $company);
 
         $this->assertSame(['Главна книга', 'Извештаи и обрасци', 'Изводи'], $this->itemLabels($menu, 'finance'));
-        $this->assertSame(['Компанија', 'Контен план', 'е-Фактура барања'], $this->itemLabels($menu, 'settings'));
+        $this->assertSame(['Компанија', 'Контен план', 'е-Фактура барања', 'Параметри за плата'], $this->itemLabels($menu, 'settings'));
     }
 
     public function test_an_accountant_sees_finance_but_no_efaktura_requests(): void

@@ -43,6 +43,7 @@ use App\Livewire\Invoicing\SalesInvoiceIndex;
 use App\Livewire\Invoicing\SalesInvoiceShow;
 use App\Livewire\PartnerIndex;
 use App\Livewire\PartnerShow;
+use App\Livewire\PayrollParameterIndex;
 use App\Livewire\Reports\Ddv04Report;
 use App\Livewire\Reports\ReportIndex;
 use Illuminate\Support\Facades\Route;
@@ -125,6 +126,10 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('employees.')->
     Route::get('/employees', [EmployeeIndex::class, '__invoke'])->name('index');
     Route::get('/employees/create', [EmployeeForm::class, '__invoke'])->name('create');
     Route::get('/employees/{employee}/edit', [EmployeeForm::class, '__invoke'])->name('edit');
+});
+
+Route::middleware(['auth'])->prefix('companies/{company}')->name('payroll-parameters.')->group(function () {
+    Route::get('/payroll-parameters', [PayrollParameterIndex::class, '__invoke'])->name('index');
 });
 
 // Array-callable form (not bare class-string) for the same reason as the
