@@ -17,7 +17,10 @@ return new class extends Migration
             $table->string('municipality_code', 16)->nullable();   // SifraOpstina
             $table->string('bank_account', 34);                    // TransakciskaSmetka
             $table->string('insurance_type_code', 16);             // SifraRabotenOdnos
-            $table->string('registration_number', 32)->nullable(); // BrojDogovor (М1/М2)
+            // broj_prijava — the М1/М2 registration/deregistration number for
+            // compulsory social insurance. Not BrojDogovor, which is a
+            // different МПИН field (the contract number).
+            $table->string('registration_number', 32)->nullable();
             $table->date('employed_on');                           // DatumPocetok
             $table->date('terminated_on')->nullable();             // DatumZavrsuvanje
             $table->string('movement_code', 16)->nullable();       // SifraDvizenje

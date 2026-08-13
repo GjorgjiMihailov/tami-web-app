@@ -107,7 +107,42 @@ class PayrollParameterIndexTest extends TestCase
             ->set('minimumWage', '40000')
             ->call('addPeriod')
             ->assertHasErrors(['effectiveFrom' => 'unique'])
-            ->assertSee('Важи од веќе постои.');
+            ->assertSee('важи од веќе постои.');
+    }
+
+    public function test_a_period_added_through_the_screen_is_itself_protected(): void
+    {
+        // The test above only proves the rule sees rows the migration wrote with
+        // a raw insert. A row written through the model used to be stored as
+        // '2027-01-01 00:00:00' on SQLite, which the rule's plain comparison
+        // never matched — validation passed and the column's unique index threw
+        // an uncaught QueryException, a 500 instead of the Macedonian message.
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $component = Livewire::test(PayrollParameterIndex::class, ['company' => $company]);
+
+        $fill = fn ($c) => $c->set('effectiveFrom', '2027-01-01')
+            ->set('ratePension', '20.5')
+            ->set('rateHealth', '7.5')
+            ->set('rateInjury', '0.5')
+            ->set('rateUnemployment', '0.1')
+            ->set('rateTax', '10')
+            ->set('personalAllowance', '11500')
+            ->set('averageSalary', '72000')
+            ->set('minBase', '36000')
+            ->set('maxBase', '1152000')
+            ->set('minimumWage', '40000');
+
+        $fill($component)->call('addPeriod')->assertHasNoErrors();
+
+        $fill($component)->call('addPeriod')
+            ->assertHasErrors(['effectiveFrom' => 'unique'])
+            ->assertSee('важи од веќе постои.');
+
+        $this->assertSame(1, PayrollParameter::where('effective_from', 'like', '2027-01-01%')->count());
     }
 
     public function test_the_parameters_menu_entry_is_admin_only(): void

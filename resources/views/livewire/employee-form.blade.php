@@ -30,6 +30,7 @@
                             <option value="{{ $code->code }}">{{ $code->name }}</option>
                         @endforeach
                     </select>
+                    @error('municipalityCode') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <x-input-label for="bankAccount" value="Трансакциска сметка" />
@@ -105,7 +106,21 @@
 
         <x-card class="mb-6">
             <h2 class="font-semibold text-gray-700 mb-1">Договорена плата</h2>
-            <p class="text-sm text-gray-500 mb-3">Внесете во едното поле — другото се пресметува автоматски.</p>
+
+            <p class="text-sm mb-1">
+                @if ($currentSalary)
+                    <span class="text-gray-500">Важечка плата на {{ $asOf->format('d.m.Y') }}:</span>
+                    <span class="font-medium text-gray-800">{{ number_format($currentSalary->amount, 0, ',', '.') }}</span>
+                    <span class="text-gray-500">{{ $currentSalary->basis === 'gross' ? 'бруто' : 'нето' }} — важи од {{ $currentSalary->effective_from->format('d.m.Y') }}</span>
+                    @if ($currentSalary->effective_from->year < $workingYear)
+                        <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">Запис од {{ $currentSalary->effective_from->year }}</span>
+                    @endif
+                @else
+                    <span class="text-gray-500">Сè уште нема договорена плата.</span>
+                @endif
+            </p>
+
+            <p class="text-sm text-gray-500 mb-3">Внесете во едното поле за да договорите нова плата — другото се пресметува автоматски.</p>
             <div class="grid gap-3 md:grid-cols-3">
                 <div>
                     <x-input-label for="salaryEffectiveFrom" value="Важи од" />

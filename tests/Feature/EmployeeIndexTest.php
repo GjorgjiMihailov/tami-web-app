@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Employee;
 use App\Models\EmployeeSalary;
 use App\Models\User;
+use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -66,6 +67,25 @@ class EmployeeIndexTest extends TestCase
             ->assertDontSee('Стефан')
             ->set('showTerminated', true)
             ->assertSee('Стефан');
+    }
+
+    public function test_an_employee_hired_after_a_past_working_year_is_still_listed(): void
+    {
+        // "Вработените се матични податоци… листата не се филтрира по работна
+        // година." Deciding active/terminated on the working year's date would
+        // hide everyone hired later behind a checkbox that promises the opposite
+        // — terminated staff, not future hires.
+        $company = Company::factory()->create();
+        Employee::factory()->for($company)->create([
+            'first_name' => 'Нова', 'last_name' => 'Вработена',
+            'employed_on' => now()->startOfYear()->toDateString(),
+        ]);
+
+        $this->admin();
+        WorkingYear::set($company, (int) now()->year - 1);
+
+        Livewire::test(EmployeeIndex::class, ['company' => $company])
+            ->assertSee('Вработена');
     }
 
     public function test_it_shows_the_salary_in_force_in_the_working_year(): void

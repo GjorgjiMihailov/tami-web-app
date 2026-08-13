@@ -26,7 +26,15 @@ class EmployeeIndex extends Component
     public function render()
     {
         $year = WorkingYear::for($this->company);
+
+        // The salary is period-based, so which one to show follows the working
+        // year. Whether someone still works here does not: the spec says
+        // employees are master data and "листата не се филтрира по работна
+        // година". Deciding that on the working year's date would hide everyone
+        // hired after a past working year ended, behind a checkbox that promises
+        // terminated staff.
         $asOf = WorkingYear::defaultDate($year);
+        $today = now()->toDateString();
 
         // Each row bundles the employee with the salary in force on $asOf,
         // resolved in-memory from the eager-loaded `salaries` relation rather
@@ -38,14 +46,14 @@ class EmployeeIndex extends Component
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get()
-            ->filter(fn (Employee $e) => $this->showTerminated || $e->isActiveOn($asOf))
+            ->filter(fn (Employee $e) => $this->showTerminated || $e->isActiveOn($today))
             ->map(fn (Employee $e) => [
                 'employee' => $e,
                 'salary' => $e->salaries
                     ->filter(fn (EmployeeSalary $s) => $s->effective_from->toDateString() <= $asOf)
                     ->sortByDesc('effective_from')
                     ->first(),
-                'active' => $e->isActiveOn($asOf),
+                'active' => $e->isActiveOn($today),
             ])
             ->values();
 

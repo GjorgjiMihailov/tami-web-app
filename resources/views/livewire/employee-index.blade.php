@@ -35,7 +35,7 @@
                             {{ number_format($row['salary']->amount, 0, ',', '.') }}
                             <span class="text-gray-400">{{ $row['salary']->basis === 'gross' ? 'бруто' : 'нето' }}</span>
                             @if ($row['salary']->effective_from->year < $year)
-                                <span class="ml-1 inline-flex items-center rounded-full bg-gray-100 px-2 text-xs text-gray-600">Запис од {{ $row['salary']->effective_from->year }}</span>
+                                <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">Запис од {{ $row['salary']->effective_from->year }}</span>
                             @endif
                         @else
                             <span class="text-gray-400">—</span>

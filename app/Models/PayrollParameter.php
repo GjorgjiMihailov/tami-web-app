@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 
@@ -29,6 +30,29 @@ class PayrollParameter extends Model
             'max_base' => 'float',
             'minimum_wage' => 'float',
         ];
+    }
+
+    /**
+     * Written as a plain date, on purpose.
+     *
+     * With only the `date` cast, Eloquent serialises through getDateFormat()
+     * ('Y-m-d H:i:s'), so SQLite would store '2027-01-01 00:00:00' for a period
+     * added through the screen while the migration's raw insert stores
+     * '2027-01-01'. Two storage shapes in one column is what breaks
+     * `unique:payroll_parameters,effective_from`: the rule builds a plain
+     * where() and Eloquent applies no casts there, so it would miss every
+     * period the screen created, pass validation, and let the request hit the
+     * column's unique index — a 500 instead of the Macedonian message.
+     *
+     * A set mutator runs before the date cast on write, so this makes both
+     * creation paths agree. On MySQL the DATE column truncates the time anyway;
+     * this only brings SQLite into line with it.
+     */
+    protected function effectiveFrom(): Attribute
+    {
+        return Attribute::make(
+            set: fn ($value) => $value === null ? null : Carbon::parse($value)->toDateString(),
+        );
     }
 
     /**

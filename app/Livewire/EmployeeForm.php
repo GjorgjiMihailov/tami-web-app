@@ -10,6 +10,7 @@ use App\Models\PayrollParameter;
 use App\Rules\ValidEmbg;
 use App\Support\Payroll\SalaryCalculator;
 use App\Support\WorkingYear;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -21,6 +22,9 @@ class EmployeeForm extends Component
     public Company $company;
 
     public ?Employee $employee = null;
+
+    /** Captured in mount() — render() must never read the session or request. */
+    public int $workingYear = 0;
 
     public string $embg = '';
 
@@ -70,9 +74,9 @@ class EmployeeForm extends Component
 
         $this->company = $company;
 
-        $year = WorkingYear::for($company);
-        $this->employedOn = WorkingYear::defaultDate($year);
-        $this->salaryEffectiveFrom = WorkingYear::defaultDate($year);
+        $this->workingYear = WorkingYear::for($company);
+        $this->employedOn = WorkingYear::defaultDate($this->workingYear);
+        $this->salaryEffectiveFrom = WorkingYear::defaultDate($this->workingYear);
 
         if ($employee === null) {
             Gate::authorize('create', Employee::class);
@@ -81,6 +85,15 @@ class EmployeeForm extends Component
         }
 
         Gate::authorize('update', $employee);
+
+        // The URL carries both ids independently. Without this, an admin (or an
+        // accountant with two client companies) could open
+        // /companies/{A}/employees/{employee-of-B}/edit and reparent the
+        // employee — with their whole salary history — by saving. Same guard as
+        // SalesInvoiceForm and PurchaseInvoiceForm.
+        if ($employee->company_id !== $company->id) {
+            abort(404);
+        }
 
         $this->employee = $employee;
         $this->embg = $employee->embg;
@@ -108,6 +121,19 @@ class EmployeeForm extends Component
     public function updatedNet(string $value): void
     {
         $this->recompute($value, from: 'net');
+    }
+
+    /**
+     * The rates depend on the date, so moving "Важи од" after typing an amount
+     * would otherwise leave the computed counterpart calculated against the
+     * previous period. Only the typed side is stored, so the stored figure was
+     * never wrong — but the one on screen was, which is worse than none.
+     */
+    public function updatedSalaryEffectiveFrom(): void
+    {
+        $typed = $this->basisTyped === 'gross' ? $this->gross : $this->net;
+
+        $this->recompute($typed, from: $this->basisTyped);
     }
 
     /**
@@ -172,7 +198,9 @@ class EmployeeForm extends Component
             'embg' => ['required', 'string', new ValidEmbg],
             'firstName' => 'required|string|max:255',
             'lastName' => 'required|string|max:255',
-            'municipalityCode' => 'nullable|string|max:16',
+            // МПИН needs SifraOpstina, so the card may not be saved without it.
+            // The column stays nullable so a later partial import is possible.
+            'municipalityCode' => 'required|string|max:16',
             'bankAccount' => 'required|string|max:34',
             'insuranceTypeCode' => 'required|string|max:16',
             'registrationNumber' => 'nullable|string|max:32',
@@ -198,12 +226,13 @@ class EmployeeForm extends Component
             return;
         }
 
+        // company_id is deliberately absent: it belongs only to the create path
+        // below, so no update can ever move an employee to another company.
         $attributes = [
-            'company_id' => $this->company->id,
             'embg' => $validated['embg'],
             'first_name' => $validated['firstName'],
             'last_name' => $validated['lastName'],
-            'municipality_code' => $validated['municipalityCode'] ?: null,
+            'municipality_code' => $validated['municipalityCode'],
             'bank_account' => $validated['bankAccount'],
             'insurance_type_code' => $validated['insuranceTypeCode'],
             'registration_number' => $validated['registrationNumber'] ?: null,
@@ -218,7 +247,7 @@ class EmployeeForm extends Component
         ];
 
         if ($this->employee === null) {
-            $this->employee = Employee::create($attributes);
+            $this->employee = Employee::create(['company_id' => $this->company->id] + $attributes);
         } else {
             $this->employee->update($attributes);
         }
@@ -230,7 +259,15 @@ class EmployeeForm extends Component
 
         if ($amount > 0 && $this->salaryEffectiveFrom !== '') {
             EmployeeSalary::updateOrCreate(
-                ['employee_id' => $this->employee->id, 'effective_from' => $this->salaryEffectiveFrom],
+                [
+                    'employee_id' => $this->employee->id,
+                    // The `date` cast writes through getDateFormat(), so SQLite
+                    // stores '2026-07-01 00:00:00'. where() applies no casts, so
+                    // a plain '2026-07-01' would never match its own row and each
+                    // save would append a duplicate. Normalising the lookup key
+                    // to the same instant is what makes this an update.
+                    'effective_from' => Carbon::parse($this->salaryEffectiveFrom)->startOfDay(),
+                ],
                 ['amount' => $amount, 'basis' => $this->basisTyped],
             );
         }
@@ -240,12 +277,20 @@ class EmployeeForm extends Component
 
     public function render()
     {
+        // The spec: the card *shows* the salary in force on the working year's
+        // default date. It is shown, not offered for editing — prefilling the
+        // two inputs would make every save of an unrelated field write a new
+        // salary row dated today.
+        $asOf = WorkingYear::defaultDate($this->workingYear);
+
         return view('livewire.employee-form', [
             'municipalities' => PayrollCode::ofType('opstina'),
             'insuranceTypes' => PayrollCode::ofType('vid_staz'),
             'movements' => PayrollCode::ofType('sifra_dviz'),
             'exemptions' => PayrollCode::ofType('osloboduvanje'),
             'history' => $this->employee?->salaries ?? collect(),
+            'currentSalary' => $this->employee?->salaryOn($asOf),
+            'asOf' => Carbon::parse($asOf),
         ]);
     }
 }
