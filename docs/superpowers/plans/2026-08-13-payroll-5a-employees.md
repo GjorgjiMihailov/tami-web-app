@@ -730,8 +730,9 @@ class SalaryCalculatorTest extends TestCase
         $this->assertSame(1500, $breakdown->whole()['health']);  // 20000 × 7,5%
 
         // ...and the top-up to 34.571 is reported separately, as employer cost.
+        // 34571 − 20000 = 14571 short; 14571 × 19,9% = 2.899,629 → 2.900.
         $this->assertGreaterThan(0, $breakdown->whole()['topUp']);
-        $this->assertSame(2898, $breakdown->whole()['topUpPension']); // 14571 × 19,9%
+        $this->assertSame(2900, $breakdown->whole()['topUpPension']);
 
         // The employee's net must be exactly what it would be with no minimum
         // base at all. This is the assertion that protects the worker from
@@ -893,7 +894,7 @@ class SalaryCalculator
 Run: `php artisan test --filter=SalaryCalculatorTest`
 Expected: PASS, 6 tests.
 
-If `test_the_top_up_to_the_minimum_base_does_not_reduce_the_employees_net` fails on the `topUpPension` figure, recompute `14571 × 19,9% = 2899.629` by hand and correct the expectation — do **not** change the calculator to match a hand-written number without redoing the arithmetic.
+If any expected figure disagrees with the calculator, redo the arithmetic by hand before touching either side. Never change the calculator to match a hand-written expectation without first confirming the expectation itself.
 
 - [ ] **Step 6: Commit**
 
@@ -1624,7 +1625,44 @@ class EmployeeIndex extends Component
 }
 ```
 
-Create `resources/views/livewire/employee-index.blade.php` containing `<div>Вработени</div>`, and the equivalent pair for `EmployeeForm` / `employee-form.blade.php` with `<div>Картон на вработен</div>`.
+Create `resources/views/livewire/employee-index.blade.php` containing `<div>Вработени</div>`.
+
+`EmployeeForm` is **not** the same shape — it serves both `employees.create` and `employees.edit`, so its `mount()` must take the optional bound `Employee`. Getting this signature wrong here would not fail any test in this task and would surface only in Task 9:
+
+```php
+<?php
+
+namespace App\Livewire;
+
+use App\Models\Company;
+use App\Models\Employee;
+use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\Layout;
+use Livewire\Component;
+
+#[Layout('layouts.app')]
+class EmployeeForm extends Component
+{
+    public Company $company;
+
+    public ?Employee $employee = null;
+
+    public function mount(Company $company, ?Employee $employee = null): void
+    {
+        Gate::authorize('view', $company);
+
+        $this->company = $company;
+        $this->employee = $employee;
+    }
+
+    public function render()
+    {
+        return view('livewire.employee-form');
+    }
+}
+```
+
+Create `resources/views/livewire/employee-form.blade.php` containing `<div>Картон на вработен</div>`.
 
 - [ ] **Step 7: Update MenuTest**
 
