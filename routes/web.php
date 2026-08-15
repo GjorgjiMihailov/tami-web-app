@@ -43,6 +43,8 @@ use App\Livewire\Invoicing\SalesInvoiceIndex;
 use App\Livewire\Invoicing\SalesInvoiceShow;
 use App\Livewire\PartnerIndex;
 use App\Livewire\PartnerShow;
+use App\Livewire\Payroll\PayrollRunIndex;
+use App\Livewire\Payroll\PayrollRunShow;
 use App\Livewire\PayrollParameterIndex;
 use App\Livewire\Reports\Ddv04Report;
 use App\Livewire\Reports\ReportIndex;
@@ -130,6 +132,14 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('employees.')->
 
 Route::middleware(['auth'])->prefix('companies/{company}')->name('payroll-parameters.')->group(function () {
     Route::get('/payroll-parameters', [PayrollParameterIndex::class, '__invoke'])->name('index');
+});
+
+// EnsureAccountingAccess, not a policy: payroll is the firm's work, not the
+// client's, and a group-level gate covers screens added later by default
+// instead of by remembering.
+Route::middleware(['auth', EnsureAccountingAccess::class])->prefix('companies/{company}')->name('payroll-runs.')->group(function () {
+    Route::get('/payroll-runs', [PayrollRunIndex::class, '__invoke'])->name('index');
+    Route::get('/payroll-runs/{run}', [PayrollRunShow::class, '__invoke'])->name('show');
 });
 
 // Array-callable form (not bare class-string) for the same reason as the
