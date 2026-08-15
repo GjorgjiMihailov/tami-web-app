@@ -2349,7 +2349,11 @@ class PayrollRunPostingTest extends TestCase
 
         $run = $service->confirm($service->recalculate($run->fresh()), $user->id);
 
-        $this->assertCount(0, $run->journalEntry->lines);
+        // The run confirms — there is simply nothing for the company to post.
+        // An entry header with no lines would be noise in the ledger, so none
+        // is created and the link stays empty.
+        $this->assertSame(PayrollRun::CONFIRMED, $run->status);
+        $this->assertNull($run->journal_entry_id);
     }
 
     public function test_a_deduction_reaches_the_ledger_whole(): void
@@ -2468,6 +2472,11 @@ Add to `app/Services/Payroll/PayrollRunService.php` (and add `use App\Models\Acc
                 );
             }
 
+            // No entry at all when the company owes nothing — a month where
+            // every employee is wholly on the Fund confirms, but posts nothing.
+            // An entry header with no lines is noise in the ledger, and a null
+            // journal_entry_id says "nothing was posted" more honestly than an
+            // empty entry does.
             $entry = null;
 
             if (round($gross + $topUp, 2) > 0) {
