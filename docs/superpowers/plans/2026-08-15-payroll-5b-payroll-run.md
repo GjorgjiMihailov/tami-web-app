@@ -2380,6 +2380,36 @@ class PayrollRunPostingTest extends TestCase
         $this->assertSame(5000.0, round((float) $deductionLine->credit, 2));
     }
 
+    public function test_an_oversized_deduction_still_leaves_a_balanced_entry(): void
+    {
+        // The line form refuses a deduction bigger than the net, so this should
+        // not arise in use. It is asserted anyway because the failure mode is
+        // silent: a dropped negative row leaves the books out of balance with
+        // nothing on screen to say so.
+        $company = $this->company();
+        $this->employeeOn($company, 38507);
+        $user = User::factory()->create();
+        $service = app(PayrollRunService::class);
+
+        $run = $service->open($company, 2026, 7);
+        PayrollRunLine::create([
+            'payroll_run_employee_id' => $run->employees->first()->id,
+            'kind' => PayrollRunLine::KIND_DEDUCTION, 'code' => null,
+            'description' => 'Прекумерна задршка', 'hours' => null, 'percent' => null,
+            'amount' => 40000, 'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
+            'is_automatic' => false,
+        ]);
+
+        $run = $service->confirm($service->recalculate($run->fresh()), $user->id);
+
+        $lines = $run->journalEntry->lines;
+
+        $this->assertSame(
+            round($lines->sum(fn ($l) => (float) $l->debit), 2),
+            round($lines->sum(fn ($l) => (float) $l->credit), 2)
+        );
+    }
+
     public function test_returning_to_draft_reverses_the_entry_and_reopens_the_run(): void
     {
         $company = $this->company();
@@ -2562,7 +2592,23 @@ Add to `app/Services/Payroll/PayrollRunService.php` (and add `use App\Models\Acc
     /** Zero-value lines are skipped: an empty row in the ledger is noise. */
     private function line(JournalEntry $entry, PayrollRun $run, string $code, string $label, float $debit, float $credit): void
     {
-        if (round($debit, 2) <= 0 && round($credit, 2) <= 0) {
+        // A negative amount on one side is the same amount on the other. This
+        // is not cosmetics: without it the zero-skip below would swallow a
+        // negative remainder on 240, and an entry that quietly loses a row is
+        // an unbalanced set of books. The line form refuses the deduction that
+        // would cause it, so this is the second lock, not the first.
+        if (round($credit, 2) < 0) {
+            $debit += -$credit;
+            $credit = 0.0;
+        }
+
+        if (round($debit, 2) < 0) {
+            $credit += -$debit;
+            $debit = 0.0;
+        }
+
+        // Only an exactly-zero line is dropped.
+        if (round($debit, 2) == 0.0 && round($credit, 2) == 0.0) {
             return;
         }
 
@@ -2594,7 +2640,7 @@ In `recalculate()`, make the `employees()` eager load include lines so `employer
 - [ ] **Step 4: Run the tests and make sure they pass**
 
 Run: `php artisan test --filter=PayrollRunPostingTest`
-Expected: PASS, 6 tests.
+Expected: PASS, 7 tests.
 
 If the balance test fails by a denar, the fault is in `confirm()` recomputing a figure the calculator already produced — the credit to 240 must be the *remainder*, never an independently rounded number.
 
@@ -3231,6 +3277,39 @@ class PayrollRunShowTest extends TestCase
         );
     }
 
+    public function test_it_refuses_a_deduction_when_the_fund_bears_the_whole_month(): void
+    {
+        $run = $this->openRun();
+        $this->admin();
+        $runEmployee = $run->employees->first();
+        $runEmployee->lines()->update([
+            'code' => '129', 'borne_by' => PayrollRunLine::BORNE_FZO,
+        ]);
+        app(PayrollRunService::class)->recalculate($run->fresh());
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run->fresh()])
+            ->call('selectEmployee', $runEmployee->id)
+            ->set('lineKind', PayrollRunLine::KIND_DEDUCTION)
+            ->set('lineDescription', 'Кредит')
+            ->set('lineAmount', 1000)
+            ->call('saveLine')
+            ->assertHasErrors('lineAmount');
+    }
+
+    public function test_it_refuses_a_deduction_larger_than_the_remaining_net(): void
+    {
+        $run = $this->openRun();
+        $this->admin();
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
+            ->call('selectEmployee', $run->employees->first()->id)
+            ->set('lineKind', PayrollRunLine::KIND_DEDUCTION)
+            ->set('lineDescription', 'Преголем кредит')
+            ->set('lineAmount', 40000)
+            ->call('saveLine')
+            ->assertHasErrors('lineAmount');
+    }
+
     public function test_it_refuses_fractional_hours(): void
     {
         $run = $this->openRun();
@@ -3389,6 +3468,32 @@ class PayrollRunShow extends Component
         ]);
 
         $runEmployee = $this->selectedEmployee();
+
+        // A deduction is withheld from what the company pays. When the whole
+        // month is borne by the Fund the company pays nothing, so there is
+        // nothing to withhold from — and a deduction entered anyway would show
+        // on the payslip while the ledger booked nothing for it. Refusing it is
+        // the honest answer; the poster has a second guard behind this one.
+        if ($this->lineKind === PayrollRunLine::KIND_DEDUCTION) {
+            $employerGross = $runEmployee->lines
+                ->where('kind', '!=', PayrollRunLine::KIND_DEDUCTION)
+                ->where('borne_by', PayrollRunLine::BORNE_EMPLOYER)
+                ->sum('amount');
+
+            if (round((float) $employerGross, 2) <= 0) {
+                $this->addError('lineAmount', 'Нема од што да се задржи — целата плата на овој вработен е на товар на друг.');
+
+                return;
+            }
+
+            $remaining = round($runEmployee->net - $runEmployee->deductions_total, 2);
+
+            if ((float) $this->lineAmount > $remaining) {
+                $this->addError('lineAmount', 'Задршката е поголема од останатото нето за исплата.');
+
+                return;
+            }
+        }
 
         PayrollRunLine::create([
             'payroll_run_employee_id' => $runEmployee->id,
@@ -3654,7 +3759,7 @@ The two placeholder comments where the PDF links belong are deliberate. `route()
 - [ ] **Step 5: Run the tests and make sure they pass**
 
 Run: `php artisan test --filter=PayrollRunShowTest`
-Expected: PASS, 6 tests.
+Expected: PASS, 8 tests.
 
 - [ ] **Step 6: Run the density test**
 
