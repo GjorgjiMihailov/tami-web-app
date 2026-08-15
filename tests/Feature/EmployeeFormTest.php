@@ -411,6 +411,26 @@ class EmployeeFormTest extends TestCase
             ->assertDontSee('Важечка плата');
     }
 
+    public function test_it_stores_prior_service(): void
+    {
+        $company = Company::factory()->create();
+        $this->actAsAdmin();
+
+        Livewire::test(EmployeeForm::class, ['company' => $company])
+            ->set('embg', '3101980455019')
+            ->set('firstName', 'Ана')
+            ->set('lastName', 'Николовска')
+            ->set('municipalityCode', '175')
+            ->set('bankAccount', '300000000000000')
+            ->set('insuranceTypeCode', '0050')
+            ->set('employedOn', '2026-07-01')
+            ->set('prior_service_months', 24)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(24, Employee::where('embg', '3101980455019')->first()->prior_service_months);
+    }
+
     public function test_a_client_may_edit_their_own_companys_employee(): void
     {
         $company = Company::factory()->create();

@@ -50,6 +50,8 @@ class EmployeeForm extends Component
 
     public int $weeklyHours = 40;
 
+    public int $prior_service_months = 0;
+
     public string $address = '';
 
     public string $phone = '';
@@ -108,6 +110,7 @@ class EmployeeForm extends Component
         $this->movementCode = (string) $employee->movement_code;
         $this->exemptionCode = (string) $employee->exemption_code;
         $this->weeklyHours = $employee->weekly_hours;
+        $this->prior_service_months = $employee->prior_service_months;
         $this->address = (string) $employee->address;
         $this->phone = (string) $employee->phone;
         $this->email = (string) $employee->email;
@@ -209,6 +212,7 @@ class EmployeeForm extends Component
             'movementCode' => 'nullable|string|max:16',
             'exemptionCode' => 'nullable|string|max:16',
             'weeklyHours' => 'required|integer|min:1|max:40',
+            'prior_service_months' => ['required', 'integer', 'min:0', 'max:720'],
             'address' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
@@ -241,6 +245,7 @@ class EmployeeForm extends Component
             'movement_code' => $validated['movementCode'] ?: null,
             'exemption_code' => $validated['exemptionCode'] ?: null,
             'weekly_hours' => $validated['weeklyHours'],
+            'prior_service_months' => $validated['prior_service_months'],
             'address' => $validated['address'] ?: null,
             'phone' => $validated['phone'] ?: null,
             'email' => $validated['email'] ?: null,

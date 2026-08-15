@@ -16,7 +16,7 @@ class Employee extends Model
         'company_id', 'embg', 'first_name', 'last_name', 'municipality_code',
         'bank_account', 'insurance_type_code', 'registration_number',
         'employed_on', 'terminated_on', 'movement_code', 'exemption_code',
-        'weekly_hours', 'address', 'phone', 'email',
+        'weekly_hours', 'prior_service_months', 'address', 'phone', 'email',
     ];
 
     protected function casts(): array
@@ -25,6 +25,7 @@ class Employee extends Model
             'employed_on' => 'date',
             'terminated_on' => 'date',
             'weekly_hours' => 'integer',
+            'prior_service_months' => 'integer',
         ];
     }
 
@@ -59,5 +60,25 @@ class Employee extends Model
     public function getFullNameAttribute(): string
     {
         return trim($this->first_name.' '.$this->last_name);
+    }
+
+    /**
+     * Completed years of total service on the given date: time here plus the
+     * service brought from previous employers.
+     *
+     * Completed years, not fractional ones — минат труд steps up on the
+     * anniversary, it does not accrue daily.
+     */
+    public function seniorityYearsOn(string $date): int
+    {
+        $on = Carbon::parse($date);
+
+        if ($this->employed_on->gt($on)) {
+            return 0;
+        }
+
+        $months = $this->employed_on->diffInMonths($on) + $this->prior_service_months;
+
+        return intdiv((int) $months, 12);
     }
 }

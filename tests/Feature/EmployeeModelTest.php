@@ -98,4 +98,37 @@ class EmployeeModelTest extends TestCase
 
         $this->assertTrue($employee->isActiveOn('2030-01-01'));
     }
+
+    public function test_seniority_counts_completed_years_since_employment(): void
+    {
+        $employee = Employee::factory()->create([
+            'employed_on' => '2016-07-01',
+            'prior_service_months' => 0,
+        ]);
+
+        // 2026-06-30 is one day short of ten full years.
+        $this->assertSame(9, $employee->seniorityYearsOn('2026-06-30'));
+        $this->assertSame(10, $employee->seniorityYearsOn('2026-07-01'));
+    }
+
+    public function test_seniority_adds_the_service_brought_from_elsewhere(): void
+    {
+        $employee = Employee::factory()->create([
+            'employed_on' => '2024-07-01',
+            'prior_service_months' => 90, // seven and a half years
+        ]);
+
+        // Two years here plus seven and a half brought along is nine full years.
+        $this->assertSame(9, $employee->seniorityYearsOn('2026-07-01'));
+    }
+
+    public function test_seniority_is_zero_before_the_employment_date(): void
+    {
+        $employee = Employee::factory()->create([
+            'employed_on' => '2026-07-01',
+            'prior_service_months' => 0,
+        ]);
+
+        $this->assertSame(0, $employee->seniorityYearsOn('2026-01-31'));
+    }
 }
