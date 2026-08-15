@@ -1150,6 +1150,14 @@ class LineTypeTest extends TestCase
         $this->assertSame(PayrollRunLine::BORNE_EMPLOYER, LineType::borneBy(null));
     }
 
+    public function test_the_seniority_code_is_never_offered_for_manual_entry(): void
+    {
+        // It is derived from length of service and appended by the calculator.
+        // Offering it would let it be entered on top of the appended one.
+        $this->assertArrayNotHasKey(LineType::SENIORITY_CODE, LineType::OFFERED);
+        $this->assertSame('Минат труд', LineType::SENIORITY_LABEL);
+    }
+
     public function test_the_statutory_uplifts(): void
     {
         $this->assertSame(135.0, LineType::defaultPercent('005')); // overtime
@@ -1204,8 +1212,17 @@ final class LineType
      */
     public const FZO_CODES = ['129', '132', '138', '139'];
 
-    /** The seniority bonus, half a percent per completed year. */
+    /**
+     * The seniority bonus, half a percent per completed year.
+     *
+     * Deliberately absent from OFFERED below: it is derived from length of
+     * service, not entered. Offering it would let someone add it by hand on top
+     * of the one calculate() appends, and seniority would be paid twice. Its
+     * label lives here instead, since OFFERED can no longer supply it.
+     */
     public const SENIORITY_CODE = '037';
+
+    public const SENIORITY_LABEL = 'Минат труд';
 
     public const SENIORITY_PERCENT_PER_YEAR = 0.5;
 
@@ -1228,7 +1245,6 @@ final class LineType
         '127' => ['label' => 'Боледување 90%', 'percent' => 90.0, 'kind' => PayrollRunLine::KIND_HOURS],
         '128' => ['label' => 'Боледување 100%', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_HOURS],
         '129' => ['label' => 'Боледување на товар на ФЗО', 'percent' => 70.0, 'kind' => PayrollRunLine::KIND_HOURS],
-        '037' => ['label' => 'Минат труд', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_AMOUNT],
         '029' => ['label' => 'Храна', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_AMOUNT],
         '030' => ['label' => 'Превоз', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_AMOUNT],
         '034' => ['label' => 'Награда', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_AMOUNT],
@@ -1399,6 +1415,33 @@ class PayrollRunCalculatorTest extends TestCase
         $this->assertNotNull($seniority);
         // 20 years × 0,5% = 10% of the 36 800 of base lines.
         $this->assertSame(3680.0, round($seniority->amount, 2));
+    }
+
+    public function test_a_seniority_line_arriving_as_input_is_not_paid_twice(): void
+    {
+        $manual = [
+            'kind' => PayrollRunLine::KIND_AMOUNT, 'code' => '037',
+            'description' => 'Минат труд', 'hours' => null, 'percent' => null,
+            'amount' => 5000.0, 'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
+        ];
+
+        $result = PayrollRunCalculator::calculate(
+            fullMonthGross: 36800.0,
+            monthHours: 184,
+            seniorityYears: 20,
+            inputLines: [$this->hoursLine('001', 184, 100.0), $manual],
+            parameters: $this->july2026(),
+        );
+
+        $seniorityLines = array_values(array_filter(
+            $result->lines,
+            fn ($line) => $line->code === LineType::SENIORITY_CODE
+        ));
+
+        $this->assertCount(1, $seniorityLines);
+        $this->assertSame(3680.0, round($seniorityLines[0]->amount, 2));
+        $this->assertTrue($seniorityLines[0]->isAutomatic);
+        $this->assertSame(40480.0, round($result->gross, 2));
     }
 
     public function test_deductions_lower_the_effective_net_but_not_the_net(): void
@@ -1646,6 +1689,13 @@ final class PayrollRunCalculator
         $baseTotal = 0.0;
 
         foreach ($inputLines as $input) {
+            // The bonus is derived and appended below. A line arriving with its
+            // code can only be a caller bug — dropping it is what stops the same
+            // bonus being paid twice.
+            if (($input['code'] ?? null) === LineType::SENIORITY_CODE) {
+                continue;
+            }
+
             $amount = match ($input['kind']) {
                 PayrollRunLine::KIND_HOURS => round(
                     $hourlyRate * (int) $input['hours'] * ((float) $input['percent']) / 100,
@@ -1680,7 +1730,7 @@ final class PayrollRunCalculator
             $lines[] = new PayrollRunLineResult(
                 kind: PayrollRunLine::KIND_AMOUNT,
                 code: LineType::SENIORITY_CODE,
-                description: LineType::label(LineType::SENIORITY_CODE),
+                description: LineType::SENIORITY_LABEL,
                 hours: null,
                 percent: null,
                 amount: $seniorityAmount,
