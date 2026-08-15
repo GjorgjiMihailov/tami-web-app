@@ -2,8 +2,11 @@
 
 namespace App\Services\Payroll;
 
+use App\Models\Account;
 use App\Models\Company;
 use App\Models\Employee;
+use App\Models\JournalEntry;
+use App\Models\JournalGroup;
 use App\Models\PayrollMonthHours;
 use App\Models\PayrollParameter;
 use App\Models\PayrollRun;
@@ -161,5 +164,165 @@ class PayrollRunService
     private function endOfMonth(int $year, int $month): string
     {
         return \Carbon\Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+    }
+
+    /**
+     * Posts the month and locks it.
+     *
+     * Only lines the employer bears reach the ledger. The Fund's share is
+     * calculated, declared and shown on the payslip, but it is not the
+     * company's cost and not its liability — the same parallel track the
+     * minimum-base top-up already runs on.
+     */
+    public function confirm(PayrollRun $run, int $userId): PayrollRun
+    {
+        if (! $run->isDraft()) {
+            throw new RuntimeException('Пресметката е веќе потврдена.');
+        }
+
+        return DB::transaction(function () use ($run, $userId) {
+            $run = $this->recalculate($run);
+
+            $gross = 0.0;
+            $contributions = 0.0;
+            $tax = 0.0;
+            $deductions = 0.0;
+            $net = 0.0;
+            $topUp = 0.0;
+
+            foreach ($run->employees as $runEmployee) {
+                $share = $runEmployee->gross > 0
+                    ? $this->employerGross($runEmployee) / $runEmployee->gross
+                    : 0.0;
+
+                if ($share <= 0) {
+                    continue;
+                }
+
+                $employerGross = $this->employerGross($runEmployee);
+                $employerContributions = round($runEmployee->contributions * $share, 2);
+                $employerTax = round($runEmployee->tax * $share, 2);
+
+                $gross += $employerGross;
+                $contributions += $employerContributions;
+                $tax += $employerTax;
+                $deductions += $runEmployee->deductions_total;
+                $topUp += $runEmployee->top_up;
+                $net += round(
+                    $employerGross - $employerContributions - $employerTax - $runEmployee->deductions_total,
+                    2
+                );
+            }
+
+            // The entry is created unconditionally on confirmation — the
+            // design spec states this without a totals gate. A run where
+            // every employee is wholly FZO-borne still confirms and still
+            // gets an entry; it simply ends up with zero lines, via the
+            // per-line skip in line() below.
+            $label = "Плата {$run->month}/{$run->year}";
+
+            $entry = JournalEntry::create([
+                'company_id' => $run->company_id,
+                'journal_group_id' => $this->systemJournalGroup($run->company)->id,
+                'entry_date' => $run->endOfMonth(),
+                'description' => $label,
+                'created_by' => $userId,
+            ]);
+
+            $this->line($entry, $run, '421', $label, round($gross + $topUp, 2), 0.0);
+            $this->line($entry, $run, '234', $label, 0.0, round($contributions + $topUp, 2));
+            $this->line($entry, $run, '235', $label, 0.0, round($tax, 2));
+            $this->line($entry, $run, '249', $label, 0.0, round($deductions, 2));
+            $this->line($entry, $run, '240', $label, 0.0, round($net, 2));
+
+            $run->update([
+                'status' => PayrollRun::CONFIRMED,
+                'journal_entry_id' => $entry->id,
+                'confirmed_by' => $userId,
+                'confirmed_at' => now(),
+            ]);
+
+            return $run->fresh(['employees.lines', 'journalEntry.lines']);
+        });
+    }
+
+    public function returnToDraft(PayrollRun $run, int $userId): PayrollRun
+    {
+        if ($run->isDraft()) {
+            throw new RuntimeException('Пресметката е веќе нацрт.');
+        }
+
+        return DB::transaction(function () use ($run, $userId) {
+            // confirm() always creates a journal entry, so a confirmed run
+            // always has one to reverse here.
+            $original = $run->journalEntry;
+
+            $reversal = JournalEntry::create([
+                'company_id' => $run->company_id,
+                'journal_group_id' => $original->journal_group_id,
+                'entry_date' => $run->endOfMonth(),
+                'description' => "Сторно: {$original->description}",
+                'created_by' => $userId,
+            ]);
+
+            foreach ($original->lines as $line) {
+                $reversal->lines()->create([
+                    'account_id' => $line->account_id,
+                    'description' => $line->description,
+                    'line_date' => $line->line_date,
+                    'debit' => $line->credit,
+                    'credit' => $line->debit,
+                ]);
+            }
+
+            $run->update([
+                'status' => PayrollRun::DRAFT,
+                'journal_entry_id' => null,
+                'confirmed_by' => null,
+                'confirmed_at' => null,
+            ]);
+
+            return $run->fresh(['employees.lines']);
+        });
+    }
+
+    private function employerGross(PayrollRunEmployee $runEmployee): float
+    {
+        return round(
+            $runEmployee->lines
+                ->where('kind', '!=', PayrollRunLine::KIND_DEDUCTION)
+                ->where('borne_by', PayrollRunLine::BORNE_EMPLOYER)
+                ->sum('amount'),
+            2
+        );
+    }
+
+    /** Zero-value lines are skipped: an empty row in the ledger is noise. */
+    private function line(JournalEntry $entry, PayrollRun $run, string $code, string $label, float $debit, float $credit): void
+    {
+        if (round($debit, 2) <= 0 && round($credit, 2) <= 0) {
+            return;
+        }
+
+        $entry->lines()->create([
+            'account_id' => $this->account($run->company, $code)->id,
+            'description' => $label,
+            'line_date' => $run->endOfMonth(),
+            'debit' => number_format($debit, 2, '.', ''),
+            'credit' => number_format($credit, 2, '.', ''),
+        ]);
+    }
+
+    private function account(Company $company, string $code): Account
+    {
+        return Account::where('company_id', $company->id)->where('code', $code)->firstOrFail();
+    }
+
+    private function systemJournalGroup(Company $company): JournalGroup
+    {
+        return JournalGroup::firstOrCreate(
+            ['company_id' => $company->id, 'code' => '99'],
+            ['name' => 'Автоматски (фактури)', 'sort_order' => 99]
+        );
     }
 }
