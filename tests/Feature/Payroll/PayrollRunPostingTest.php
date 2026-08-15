@@ -173,6 +173,36 @@ class PayrollRunPostingTest extends TestCase
         $this->assertSame(5000.0, round((float) $deductionLine->credit, 2));
     }
 
+    public function test_an_oversized_deduction_still_leaves_a_balanced_entry(): void
+    {
+        // The line form refuses a deduction bigger than the net, so this should
+        // not arise in use. It is asserted anyway because the failure mode is
+        // silent: a dropped negative row leaves the books out of balance with
+        // nothing on screen to say so.
+        $company = $this->company();
+        $this->employeeOn($company, 38507);
+        $user = User::factory()->create();
+        $service = app(PayrollRunService::class);
+
+        $run = $service->open($company, 2026, 7);
+        PayrollRunLine::create([
+            'payroll_run_employee_id' => $run->employees->first()->id,
+            'kind' => PayrollRunLine::KIND_DEDUCTION, 'code' => null,
+            'description' => 'Прекумерна задршка', 'hours' => null, 'percent' => null,
+            'amount' => 40000, 'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
+            'is_automatic' => false,
+        ]);
+
+        $run = $service->confirm($service->recalculate($run->fresh()), $user->id);
+
+        $lines = $run->journalEntry->lines;
+
+        $this->assertSame(
+            round($lines->sum(fn ($l) => (float) $l->debit), 2),
+            round($lines->sum(fn ($l) => (float) $l->credit), 2)
+        );
+    }
+
     public function test_returning_to_draft_reverses_the_entry_and_reopens_the_run(): void
     {
         $company = $this->company();

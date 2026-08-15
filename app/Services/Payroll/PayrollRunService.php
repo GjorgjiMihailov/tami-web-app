@@ -304,7 +304,23 @@ class PayrollRunService
     /** Zero-value lines are skipped: an empty row in the ledger is noise. */
     private function line(JournalEntry $entry, PayrollRun $run, string $code, string $label, float $debit, float $credit): void
     {
-        if (round($debit, 2) <= 0 && round($credit, 2) <= 0) {
+        // A negative amount on one side is the same amount on the other. This
+        // is not cosmetics: without it the zero-skip below would swallow a
+        // negative remainder on 240, and an entry that quietly loses a row is
+        // an unbalanced set of books. The line form refuses the deduction that
+        // would cause it, so this is the second lock, not the first.
+        if (round($credit, 2) < 0) {
+            $debit += -$credit;
+            $credit = 0.0;
+        }
+
+        if (round($debit, 2) < 0) {
+            $credit += -$debit;
+            $debit = 0.0;
+        }
+
+        // Only an exactly-zero line is dropped.
+        if (round($debit, 2) == 0.0 && round($credit, 2) == 0.0) {
             return;
         }
 
