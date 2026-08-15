@@ -1946,16 +1946,23 @@ class PayrollRunServiceTest extends TestCase
         $this->assertSame(4000.0, round($runEmployee->deductions_total, 2));
     }
 
-    public function test_a_parameter_change_does_not_touch_a_confirmed_run(): void
+    public function test_a_parameter_change_does_not_restate_an_open_run(): void
     {
         $company = Company::factory()->create();
         $this->seedParameters();
         PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
         $this->employeeOn($company, 38507, 'gross');
 
-        $run = app(PayrollRunService::class)->open($company, 2026, 7);
-        $frozenParameterId = $run->payroll_parameter_id;
+        $service = app(PayrollRunService::class);
+        $run = $service->open($company, 2026, 7);
 
+        $frozenParameterId = $run->payroll_parameter_id;
+        $grossBefore = $run->employees->first()->gross;
+        $taxBefore = $run->employees->first()->tax;
+
+        // 2026-07-15 is not one of the seeded periods, so it does not collide.
+        // Its tax rate is 12% against July's 10% — far enough that a fresh
+        // lookup would move the figures visibly, not by a rounding step.
         PayrollParameter::create([
             'effective_from' => '2026-07-15',
             'rate_pension' => 25.0, 'rate_health' => 9.0, 'rate_injury' => 0.5,
@@ -1964,7 +1971,35 @@ class PayrollRunServiceTest extends TestCase
             'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
         ]);
 
-        $this->assertSame($frozenParameterId, $run->fresh()->payroll_parameter_id);
+        // Recalculating is the whole point of this test. Without it the
+        // assertions below are true by construction — nothing ever rewrites the
+        // frozen id — so it would pass even if recalculate() looked the
+        // parameters up fresh on every call.
+        $run = $service->recalculate($run->fresh());
+
+        $this->assertSame($frozenParameterId, $run->payroll_parameter_id);
+        $this->assertSame(round($grossBefore, 2), round($run->employees->first()->gross, 2));
+        $this->assertSame(round($taxBefore, 2), round($run->employees->first()->tax, 2));
+    }
+
+    public function test_a_confirmed_run_refuses_to_be_recalculated(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        $this->employeeOn($company, 38507, 'gross');
+
+        $service = app(PayrollRunService::class);
+        $run = $service->open($company, 2026, 7);
+
+        // Task 7 adds confirm(); the status is set directly because this test is
+        // about the guard, not about how a run comes to be confirmed.
+        $run->update(['status' => PayrollRun::CONFIRMED]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Потврдена пресметка не се пресметува повторно.');
+
+        $service->recalculate($run->fresh());
     }
 }
 ```
@@ -2151,7 +2186,7 @@ class PayrollRunService
 - [ ] **Step 4: Run the tests and make sure they pass**
 
 Run: `php artisan test --filter=PayrollRunServiceTest`
-Expected: PASS, 5 tests.
+Expected: PASS, 7 tests.
 
 - [ ] **Step 5: Commit**
 
