@@ -1856,13 +1856,17 @@ class PayrollRunServiceTest extends TestCase
     private function employeeOn(Company $company, float $amount, string $basis): Employee
     {
         $employee = Employee::factory()->for($company)->create([
-            'employed_on' => '2020-01-01',
+            // Hired inside the run year on purpose: at 2026-07-31 that is zero
+            // completed years, so no seniority line is appended and the figures
+            // stay УЈП's published ones. Tests that need seniority set their own
+            // hire date.
+            'employed_on' => '2026-01-01',
             'prior_service_months' => 0,
         ]);
 
         EmployeeSalary::create([
             'employee_id' => $employee->id,
-            'effective_from' => '2020-01-01',
+            'effective_from' => '2026-01-01',
             'amount' => $amount,
             'basis' => $basis,
         ]);
@@ -2214,11 +2218,15 @@ class PayrollRunPostingTest extends TestCase
     private function employeeOn(Company $company, float $amount): Employee
     {
         $employee = Employee::factory()->for($company)->create([
-            'employed_on' => '2020-01-01', 'prior_service_months' => 0,
+            // Hired inside the run year on purpose: at 2026-07-31 that is zero
+            // completed years, so no seniority line is appended and the figures
+            // stay УЈП's published ones. Tests that need seniority set their own
+            // hire date.
+            'employed_on' => '2026-01-01', 'prior_service_months' => 0,
         ]);
 
         EmployeeSalary::create([
-            'employee_id' => $employee->id, 'effective_from' => '2020-01-01',
+            'employee_id' => $employee->id, 'effective_from' => '2026-01-01',
             'amount' => $amount, 'basis' => 'gross',
         ]);
 
@@ -3134,11 +3142,15 @@ class PayrollRunShowTest extends TestCase
 
         $employee = Employee::factory()->for($company)->create([
             'first_name' => 'Ана', 'last_name' => 'Николовска',
-            'employed_on' => '2020-01-01', 'prior_service_months' => 0,
+            // Hired inside the run year on purpose: at 2026-07-31 that is zero
+            // completed years, so no seniority line is appended and the figures
+            // stay УЈП's published ones. Tests that need seniority set their own
+            // hire date.
+            'employed_on' => '2026-01-01', 'prior_service_months' => 0,
         ]);
 
         EmployeeSalary::create([
-            'employee_id' => $employee->id, 'effective_from' => '2020-01-01',
+            'employee_id' => $employee->id, 'effective_from' => '2026-01-01',
             'amount' => 38507, 'basis' => 'gross',
         ]);
 
@@ -3672,11 +3684,15 @@ class PayrollPdfTest extends TestCase
 
         $employee = Employee::factory()->for($company)->create([
             'first_name' => 'Ана', 'last_name' => 'Николовска',
-            'employed_on' => '2020-01-01', 'prior_service_months' => 0,
+            // Hired inside the run year on purpose: at 2026-07-31 that is zero
+            // completed years, so no seniority line is appended and the figures
+            // stay УЈП's published ones. Tests that need seniority set their own
+            // hire date.
+            'employed_on' => '2026-01-01', 'prior_service_months' => 0,
         ]);
 
         EmployeeSalary::create([
-            'employee_id' => $employee->id, 'effective_from' => '2020-01-01',
+            'employee_id' => $employee->id, 'effective_from' => '2026-01-01',
             'amount' => 38507, 'basis' => 'gross',
         ]);
 
