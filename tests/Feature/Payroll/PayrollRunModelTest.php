@@ -18,16 +18,7 @@ class PayrollRunModelTest extends TestCase
 
     private function parameter(): PayrollParameter
     {
-        // Not 2026-07-01: the payroll_parameters seeding migration already
-        // inserts a row for that exact date with these exact rates, so
-        // ::create() here would collide with it under RefreshDatabase.
-        return PayrollParameter::create([
-            'effective_from' => '2026-07-02',
-            'rate_pension' => 19.9, 'rate_health' => 7.5, 'rate_injury' => 0.5,
-            'rate_unemployment' => 0.1, 'rate_tax' => 10.0,
-            'personal_allowance' => 10932, 'average_salary' => 69141,
-            'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
-        ]);
+        return PayrollParameter::forDate('2026-07-31');
     }
 
     public function test_a_company_has_one_run_per_month(): void

@@ -20,7 +20,7 @@ class PayrollRunFactory extends Factory
             'month' => 7,
             'status' => PayrollRun::DRAFT,
             'month_hours' => 184,
-            'payroll_parameter_id' => PayrollParameter::factory(),
+            'payroll_parameter_id' => fn () => PayrollParameter::forDate('2026-07-31')->id,
         ];
     }
 }
