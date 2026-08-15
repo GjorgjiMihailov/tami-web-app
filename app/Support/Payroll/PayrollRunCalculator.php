@@ -51,6 +51,13 @@ final class PayrollRunCalculator
         $baseTotal = 0.0;
 
         foreach ($inputLines as $input) {
+            // The bonus is derived and appended below. A line arriving with its
+            // code can only be a caller bug — dropping it is what stops the same
+            // bonus being paid twice.
+            if (($input['code'] ?? null) === LineType::SENIORITY_CODE) {
+                continue;
+            }
+
             $amount = match ($input['kind']) {
                 PayrollRunLine::KIND_HOURS => round(
                     $hourlyRate * (int) $input['hours'] * ((float) $input['percent']) / 100,
@@ -85,7 +92,7 @@ final class PayrollRunCalculator
             $lines[] = new PayrollRunLineResult(
                 kind: PayrollRunLine::KIND_AMOUNT,
                 code: LineType::SENIORITY_CODE,
-                description: LineType::label(LineType::SENIORITY_CODE),
+                description: LineType::SENIORITY_LABEL,
                 hours: null,
                 percent: null,
                 amount: $seniorityAmount,

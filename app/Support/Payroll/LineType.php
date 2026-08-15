@@ -32,8 +32,17 @@ final class LineType
      */
     public const FZO_CODES = ['129', '132', '138', '139'];
 
-    /** The seniority bonus, half a percent per completed year. */
+    /**
+     * The seniority bonus, half a percent per completed year.
+     *
+     * Deliberately absent from OFFERED below: it is derived from length of
+     * service, not entered. Offering it would let someone add it by hand on top
+     * of the one calculate() appends, and seniority would be paid twice. Its
+     * label lives here instead, since OFFERED can no longer supply it.
+     */
     public const SENIORITY_CODE = '037';
+
+    public const SENIORITY_LABEL = 'Минат труд';
 
     public const SENIORITY_PERCENT_PER_YEAR = 0.5;
 
@@ -56,7 +65,6 @@ final class LineType
         '127' => ['label' => 'Боледување 90%', 'percent' => 90.0, 'kind' => PayrollRunLine::KIND_HOURS],
         '128' => ['label' => 'Боледување 100%', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_HOURS],
         '129' => ['label' => 'Боледување на товар на ФЗО', 'percent' => 70.0, 'kind' => PayrollRunLine::KIND_HOURS],
-        '037' => ['label' => 'Минат труд', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_AMOUNT],
         '029' => ['label' => 'Храна', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_AMOUNT],
         '030' => ['label' => 'Превоз', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_AMOUNT],
         '034' => ['label' => 'Награда', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_AMOUNT],

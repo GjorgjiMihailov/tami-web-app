@@ -36,6 +36,14 @@ class LineTypeTest extends TestCase
         $this->assertSame(PayrollRunLine::BORNE_EMPLOYER, LineType::borneBy(null));
     }
 
+    public function test_the_seniority_code_is_never_offered_for_manual_entry(): void
+    {
+        // It is derived from length of service and appended by the calculator.
+        // Offering it would let it be entered on top of the appended one.
+        $this->assertArrayNotHasKey(LineType::SENIORITY_CODE, LineType::OFFERED);
+        $this->assertSame('Минат труд', LineType::SENIORITY_LABEL);
+    }
+
     public function test_the_statutory_uplifts(): void
     {
         $this->assertSame(135.0, LineType::defaultPercent('005')); // overtime

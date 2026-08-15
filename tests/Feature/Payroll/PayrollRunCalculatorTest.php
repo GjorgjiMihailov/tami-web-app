@@ -4,6 +4,7 @@ namespace Tests\Feature\Payroll;
 
 use App\Models\PayrollParameter;
 use App\Models\PayrollRunLine;
+use App\Support\Payroll\LineType;
 use App\Support\Payroll\PayrollRunCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -128,6 +129,33 @@ class PayrollRunCalculatorTest extends TestCase
         $this->assertNotNull($seniority);
         // 20 years × 0,5% = 10% of the 36 800 of base lines.
         $this->assertSame(3680.0, round($seniority->amount, 2));
+    }
+
+    public function test_a_seniority_line_arriving_as_input_is_not_paid_twice(): void
+    {
+        $manual = [
+            'kind' => PayrollRunLine::KIND_AMOUNT, 'code' => '037',
+            'description' => 'Минат труд', 'hours' => null, 'percent' => null,
+            'amount' => 5000.0, 'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
+        ];
+
+        $result = PayrollRunCalculator::calculate(
+            fullMonthGross: 36800.0,
+            monthHours: 184,
+            seniorityYears: 20,
+            inputLines: [$this->hoursLine('001', 184, 100.0), $manual],
+            parameters: $this->july2026(),
+        );
+
+        $seniorityLines = array_values(array_filter(
+            $result->lines,
+            fn ($line) => $line->code === LineType::SENIORITY_CODE
+        ));
+
+        $this->assertCount(1, $seniorityLines);
+        $this->assertSame(3680.0, round($seniorityLines[0]->amount, 2));
+        $this->assertTrue($seniorityLines[0]->isAutomatic);
+        $this->assertSame(40480.0, round($result->gross, 2));
     }
 
     public function test_deductions_lower_the_effective_net_but_not_the_net(): void
