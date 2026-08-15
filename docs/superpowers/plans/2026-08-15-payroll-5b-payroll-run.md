@@ -531,6 +531,11 @@ In `app/Models/Employee.php`, add `'prior_service_months'` to `$fillable`, add `
      *
      * Completed years, not fractional ones — минат труд steps up on the
      * anniversary, it does not accrue daily.
+     *
+     * The calendar diff is deliberate. Carbon's diffInMonths() returns a float
+     * derived from an average days-per-month constant, so it only lands on the
+     * right whole month once the (int) cast truncates it — correct today, but
+     * correct by luck rather than by construction. diff()->y and ->m are exact.
      */
     public function seniorityYearsOn(string $date): int
     {
@@ -540,24 +545,25 @@ In `app/Models/Employee.php`, add `'prior_service_months'` to `$fillable`, add `
             return 0;
         }
 
-        $months = $this->employed_on->diffInMonths($on) + $this->prior_service_months;
+        $diff = $this->employed_on->diff($on);
+        $months = $diff->y * 12 + $diff->m + $this->prior_service_months;
 
-        return intdiv((int) $months, 12);
+        return intdiv($months, 12);
     }
 ```
 
 - [ ] **Step 5: Add the field to the form**
 
-In `app/Livewire/EmployeeForm.php`: add `public int $prior_service_months = 0;` to the properties, include it in whatever `mount()` fills from the model and in the array passed to `update()`/`create()`, and add to the rules:
+In `app/Livewire/EmployeeForm.php`: add `public int $priorServiceMonths = 0;` to the properties, include it in whatever `mount()` fills from the model and in the array passed to `update()`/`create()`, and add to the rules, in the pipe-delimited style every sibling rule in that call uses:
 
 ```php
-'prior_service_months' => ['required', 'integer', 'min:0', 'max:720'],
+'priorServiceMonths' => 'required|integer|min:0|max:720',
 ```
 
-Add the Macedonian attribute name alongside the others already in the component:
+The property is camelCase while the column stays `prior_service_months` — that split is this file's established pattern (`weeklyHours` maps to `weekly_hours`). Add the Macedonian attribute name where the others already live, `lang/mk/validation.php`:
 
 ```php
-'prior_service_months' => 'претходен стаж',
+'priorServiceMonths' => 'претходен стаж',
 ```
 
 In `resources/views/livewire/employee-form.blade.php`, next to the `weekly_hours` field, add:
@@ -590,7 +596,7 @@ public function test_it_stores_prior_service(): void
         ->set('bank_account', '300000000000000')
         ->set('insurance_type_code', '0010')
         ->set('employed_on', '2026-01-01')
-        ->set('prior_service_months', 24)
+        ->set('priorServiceMonths', 24)
         ->call('save');
 
     $this->assertSame(24, Employee::where('embg', '0101990450012')->first()->prior_service_months);
