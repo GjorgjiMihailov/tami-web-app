@@ -67,7 +67,10 @@ class Employee extends Model
      * service brought from previous employers.
      *
      * Completed years, not fractional ones — минат труд steps up on the
-     * anniversary, it does not accrue daily.
+     * anniversary, it does not accrue daily. Uses an exact calendar diff
+     * rather than diffInMonths(), which returns a float derived from an
+     * average days-per-month constant and would only happen to truncate to
+     * the right whole month by luck.
      */
     public function seniorityYearsOn(string $date): int
     {
@@ -77,8 +80,9 @@ class Employee extends Model
             return 0;
         }
 
-        $months = $this->employed_on->diffInMonths($on) + $this->prior_service_months;
+        $diff = $this->employed_on->diff($on);
+        $months = $diff->y * 12 + $diff->m + $this->prior_service_months;
 
-        return intdiv((int) $months, 12);
+        return intdiv($months, 12);
     }
 }

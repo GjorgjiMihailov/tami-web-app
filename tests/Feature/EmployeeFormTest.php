@@ -424,7 +424,7 @@ class EmployeeFormTest extends TestCase
             ->set('bankAccount', '300000000000000')
             ->set('insuranceTypeCode', '0050')
             ->set('employedOn', '2026-07-01')
-            ->set('prior_service_months', 24)
+            ->set('priorServiceMonths', 24)
             ->call('save')
             ->assertHasNoErrors();
 
