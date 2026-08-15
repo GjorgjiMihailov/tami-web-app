@@ -1495,18 +1495,33 @@ class PayrollRunCalculatorTest extends TestCase
         $this->assertSame(0.0, round($result->employerTax, 2));
     }
 
-    public function test_a_net_agreement_gives_a_different_gross_in_january_and_july(): void
+    /**
+     * The 2026 rate change was exactly revenue-neutral: pension went up 1,1
+     * points and unemployment came down 1,1. Both halves of the year therefore
+     * charge 28% in total, and a net agreement costs the employer the same
+     * gross in both — even though the individual rates differ.
+     *
+     * This is worth a test precisely because it is counter-intuitive. Someone
+     * mistyping a future rate change breaks the equality; someone loading the
+     * same period twice by accident breaks the inequality below it.
+     */
+    public function test_the_2026_rate_change_leaves_a_net_agreement_costing_the_same_gross(): void
     {
-        // January's pension rate is 18,8% and unemployment 1,2%; July's are
-        // 19,9% and 0,1%. An agreement in net therefore costs the employer a
-        // different gross in each half of the year — the deliberate
-        // consequence recorded in 5a's spec.
         $january = PayrollParameter::forDate('2026-01-31');
+        $july = $this->july2026();
+
+        $this->assertNotSame($january->rate_pension, $july->rate_pension);
+        $this->assertNotSame($january->rate_unemployment, $july->rate_unemployment);
+
+        $this->assertSame(
+            $january->rate_pension + $january->rate_unemployment,
+            $july->rate_pension + $july->rate_unemployment,
+        );
 
         $januaryGross = PayrollRunCalculator::fullMonthGross(30000.0, 'net', $january);
-        $julyGross = PayrollRunCalculator::fullMonthGross(30000.0, 'net', $this->july2026());
+        $julyGross = PayrollRunCalculator::fullMonthGross(30000.0, 'net', $july);
 
-        $this->assertNotSame((int) round($januaryGross), (int) round($julyGross));
+        $this->assertSame((int) round($januaryGross), (int) round($julyGross));
     }
 }
 ```
@@ -1620,7 +1635,12 @@ final class PayrollRunCalculator
         array $inputLines,
         PayrollParameter $parameters,
     ): PayrollRunResult {
-        $hourlyRate = $monthHours > 0 ? round($fullMonthGross / $monthHours, 2) : 0.0;
+        // Deliberately NOT rounded before it is multiplied out. Rounding the
+        // rate first makes a plain full month miss the agreed gross: 38 507 over
+        // 184 hours gives a rate of 209,28, which multiplies back to 38 507,52 —
+        // so every gross agreement would be quietly overpaid, every month. Only
+        // the figure reported for display is rounded, at the return below.
+        $hourlyRate = $monthHours > 0 ? $fullMonthGross / $monthHours : 0.0;
 
         $lines = [];
         $baseTotal = 0.0;
@@ -1708,7 +1728,7 @@ final class PayrollRunCalculator
         $employerNet = round($employerGross - $employerContributions - $employerTax - $deductionsTotal, 2);
 
         return new PayrollRunResult(
-            hourlyRate: $hourlyRate,
+            hourlyRate: round($hourlyRate, 2),
             lines: $lines,
             gross: $gross,
             breakdown: $breakdown,
