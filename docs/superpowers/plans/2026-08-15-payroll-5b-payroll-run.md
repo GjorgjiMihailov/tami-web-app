@@ -658,13 +658,7 @@ class PayrollRunModelTest extends TestCase
 
     private function parameter(): PayrollParameter
     {
-        return PayrollParameter::create([
-            'effective_from' => '2026-07-01',
-            'rate_pension' => 19.9, 'rate_health' => 7.5, 'rate_injury' => 0.5,
-            'rate_unemployment' => 0.1, 'rate_tax' => 10.0,
-            'personal_allowance' => 10932, 'average_salary' => 69141,
-            'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
-        ]);
+        return PayrollParameter::forDate('2026-07-31');
     }
 
     public function test_a_company_has_one_run_per_month(): void
@@ -1066,13 +1060,13 @@ class PayrollRunFactory extends Factory
             'month' => 7,
             'status' => PayrollRun::DRAFT,
             'month_hours' => 184,
-            'payroll_parameter_id' => PayrollParameter::factory(),
+            'payroll_parameter_id' => fn () => PayrollParameter::forDate('2026-07-31')->id,
         ];
     }
 }
 ```
 
-If `PayrollParameterFactory` does not exist from 5a, create it with the July 2026 values used in the test above.
+**Do not create a `PayrollParameterFactory`.** `payroll_parameters.effective_from` is globally unique and the 5a migration already seeds 2026-01-01, 2026-03-01 and 2026-07-01, so a factory would either collide with those rows or have to invent a date in some far-future year carrying 2026's rates — a period that means nothing. Reading the seeded row is both simpler and keeps every payroll test on the same published figures.
 
 - [ ] **Step 8: Run the tests and make sure they pass**
 
@@ -1786,13 +1780,7 @@ class PayrollRunServiceTest extends TestCase
 
     private function seedParameters(): PayrollParameter
     {
-        return PayrollParameter::create([
-            'effective_from' => '2026-07-01',
-            'rate_pension' => 19.9, 'rate_health' => 7.5, 'rate_injury' => 0.5,
-            'rate_unemployment' => 0.1, 'rate_tax' => 10.0,
-            'personal_allowance' => 10932, 'average_salary' => 69141,
-            'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
-        ]);
+        return PayrollParameter::forDate('2026-07-31');
     }
 
     private function employeeOn(Company $company, float $amount, string $basis): Employee
@@ -2147,14 +2135,6 @@ class PayrollRunPostingTest extends TestCase
             '234' => 'Обврски за придонеси', '235' => 'Персонален данок'] as $code => $name) {
             Account::create(['company_id' => $company->id, 'code' => $code, 'name' => $name]);
         }
-
-        PayrollParameter::create([
-            'effective_from' => '2026-07-01',
-            'rate_pension' => 19.9, 'rate_health' => 7.5, 'rate_injury' => 0.5,
-            'rate_unemployment' => 0.1, 'rate_tax' => 10.0,
-            'personal_allowance' => 10932, 'average_salary' => 69141,
-            'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
-        ]);
 
         PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
 
@@ -2779,13 +2759,7 @@ class PayrollRunIndexTest extends TestCase
 
     private function parameter(): PayrollParameter
     {
-        return PayrollParameter::create([
-            'effective_from' => '2026-01-01',
-            'rate_pension' => 19.9, 'rate_health' => 7.5, 'rate_injury' => 0.5,
-            'rate_unemployment' => 0.1, 'rate_tax' => 10.0,
-            'personal_allowance' => 10932, 'average_salary' => 69141,
-            'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
-        ]);
+        return PayrollParameter::forDate('2026-01-31');
     }
 
     public function test_it_lists_the_runs_of_the_working_year(): void
@@ -3085,14 +3059,6 @@ class PayrollRunShowTest extends TestCase
         foreach (['421', '240', '249', '234', '235'] as $code) {
             Account::create(['company_id' => $company->id, 'code' => $code, 'name' => "Конто {$code}"]);
         }
-
-        PayrollParameter::create([
-            'effective_from' => '2026-07-01',
-            'rate_pension' => 19.9, 'rate_health' => 7.5, 'rate_injury' => 0.5,
-            'rate_unemployment' => 0.1, 'rate_tax' => 10.0,
-            'personal_allowance' => 10932, 'average_salary' => 69141,
-            'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
-        ]);
 
         PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
 
@@ -3631,14 +3597,6 @@ class PayrollPdfTest extends TestCase
         foreach (['421', '240', '249', '234', '235'] as $code) {
             Account::create(['company_id' => $company->id, 'code' => $code, 'name' => "Конто {$code}"]);
         }
-
-        PayrollParameter::create([
-            'effective_from' => '2026-07-01',
-            'rate_pension' => 19.9, 'rate_health' => 7.5, 'rate_injury' => 0.5,
-            'rate_unemployment' => 0.1, 'rate_tax' => 10.0,
-            'personal_allowance' => 10932, 'average_salary' => 69141,
-            'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
-        ]);
 
         PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
 
