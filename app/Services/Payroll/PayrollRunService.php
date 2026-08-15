@@ -214,30 +214,34 @@ class PayrollRunService
                 );
             }
 
-            // The entry is created unconditionally on confirmation — the
-            // design spec states this without a totals gate. A run where
-            // every employee is wholly FZO-borne still confirms and still
-            // gets an entry; it simply ends up with zero lines, via the
-            // per-line skip in line() below.
-            $label = "Плата {$run->month}/{$run->year}";
+            // No entry at all when the company owes nothing — a month where
+            // every employee is wholly on the Fund confirms, but posts nothing.
+            // An entry header with no lines is noise in the ledger, and a null
+            // journal_entry_id says "nothing was posted" more honestly than an
+            // empty entry does.
+            $entry = null;
 
-            $entry = JournalEntry::create([
-                'company_id' => $run->company_id,
-                'journal_group_id' => $this->systemJournalGroup($run->company)->id,
-                'entry_date' => $run->endOfMonth(),
-                'description' => $label,
-                'created_by' => $userId,
-            ]);
+            if (round($gross + $topUp, 2) > 0) {
+                $label = "Плата {$run->month}/{$run->year}";
 
-            $this->line($entry, $run, '421', $label, round($gross + $topUp, 2), 0.0);
-            $this->line($entry, $run, '234', $label, 0.0, round($contributions + $topUp, 2));
-            $this->line($entry, $run, '235', $label, 0.0, round($tax, 2));
-            $this->line($entry, $run, '249', $label, 0.0, round($deductions, 2));
-            $this->line($entry, $run, '240', $label, 0.0, round($net, 2));
+                $entry = JournalEntry::create([
+                    'company_id' => $run->company_id,
+                    'journal_group_id' => $this->systemJournalGroup($run->company)->id,
+                    'entry_date' => $run->endOfMonth(),
+                    'description' => $label,
+                    'created_by' => $userId,
+                ]);
+
+                $this->line($entry, $run, '421', $label, round($gross + $topUp, 2), 0.0);
+                $this->line($entry, $run, '234', $label, 0.0, round($contributions + $topUp, 2));
+                $this->line($entry, $run, '235', $label, 0.0, round($tax, 2));
+                $this->line($entry, $run, '249', $label, 0.0, round($deductions, 2));
+                $this->line($entry, $run, '240', $label, 0.0, round($net, 2));
+            }
 
             $run->update([
                 'status' => PayrollRun::CONFIRMED,
-                'journal_entry_id' => $entry->id,
+                'journal_entry_id' => $entry?->id,
                 'confirmed_by' => $userId,
                 'confirmed_at' => now(),
             ]);
@@ -253,26 +257,26 @@ class PayrollRunService
         }
 
         return DB::transaction(function () use ($run, $userId) {
-            // confirm() always creates a journal entry, so a confirmed run
-            // always has one to reverse here.
             $original = $run->journalEntry;
 
-            $reversal = JournalEntry::create([
-                'company_id' => $run->company_id,
-                'journal_group_id' => $original->journal_group_id,
-                'entry_date' => $run->endOfMonth(),
-                'description' => "Сторно: {$original->description}",
-                'created_by' => $userId,
-            ]);
-
-            foreach ($original->lines as $line) {
-                $reversal->lines()->create([
-                    'account_id' => $line->account_id,
-                    'description' => $line->description,
-                    'line_date' => $line->line_date,
-                    'debit' => $line->credit,
-                    'credit' => $line->debit,
+            if ($original !== null) {
+                $reversal = JournalEntry::create([
+                    'company_id' => $run->company_id,
+                    'journal_group_id' => $original->journal_group_id,
+                    'entry_date' => $run->endOfMonth(),
+                    'description' => "Сторно: {$original->description}",
+                    'created_by' => $userId,
                 ]);
+
+                foreach ($original->lines as $line) {
+                    $reversal->lines()->create([
+                        'account_id' => $line->account_id,
+                        'description' => $line->description,
+                        'line_date' => $line->line_date,
+                        'debit' => $line->credit,
+                        'credit' => $line->debit,
+                    ]);
+                }
             }
 
             $run->update([

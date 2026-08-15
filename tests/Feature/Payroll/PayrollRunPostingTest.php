@@ -142,7 +142,11 @@ class PayrollRunPostingTest extends TestCase
 
         $run = $service->confirm($service->recalculate($run->fresh()), $user->id);
 
-        $this->assertCount(0, $run->journalEntry->lines);
+        // The run confirms — there is simply nothing for the company to post.
+        // An entry header with no lines would be noise in the ledger, so none
+        // is created and the link stays empty.
+        $this->assertSame(PayrollRun::CONFIRMED, $run->status);
+        $this->assertNull($run->journal_entry_id);
     }
 
     public function test_a_deduction_reaches_the_ledger_whole(): void
