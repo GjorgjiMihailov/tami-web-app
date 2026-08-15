@@ -128,7 +128,7 @@ Run: `php storage/app/private/convert-5b-codes.php`
 
 Expected output, exactly:
 ```
-rab_cas: 61 codes
+rab_cas: 60 codes
 vid_nadomestoci: 17 codes
 ```
 
@@ -145,7 +145,7 @@ public function test_it_seeds_the_working_hour_types(): void
 {
     $codes = PayrollCode::ofType('rab_cas');
 
-    $this->assertCount(61, $codes);
+    $this->assertCount(60, $codes);
     $this->assertSame('Редовни работни часови', $codes->firstWhere('code', '001')->name);
     $this->assertSame('Годишен одмор', $codes->firstWhere('code', '009')->name);
 }
@@ -203,7 +203,7 @@ return new class extends Migration
             ], $codes);
 
             // Chunked because MySQL's max_allowed_packet is the one thing that
-            // makes a 61-row insert fail in CI but not locally.
+            // makes a 60-row insert fail in CI but not locally.
             foreach (array_chunk($rows, 100) as $chunk) {
                 DB::table('payroll_codes')->insert($chunk);
             }
@@ -1185,7 +1185,7 @@ use App\Models\PayrollRunLine;
  * The subset of УЈП's codebooks the line editor offers, and what the app
  * assumes about each code.
  *
- * All 61 rab_cas plus 17 vid_nadomestoci codes live in `payroll_codes` because
+ * All 60 rab_cas plus 17 vid_nadomestoci codes live in `payroll_codes` because
  * 5c needs them. This list is the shortlist a private-sector payroll actually
  * uses. Extending it is an edit here, not a migration.
  */
