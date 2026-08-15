@@ -122,6 +122,22 @@ class MenuTest extends TestCase
         );
     }
 
+    // The label-only assertions above pass identically whether the entry is
+    // a real route or still a "coming soon" stub with the same label and
+    // visibility rule, so they cannot catch a revert of that change. This
+    // inspects the item itself: a real route carries its own route pattern,
+    // while Menu::soon() always sets 'pattern' => 'coming-soon' and
+    // 'soon' => true.
+    public function test_the_payroll_run_menu_item_is_a_real_route_not_a_soon_stub(): void
+    {
+        $company = Company::factory()->create();
+        $payroll = collect(Menu::for($this->userWithRole('admin'), $company))->firstWhere('key', 'payroll');
+        $item = collect($payroll['items'])->firstWhere('label', 'Плата (МПИН)');
+
+        $this->assertSame('payroll-runs.*', $item['pattern']);
+        $this->assertFalse($item['soon'], 'Плата (МПИН) must not be a "наскоро" stub.');
+    }
+
     public function test_a_client_still_gets_the_full_sales_and_stock_groups(): void
     {
         $company = Company::factory()->create();
