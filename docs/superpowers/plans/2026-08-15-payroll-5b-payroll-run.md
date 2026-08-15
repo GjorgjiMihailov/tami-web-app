@@ -2186,7 +2186,7 @@ class PayrollRunService
 - [ ] **Step 4: Run the tests and make sure they pass**
 
 Run: `php artisan test --filter=PayrollRunServiceTest`
-Expected: PASS, 7 tests.
+Expected: PASS, 6 tests.
 
 - [ ] **Step 5: Commit**
 
