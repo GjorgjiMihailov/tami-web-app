@@ -568,14 +568,9 @@ The property is camelCase while the column stays `prior_service_months` — that
 
 In `resources/views/livewire/employee-form.blade.php`, next to the `weekly_hours` field, add:
 
-```blade
-<div>
-    <label class="block text-sm text-gray-600 mb-1">Претходен стаж (месеци)</label>
-    <input type="number" min="0" wire:model="prior_service_months" class="w-full rounded border-gray-300">
-    <p class="text-xs text-gray-400 mt-1">Стаж кај претходни работодавачи, за пресметка на минат труд.</p>
-    @error('prior_service_months') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-</div>
-```
+Use the `<x-input-label>` / `<x-text-input>` components the rest of that form already uses rather than raw `<label>` and `<input>` — match the neighbouring `weeklyHours` field exactly, with `wire:model="priorServiceMonths"`, the label „Претходен стаж (месеци)", and the hint „Стаж кај претходни работодавачи, за пресметка на минат труд." under it.
+
+Bind the error to the camelCase key: `@error('priorServiceMonths')`.
 
 In `database/factories/EmployeeFactory.php`, add `'prior_service_months' => 0,` to `definition()`.
 
