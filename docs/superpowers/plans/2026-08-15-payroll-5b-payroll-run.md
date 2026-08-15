@@ -3411,7 +3411,9 @@ Replace `resources/views/livewire/payroll/payroll-run-show.blade.php` with:
             <p class="text-sm text-gray-500">Фонд на часови: {{ $run->month_hours }}</p>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ route('payroll.recap-pdf', [$company, $run]) }}" class="text-brand hover:underline text-sm">Рекапитулар (PDF)</a>
+            {{-- The two PDF links belong here, but the routes do not exist until
+                 Task 11. Task 11 adds them; adding them now would make every
+                 test in this task fail on RouteNotFoundException. --}}
             @if ($run->isDraft())
                 <button wire:click="confirm" class="rounded bg-brand px-3 py-2 text-sm text-white">Потврди</button>
             @else
@@ -3455,9 +3457,7 @@ Replace `resources/views/livewire/payroll/payroll-run-show.blade.php` with:
                         <td class="py-1 px-3 text-right">{{ number_format($row->tax, 2, ',', '.') }}</td>
                         <td class="py-1 px-3 text-right">{{ number_format($row->deductions_total, 2, ',', '.') }}</td>
                         <td class="py-1 px-3 text-right font-medium">{{ number_format($row->effective_net, 2, ',', '.') }}</td>
-                        <td class="py-1 px-3 text-right">
-                            <a href="{{ route('payroll.payslip-pdf', [$company, $run, $row]) }}" class="text-brand hover:underline text-xs">Исплатна листа</a>
-                        </td>
+                        <td class="py-1 px-3 text-right">{{-- Task 11 puts the payslip link here --}}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -3556,7 +3556,7 @@ Replace `resources/views/livewire/payroll/payroll-run-show.blade.php` with:
 </div>
 ```
 
-The two PDF routes this view links to are added in Task 11. Until then the view will throw on an unknown route — run Task 11 immediately after, or temporarily comment out the two links while running Task 10's tests.
+The two placeholder comments where the PDF links belong are deliberate. `route()` throws on an unknown name, so a link written before Task 11 defines the route would fail every test in this task. Task 11 replaces both comments once the routes exist.
 
 - [ ] **Step 5: Run the tests and make sure they pass**
 
@@ -3583,6 +3583,7 @@ git commit -m "feat(payroll): run screen with a per-employee line editor"
 - Create: `app/Http/Controllers/PayslipPdfController.php`, `app/Http/Controllers/PayrollRecapPdfController.php`
 - Create: `resources/views/pdf/payslip.blade.php`, `resources/views/pdf/payroll-recap.blade.php`
 - Modify: `routes/web.php`
+- Modify: `resources/views/livewire/payroll/payroll-run-show.blade.php` (the two link placeholders Task 10 left)
 - Test: `tests/Feature/Payroll/PayrollPdfTest.php`
 
 **Interfaces:**
@@ -3941,14 +3942,32 @@ Route::middleware(['auth', EnsureAccountingAccess::class])->prefix('companies/{c
 
 Add the two `use App\Http\Controllers\...` imports. Register this group **before** the `payroll-runs.` group so `/payroll-runs/{run}/recap.pdf` is not swallowed by `/payroll-runs/{run}`.
 
-- [ ] **Step 7: Run the tests and make sure they pass**
+- [ ] **Step 7: Put the links back on the run screen**
 
-Run: `php artisan test --filter=PayrollPdfTest`
-Expected: PASS, 3 tests.
+Task 10 left two placeholder comments in `resources/views/livewire/payroll/payroll-run-show.blade.php` because `route()` throws on a name that does not exist yet. The routes exist now.
+
+Replace the comment block above `@if ($run->isDraft())` in the header with:
+
+```blade
+            <a href="{{ route('payroll.recap-pdf', [$company, $run]) }}" class="text-brand hover:underline text-sm">Рекапитулар (PDF)</a>
+```
+
+Replace the placeholder cell in the employee row with:
+
+```blade
+                        <td class="py-1 px-3 text-right">
+                            <a href="{{ route('payroll.payslip-pdf', [$company, $run, $row]) }}" class="text-brand hover:underline text-xs">Исплатна листа</a>
+                        </td>
+```
+
+- [ ] **Step 8: Run the tests and make sure they pass**
+
+Run: `php artisan test --filter="PayrollPdfTest|PayrollRunShowTest"`
+Expected: PASS, 9 tests. `PayrollRunShowTest` is included because this step changed the view it renders.
 
 If Cyrillic renders as blank boxes, the font is the cause: dompdf needs `DejaVu Sans`, which the stylesheet above already sets. Compare with `resources/views/pdf/sales-invoice.blade.php`, which already solves this.
 
-- [ ] **Step 8: Run the whole suite and rebuild the assets**
+- [ ] **Step 9: Run the whole suite and rebuild the assets**
 
 ```bash
 php artisan test
@@ -3957,10 +3976,10 @@ npm run build
 
 Expected: all tests pass. `npm run build` is not optional — Tailwind only emits classes it has seen, and Tasks 9 and 10 introduced new ones.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
-git add app/Http/Controllers/PayslipPdfController.php app/Http/Controllers/PayrollRecapPdfController.php resources/views/pdf/payslip.blade.php resources/views/pdf/payroll-recap.blade.php routes/web.php tests/Feature/Payroll/PayrollPdfTest.php public/build
+git add app/Http/Controllers/PayslipPdfController.php app/Http/Controllers/PayrollRecapPdfController.php resources/views/pdf/payslip.blade.php resources/views/pdf/payroll-recap.blade.php resources/views/livewire/payroll/payroll-run-show.blade.php routes/web.php tests/Feature/Payroll/PayrollPdfTest.php public/build
 git commit -m "feat(payroll): payslip and company recap as PDFs"
 ```
 
