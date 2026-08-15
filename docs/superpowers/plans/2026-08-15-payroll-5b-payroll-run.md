@@ -2854,7 +2854,13 @@ In `app/Support/Menu.php`, remove the `'plata-mpin'` entry from `SOON_FEATURES` 
 ['label' => 'Плата (МПИН)', 'url' => route('payroll-runs.index', $company), 'pattern' => 'payroll-runs.*', 'roles' => ['admin', 'accountant']],
 ```
 
-- [ ] **Step 6: Update MenuTest**
+- [ ] **Step 6: Pin the menu entry, then update MenuTest**
+
+`MenuTest` already asserts that a client sees only „Вработени" in the payroll group, which catches the entry losing its role restriction. Nothing asserts the entry actually points at a real route, so leaving it inside `SOON_FEATURES` — or accidentally reverting this step later — passes every existing assertion identically.
+
+Add one assertion for an admin that inspects the payroll item itself, not just its label: that its `pattern` is `'payroll-runs.*'` and that it is not a "coming soon" stub. Read `Menu::soon()` and `Menu::itemVisible()` first to see the exact shape a soon-item has versus a real one, and assert against whatever distinguishes them — do not guess a key name.
+
+- [ ] **Step 6b: Update the rest of MenuTest**
 
 `tests/Feature/MenuTest.php` asserts on the "soon" features. Find the assertions naming `plata-mpin` and change them so that the item is expected as a real link for admin and accountant and absent for a client. Run the file to see exactly which assertions break rather than guessing:
 
