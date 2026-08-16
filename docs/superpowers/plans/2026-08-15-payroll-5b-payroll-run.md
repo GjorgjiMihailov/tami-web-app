@@ -4303,7 +4303,7 @@ Replace the placeholder cell in the employee row with:
 - [ ] **Step 8: Run the tests and make sure they pass**
 
 Run: `php artisan test --filter="PayrollPdfTest|PayrollRunShowTest"`
-Expected: PASS, 9 tests. `PayrollRunShowTest` is included because this step changed the view it renders.
+Expected: PASS, 14 tests — 11 from `PayrollRunShowTest`, which is included because this step changes the view it renders, plus the 3 new ones.
 
 If Cyrillic renders as blank boxes, the font is the cause: dompdf needs `DejaVu Sans`, which the stylesheet above already sets. Compare with `resources/views/pdf/sales-invoice.blade.php`, which already solves this.
 
@@ -4319,7 +4319,7 @@ Expected: all tests pass. `npm run build` is not optional — Tailwind only emit
 - [ ] **Step 10: Commit**
 
 ```bash
-git add app/Http/Controllers/PayslipPdfController.php app/Http/Controllers/PayrollRecapPdfController.php resources/views/pdf/payslip.blade.php resources/views/pdf/payroll-recap.blade.php resources/views/livewire/payroll/payroll-run-show.blade.php routes/web.php tests/Feature/Payroll/PayrollPdfTest.php public/build
+git add app/Http/Controllers/PayslipPdfController.php app/Http/Controllers/PayrollRecapPdfController.php resources/views/pdf/payslip.blade.php resources/views/pdf/payroll-recap.blade.php resources/views/livewire/payroll/payroll-run-show.blade.php routes/web.php tests/Feature/Payroll/PayrollPdfTest.php
 git commit -m "feat(payroll): payslip and company recap as PDFs"
 ```
 
@@ -4505,7 +4505,7 @@ Expected: all pass.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add app/Livewire/PayrollParameterIndex.php resources/views/livewire/payroll-parameter-index.blade.php tests/Feature/PayrollParameterIndexTest.php public/build
+git add app/Livewire/PayrollParameterIndex.php resources/views/livewire/payroll-parameter-index.blade.php tests/Feature/PayrollParameterIndexTest.php
 git commit -m "feat(payroll): admin screen for the monthly hour fund"
 ```
 
