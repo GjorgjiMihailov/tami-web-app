@@ -154,6 +154,23 @@ class PayrollRunShowTest extends TestCase
             ->assertHasErrors('lineHours');
     }
 
+    public function test_it_refuses_a_code_outside_the_offered_set(): void
+    {
+        // A crafted payload could otherwise store any code, price normally,
+        // and only fail much later at УЈП.
+        $run = $this->openRun();
+        $this->admin();
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
+            ->call('selectEmployee', $run->employees->first()->id)
+            ->set('lineKind', PayrollRunLine::KIND_HOURS)
+            ->set('lineCode', '999')
+            ->set('lineHours', 10)
+            ->set('linePercent', 100)
+            ->call('saveLine')
+            ->assertHasErrors('lineCode');
+    }
+
     public function test_the_automatic_line_cannot_be_deleted(): void
     {
         $run = $this->openRun();

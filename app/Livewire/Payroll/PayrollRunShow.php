@@ -9,6 +9,7 @@ use App\Models\PayrollRunLine;
 use App\Services\Payroll\PayrollRunService;
 use App\Support\Payroll\LineType;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -60,6 +61,14 @@ class PayrollRunShow extends Component
 
     public function saveLine(PayrollRunService $service): void
     {
+        // mount() authorizes once when the component is instantiated; a
+        // Livewire action call does not re-run it. EnsureAccountingAccess is
+        // registered as persistent middleware and covers the update endpoint
+        // too, but this second lock is cheap next to what a wrongly-booked
+        // payroll run would cost, and it matches the pattern this branch
+        // already established in PayrollParameterIndex::saveMonthHours().
+        Gate::authorize('view', $this->company);
+
         if (! $this->guardDraft()) {
             return;
         }
@@ -72,7 +81,7 @@ class PayrollRunShow extends Component
         if ($this->lineKind === PayrollRunLine::KIND_HOURS) {
             // integer, not numeric: BrojCasovi is xs:int in mpin.xsd and a
             // fractional hour would only fail in 5c, at УЈП.
-            $rules['lineCode'] = ['required', 'string'];
+            $rules['lineCode'] = ['required', 'string', Rule::in(array_keys(LineType::OFFERED))];
             $rules['lineHours'] = ['required', 'integer', 'min:0', 'max:744'];
             $rules['linePercent'] = ['required', 'numeric', 'min:0', 'max:500'];
         } else {
@@ -92,6 +101,14 @@ class PayrollRunShow extends Component
         // on the payslip while the ledger booked nothing for it. Refusing it is
         // the honest answer; the poster has a second guard behind this one.
         if ($this->lineKind === PayrollRunLine::KIND_DEDUCTION) {
+            // This line-sum is NOT the same code path as PayrollRunService's
+            // stored employer_gross column. It runs here, before saveLine()'s
+            // recalculate() call, against the lines already on screen —
+            // employer_gross would still hold last calculation's figure at
+            // this point, not one that accounts for the line about to be
+            // added. The two are expected to agree once recalculate() runs,
+            // but this one has to be computed fresh because no recalculation
+            // has happened yet.
             $employerGross = $runEmployee->lines
                 ->where('kind', '!=', PayrollRunLine::KIND_DEDUCTION)
                 ->where('borne_by', PayrollRunLine::BORNE_EMPLOYER)
@@ -132,6 +149,10 @@ class PayrollRunShow extends Component
 
     public function deleteLine(int $id, PayrollRunService $service): void
     {
+        // See the comment on saveLine() above: mount() authorizes once, an
+        // action call does not re-run it.
+        Gate::authorize('view', $this->company);
+
         if (! $this->guardDraft()) {
             return;
         }
@@ -162,6 +183,11 @@ class PayrollRunShow extends Component
 
     public function confirm(PayrollRunService $service): void
     {
+        // See the comment on saveLine() above: mount() authorizes once, an
+        // action call does not re-run it. This one posts to the general
+        // ledger, so it is the highest-stakes of the four.
+        Gate::authorize('view', $this->company);
+
         if (! $this->guardDraft()) {
             return;
         }
@@ -171,6 +197,10 @@ class PayrollRunShow extends Component
 
     public function returnToDraft(PayrollRunService $service): void
     {
+        // See the comment on saveLine() above: mount() authorizes once, an
+        // action call does not re-run it.
+        Gate::authorize('view', $this->company);
+
         if ($this->run->isDraft()) {
             return;
         }
