@@ -163,6 +163,12 @@ class PayrollPdfTest extends TestCase
         foreach (['421', '234', '235', '240'] as $code) {
             $this->assertStringContainsString($code, $html);
         }
+
+        // The footnote must account for both reasons the totals can diverge
+        // from the employee table: the FZO-borne part AND the minimum-base
+        // top-up. Anchoring on the top-up half, since that was the half
+        // missing from the old wording.
+        $this->assertStringContainsString('доплатата до најниска основица', $html);
     }
 
     public function test_the_recap_does_not_call_a_confirmed_run_a_draft(): void
