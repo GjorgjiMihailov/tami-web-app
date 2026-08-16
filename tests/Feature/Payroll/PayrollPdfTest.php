@@ -134,6 +134,14 @@ class PayrollPdfTest extends TestCase
 
         $this->assertStringContainsString('на товар на работодавачот', $html);
         $this->assertStringContainsString('Не се одзема од платата на работникот', $html);
+
+        // Not the faint grey used for incidental captions elsewhere on the
+        // page: this is the one sentence that stops a worker believing the
+        // top-up was taken out of their pay.
+        $this->assertMatchesRegularExpression(
+            '/<p>Доплата до најниска основица/',
+            $html
+        );
     }
 
     public function test_the_recap_shows_what_was_posted_to_the_ledger(): void

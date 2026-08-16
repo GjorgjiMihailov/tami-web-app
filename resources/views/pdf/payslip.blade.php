@@ -65,7 +65,11 @@
     </table>
 
     @if ($runEmployee->top_up > 0)
-        <p class="muted">Доплата до најниска основица на товар на работодавачот: {{ number_format($runEmployee->top_up, 2, ',', '.') }}. Не се одзема од платата на работникот.</p>
+        {{-- Not .muted: this is the one sentence that stops a worker
+             believing the top-up was taken out of their pay, so it gets
+             normal body weight and size, not the faint grey used for
+             incidental captions elsewhere on this page. --}}
+        <p>Доплата до најниска основица на товар на работодавачот: {{ number_format($runEmployee->top_up, 2, ',', '.') }}. Не се одзема од платата на работникот.</p>
     @endif
 </body>
 </html>
