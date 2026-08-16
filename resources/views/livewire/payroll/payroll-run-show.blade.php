@@ -5,9 +5,7 @@
             <p class="text-sm text-gray-500">Фонд на часови: {{ $run->month_hours }}</p>
         </div>
         <div class="flex items-center gap-2">
-            {{-- The two PDF links belong here, but the routes do not exist until
-                 Task 11. Task 11 adds them; adding them now would make every
-                 test in this task fail on RouteNotFoundException. --}}
+            <a href="{{ route('payroll.recap-pdf', [$company, $run]) }}" class="text-brand hover:underline text-sm">Рекапитулар (PDF)</a>
             @if ($run->isDraft())
                 <button wire:click="confirm" class="rounded bg-brand px-3 py-2 text-sm text-white">Потврди</button>
             @else
@@ -51,7 +49,9 @@
                         <td class="py-1 px-3 text-right">{{ number_format($row->tax, 2, ',', '.') }}</td>
                         <td class="py-1 px-3 text-right">{{ number_format($row->deductions_total, 2, ',', '.') }}</td>
                         <td class="py-1 px-3 text-right font-medium">{{ number_format($row->effective_net, 2, ',', '.') }}</td>
-                        <td class="py-1 px-3 text-right">{{-- Task 11 puts the payslip link here --}}</td>
+                        <td class="py-1 px-3 text-right">
+                            <a href="{{ route('payroll.payslip-pdf', [$company, $run, $row]) }}" class="text-brand hover:underline text-xs">Исплатна листа</a>
+                        </td>
                     </tr>
                 @endforeach
             </tbody>

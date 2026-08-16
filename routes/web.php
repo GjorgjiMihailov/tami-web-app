@@ -11,6 +11,8 @@ use App\Http\Controllers\EfakturaStatusController;
 use App\Http\Controllers\ItemImportTemplateController;
 use App\Http\Controllers\JournalEntryPdfController;
 use App\Http\Controllers\PartnerListPdfController;
+use App\Http\Controllers\PayrollRecapPdfController;
+use App\Http\Controllers\PayslipPdfController;
 use App\Http\Controllers\SalesInvoicePdfController;
 use App\Http\Controllers\StockOnHandPdfController;
 use App\Http\Middleware\EnsureAccountingAccess;
@@ -132,6 +134,13 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('employees.')->
 
 Route::middleware(['auth'])->prefix('companies/{company}')->name('payroll-parameters.')->group(function () {
     Route::get('/payroll-parameters', [PayrollParameterIndex::class, '__invoke'])->name('index');
+});
+
+// Registered before payroll-runs. below so /payroll-runs/{run}/recap.pdf is
+// not swallowed by /payroll-runs/{run}.
+Route::middleware(['auth', EnsureAccountingAccess::class])->prefix('companies/{company}')->name('payroll.')->group(function () {
+    Route::get('/payroll-runs/{run}/recap.pdf', PayrollRecapPdfController::class)->name('recap-pdf');
+    Route::get('/payroll-runs/{run}/payslip/{runEmployee}.pdf', PayslipPdfController::class)->name('payslip-pdf');
 });
 
 // EnsureAccountingAccess, not a policy: payroll is the firm's work, not the
