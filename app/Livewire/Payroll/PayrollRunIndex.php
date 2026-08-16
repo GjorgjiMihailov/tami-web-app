@@ -46,6 +46,15 @@ class PayrollRunIndex extends Component
 
             return null;
         } catch (RuntimeException $e) {
+            // Currently the only RuntimeException reachable from open()'s call
+            // graph is PayrollMonthHours::forMonth()'s "no hour fund entered"
+            // one, so showing its message here is safe. This catch is broad on
+            // purpose to cover that without naming the class directly, but it
+            // will just as happily swallow and mislabel any other
+            // RuntimeException a future change adds deeper in open() — for
+            // example PayrollRunService::confirm()'s deduction-without-books
+            // guard, if open() were ever changed to call confirm(). If that
+            // assumption stops holding, this catch needs to narrow.
             $this->addError('newMonth', $e->getMessage());
 
             return null;
