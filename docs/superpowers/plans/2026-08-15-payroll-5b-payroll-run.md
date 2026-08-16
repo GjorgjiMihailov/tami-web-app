@@ -4477,16 +4477,24 @@ public function test_an_admin_can_enter_a_months_hour_fund(): void
     ]);
 }
 
+/**
+ * Backspacing the year to retype it sends an empty string on every keystroke,
+ * because fundYear is bound with wire:model.live. That is safe here and this
+ * test exists to keep it safe: Livewire's IntSynth::hydrateFromType() turns ''
+ * into null before assignment, and the property is declared `?int`, so null is
+ * a legal value and render() queries `where('year', null)` — an empty result,
+ * not a crash.
+ *
+ * It would stop being safe if someone narrowed the property to a non-nullable
+ * `int`. Livewire cannot assign null to that, catches the TypeError and unsets
+ * the property, and render() then reads an uninitialized typed property, which
+ * is fatal. This test is what would catch that change.
+ */
 public function test_clearing_the_year_does_not_break_the_screen(): void
 {
     $company = Company::factory()->create();
     $this->admin();
 
-    // wire:model.live sends every keystroke, so backspacing to retype the year
-    // arrives as an empty string and Livewire unsets the typed property.
-    // render() runs on that same request. Without the ?? in the query this
-    // throws "must not be accessed before initialization" and the admin gets a
-    // 500 for pressing backspace.
     Livewire::test(PayrollParameterIndex::class, ['company' => $company])
         ->set('fundYear', '')
         ->assertSee('Фонд на часови по месец');
@@ -4564,10 +4572,10 @@ set `$this->fundYear = (int) now()->year;` in `mount()`, and add:
     }
 ```
 
-In `render()`, pass the existing funds for the chosen year. **The `??` is not decoration.** `fundYear` is bound with `wire:model.live`, so every keystroke reaches the server — including the empty string you get the moment the admin backspaces to retype the year. Livewire cannot assign `""` to a typed `?int`, so it unsets the property, leaving it *uninitialized*; `render()` then runs on that same request and reading an uninitialized typed property is a fatal error, not a null. `??` is `isset()`-based, so it survives that state where a plain read does not.
+In `render()`, pass the existing funds for the chosen year:
 
 ```php
-'monthHours' => PayrollMonthHours::where('year', $this->fundYear ?? (int) now()->year)->orderBy('month')->get(),
+'monthHours' => PayrollMonthHours::where('year', $this->fundYear)->orderBy('month')->get(),
 ```
 
 - [ ] **Step 4: Extend the view**
