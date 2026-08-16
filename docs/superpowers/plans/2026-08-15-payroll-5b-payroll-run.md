@@ -4477,6 +4477,21 @@ public function test_an_admin_can_enter_a_months_hour_fund(): void
     ]);
 }
 
+public function test_clearing_the_year_does_not_break_the_screen(): void
+{
+    $company = Company::factory()->create();
+    $this->admin();
+
+    // wire:model.live sends every keystroke, so backspacing to retype the year
+    // arrives as an empty string and Livewire unsets the typed property.
+    // render() runs on that same request. Without the ?? in the query this
+    // throws "must not be accessed before initialization" and the admin gets a
+    // 500 for pressing backspace.
+    Livewire::test(PayrollParameterIndex::class, ['company' => $company])
+        ->set('fundYear', '')
+        ->assertSee('Фонд на часови по месец');
+}
+
 public function test_entering_the_same_month_twice_updates_it(): void
 {
     $company = Company::factory()->create();
@@ -4524,6 +4539,13 @@ set `$this->fundYear = (int) now()->year;` in `mount()`, and add:
      */
     public function saveMonthHours(): void
     {
+        // Re-checked here, not only in mount(): mount() runs once per component
+        // instantiation, an action call does not re-run it, and addPeriod()
+        // above already guards itself the same way. These values are shared by
+        // every company, so the second lock is cheap next to what a wrong one
+        // would cost.
+        abort_unless(auth()->user()->hasRole('admin'), 403);
+
         $this->validate([
             'fundYear' => ['required', 'integer', 'min:2000', 'max:2100'],
             'fundMonth' => ['required', 'integer', 'min:1', 'max:12'],
@@ -4542,10 +4564,10 @@ set `$this->fundYear = (int) now()->year;` in `mount()`, and add:
     }
 ```
 
-In `render()`, pass the existing funds for the chosen year:
+In `render()`, pass the existing funds for the chosen year. **The `??` is not decoration.** `fundYear` is bound with `wire:model.live`, so every keystroke reaches the server — including the empty string you get the moment the admin backspaces to retype the year. Livewire cannot assign `""` to a typed `?int`, so it unsets the property, leaving it *uninitialized*; `render()` then runs on that same request and reading an uninitialized typed property is a fatal error, not a null. `??` is `isset()`-based, so it survives that state where a plain read does not.
 
 ```php
-'monthHours' => PayrollMonthHours::where('year', $this->fundYear)->orderBy('month')->get(),
+'monthHours' => PayrollMonthHours::where('year', $this->fundYear ?? (int) now()->year)->orderBy('month')->get(),
 ```
 
 - [ ] **Step 4: Extend the view**
