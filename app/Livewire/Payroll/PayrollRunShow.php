@@ -136,7 +136,18 @@ class PayrollRunShow extends Component
             return;
         }
 
-        $line = PayrollRunLine::findOrFail($id);
+        // Scoped to this run, not a bare findOrFail. Without the scope any
+        // user who can open one company's run could pass a line id belonging
+        // to another company's run — including a confirmed one — and delete
+        // it: guardDraft() above checks the status of the run on screen, not
+        // of the run the line actually belongs to. The victim run would also
+        // be left with stored totals that no longer match its lines, and
+        // recalculate() refuses to run against a confirmed run, so it could
+        // never heal itself.
+        $line = PayrollRunLine::whereHas(
+            'runEmployee',
+            fn ($query) => $query->where('payroll_run_id', $this->run->id)
+        )->findOrFail($id);
 
         if ($line->is_automatic) {
             $this->addError('lineKind', 'Минатиот труд се пресметува автоматски и не се брише.');
