@@ -3000,6 +3000,26 @@ class PayrollRunIndexTest extends TestCase
         ]);
     }
 
+    public function test_it_refuses_a_month_that_is_already_open(): void
+    {
+        $company = Company::factory()->create();
+        $this->parameter();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        $this->admin();
+        WorkingYear::set($company, 2026);
+
+        app(PayrollRunService::class)->open($company, 2026, 7);
+
+        // Asserting the message, not just that an error exists: the raw
+        // SQLSTATE text registers as an error too, so a bare assertHasErrors
+        // would pass on the very bug this test is here to catch.
+        Livewire::test(PayrollRunIndex::class, ['company' => $company])
+            ->set('newMonth', 7)
+            ->call('createRun')
+            ->assertHasErrors('newMonth')
+            ->assertSee('За тој месец веќе постои пресметка.');
+    }
+
     public function test_it_reports_a_missing_hour_fund_as_a_form_error(): void
     {
         $company = Company::factory()->create();
@@ -3033,6 +3053,7 @@ use App\Models\Company;
 use App\Models\PayrollRun;
 use App\Services\Payroll\PayrollRunService;
 use App\Support\WorkingYear;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -3063,17 +3084,21 @@ class PayrollRunIndex extends Component
         // mistakes, not faults — they belong on the field, not in a 500.
         try {
             $run = $service->open($this->company, $year, $this->newMonth);
+        } catch (QueryException $e) {
+            // Must come first. QueryException extends PDOException, which
+            // extends RuntimeException, so the broader catch below would
+            // swallow it and show the user a raw SQLSTATE string instead of
+            // this sentence.
+            $this->addError('newMonth', 'За тој месец веќе постои пресметка.');
+
+            return null;
         } catch (RuntimeException $e) {
             $this->addError('newMonth', $e->getMessage());
 
             return null;
-        } catch (\Illuminate\Database\QueryException $e) {
-            $this->addError('newMonth', 'За тој месец веќе постои пресметка.');
-
-            return null;
         }
 
-        return $this->redirect(route('payroll-runs.show', [$this->company, $run]), navigate: true);
+        return $this->redirect(route('payroll-runs.show', [$this->company, $run]));
     }
 
     public function render()
@@ -3159,7 +3184,7 @@ Replace `resources/views/livewire/payroll/payroll-run-index.blade.php` with:
 - [ ] **Step 5: Run the tests and make sure they pass**
 
 Run: `php artisan test --filter=PayrollRunIndexTest`
-Expected: PASS, 4 tests.
+Expected: PASS, 5 tests.
 
 - [ ] **Step 6: Run the density test**
 
