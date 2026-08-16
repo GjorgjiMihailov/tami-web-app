@@ -14,6 +14,7 @@ class PayrollRunEmployee extends Model
         'deductions_total', 'effective_net', 'top_up_pension', 'top_up_health',
         'top_up_injury', 'top_up_unemployment', 'top_up', 'hourly_rate',
         'seniority_years', 'full_month_gross',
+        'employer_gross', 'employer_contributions', 'employer_tax', 'employer_net',
     ];
 
     protected function casts(): array
@@ -27,6 +28,8 @@ class PayrollRunEmployee extends Model
             'top_up_injury' => 'float', 'top_up_unemployment' => 'float',
             'top_up' => 'float', 'hourly_rate' => 'float',
             'full_month_gross' => 'float', 'seniority_years' => 'integer',
+            'employer_gross' => 'float', 'employer_contributions' => 'float',
+            'employer_tax' => 'float', 'employer_net' => 'float',
         ];
     }
 

@@ -13,6 +13,7 @@ use App\Models\PayrollRunLine;
 use App\Models\User;
 use App\Services\Payroll\PayrollRunService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use RuntimeException;
 use Tests\TestCase;
 
 class PayrollRunPostingTest extends TestCase
@@ -197,6 +198,117 @@ class PayrollRunPostingTest extends TestCase
 
         $lines = $run->journalEntry->lines;
 
+        $this->assertSame(
+            round($lines->sum(fn ($l) => (float) $l->debit), 2),
+            round($lines->sum(fn ($l) => (float) $l->credit), 2)
+        );
+    }
+
+    /**
+     * The walk-around the review found: PayrollRunShow's own guard only
+     * checks employer gross at the moment a deduction is entered. Add the
+     * deduction while there is still something on the employer's books, then
+     * remove that something afterwards (here, by deleting the ordinary-hours
+     * line once a Fund-borne line already covers the rest of the month), and
+     * the deduction survives recalculate() untouched — recalculate() does not
+     * re-validate deductions, it only rebuilds amounts from the lines that
+     * are still there. Left unguarded, confirm()'s `if ($share <= 0) {
+     * continue; }` would then skip the employee entirely, deductions
+     * included: the payslip would print "Задршка" while account 249 got
+     * nothing for it. confirm() must refuse instead of proceeding.
+     */
+    public function test_confirm_refuses_a_deduction_that_has_nothing_on_the_employers_books(): void
+    {
+        $company = $this->company();
+        $employee = $this->employeeOn($company, 38507);
+        $user = User::factory()->create();
+        $service = app(PayrollRunService::class);
+
+        $run = $service->open($company, 2026, 7);
+        $runEmployee = $run->employees->first();
+        $ordinaryLine = $runEmployee->lines->firstWhere('code', '001');
+
+        // A Fund-borne code-129 line, alongside the ordinary hours.
+        PayrollRunLine::create([
+            'payroll_run_employee_id' => $runEmployee->id,
+            'kind' => PayrollRunLine::KIND_HOURS, 'code' => '129',
+            'description' => 'Боледување на товар на ФЗО', 'hours' => 10,
+            'percent' => 100, 'amount' => 0,
+            'borne_by' => PayrollRunLine::BORNE_FZO, 'is_automatic' => false,
+        ]);
+
+        // A deduction, entered while the ordinary-hours line still leaves the
+        // employer with a positive gross — PayrollRunShow's guard allows it.
+        PayrollRunLine::create([
+            'payroll_run_employee_id' => $runEmployee->id,
+            'kind' => PayrollRunLine::KIND_DEDUCTION, 'code' => null,
+            'description' => 'Кредит', 'hours' => null, 'percent' => null,
+            'amount' => 1000, 'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
+            'is_automatic' => false,
+        ]);
+
+        // Now the walk-around: remove the only line the employer bore.
+        $ordinaryLine->delete();
+
+        $run = $service->recalculate($run->fresh());
+        $runEmployee = $run->employees->first();
+
+        // recalculate() kept the deduction and left the employer with nothing.
+        $this->assertSame(1000.0, round($runEmployee->deductions_total, 2));
+        $this->assertSame(0.0, round($runEmployee->employer_gross, 2));
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage(
+            "Вработениот {$employee->full_name} има задршка, но ништо на товар на фирмата. ".
+            'Отстрани ја задршката или додади ставка на товар на работодавачот.'
+        );
+
+        try {
+            $service->confirm($run, $user->id);
+        } finally {
+            $run = $run->fresh();
+            $this->assertSame(PayrollRun::DRAFT, $run->status);
+            $this->assertNull($run->journal_entry_id);
+            $this->assertDatabaseCount('journal_entries', 0);
+        }
+    }
+
+    /**
+     * The spec calls for the minimum-base top-up to have its own recap row
+     * on 421, distinct from the plain gross — `| 421 (доплата до најниска
+     * основица) | доплата | |`. Merging it into one 421 figure was cosmetic
+     * until the recap started printing the posted entry; from then on a
+     * merged figure made the top-up invisible everywhere.
+     */
+    public function test_a_top_up_posts_as_its_own_421_line_and_the_entry_still_balances(): void
+    {
+        $company = $this->company();
+        // Below July 2026's min_base of 34 571, so SalaryCalculator produces
+        // a non-zero top-up.
+        $this->employeeOn($company, 20000);
+        $user = User::factory()->create();
+        $service = app(PayrollRunService::class);
+
+        $run = $service->confirm($service->open($company, 2026, 7), $user->id);
+        $runEmployee = $run->employees->first();
+
+        $this->assertGreaterThan(0.0, $runEmployee->top_up);
+
+        $entry421Lines = $run->journalEntry->lines
+            ->filter(fn ($l) => Account::find($l->account_id)->code === '421')
+            ->values();
+
+        $this->assertCount(2, $entry421Lines);
+
+        $grossLine = $entry421Lines->firstWhere('description', "Плата 7/2026");
+        $topUpLine = $entry421Lines->firstWhere('description', 'Доплата до најниска основица');
+
+        $this->assertNotNull($grossLine);
+        $this->assertNotNull($topUpLine);
+        $this->assertSame(round($runEmployee->employer_gross, 2), round((float) $grossLine->debit, 2));
+        $this->assertSame(round($runEmployee->top_up, 2), round((float) $topUpLine->debit, 2));
+
+        $lines = $run->journalEntry->lines;
         $this->assertSame(
             round($lines->sum(fn ($l) => (float) $l->debit), 2),
             round($lines->sum(fn ($l) => (float) $l->credit), 2)

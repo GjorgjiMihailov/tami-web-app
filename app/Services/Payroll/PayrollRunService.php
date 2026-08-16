@@ -154,6 +154,10 @@ class PayrollRunService
                     'hourly_rate' => $result->hourlyRate,
                     'seniority_years' => $employee->seniorityYearsOn($asOf),
                     'full_month_gross' => $fullMonthGross,
+                    'employer_gross' => $result->employerGross,
+                    'employer_contributions' => $result->employerContributions,
+                    'employer_tax' => $result->employerTax,
+                    'employer_net' => $result->employerNet,
                 ]);
             }
 
@@ -191,27 +195,30 @@ class PayrollRunService
             $topUp = 0.0;
 
             foreach ($run->employees as $runEmployee) {
-                $share = $runEmployee->gross > 0
-                    ? $this->employerGross($runEmployee) / $runEmployee->gross
-                    : 0.0;
+                // A deduction was allowed onto this employee's lines while the
+                // employer still bore part of the gross, and then that part was
+                // removed (the ordinary-hours line deleted, everything left
+                // moved to the Fund) without removing the deduction with it.
+                // Posting now would print "Задршка" on the payslip while
+                // account 249 gets nothing for it — the exact harm the spec
+                // names. Refuse rather than silently drop the employee.
+                if ($runEmployee->deductions_total > 0 && $runEmployee->employer_gross <= 0) {
+                    throw new RuntimeException(
+                        "Вработениот {$runEmployee->employee->full_name} има задршка, но ништо на товар на фирмата. ".
+                        'Отстрани ја задршката или додади ставка на товар на работодавачот.'
+                    );
+                }
 
-                if ($share <= 0) {
+                if ($runEmployee->employer_gross <= 0) {
                     continue;
                 }
 
-                $employerGross = $this->employerGross($runEmployee);
-                $employerContributions = round($runEmployee->contributions * $share, 2);
-                $employerTax = round($runEmployee->tax * $share, 2);
-
-                $gross += $employerGross;
-                $contributions += $employerContributions;
-                $tax += $employerTax;
+                $gross += $runEmployee->employer_gross;
+                $contributions += $runEmployee->employer_contributions;
+                $tax += $runEmployee->employer_tax;
                 $deductions += $runEmployee->deductions_total;
                 $topUp += $runEmployee->top_up;
-                $net += round(
-                    $employerGross - $employerContributions - $employerTax - $runEmployee->deductions_total,
-                    2
-                );
+                $net += $runEmployee->employer_net;
             }
 
             // No entry at all when the company owes nothing — a month where
@@ -232,7 +239,12 @@ class PayrollRunService
                     'created_by' => $userId,
                 ]);
 
-                $this->line($entry, $run, '421', $label, round($gross + $topUp, 2), 0.0);
+                // Two 421 lines, not one merged figure: the spec calls for the
+                // top-up to have its own recap row, distinct from the plain
+                // gross, so it is not invisible once the recap prints the
+                // posted entry.
+                $this->line($entry, $run, '421', $label, round($gross, 2), 0.0);
+                $this->line($entry, $run, '421', 'Доплата до најниска основица', round($topUp, 2), 0.0);
                 $this->line($entry, $run, '234', $label, 0.0, round($contributions + $topUp, 2));
                 $this->line($entry, $run, '235', $label, 0.0, round($tax, 2));
                 $this->line($entry, $run, '249', $label, 0.0, round($deductions, 2));
@@ -288,17 +300,6 @@ class PayrollRunService
 
             return $run->fresh(['employees.lines']);
         });
-    }
-
-    private function employerGross(PayrollRunEmployee $runEmployee): float
-    {
-        return round(
-            $runEmployee->lines
-                ->where('kind', '!=', PayrollRunLine::KIND_DEDUCTION)
-                ->where('borne_by', PayrollRunLine::BORNE_EMPLOYER)
-                ->sum('amount'),
-            2
-        );
     }
 
     /** Zero-value lines are skipped: an empty row in the ledger is noise. */
