@@ -3259,9 +3259,9 @@ class PayrollRunShowTest extends TestCase
     {
         $company = Company::factory()->create();
 
-        foreach (['421', '240', '249', '234', '235'] as $code) {
-            Account::create(['company_id' => $company->id, 'code' => $code, 'name' => "Конто {$code}"]);
-        }
+        // No account seeding here. CompanyObserver seeds the whole official
+        // chart on Company::created, and 421, 240, 249, 234 and 235 are all in
+        // it — creating them by hand collides with the unique index.
 
         PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
 
@@ -3860,9 +3860,9 @@ class PayrollPdfTest extends TestCase
 
     private function openRun(Company $company): PayrollRun
     {
-        foreach (['421', '240', '249', '234', '235'] as $code) {
-            Account::create(['company_id' => $company->id, 'code' => $code, 'name' => "Конто {$code}"]);
-        }
+        // No account seeding here. CompanyObserver seeds the whole official
+        // chart on Company::created, and 421, 240, 249, 234 and 235 are all in
+        // it — creating them by hand collides with the unique index.
 
         PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
 
