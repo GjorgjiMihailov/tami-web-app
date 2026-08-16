@@ -2955,9 +2955,13 @@ class PayrollRunIndexTest extends TestCase
             'payroll_parameter_id' => $parameter->id,
         ]);
 
+        // assertDontSee would be fooled by the month picker, which lists all
+        // twelve month names as options whatever the table holds. What the
+        // working-year filter actually decides is the view data, so assert on
+        // that, and keep one rendered check that the row reaches the page.
         Livewire::test(PayrollRunIndex::class, ['company' => $company])
-            ->assertSee('Јули')
-            ->assertDontSee('Март');
+            ->assertViewHas('runs', fn ($runs) => $runs->pluck('month')->all() === [7])
+            ->assertSee('Јули');
     }
 
     public function test_it_does_not_list_another_companys_runs(): void
@@ -2975,7 +2979,7 @@ class PayrollRunIndexTest extends TestCase
         ]);
 
         Livewire::test(PayrollRunIndex::class, ['company' => $company])
-            ->assertDontSee('Мај');
+            ->assertViewHas('runs', fn ($runs) => $runs->isEmpty());
     }
 
     public function test_it_opens_a_new_month(): void
