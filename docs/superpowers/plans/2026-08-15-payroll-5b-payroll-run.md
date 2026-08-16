@@ -2929,6 +2929,7 @@ use App\Models\Company;
 use App\Models\PayrollMonthHours;
 use App\Models\PayrollParameter;
 use App\Models\PayrollRun;
+use App\Models\PayrollRunLine;
 use App\Models\User;
 use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -4085,10 +4086,38 @@ class PayrollPdfTest extends TestCase
 
         $this->assertStringContainsString('Книжено во главна книга', $html);
 
-        // Every account the entry touched must appear in the block.
-        foreach ($run->journalEntry->lines as $line) {
-            $this->assertStringContainsString($line->account->code, $html);
+        // Hardcoded, not derived from the same collection the view iterates:
+        // deriving them would make this loop vacuous — and therefore green —
+        // if that relation ever came back empty in both places.
+        foreach (['421', '234', '235', '240'] as $code) {
+            $this->assertStringContainsString($code, $html);
         }
+    }
+
+    public function test_the_recap_does_not_call_a_confirmed_run_a_draft(): void
+    {
+        $company = Company::factory()->create();
+        $run = $this->openRun($company);
+        $user = $this->admin($company);
+
+        // The whole month on the Fund: the run confirms but posts nothing, so
+        // journal_entry_id stays null. Saying „во нацрт" there would be wrong
+        // twice over — it is confirmed, and there was nothing to post.
+        $run->employees->first()->lines()->update([
+            'code' => '129',
+            'borne_by' => PayrollRunLine::BORNE_FZO,
+        ]);
+
+        $service = app(PayrollRunService::class);
+        $run = $service->confirm($service->recalculate($run->fresh()), $user->id);
+        $run->load(['employees.employee', 'employees.lines', 'journalEntry.lines.account']);
+
+        $this->assertNull($run->journal_entry_id);
+
+        $html = view('pdf.payroll-recap', ['company' => $company, 'run' => $run])->render();
+
+        $this->assertStringNotContainsString('во нацрт', $html);
+        $this->assertStringContainsString('нема што да се книжи', $html);
     }
 }
 ```
@@ -4346,8 +4375,10 @@ class PayrollRecapPdfController extends Controller
             </tbody>
         </table>
         <p class="muted">Книжен е само делот на товар на работодавачот. Кај вработен чие боледување го носи ФЗО, разликата спрема горната табела е токму тој дел — тој се пресметува и се пријавува, но не е трошок на фирмата.</p>
-    @else
+    @elseif ($run->isDraft())
         <p class="muted">Пресметката е во нацрт и сè уште не е книжена.</p>
+    @else
+        <p class="muted">Пресметката е потврдена, но нема што да се книжи кај фирмата — целата плата за овој месец е на товар на друг.</p>
     @endif
 </body>
 </html>
@@ -4389,7 +4420,7 @@ Replace the placeholder cell in the employee row with:
 - [ ] **Step 8: Run the tests and make sure they pass**
 
 Run: `php artisan test --filter="PayrollPdfTest|PayrollRunShowTest"`
-Expected: PASS, 16 tests — 11 from `PayrollRunShowTest`, which is included because this step changes the view it renders, plus the 5 in `PayrollPdfTest`.
+Expected: PASS, 17 tests — 11 from `PayrollRunShowTest`, which is included because this step changes the view it renders, plus the 6 in `PayrollPdfTest`.
 
 If Cyrillic renders as blank boxes, the font is the cause: dompdf needs `DejaVu Sans`, which the stylesheet above already sets. Compare with `resources/views/pdf/sales-invoice.blade.php`, which already solves this.
 
