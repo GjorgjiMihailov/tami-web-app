@@ -3995,9 +3995,11 @@ class PayrollPdfTest extends TestCase
 
     private function admin(Company $company): User
     {
+        // No company association: User has no companies() relation, and an
+        // admin reaches every company through visibleCompanies() anyway. A
+        // client is the one that needs company_id — see the client test below.
         $admin = User::factory()->create();
         $admin->assignRole('admin');
-        $admin->companies()->attach($company);
 
         return $admin;
     }
@@ -4031,9 +4033,8 @@ class PayrollPdfTest extends TestCase
         $company = Company::factory()->create();
         $run = $this->openRun($company);
 
-        $client = User::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('client');
-        $client->companies()->attach($company);
 
         $this->actingAs($client)
             ->get(route('payroll.recap-pdf', [$company, $run]))
@@ -4079,12 +4080,12 @@ class PayslipPdfController extends Controller
             'runEmployee' => $runEmployee,
         ]);
 
-        return $pdf->stream("isplatna-lista-{$run->year}-{$run->month}-{$runEmployee->employee->last_name}.pdf");
+        return $pdf->download("isplatna-lista-{$run->year}-{$run->month}-{$runEmployee->employee->last_name}.pdf");
     }
 }
 ```
 
-Check an existing controller such as `app/Http/Controllers/StockOnHandPdfController.php` for the exact `Pdf` facade import and whether the project calls `stream()` or `download()`; match it rather than the above if they differ.
+Both sibling controllers — `StockOnHandPdfController` and `SalesInvoicePdfController` — import `Barryvdh\DomPDF\Facade\Pdf` and call `download()`, which is why this one does too. Confirm that is still true before you write it.
 
 - [ ] **Step 4: Write the payslip view**
 
@@ -4193,7 +4194,7 @@ class PayrollRecapPdfController extends Controller
             'run' => $run,
         ])->setPaper('a4', 'landscape');
 
-        return $pdf->stream("rekapitular-{$run->year}-{$run->month}.pdf");
+        return $pdf->download("rekapitular-{$run->year}-{$run->month}.pdf");
     }
 }
 ```
