@@ -61,5 +61,39 @@
             </tr>
         </tbody>
     </table>
+
+    <h2 style="font-size: 12px; margin: 14px 0 0 0;">Книжено во главна книга</h2>
+
+    @if ($run->journalEntry)
+        <div class="muted">Налог од {{ $run->endOfMonth() }}</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Конто</th>
+                    <th>Опис</th>
+                    <th class="right">Должи</th>
+                    <th class="right">Побарува</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($run->journalEntry->lines as $line)
+                    <tr>
+                        <td>{{ $line->account->code }}</td>
+                        <td>{{ $line->account->name }}</td>
+                        <td class="right">{{ number_format($line->debit, 2, ',', '.') }}</td>
+                        <td class="right">{{ number_format($line->credit, 2, ',', '.') }}</td>
+                    </tr>
+                @endforeach
+                <tr class="total">
+                    <td colspan="2">Вкупно</td>
+                    <td class="right">{{ number_format($run->journalEntry->lines->sum(fn ($l) => (float) $l->debit), 2, ',', '.') }}</td>
+                    <td class="right">{{ number_format($run->journalEntry->lines->sum(fn ($l) => (float) $l->credit), 2, ',', '.') }}</td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="muted">Книжен е само делот на товар на работодавачот. Кај вработен чие боледување го носи ФЗО, разликата спрема горната табела е токму тој дел — тој се пресметува и се пријавува, но не е трошок на фирмата.</p>
+    @else
+        <p class="muted">Пресметката е во нацрт и сè уште не е книжена.</p>
+    @endif
 </body>
 </html>

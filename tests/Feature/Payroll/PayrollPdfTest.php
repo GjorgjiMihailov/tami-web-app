@@ -91,7 +91,7 @@ class PayrollPdfTest extends TestCase
         $response->assertHeader('content-type', 'application/pdf');
     }
 
-    public function test_a_client_cannot_download_a_payslip(): void
+    public function test_a_client_cannot_download_either_document(): void
     {
         $company = Company::factory()->create();
         $run = $this->openRun($company);
@@ -99,8 +99,58 @@ class PayrollPdfTest extends TestCase
         $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('client');
 
+        // Both routes, not just one. They share a middleware group today, so
+        // asserting only the recap would keep passing if the payslip's
+        // protection were ever removed — and the payslip is the document with
+        // one person's pay on it.
         $this->actingAs($client)
             ->get(route('payroll.recap-pdf', [$company, $run]))
             ->assertForbidden();
+
+        $this->actingAs($client)
+            ->get(route('payroll.payslip-pdf', [$company, $run, $run->employees->first()]))
+            ->assertForbidden();
+    }
+
+    /**
+     * The PDF tests above prove the documents render. They cannot see what is
+     * printed on them, so the two statements that matter most are asserted
+     * against the rendered Blade instead — cheap, and it fails if the wording
+     * is ever softened.
+     */
+    public function test_the_payslip_says_the_employer_bears_the_top_up(): void
+    {
+        $company = Company::factory()->create();
+        $run = $this->openRun($company);
+        $runEmployee = $run->employees->first();
+        $runEmployee->update(['top_up' => 1234.56]);
+
+        $html = view('pdf.payslip', [
+            'company' => $company,
+            'run' => $run,
+            'runEmployee' => $runEmployee->fresh(['employee', 'lines']),
+        ])->render();
+
+        $this->assertStringContainsString('на товар на работодавачот', $html);
+        $this->assertStringContainsString('Не се одзема од платата на работникот', $html);
+    }
+
+    public function test_the_recap_shows_what_was_posted_to_the_ledger(): void
+    {
+        $company = Company::factory()->create();
+        $run = $this->openRun($company);
+        $user = $this->admin($company);
+
+        $run = app(PayrollRunService::class)->confirm($run, $user->id);
+        $run->load(['employees.employee', 'employees.lines', 'journalEntry.lines.account']);
+
+        $html = view('pdf.payroll-recap', ['company' => $company, 'run' => $run])->render();
+
+        $this->assertStringContainsString('Книжено во главна книга', $html);
+
+        // Every account the entry touched must appear in the block.
+        foreach ($run->journalEntry->lines as $line) {
+            $this->assertStringContainsString($line->account->code, $html);
+        }
     }
 }

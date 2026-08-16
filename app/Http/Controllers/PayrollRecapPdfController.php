@@ -15,7 +15,7 @@ class PayrollRecapPdfController extends Controller
         Gate::authorize('view', $company);
         abort_unless($run->company_id === $company->id, 404);
 
-        $run->load(['employees.employee', 'employees.lines']);
+        $run->load(['employees.employee', 'employees.lines', 'journalEntry.lines.account']);
 
         $pdf = Pdf::loadView('pdf.payroll-recap', [
             'company' => $company,
