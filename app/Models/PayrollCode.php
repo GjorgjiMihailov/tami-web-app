@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PayrollCode extends Model
 {
-    public const TYPES = ['opstina', 'vid_staz', 'sifra_dviz', 'osloboduvanje'];
+    public const TYPES = ['opstina', 'vid_staz', 'sifra_dviz', 'osloboduvanje', 'rab_cas', 'vid_nadomestoci'];
 
     protected $fillable = ['type', 'code', 'name'];
 

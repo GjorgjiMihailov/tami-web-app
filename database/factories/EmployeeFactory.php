@@ -25,6 +25,7 @@ class EmployeeFactory extends Factory
             'movement_code' => null,
             'exemption_code' => null,
             'weekly_hours' => 40,
+            'prior_service_months' => 0,
             'address' => null,
             'phone' => null,
             'email' => null,

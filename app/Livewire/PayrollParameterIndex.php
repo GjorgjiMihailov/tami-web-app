@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Company;
+use App\Models\PayrollMonthHours;
 use App\Models\PayrollParameter;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
@@ -35,6 +36,12 @@ class PayrollParameterIndex extends Component
 
     public string $minimumWage = '';
 
+    public ?int $fundYear = null;
+
+    public ?int $fundMonth = null;
+
+    public ?int $fundHours = null;
+
     public function mount(Company $company): void
     {
         // Shared state parameters: a wrong value here breaks every company's
@@ -44,6 +51,7 @@ class PayrollParameterIndex extends Component
         Gate::authorize('view', $company);
 
         $this->company = $company;
+        $this->fundYear = (int) now()->year;
     }
 
     public function addPeriod(): void
@@ -84,10 +92,42 @@ class PayrollParameterIndex extends Component
         ]);
     }
 
+    /**
+     * The fund is a national fact, so it is updated in place rather than
+     * versioned: there is only ever one correct number of working hours in a
+     * given month, and correcting a typo should not leave two.
+     */
+    public function saveMonthHours(): void
+    {
+        // Re-checked here, not only in mount(): mount() runs once per component
+        // instantiation, an action call does not re-run it, and addPeriod()
+        // above already guards itself the same way. These values are shared by
+        // every company, so the second lock is cheap next to what a wrong one
+        // would cost.
+        abort_unless(auth()->user()->hasRole('admin'), 403);
+
+        $this->validate([
+            'fundYear' => ['required', 'integer', 'min:2000', 'max:2100'],
+            'fundMonth' => ['required', 'integer', 'min:1', 'max:12'],
+            'fundHours' => ['required', 'integer', 'min:0', 'max:400'],
+        ], attributes: [
+            'fundYear' => 'година', 'fundMonth' => 'месец', 'fundHours' => 'часови',
+        ]);
+
+        PayrollMonthHours::updateOrCreate(
+            ['year' => $this->fundYear, 'month' => $this->fundMonth],
+            ['hours' => $this->fundHours],
+        );
+
+        $this->fundMonth = null;
+        $this->fundHours = null;
+    }
+
     public function render()
     {
         return view('livewire.payroll-parameter-index', [
             'parameters' => PayrollParameter::orderByDesc('effective_from')->get(),
+            'monthHours' => PayrollMonthHours::where('year', $this->fundYear)->orderBy('month')->get(),
         ]);
     }
 }

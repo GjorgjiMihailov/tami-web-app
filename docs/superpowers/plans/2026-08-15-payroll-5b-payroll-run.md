@@ -128,7 +128,7 @@ Run: `php storage/app/private/convert-5b-codes.php`
 
 Expected output, exactly:
 ```
-rab_cas: 61 codes
+rab_cas: 60 codes
 vid_nadomestoci: 17 codes
 ```
 
@@ -145,7 +145,7 @@ public function test_it_seeds_the_working_hour_types(): void
 {
     $codes = PayrollCode::ofType('rab_cas');
 
-    $this->assertCount(61, $codes);
+    $this->assertCount(60, $codes);
     $this->assertSame('Редовни работни часови', $codes->firstWhere('code', '001')->name);
     $this->assertSame('Годишен одмор', $codes->firstWhere('code', '009')->name);
 }
@@ -203,7 +203,7 @@ return new class extends Migration
             ], $codes);
 
             // Chunked because MySQL's max_allowed_packet is the one thing that
-            // makes a 61-row insert fail in CI but not locally.
+            // makes a 60-row insert fail in CI but not locally.
             foreach (array_chunk($rows, 100) as $chunk) {
                 DB::table('payroll_codes')->insert($chunk);
             }
@@ -273,7 +273,10 @@ class PayrollMonthHoursTest extends TestCase
 
     public function test_it_finds_the_fund_for_a_month(): void
     {
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
 
         $this->assertSame(184, PayrollMonthHours::forMonth(2026, 7)->hours);
     }
@@ -288,7 +291,10 @@ class PayrollMonthHoursTest extends TestCase
 
     public function test_a_month_cannot_be_entered_twice(): void
     {
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
 
         $this->expectException(\Illuminate\Database\QueryException::class);
 
@@ -531,6 +537,11 @@ In `app/Models/Employee.php`, add `'prior_service_months'` to `$fillable`, add `
      *
      * Completed years, not fractional ones — минат труд steps up on the
      * anniversary, it does not accrue daily.
+     *
+     * The calendar diff is deliberate. Carbon's diffInMonths() returns a float
+     * derived from an average days-per-month constant, so it only lands on the
+     * right whole month once the (int) cast truncates it — correct today, but
+     * correct by luck rather than by construction. diff()->y and ->m are exact.
      */
     public function seniorityYearsOn(string $date): int
     {
@@ -540,36 +551,32 @@ In `app/Models/Employee.php`, add `'prior_service_months'` to `$fillable`, add `
             return 0;
         }
 
-        $months = $this->employed_on->diffInMonths($on) + $this->prior_service_months;
+        $diff = $this->employed_on->diff($on);
+        $months = $diff->y * 12 + $diff->m + $this->prior_service_months;
 
-        return intdiv((int) $months, 12);
+        return intdiv($months, 12);
     }
 ```
 
 - [ ] **Step 5: Add the field to the form**
 
-In `app/Livewire/EmployeeForm.php`: add `public int $prior_service_months = 0;` to the properties, include it in whatever `mount()` fills from the model and in the array passed to `update()`/`create()`, and add to the rules:
+In `app/Livewire/EmployeeForm.php`: add `public int $priorServiceMonths = 0;` to the properties, include it in whatever `mount()` fills from the model and in the array passed to `update()`/`create()`, and add to the rules, in the pipe-delimited style every sibling rule in that call uses:
 
 ```php
-'prior_service_months' => ['required', 'integer', 'min:0', 'max:720'],
+'priorServiceMonths' => 'required|integer|min:0|max:720',
 ```
 
-Add the Macedonian attribute name alongside the others already in the component:
+The property is camelCase while the column stays `prior_service_months` — that split is this file's established pattern (`weeklyHours` maps to `weekly_hours`). Add the Macedonian attribute name where the others already live, `lang/mk/validation.php`:
 
 ```php
-'prior_service_months' => 'претходен стаж',
+'priorServiceMonths' => 'претходен стаж',
 ```
 
 In `resources/views/livewire/employee-form.blade.php`, next to the `weekly_hours` field, add:
 
-```blade
-<div>
-    <label class="block text-sm text-gray-600 mb-1">Претходен стаж (месеци)</label>
-    <input type="number" min="0" wire:model="prior_service_months" class="w-full rounded border-gray-300">
-    <p class="text-xs text-gray-400 mt-1">Стаж кај претходни работодавачи, за пресметка на минат труд.</p>
-    @error('prior_service_months') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-</div>
-```
+Use the `<x-input-label>` / `<x-text-input>` components the rest of that form already uses rather than raw `<label>` and `<input>` — match the neighbouring `weeklyHours` field exactly, with `wire:model="priorServiceMonths"`, the label „Претходен стаж (месеци)", and the hint „Стаж кај претходни работодавачи, за пресметка на минат труд." under it.
+
+Bind the error to the camelCase key: `@error('priorServiceMonths')`.
 
 In `database/factories/EmployeeFactory.php`, add `'prior_service_months' => 0,` to `definition()`.
 
@@ -590,7 +597,7 @@ public function test_it_stores_prior_service(): void
         ->set('bank_account', '300000000000000')
         ->set('insurance_type_code', '0010')
         ->set('employed_on', '2026-01-01')
-        ->set('prior_service_months', 24)
+        ->set('priorServiceMonths', 24)
         ->call('save');
 
     $this->assertSame(24, Employee::where('embg', '0101990450012')->first()->prior_service_months);
@@ -657,13 +664,7 @@ class PayrollRunModelTest extends TestCase
 
     private function parameter(): PayrollParameter
     {
-        return PayrollParameter::create([
-            'effective_from' => '2026-07-01',
-            'rate_pension' => 19.9, 'rate_health' => 7.5, 'rate_injury' => 0.5,
-            'rate_unemployment' => 0.1, 'rate_tax' => 10.0,
-            'personal_allowance' => 10932, 'average_salary' => 69141,
-            'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
-        ]);
+        return PayrollParameter::forDate('2026-07-31');
     }
 
     public function test_a_company_has_one_run_per_month(): void
@@ -1065,13 +1066,13 @@ class PayrollRunFactory extends Factory
             'month' => 7,
             'status' => PayrollRun::DRAFT,
             'month_hours' => 184,
-            'payroll_parameter_id' => PayrollParameter::factory(),
+            'payroll_parameter_id' => fn () => PayrollParameter::forDate('2026-07-31')->id,
         ];
     }
 }
 ```
 
-If `PayrollParameterFactory` does not exist from 5a, create it with the July 2026 values used in the test above.
+**Do not create a `PayrollParameterFactory`.** `payroll_parameters.effective_from` is globally unique and the 5a migration already seeds 2026-01-01, 2026-03-01 and 2026-07-01, so a factory would either collide with those rows or have to invent a date in some far-future year carrying 2026's rates — a period that means nothing. Reading the seeded row is both simpler and keeps every payroll test on the same published figures.
 
 - [ ] **Step 8: Run the tests and make sure they pass**
 
@@ -1155,6 +1156,14 @@ class LineTypeTest extends TestCase
         $this->assertSame(PayrollRunLine::BORNE_EMPLOYER, LineType::borneBy(null));
     }
 
+    public function test_the_seniority_code_is_never_offered_for_manual_entry(): void
+    {
+        // It is derived from length of service and appended by the calculator.
+        // Offering it would let it be entered on top of the appended one.
+        $this->assertArrayNotHasKey(LineType::SENIORITY_CODE, LineType::OFFERED);
+        $this->assertSame('Минат труд', LineType::SENIORITY_LABEL);
+    }
+
     public function test_the_statutory_uplifts(): void
     {
         $this->assertSame(135.0, LineType::defaultPercent('005')); // overtime
@@ -1185,7 +1194,7 @@ use App\Models\PayrollRunLine;
  * The subset of УЈП's codebooks the line editor offers, and what the app
  * assumes about each code.
  *
- * All 61 rab_cas plus 17 vid_nadomestoci codes live in `payroll_codes` because
+ * All 60 rab_cas plus 17 vid_nadomestoci codes live in `payroll_codes` because
  * 5c needs them. This list is the shortlist a private-sector payroll actually
  * uses. Extending it is an edit here, not a migration.
  */
@@ -1209,8 +1218,17 @@ final class LineType
      */
     public const FZO_CODES = ['129', '132', '138', '139'];
 
-    /** The seniority bonus, half a percent per completed year. */
+    /**
+     * The seniority bonus, half a percent per completed year.
+     *
+     * Deliberately absent from OFFERED below: it is derived from length of
+     * service, not entered. Offering it would let someone add it by hand on top
+     * of the one calculate() appends, and seniority would be paid twice. Its
+     * label lives here instead, since OFFERED can no longer supply it.
+     */
     public const SENIORITY_CODE = '037';
+
+    public const SENIORITY_LABEL = 'Минат труд';
 
     public const SENIORITY_PERCENT_PER_YEAR = 0.5;
 
@@ -1233,7 +1251,6 @@ final class LineType
         '127' => ['label' => 'Боледување 90%', 'percent' => 90.0, 'kind' => PayrollRunLine::KIND_HOURS],
         '128' => ['label' => 'Боледување 100%', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_HOURS],
         '129' => ['label' => 'Боледување на товар на ФЗО', 'percent' => 70.0, 'kind' => PayrollRunLine::KIND_HOURS],
-        '037' => ['label' => 'Минат труд', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_AMOUNT],
         '029' => ['label' => 'Храна', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_AMOUNT],
         '030' => ['label' => 'Превоз', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_AMOUNT],
         '034' => ['label' => 'Награда', 'percent' => 100.0, 'kind' => PayrollRunLine::KIND_AMOUNT],
@@ -1406,6 +1423,33 @@ class PayrollRunCalculatorTest extends TestCase
         $this->assertSame(3680.0, round($seniority->amount, 2));
     }
 
+    public function test_a_seniority_line_arriving_as_input_is_not_paid_twice(): void
+    {
+        $manual = [
+            'kind' => PayrollRunLine::KIND_AMOUNT, 'code' => '037',
+            'description' => 'Минат труд', 'hours' => null, 'percent' => null,
+            'amount' => 5000.0, 'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
+        ];
+
+        $result = PayrollRunCalculator::calculate(
+            fullMonthGross: 36800.0,
+            monthHours: 184,
+            seniorityYears: 20,
+            inputLines: [$this->hoursLine('001', 184, 100.0), $manual],
+            parameters: $this->july2026(),
+        );
+
+        $seniorityLines = array_values(array_filter(
+            $result->lines,
+            fn ($line) => $line->code === LineType::SENIORITY_CODE
+        ));
+
+        $this->assertCount(1, $seniorityLines);
+        $this->assertSame(3680.0, round($seniorityLines[0]->amount, 2));
+        $this->assertTrue($seniorityLines[0]->isAutomatic);
+        $this->assertSame(40480.0, round($result->gross, 2));
+    }
+
     public function test_deductions_lower_the_effective_net_but_not_the_net(): void
     {
         $result = PayrollRunCalculator::calculate(
@@ -1500,18 +1544,33 @@ class PayrollRunCalculatorTest extends TestCase
         $this->assertSame(0.0, round($result->employerTax, 2));
     }
 
-    public function test_a_net_agreement_gives_a_different_gross_in_january_and_july(): void
+    /**
+     * The 2026 rate change was exactly revenue-neutral: pension went up 1,1
+     * points and unemployment came down 1,1. Both halves of the year therefore
+     * charge 28% in total, and a net agreement costs the employer the same
+     * gross in both — even though the individual rates differ.
+     *
+     * This is worth a test precisely because it is counter-intuitive. Someone
+     * mistyping a future rate change breaks the equality; someone loading the
+     * same period twice by accident breaks the inequality below it.
+     */
+    public function test_the_2026_rate_change_leaves_a_net_agreement_costing_the_same_gross(): void
     {
-        // January's pension rate is 18,8% and unemployment 1,2%; July's are
-        // 19,9% and 0,1%. An agreement in net therefore costs the employer a
-        // different gross in each half of the year — the deliberate
-        // consequence recorded in 5a's spec.
         $january = PayrollParameter::forDate('2026-01-31');
+        $july = $this->july2026();
+
+        $this->assertNotSame($january->rate_pension, $july->rate_pension);
+        $this->assertNotSame($january->rate_unemployment, $july->rate_unemployment);
+
+        $this->assertSame(
+            $january->rate_pension + $january->rate_unemployment,
+            $july->rate_pension + $july->rate_unemployment,
+        );
 
         $januaryGross = PayrollRunCalculator::fullMonthGross(30000.0, 'net', $january);
-        $julyGross = PayrollRunCalculator::fullMonthGross(30000.0, 'net', $this->july2026());
+        $julyGross = PayrollRunCalculator::fullMonthGross(30000.0, 'net', $july);
 
-        $this->assertNotSame((int) round($januaryGross), (int) round($julyGross));
+        $this->assertSame((int) round($januaryGross), (int) round($julyGross));
     }
 }
 ```
@@ -1625,12 +1684,24 @@ final class PayrollRunCalculator
         array $inputLines,
         PayrollParameter $parameters,
     ): PayrollRunResult {
-        $hourlyRate = $monthHours > 0 ? round($fullMonthGross / $monthHours, 2) : 0.0;
+        // Deliberately NOT rounded before it is multiplied out. Rounding the
+        // rate first makes a plain full month miss the agreed gross: 38 507 over
+        // 184 hours gives a rate of 209,28, which multiplies back to 38 507,52 —
+        // so every gross agreement would be quietly overpaid, every month. Only
+        // the figure reported for display is rounded, at the return below.
+        $hourlyRate = $monthHours > 0 ? $fullMonthGross / $monthHours : 0.0;
 
         $lines = [];
         $baseTotal = 0.0;
 
         foreach ($inputLines as $input) {
+            // The bonus is derived and appended below. A line arriving with its
+            // code can only be a caller bug — dropping it is what stops the same
+            // bonus being paid twice.
+            if (($input['code'] ?? null) === LineType::SENIORITY_CODE) {
+                continue;
+            }
+
             $amount = match ($input['kind']) {
                 PayrollRunLine::KIND_HOURS => round(
                     $hourlyRate * (int) $input['hours'] * ((float) $input['percent']) / 100,
@@ -1665,7 +1736,7 @@ final class PayrollRunCalculator
             $lines[] = new PayrollRunLineResult(
                 kind: PayrollRunLine::KIND_AMOUNT,
                 code: LineType::SENIORITY_CODE,
-                description: LineType::label(LineType::SENIORITY_CODE),
+                description: LineType::SENIORITY_LABEL,
                 hours: null,
                 percent: null,
                 amount: $seniorityAmount,
@@ -1713,7 +1784,7 @@ final class PayrollRunCalculator
         $employerNet = round($employerGross - $employerContributions - $employerTax - $deductionsTotal, 2);
 
         return new PayrollRunResult(
-            hourlyRate: $hourlyRate,
+            hourlyRate: round($hourlyRate, 2),
             lines: $lines,
             gross: $gross,
             breakdown: $breakdown,
@@ -1785,25 +1856,23 @@ class PayrollRunServiceTest extends TestCase
 
     private function seedParameters(): PayrollParameter
     {
-        return PayrollParameter::create([
-            'effective_from' => '2026-07-01',
-            'rate_pension' => 19.9, 'rate_health' => 7.5, 'rate_injury' => 0.5,
-            'rate_unemployment' => 0.1, 'rate_tax' => 10.0,
-            'personal_allowance' => 10932, 'average_salary' => 69141,
-            'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
-        ]);
+        return PayrollParameter::forDate('2026-07-31');
     }
 
     private function employeeOn(Company $company, float $amount, string $basis): Employee
     {
         $employee = Employee::factory()->for($company)->create([
-            'employed_on' => '2020-01-01',
+            // Hired inside the run year on purpose: at 2026-07-31 that is zero
+            // completed years, so no seniority line is appended and the figures
+            // stay УЈП's published ones. Tests that need seniority set their own
+            // hire date.
+            'employed_on' => '2026-01-01',
             'prior_service_months' => 0,
         ]);
 
         EmployeeSalary::create([
             'employee_id' => $employee->id,
-            'effective_from' => '2020-01-01',
+            'effective_from' => '2026-01-01',
             'amount' => $amount,
             'basis' => $basis,
         ]);
@@ -1815,7 +1884,10 @@ class PayrollRunServiceTest extends TestCase
     {
         $company = Company::factory()->create();
         $this->seedParameters();
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
         $this->employeeOn($company, 38507, 'gross');
 
         $run = app(PayrollRunService::class)->open($company, 2026, 7);
@@ -1834,7 +1906,10 @@ class PayrollRunServiceTest extends TestCase
     {
         $company = Company::factory()->create();
         $this->seedParameters();
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
 
         $gone = $this->employeeOn($company, 38507, 'gross');
         $gone->update(['terminated_on' => '2026-03-31']);
@@ -1859,7 +1934,10 @@ class PayrollRunServiceTest extends TestCase
     {
         $company = Company::factory()->create();
         $this->seedParameters();
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
         $employee = $this->employeeOn($company, 36800, 'gross');
         $employee->update(['employed_on' => '2006-07-01']); // 20 years of service
 
@@ -1883,16 +1961,26 @@ class PayrollRunServiceTest extends TestCase
         $this->assertSame(4000.0, round($runEmployee->deductions_total, 2));
     }
 
-    public function test_a_parameter_change_does_not_touch_a_confirmed_run(): void
+    public function test_a_parameter_change_does_not_restate_an_open_run(): void
     {
         $company = Company::factory()->create();
         $this->seedParameters();
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
         $this->employeeOn($company, 38507, 'gross');
 
-        $run = app(PayrollRunService::class)->open($company, 2026, 7);
-        $frozenParameterId = $run->payroll_parameter_id;
+        $service = app(PayrollRunService::class);
+        $run = $service->open($company, 2026, 7);
 
+        $frozenParameterId = $run->payroll_parameter_id;
+        $grossBefore = $run->employees->first()->gross;
+        $taxBefore = $run->employees->first()->tax;
+
+        // 2026-07-15 is not one of the seeded periods, so it does not collide.
+        // Its tax rate is 12% against July's 10% — far enough that a fresh
+        // lookup would move the figures visibly, not by a rounding step.
         PayrollParameter::create([
             'effective_from' => '2026-07-15',
             'rate_pension' => 25.0, 'rate_health' => 9.0, 'rate_injury' => 0.5,
@@ -1901,7 +1989,38 @@ class PayrollRunServiceTest extends TestCase
             'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
         ]);
 
-        $this->assertSame($frozenParameterId, $run->fresh()->payroll_parameter_id);
+        // Recalculating is the whole point of this test. Without it the
+        // assertions below are true by construction — nothing ever rewrites the
+        // frozen id — so it would pass even if recalculate() looked the
+        // parameters up fresh on every call.
+        $run = $service->recalculate($run->fresh());
+
+        $this->assertSame($frozenParameterId, $run->payroll_parameter_id);
+        $this->assertSame(round($grossBefore, 2), round($run->employees->first()->gross, 2));
+        $this->assertSame(round($taxBefore, 2), round($run->employees->first()->tax, 2));
+    }
+
+    public function test_a_confirmed_run_refuses_to_be_recalculated(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
+        $this->employeeOn($company, 38507, 'gross');
+
+        $service = app(PayrollRunService::class);
+        $run = $service->open($company, 2026, 7);
+
+        // Task 7 adds confirm(); the status is set directly because this test is
+        // about the guard, not about how a run comes to be confirmed.
+        $run->update(['status' => PayrollRun::CONFIRMED]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Потврдена пресметка не се пресметува повторно.');
+
+        $service->recalculate($run->fresh());
     }
 }
 ```
@@ -2088,7 +2207,7 @@ class PayrollRunService
 - [ ] **Step 4: Run the tests and make sure they pass**
 
 Run: `php artisan test --filter=PayrollRunServiceTest`
-Expected: PASS, 5 tests.
+Expected: PASS, 6 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -2147,15 +2266,10 @@ class PayrollRunPostingTest extends TestCase
             Account::create(['company_id' => $company->id, 'code' => $code, 'name' => $name]);
         }
 
-        PayrollParameter::create([
-            'effective_from' => '2026-07-01',
-            'rate_pension' => 19.9, 'rate_health' => 7.5, 'rate_injury' => 0.5,
-            'rate_unemployment' => 0.1, 'rate_tax' => 10.0,
-            'personal_allowance' => 10932, 'average_salary' => 69141,
-            'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
-        ]);
-
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
 
         return $company;
     }
@@ -2163,11 +2277,15 @@ class PayrollRunPostingTest extends TestCase
     private function employeeOn(Company $company, float $amount): Employee
     {
         $employee = Employee::factory()->for($company)->create([
-            'employed_on' => '2020-01-01', 'prior_service_months' => 0,
+            // Hired inside the run year on purpose: at 2026-07-31 that is zero
+            // completed years, so no seniority line is appended and the figures
+            // stay УЈП's published ones. Tests that need seniority set their own
+            // hire date.
+            'employed_on' => '2026-01-01', 'prior_service_months' => 0,
         ]);
 
         EmployeeSalary::create([
-            'employee_id' => $employee->id, 'effective_from' => '2020-01-01',
+            'employee_id' => $employee->id, 'effective_from' => '2026-01-01',
             'amount' => $amount, 'basis' => 'gross',
         ]);
 
@@ -2255,7 +2373,11 @@ class PayrollRunPostingTest extends TestCase
 
         $run = $service->confirm($service->recalculate($run->fresh()), $user->id);
 
-        $this->assertCount(0, $run->journalEntry->lines);
+        // The run confirms — there is simply nothing for the company to post.
+        // An entry header with no lines would be noise in the ledger, so none
+        // is created and the link stays empty.
+        $this->assertSame(PayrollRun::CONFIRMED, $run->status);
+        $this->assertNull($run->journal_entry_id);
     }
 
     public function test_a_deduction_reaches_the_ledger_whole(): void
@@ -2280,6 +2402,36 @@ class PayrollRunPostingTest extends TestCase
             ->first(fn ($l) => Account::find($l->account_id)->code === '249');
 
         $this->assertSame(5000.0, round((float) $deductionLine->credit, 2));
+    }
+
+    public function test_an_oversized_deduction_still_leaves_a_balanced_entry(): void
+    {
+        // The line form refuses a deduction bigger than the net, so this should
+        // not arise in use. It is asserted anyway because the failure mode is
+        // silent: a dropped negative row leaves the books out of balance with
+        // nothing on screen to say so.
+        $company = $this->company();
+        $this->employeeOn($company, 38507);
+        $user = User::factory()->create();
+        $service = app(PayrollRunService::class);
+
+        $run = $service->open($company, 2026, 7);
+        PayrollRunLine::create([
+            'payroll_run_employee_id' => $run->employees->first()->id,
+            'kind' => PayrollRunLine::KIND_DEDUCTION, 'code' => null,
+            'description' => 'Прекумерна задршка', 'hours' => null, 'percent' => null,
+            'amount' => 40000, 'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
+            'is_automatic' => false,
+        ]);
+
+        $run = $service->confirm($service->recalculate($run->fresh()), $user->id);
+
+        $lines = $run->journalEntry->lines;
+
+        $this->assertSame(
+            round($lines->sum(fn ($l) => (float) $l->debit), 2),
+            round($lines->sum(fn ($l) => (float) $l->credit), 2)
+        );
     }
 
     public function test_returning_to_draft_reverses_the_entry_and_reopens_the_run(): void
@@ -2374,6 +2526,11 @@ Add to `app/Services/Payroll/PayrollRunService.php` (and add `use App\Models\Acc
                 );
             }
 
+            // No entry at all when the company owes nothing — a month where
+            // every employee is wholly on the Fund confirms, but posts nothing.
+            // An entry header with no lines is noise in the ledger, and a null
+            // journal_entry_id says "nothing was posted" more honestly than an
+            // empty entry does.
             $entry = null;
 
             if (round($gross + $topUp, 2) > 0) {
@@ -2459,7 +2616,23 @@ Add to `app/Services/Payroll/PayrollRunService.php` (and add `use App\Models\Acc
     /** Zero-value lines are skipped: an empty row in the ledger is noise. */
     private function line(JournalEntry $entry, PayrollRun $run, string $code, string $label, float $debit, float $credit): void
     {
-        if (round($debit, 2) <= 0 && round($credit, 2) <= 0) {
+        // A negative amount on one side is the same amount on the other. This
+        // is not cosmetics: without it the zero-skip below would swallow a
+        // negative remainder on 240, and an entry that quietly loses a row is
+        // an unbalanced set of books. The line form refuses the deduction that
+        // would cause it, so this is the second lock, not the first.
+        if (round($credit, 2) < 0) {
+            $debit += -$credit;
+            $credit = 0.0;
+        }
+
+        if (round($debit, 2) < 0) {
+            $credit += -$debit;
+            $debit = 0.0;
+        }
+
+        // Only an exactly-zero line is dropped.
+        if (round($debit, 2) == 0.0 && round($credit, 2) == 0.0) {
             return;
         }
 
@@ -2491,7 +2664,7 @@ In `recalculate()`, make the `employees()` eager load include lines so `employer
 - [ ] **Step 4: Run the tests and make sure they pass**
 
 Run: `php artisan test --filter=PayrollRunPostingTest`
-Expected: PASS, 6 tests.
+Expected: PASS, 7 tests.
 
 If the balance test fails by a denar, the fault is in `confirm()` recomputing a figure the calculator already produced — the credit to 240 must be the *remainder*, never an independently rounded number.
 
@@ -2705,7 +2878,13 @@ In `app/Support/Menu.php`, remove the `'plata-mpin'` entry from `SOON_FEATURES` 
 ['label' => 'Плата (МПИН)', 'url' => route('payroll-runs.index', $company), 'pattern' => 'payroll-runs.*', 'roles' => ['admin', 'accountant']],
 ```
 
-- [ ] **Step 6: Update MenuTest**
+- [ ] **Step 6: Pin the menu entry, then update MenuTest**
+
+`MenuTest` already asserts that a client sees only „Вработени" in the payroll group, which catches the entry losing its role restriction. Nothing asserts the entry actually points at a real route, so leaving it inside `SOON_FEATURES` — or accidentally reverting this step later — passes every existing assertion identically.
+
+Add one assertion for an admin that inspects the payroll item itself, not just its label: that its `pattern` is `'payroll-runs.*'` and that it is not a "coming soon" stub. Read `Menu::soon()` and `Menu::itemVisible()` first to see the exact shape a soon-item has versus a real one, and assert against whatever distinguishes them — do not guess a key name.
+
+- [ ] **Step 6b: Update the rest of MenuTest**
 
 `tests/Feature/MenuTest.php` asserts on the "soon" features. Find the assertions naming `plata-mpin` and change them so that the item is expected as a real link for admin and accountant and absent for a client. Run the file to see exactly which assertions break rather than guessing:
 
@@ -2750,6 +2929,7 @@ use App\Models\Company;
 use App\Models\PayrollMonthHours;
 use App\Models\PayrollParameter;
 use App\Models\PayrollRun;
+use App\Models\PayrollRunLine;
 use App\Models\User;
 use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -2778,13 +2958,7 @@ class PayrollRunIndexTest extends TestCase
 
     private function parameter(): PayrollParameter
     {
-        return PayrollParameter::create([
-            'effective_from' => '2026-01-01',
-            'rate_pension' => 19.9, 'rate_health' => 7.5, 'rate_injury' => 0.5,
-            'rate_unemployment' => 0.1, 'rate_tax' => 10.0,
-            'personal_allowance' => 10932, 'average_salary' => 69141,
-            'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
-        ]);
+        return PayrollParameter::forDate('2026-01-31');
     }
 
     public function test_it_lists_the_runs_of_the_working_year(): void
@@ -2806,9 +2980,13 @@ class PayrollRunIndexTest extends TestCase
             'payroll_parameter_id' => $parameter->id,
         ]);
 
+        // assertDontSee would be fooled by the month picker, which lists all
+        // twelve month names as options whatever the table holds. What the
+        // working-year filter actually decides is the view data, so assert on
+        // that, and keep one rendered check that the row reaches the page.
         Livewire::test(PayrollRunIndex::class, ['company' => $company])
-            ->assertSee('Јули')
-            ->assertDontSee('Март');
+            ->assertViewHas('runs', fn ($runs) => $runs->pluck('month')->all() === [7])
+            ->assertSee('Јули');
     }
 
     public function test_it_does_not_list_another_companys_runs(): void
@@ -2826,14 +3004,17 @@ class PayrollRunIndexTest extends TestCase
         ]);
 
         Livewire::test(PayrollRunIndex::class, ['company' => $company])
-            ->assertDontSee('Мај');
+            ->assertViewHas('runs', fn ($runs) => $runs->isEmpty());
     }
 
     public function test_it_opens_a_new_month(): void
     {
         $company = Company::factory()->create();
         $this->parameter();
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
         $this->admin();
         WorkingYear::set($company, 2026);
 
@@ -2845,6 +3026,29 @@ class PayrollRunIndexTest extends TestCase
         $this->assertDatabaseHas('payroll_runs', [
             'company_id' => $company->id, 'year' => 2026, 'month' => 7,
         ]);
+    }
+
+    public function test_it_refuses_a_month_that_is_already_open(): void
+    {
+        $company = Company::factory()->create();
+        $this->parameter();
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
+        $this->admin();
+        WorkingYear::set($company, 2026);
+
+        app(PayrollRunService::class)->open($company, 2026, 7);
+
+        // Asserting the message, not just that an error exists: the raw
+        // SQLSTATE text registers as an error too, so a bare assertHasErrors
+        // would pass on the very bug this test is here to catch.
+        Livewire::test(PayrollRunIndex::class, ['company' => $company])
+            ->set('newMonth', 7)
+            ->call('createRun')
+            ->assertHasErrors('newMonth')
+            ->assertSee('За тој месец веќе постои пресметка.');
     }
 
     public function test_it_reports_a_missing_hour_fund_as_a_form_error(): void
@@ -2880,6 +3084,7 @@ use App\Models\Company;
 use App\Models\PayrollRun;
 use App\Services\Payroll\PayrollRunService;
 use App\Support\WorkingYear;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -2910,17 +3115,21 @@ class PayrollRunIndex extends Component
         // mistakes, not faults — they belong on the field, not in a 500.
         try {
             $run = $service->open($this->company, $year, $this->newMonth);
+        } catch (QueryException $e) {
+            // Must come first. QueryException extends PDOException, which
+            // extends RuntimeException, so the broader catch below would
+            // swallow it and show the user a raw SQLSTATE string instead of
+            // this sentence.
+            $this->addError('newMonth', 'За тој месец веќе постои пресметка.');
+
+            return null;
         } catch (RuntimeException $e) {
             $this->addError('newMonth', $e->getMessage());
 
             return null;
-        } catch (\Illuminate\Database\QueryException $e) {
-            $this->addError('newMonth', 'За тој месец веќе постои пресметка.');
-
-            return null;
         }
 
-        return $this->redirect(route('payroll-runs.show', [$this->company, $run]), navigate: true);
+        return $this->redirect(route('payroll-runs.show', [$this->company, $run]));
     }
 
     public function render()
@@ -3006,7 +3215,7 @@ Replace `resources/views/livewire/payroll/payroll-run-index.blade.php` with:
 - [ ] **Step 5: Run the tests and make sure they pass**
 
 Run: `php artisan test --filter=PayrollRunIndexTest`
-Expected: PASS, 4 tests.
+Expected: PASS, 5 tests.
 
 - [ ] **Step 6: Run the density test**
 
@@ -3053,6 +3262,7 @@ use App\Models\PayrollRun;
 use App\Models\PayrollRunLine;
 use App\Models\User;
 use App\Services\Payroll\PayrollRunService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -3081,27 +3291,26 @@ class PayrollRunShowTest extends TestCase
     {
         $company = Company::factory()->create();
 
-        foreach (['421', '240', '249', '234', '235'] as $code) {
-            Account::create(['company_id' => $company->id, 'code' => $code, 'name' => "Конто {$code}"]);
-        }
+        // No account seeding here. CompanyObserver seeds the whole official
+        // chart on Company::created, and 421, 240, 249, 234 and 235 are all in
+        // it — creating them by hand collides with the unique index.
 
-        PayrollParameter::create([
-            'effective_from' => '2026-07-01',
-            'rate_pension' => 19.9, 'rate_health' => 7.5, 'rate_injury' => 0.5,
-            'rate_unemployment' => 0.1, 'rate_tax' => 10.0,
-            'personal_allowance' => 10932, 'average_salary' => 69141,
-            'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
-        ]);
-
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
 
         $employee = Employee::factory()->for($company)->create([
             'first_name' => 'Ана', 'last_name' => 'Николовска',
-            'employed_on' => '2020-01-01', 'prior_service_months' => 0,
+            // Hired inside the run year on purpose: at 2026-07-31 that is zero
+            // completed years, so no seniority line is appended and the figures
+            // stay УЈП's published ones. Tests that need seniority set their own
+            // hire date.
+            'employed_on' => '2026-01-01', 'prior_service_months' => 0,
         ]);
 
         EmployeeSalary::create([
-            'employee_id' => $employee->id, 'effective_from' => '2020-01-01',
+            'employee_id' => $employee->id, 'effective_from' => '2026-01-01',
             'amount' => 38507, 'basis' => 'gross',
         ]);
 
@@ -3113,9 +3322,13 @@ class PayrollRunShowTest extends TestCase
         $run = $this->openRun();
         $this->admin();
 
+        // Two decimals, Macedonian separators — the same shape the ledger
+        // holds, so the screen ties out against the journal entry to the denar.
+        // Not 26.046: whole-denar rounding is МПИН's write rule in 5c, not a
+        // display rule here.
         Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
             ->assertSee('Николовска')
-            ->assertSee('26.046');
+            ->assertSee('26.045,73');
     }
 
     public function test_adding_a_deduction_lowers_the_amount_for_payment(): void
@@ -3136,6 +3349,44 @@ class PayrollRunShowTest extends TestCase
             21046,
             (int) round($run->fresh()->employees->first()->effective_net)
         );
+    }
+
+    public function test_it_refuses_a_deduction_when_the_fund_bears_the_whole_month(): void
+    {
+        $run = $this->openRun();
+        $this->admin();
+        $runEmployee = $run->employees->first();
+        $runEmployee->lines()->update([
+            'code' => '129', 'borne_by' => PayrollRunLine::BORNE_FZO,
+        ]);
+        app(PayrollRunService::class)->recalculate($run->fresh());
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run->fresh()])
+            ->call('selectEmployee', $runEmployee->id)
+            ->set('lineKind', PayrollRunLine::KIND_DEDUCTION)
+            ->set('lineDescription', 'Кредит')
+            ->set('lineAmount', 1000)
+            ->call('saveLine')
+            ->assertHasErrors('lineAmount')
+            // The sentence itself is the user's decision, so pin it. Without
+            // this the two guards could be merged into one generic message and
+            // every assertion here would still pass.
+            ->assertSee('Нема од што да се задржи');
+    }
+
+    public function test_it_refuses_a_deduction_larger_than_the_remaining_net(): void
+    {
+        $run = $this->openRun();
+        $this->admin();
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
+            ->call('selectEmployee', $run->employees->first()->id)
+            ->set('lineKind', PayrollRunLine::KIND_DEDUCTION)
+            ->set('lineDescription', 'Преголем кредит')
+            ->set('lineAmount', 40000)
+            ->call('saveLine')
+            ->assertHasErrors('lineAmount')
+            ->assertSee('Задршката е поголема од останатото нето за исплата.');
     }
 
     public function test_it_refuses_fractional_hours(): void
@@ -3180,6 +3431,59 @@ class PayrollRunShowTest extends TestCase
             ->call('confirm');
 
         $this->assertSame(PayrollRun::CONFIRMED, $run->fresh()->status);
+    }
+
+    public function test_it_cannot_delete_a_line_belonging_to_another_run(): void
+    {
+        $run = $this->openRun();
+        $foreign = $this->openRun();
+        $this->admin();
+
+        $foreignLine = $foreign->employees->first()->lines->first();
+
+        try {
+            Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
+                ->call('selectEmployee', $run->employees->first()->id)
+                ->call('deleteLine', $foreignLine->id);
+
+            $this->fail('A line belonging to another run must not be deletable from this one.');
+        } catch (ModelNotFoundException $e) {
+            // Expected: the scoped lookup must not find it at all.
+        }
+
+        $this->assertDatabaseHas('payroll_run_lines', ['id' => $foreignLine->id]);
+    }
+
+    public function test_a_confirmed_run_refuses_a_line_deletion(): void
+    {
+        $run = $this->openRun();
+        $user = $this->admin();
+        app(PayrollRunService::class)->confirm($run, $user->id);
+
+        // Read the line AFTER confirming. confirm() recalculates, and
+        // recalculate() deletes and reinserts every line, so an id captured
+        // beforehand is legitimately gone — asserting on it would fail for a
+        // reason that has nothing to do with deleteLine().
+        $run = $run->fresh(['employees.lines']);
+        $line = $run->employees->first()->lines->first();
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
+            ->call('selectEmployee', $run->employees->first()->id)
+            ->call('deleteLine', $line->id)
+            ->assertHasErrors('lineKind');
+
+        $this->assertDatabaseHas('payroll_run_lines', ['id' => $line->id]);
+    }
+
+    public function test_a_confirmed_run_refuses_a_second_confirmation(): void
+    {
+        $run = $this->openRun();
+        $user = $this->admin();
+        app(PayrollRunService::class)->confirm($run, $user->id);
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run->fresh()])
+            ->call('confirm')
+            ->assertHasErrors('lineKind');
     }
 
     public function test_a_confirmed_run_refuses_edits(): void
@@ -3297,6 +3601,32 @@ class PayrollRunShow extends Component
 
         $runEmployee = $this->selectedEmployee();
 
+        // A deduction is withheld from what the company pays. When the whole
+        // month is borne by the Fund the company pays nothing, so there is
+        // nothing to withhold from — and a deduction entered anyway would show
+        // on the payslip while the ledger booked nothing for it. Refusing it is
+        // the honest answer; the poster has a second guard behind this one.
+        if ($this->lineKind === PayrollRunLine::KIND_DEDUCTION) {
+            $employerGross = $runEmployee->lines
+                ->where('kind', '!=', PayrollRunLine::KIND_DEDUCTION)
+                ->where('borne_by', PayrollRunLine::BORNE_EMPLOYER)
+                ->sum('amount');
+
+            if (round((float) $employerGross, 2) <= 0) {
+                $this->addError('lineAmount', 'Нема од што да се задржи — целата плата на овој вработен е на товар на друг.');
+
+                return;
+            }
+
+            $remaining = round($runEmployee->net - $runEmployee->deductions_total, 2);
+
+            if ((float) $this->lineAmount > $remaining) {
+                $this->addError('lineAmount', 'Задршката е поголема од останатото нето за исплата.');
+
+                return;
+            }
+        }
+
         PayrollRunLine::create([
             'payroll_run_employee_id' => $runEmployee->id,
             'kind' => $this->lineKind,
@@ -3321,7 +3651,18 @@ class PayrollRunShow extends Component
             return;
         }
 
-        $line = PayrollRunLine::findOrFail($id);
+        // Scoped to this run, not a bare findOrFail. Without the scope any
+        // user who can open one company's run could pass a line id belonging
+        // to another company's run — including a confirmed one — and delete
+        // it: guardDraft() above checks the status of the run on screen, not
+        // of the run the line actually belongs to. The victim run would also
+        // be left with stored totals that no longer match its lines, and
+        // recalculate() refuses to run against a confirmed run, so it could
+        // never heal itself.
+        $line = PayrollRunLine::whereHas(
+            'runEmployee',
+            fn ($query) => $query->where('payroll_run_id', $this->run->id)
+        )->findOrFail($id);
 
         if ($line->is_automatic) {
             $this->addError('lineKind', 'Минатиот труд се пресметува автоматски и не се брише.');
@@ -3411,7 +3752,9 @@ Replace `resources/views/livewire/payroll/payroll-run-show.blade.php` with:
             <p class="text-sm text-gray-500">Фонд на часови: {{ $run->month_hours }}</p>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ route('payroll.recap-pdf', [$company, $run]) }}" class="text-brand hover:underline text-sm">Рекапитулар (PDF)</a>
+            {{-- The two PDF links belong here, but the routes do not exist until
+                 Task 11. Task 11 adds them; adding them now would make every
+                 test in this task fail on RouteNotFoundException. --}}
             @if ($run->isDraft())
                 <button wire:click="confirm" class="rounded bg-brand px-3 py-2 text-sm text-white">Потврди</button>
             @else
@@ -3455,9 +3798,7 @@ Replace `resources/views/livewire/payroll/payroll-run-show.blade.php` with:
                         <td class="py-1 px-3 text-right">{{ number_format($row->tax, 2, ',', '.') }}</td>
                         <td class="py-1 px-3 text-right">{{ number_format($row->deductions_total, 2, ',', '.') }}</td>
                         <td class="py-1 px-3 text-right font-medium">{{ number_format($row->effective_net, 2, ',', '.') }}</td>
-                        <td class="py-1 px-3 text-right">
-                            <a href="{{ route('payroll.payslip-pdf', [$company, $run, $row]) }}" class="text-brand hover:underline text-xs">Исплатна листа</a>
-                        </td>
+                        <td class="py-1 px-3 text-right">{{-- Task 11 puts the payslip link here --}}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -3556,12 +3897,12 @@ Replace `resources/views/livewire/payroll/payroll-run-show.blade.php` with:
 </div>
 ```
 
-The two PDF routes this view links to are added in Task 11. Until then the view will throw on an unknown route — run Task 11 immediately after, or temporarily comment out the two links while running Task 10's tests.
+The two placeholder comments where the PDF links belong are deliberate. `route()` throws on an unknown name, so a link written before Task 11 defines the route would fail every test in this task. Task 11 replaces both comments once the routes exist.
 
 - [ ] **Step 5: Run the tests and make sure they pass**
 
 Run: `php artisan test --filter=PayrollRunShowTest`
-Expected: PASS, 6 tests.
+Expected: PASS, 11 tests.
 
 - [ ] **Step 6: Run the density test**
 
@@ -3583,6 +3924,7 @@ git commit -m "feat(payroll): run screen with a per-employee line editor"
 - Create: `app/Http/Controllers/PayslipPdfController.php`, `app/Http/Controllers/PayrollRecapPdfController.php`
 - Create: `resources/views/pdf/payslip.blade.php`, `resources/views/pdf/payroll-recap.blade.php`
 - Modify: `routes/web.php`
+- Modify: `resources/views/livewire/payroll/payroll-run-show.blade.php` (the two link placeholders Task 10 left)
 - Test: `tests/Feature/Payroll/PayrollPdfTest.php`
 
 **Interfaces:**
@@ -3626,27 +3968,26 @@ class PayrollPdfTest extends TestCase
 
     private function openRun(Company $company): PayrollRun
     {
-        foreach (['421', '240', '249', '234', '235'] as $code) {
-            Account::create(['company_id' => $company->id, 'code' => $code, 'name' => "Конто {$code}"]);
-        }
+        // No account seeding here. CompanyObserver seeds the whole official
+        // chart on Company::created, and 421, 240, 249, 234 and 235 are all in
+        // it — creating them by hand collides with the unique index.
 
-        PayrollParameter::create([
-            'effective_from' => '2026-07-01',
-            'rate_pension' => 19.9, 'rate_health' => 7.5, 'rate_injury' => 0.5,
-            'rate_unemployment' => 0.1, 'rate_tax' => 10.0,
-            'personal_allowance' => 10932, 'average_salary' => 69141,
-            'min_base' => 34571, 'max_base' => 1106256, 'minimum_wage' => 38507,
-        ]);
-
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
 
         $employee = Employee::factory()->for($company)->create([
             'first_name' => 'Ана', 'last_name' => 'Николовска',
-            'employed_on' => '2020-01-01', 'prior_service_months' => 0,
+            // Hired inside the run year on purpose: at 2026-07-31 that is zero
+            // completed years, so no seniority line is appended and the figures
+            // stay УЈП's published ones. Tests that need seniority set their own
+            // hire date.
+            'employed_on' => '2026-01-01', 'prior_service_months' => 0,
         ]);
 
         EmployeeSalary::create([
-            'employee_id' => $employee->id, 'effective_from' => '2020-01-01',
+            'employee_id' => $employee->id, 'effective_from' => '2026-01-01',
             'amount' => 38507, 'basis' => 'gross',
         ]);
 
@@ -3655,9 +3996,11 @@ class PayrollPdfTest extends TestCase
 
     private function admin(Company $company): User
     {
+        // No company association: User has no companies() relation, and an
+        // admin reaches every company through visibleCompanies() anyway. A
+        // client is the one that needs company_id — see the client test below.
         $admin = User::factory()->create();
         $admin->assignRole('admin');
-        $admin->companies()->attach($company);
 
         return $admin;
     }
@@ -3686,18 +4029,95 @@ class PayrollPdfTest extends TestCase
         $response->assertHeader('content-type', 'application/pdf');
     }
 
-    public function test_a_client_cannot_download_a_payslip(): void
+    public function test_a_client_cannot_download_either_document(): void
     {
         $company = Company::factory()->create();
         $run = $this->openRun($company);
 
-        $client = User::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('client');
-        $client->companies()->attach($company);
 
+        // Both routes, not just one. They share a middleware group today, so
+        // asserting only the recap would keep passing if the payslip's
+        // protection were ever removed — and the payslip is the document with
+        // one person's pay on it.
         $this->actingAs($client)
             ->get(route('payroll.recap-pdf', [$company, $run]))
             ->assertForbidden();
+
+        $this->actingAs($client)
+            ->get(route('payroll.payslip-pdf', [$company, $run, $run->employees->first()]))
+            ->assertForbidden();
+    }
+
+    /**
+     * The PDF tests above prove the documents render. They cannot see what is
+     * printed on them, so the two statements that matter most are asserted
+     * against the rendered Blade instead — cheap, and it fails if the wording
+     * is ever softened.
+     */
+    public function test_the_payslip_says_the_employer_bears_the_top_up(): void
+    {
+        $company = Company::factory()->create();
+        $run = $this->openRun($company);
+        $runEmployee = $run->employees->first();
+        $runEmployee->update(['top_up' => 1234.56]);
+
+        $html = view('pdf.payslip', [
+            'company' => $company,
+            'run' => $run,
+            'runEmployee' => $runEmployee->fresh(['employee', 'lines']),
+        ])->render();
+
+        $this->assertStringContainsString('на товар на работодавачот', $html);
+        $this->assertStringContainsString('Не се одзема од платата на работникот', $html);
+    }
+
+    public function test_the_recap_shows_what_was_posted_to_the_ledger(): void
+    {
+        $company = Company::factory()->create();
+        $run = $this->openRun($company);
+        $user = $this->admin($company);
+
+        $run = app(PayrollRunService::class)->confirm($run, $user->id);
+        $run->load(['employees.employee', 'employees.lines', 'journalEntry.lines.account']);
+
+        $html = view('pdf.payroll-recap', ['company' => $company, 'run' => $run])->render();
+
+        $this->assertStringContainsString('Книжено во главна книга', $html);
+
+        // Hardcoded, not derived from the same collection the view iterates:
+        // deriving them would make this loop vacuous — and therefore green —
+        // if that relation ever came back empty in both places.
+        foreach (['421', '234', '235', '240'] as $code) {
+            $this->assertStringContainsString($code, $html);
+        }
+    }
+
+    public function test_the_recap_does_not_call_a_confirmed_run_a_draft(): void
+    {
+        $company = Company::factory()->create();
+        $run = $this->openRun($company);
+        $user = $this->admin($company);
+
+        // The whole month on the Fund: the run confirms but posts nothing, so
+        // journal_entry_id stays null. Saying „во нацрт" there would be wrong
+        // twice over — it is confirmed, and there was nothing to post.
+        $run->employees->first()->lines()->update([
+            'code' => '129',
+            'borne_by' => PayrollRunLine::BORNE_FZO,
+        ]);
+
+        $service = app(PayrollRunService::class);
+        $run = $service->confirm($service->recalculate($run->fresh()), $user->id);
+        $run->load(['employees.employee', 'employees.lines', 'journalEntry.lines.account']);
+
+        $this->assertNull($run->journal_entry_id);
+
+        $html = view('pdf.payroll-recap', ['company' => $company, 'run' => $run])->render();
+
+        $this->assertStringNotContainsString('во нацрт', $html);
+        $this->assertStringContainsString('нема што да се книжи', $html);
     }
 }
 ```
@@ -3739,12 +4159,12 @@ class PayslipPdfController extends Controller
             'runEmployee' => $runEmployee,
         ]);
 
-        return $pdf->stream("isplatna-lista-{$run->year}-{$run->month}-{$runEmployee->employee->last_name}.pdf");
+        return $pdf->download("isplatna-lista-{$run->year}-{$run->month}-{$runEmployee->employee->last_name}.pdf");
     }
 }
 ```
 
-Check an existing controller such as `app/Http/Controllers/StockOnHandPdfController.php` for the exact `Pdf` facade import and whether the project calls `stream()` or `download()`; match it rather than the above if they differ.
+Both sibling controllers — `StockOnHandPdfController` and `SalesInvoicePdfController` — import `Barryvdh\DomPDF\Facade\Pdf` and call `download()`, which is why this one does too. Confirm that is still true before you write it.
 
 - [ ] **Step 4: Write the payslip view**
 
@@ -3846,14 +4266,14 @@ class PayrollRecapPdfController extends Controller
         Gate::authorize('view', $company);
         abort_unless($run->company_id === $company->id, 404);
 
-        $run->load(['employees.employee', 'employees.lines']);
+        $run->load(['employees.employee', 'employees.lines', 'journalEntry.lines.account']);
 
         $pdf = Pdf::loadView('pdf.payroll-recap', [
             'company' => $company,
             'run' => $run,
         ])->setPaper('a4', 'landscape');
 
-        return $pdf->stream("rekapitular-{$run->year}-{$run->month}.pdf");
+        return $pdf->download("rekapitular-{$run->year}-{$run->month}.pdf");
     }
 }
 ```
@@ -3924,9 +4344,47 @@ class PayrollRecapPdfController extends Controller
             </tr>
         </tbody>
     </table>
+
+    <h2 style="font-size: 12px; margin: 14px 0 0 0;">Книжено во главна книга</h2>
+
+    @if ($run->journalEntry)
+        <div class="muted">Налог од {{ $run->endOfMonth() }}</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Конто</th>
+                    <th>Опис</th>
+                    <th class="right">Должи</th>
+                    <th class="right">Побарува</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($run->journalEntry->lines as $line)
+                    <tr>
+                        <td>{{ $line->account->code }}</td>
+                        <td>{{ $line->account->name }}</td>
+                        <td class="right">{{ number_format($line->debit, 2, ',', '.') }}</td>
+                        <td class="right">{{ number_format($line->credit, 2, ',', '.') }}</td>
+                    </tr>
+                @endforeach
+                <tr class="total">
+                    <td colspan="2">Вкупно</td>
+                    <td class="right">{{ number_format($run->journalEntry->lines->sum(fn ($l) => (float) $l->debit), 2, ',', '.') }}</td>
+                    <td class="right">{{ number_format($run->journalEntry->lines->sum(fn ($l) => (float) $l->credit), 2, ',', '.') }}</td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="muted">Книжен е само делот на товар на работодавачот. Кај вработен чие боледување го носи ФЗО, разликата спрема горната табела е токму тој дел — тој се пресметува и се пријавува, но не е трошок на фирмата.</p>
+    @elseif ($run->isDraft())
+        <p class="muted">Пресметката е во нацрт и сè уште не е книжена.</p>
+    @else
+        <p class="muted">Пресметката е потврдена, но нема што да се книжи кај фирмата — целата плата за овој месец е на товар на друг.</p>
+    @endif
 </body>
 </html>
 ```
+
+The posted figures are read from the journal entry itself rather than recomputed from the employee rows. That is the point: the top table shows what each employee earned — the full amount, including any part the Fund bears, which is what МПИН declares — while this one shows what reached the company's books. Restating the second from the first would drift the moment a run contains a fund-borne line, because contributions and tax are charged on the whole salary and only apportioned when posted.
 
 - [ ] **Step 6: Add the routes**
 
@@ -3941,14 +4399,32 @@ Route::middleware(['auth', EnsureAccountingAccess::class])->prefix('companies/{c
 
 Add the two `use App\Http\Controllers\...` imports. Register this group **before** the `payroll-runs.` group so `/payroll-runs/{run}/recap.pdf` is not swallowed by `/payroll-runs/{run}`.
 
-- [ ] **Step 7: Run the tests and make sure they pass**
+- [ ] **Step 7: Put the links back on the run screen**
 
-Run: `php artisan test --filter=PayrollPdfTest`
-Expected: PASS, 3 tests.
+Task 10 left two placeholder comments in `resources/views/livewire/payroll/payroll-run-show.blade.php` because `route()` throws on a name that does not exist yet. The routes exist now.
+
+Replace the comment block above `@if ($run->isDraft())` in the header with:
+
+```blade
+            <a href="{{ route('payroll.recap-pdf', [$company, $run]) }}" class="text-brand hover:underline text-sm">Рекапитулар (PDF)</a>
+```
+
+Replace the placeholder cell in the employee row with:
+
+```blade
+                        <td class="py-1 px-3 text-right">
+                            <a href="{{ route('payroll.payslip-pdf', [$company, $run, $row]) }}" class="text-brand hover:underline text-xs">Исплатна листа</a>
+                        </td>
+```
+
+- [ ] **Step 8: Run the tests and make sure they pass**
+
+Run: `php artisan test --filter="PayrollPdfTest|PayrollRunShowTest"`
+Expected: PASS, 17 tests — 11 from `PayrollRunShowTest`, which is included because this step changes the view it renders, plus the 6 in `PayrollPdfTest`.
 
 If Cyrillic renders as blank boxes, the font is the cause: dompdf needs `DejaVu Sans`, which the stylesheet above already sets. Compare with `resources/views/pdf/sales-invoice.blade.php`, which already solves this.
 
-- [ ] **Step 8: Run the whole suite and rebuild the assets**
+- [ ] **Step 9: Run the whole suite and rebuild the assets**
 
 ```bash
 php artisan test
@@ -3957,10 +4433,10 @@ npm run build
 
 Expected: all tests pass. `npm run build` is not optional — Tailwind only emits classes it has seen, and Tasks 9 and 10 introduced new ones.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
-git add app/Http/Controllers/PayslipPdfController.php app/Http/Controllers/PayrollRecapPdfController.php resources/views/pdf/payslip.blade.php resources/views/pdf/payroll-recap.blade.php routes/web.php tests/Feature/Payroll/PayrollPdfTest.php public/build
+git add app/Http/Controllers/PayslipPdfController.php app/Http/Controllers/PayrollRecapPdfController.php resources/views/pdf/payslip.blade.php resources/views/pdf/payroll-recap.blade.php resources/views/livewire/payroll/payroll-run-show.blade.php routes/web.php tests/Feature/Payroll/PayrollPdfTest.php
 git commit -m "feat(payroll): payslip and company recap as PDFs"
 ```
 
@@ -3999,6 +4475,29 @@ public function test_an_admin_can_enter_a_months_hour_fund(): void
     $this->assertDatabaseHas('payroll_month_hours', [
         'year' => 2027, 'month' => 1, 'hours' => 176,
     ]);
+}
+
+/**
+ * Backspacing the year to retype it sends an empty string on every keystroke,
+ * because fundYear is bound with wire:model.live. That is safe here and this
+ * test exists to keep it safe: Livewire's IntSynth::hydrateFromType() turns ''
+ * into null before assignment, and the property is declared `?int`, so null is
+ * a legal value and render() queries `where('year', null)` — an empty result,
+ * not a crash.
+ *
+ * It would stop being safe if someone narrowed the property to a non-nullable
+ * `int`. Livewire cannot assign null to that, catches the TypeError and unsets
+ * the property, and render() then reads an uninitialized typed property, which
+ * is fatal. This test is what would catch that change.
+ */
+public function test_clearing_the_year_does_not_break_the_screen(): void
+{
+    $company = Company::factory()->create();
+    $this->admin();
+
+    Livewire::test(PayrollParameterIndex::class, ['company' => $company])
+        ->set('fundYear', '')
+        ->assertSee('Фонд на часови по месец');
 }
 
 public function test_entering_the_same_month_twice_updates_it(): void
@@ -4048,6 +4547,13 @@ set `$this->fundYear = (int) now()->year;` in `mount()`, and add:
      */
     public function saveMonthHours(): void
     {
+        // Re-checked here, not only in mount(): mount() runs once per component
+        // instantiation, an action call does not re-run it, and addPeriod()
+        // above already guards itself the same way. These values are shared by
+        // every company, so the second lock is cheap next to what a wrong one
+        // would cost.
+        abort_unless(auth()->user()->hasRole('admin'), 403);
+
         $this->validate([
             'fundYear' => ['required', 'integer', 'min:2000', 'max:2100'],
             'fundMonth' => ['required', 'integer', 'min:1', 'max:12'],
@@ -4146,7 +4652,7 @@ Expected: all pass.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add app/Livewire/PayrollParameterIndex.php resources/views/livewire/payroll-parameter-index.blade.php tests/Feature/PayrollParameterIndexTest.php public/build
+git add app/Livewire/PayrollParameterIndex.php resources/views/livewire/payroll-parameter-index.blade.php tests/Feature/PayrollParameterIndexTest.php
 git commit -m "feat(payroll): admin screen for the monthly hour fund"
 ```
 

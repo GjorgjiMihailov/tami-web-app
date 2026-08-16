@@ -74,6 +74,12 @@
                     @error('weeklyHours') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <div>
+                    <x-input-label for="priorServiceMonths" value="Претходен стаж (месеци)" />
+                    <x-text-input id="priorServiceMonths" type="number" min="0" wire:model="priorServiceMonths" class="w-full" />
+                    <p class="text-xs text-gray-400 mt-1">Стаж кај претходни работодавачи, за пресметка на минат труд.</p>
+                    @error('priorServiceMonths') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                </div>
+                <div>
                     <x-input-label for="employedOn" value="Вработен од" />
                     <x-text-input id="employedOn" type="date" wire:model="employedOn" class="w-full" />
                     @error('employedOn') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror

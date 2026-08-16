@@ -154,6 +154,7 @@ return [
         'movementCode' => 'шифра на движење',
         'exemptionCode' => 'даночно намалување',
         'weeklyHours' => 'часови неделно',
+        'priorServiceMonths' => 'претходен стаж',
         'salaryEffectiveFrom' => 'важи од',
         'effectiveFrom' => 'важи од',
         'ratePension' => 'ПИО %',

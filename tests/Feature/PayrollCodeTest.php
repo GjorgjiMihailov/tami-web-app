@@ -36,4 +36,31 @@ class PayrollCodeTest extends TestCase
             PayrollCode::ofType('opstina')->firstWhere('code', '175')?->name
         );
     }
+
+    public function test_it_seeds_the_working_hour_types(): void
+    {
+        $codes = PayrollCode::ofType('rab_cas');
+
+        $this->assertCount(60, $codes);
+        $this->assertSame('Редовни работни часови', $codes->firstWhere('code', '001')->name);
+        $this->assertSame('Годишен одмор', $codes->firstWhere('code', '009')->name);
+    }
+
+    public function test_it_seeds_the_compensation_types(): void
+    {
+        $codes = PayrollCode::ofType('vid_nadomestoci');
+
+        $this->assertCount(17, $codes);
+        $this->assertStringContainsString('ФЗО', $codes->firstWhere('code', '129')->name);
+    }
+
+    public function test_the_two_codebooks_share_no_code(): void
+    {
+        // The line editor puts both codebooks into one SifraTipRabotenCas
+        // dropdown. That is only sound while they do not collide.
+        $hours = PayrollCode::ofType('rab_cas')->pluck('code');
+        $compensations = PayrollCode::ofType('vid_nadomestoci')->pluck('code');
+
+        $this->assertEmpty($hours->intersect($compensations));
+    }
 }

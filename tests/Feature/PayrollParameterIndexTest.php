@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\PayrollParameterIndex;
 use App\Models\Company;
+use App\Models\PayrollMonthHours;
 use App\Models\PayrollParameter;
 use App\Models\User;
 use App\Support\Menu;
@@ -22,6 +23,15 @@ class PayrollParameterIndexTest extends TestCase
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
         Role::findOrCreate('client');
+    }
+
+    private function admin(): User
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        return $admin;
     }
 
     public function test_an_admin_may_open_it(): void
@@ -159,5 +169,62 @@ class PayrollParameterIndexTest extends TestCase
 
         $this->assertContains('Параметри за плата', array_column($labels($admin), 'label'));
         $this->assertNotContains('Параметри за плата', array_column($labels($accountant), 'label'));
+    }
+
+    public function test_an_admin_can_enter_a_months_hour_fund(): void
+    {
+        $company = Company::factory()->create();
+        $this->admin();
+
+        Livewire::test(PayrollParameterIndex::class, ['company' => $company])
+            ->set('fundYear', 2027)
+            ->set('fundMonth', 1)
+            ->set('fundHours', 176)
+            ->call('saveMonthHours')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('payroll_month_hours', [
+            'year' => 2027, 'month' => 1, 'hours' => 176,
+        ]);
+    }
+
+    /**
+     * Backspacing the year to retype it sends an empty string on every keystroke,
+     * because fundYear is bound with wire:model.live. That is safe here and this
+     * test exists to keep it safe: Livewire's IntSynth::hydrateFromType() turns ''
+     * into null before assignment, and the property is declared `?int`, so null is
+     * a legal value and render() queries `where('year', null)` — an empty result,
+     * not a crash.
+     *
+     * It would stop being safe if someone narrowed the property to a non-nullable
+     * `int`. Livewire cannot assign null to that, catches the TypeError and unsets
+     * the property, and render() then reads an uninitialized typed property, which
+     * is fatal. This test is what would catch that change.
+     */
+    public function test_clearing_the_year_does_not_break_the_screen(): void
+    {
+        $company = Company::factory()->create();
+        $this->admin();
+
+        Livewire::test(PayrollParameterIndex::class, ['company' => $company])
+            ->set('fundYear', '')
+            ->assertSee('Фонд на часови по месец');
+    }
+
+    public function test_entering_the_same_month_twice_updates_it(): void
+    {
+        $company = Company::factory()->create();
+        $this->admin();
+        PayrollMonthHours::create(['year' => 2027, 'month' => 1, 'hours' => 176]);
+
+        Livewire::test(PayrollParameterIndex::class, ['company' => $company])
+            ->set('fundYear', 2027)
+            ->set('fundMonth', 1)
+            ->set('fundHours', 168)
+            ->call('saveMonthHours')
+            ->assertHasNoErrors();
+
+        $this->assertSame(168, PayrollMonthHours::forMonth(2027, 1)->hours);
+        $this->assertSame(1, PayrollMonthHours::where('year', 2027)->count());
     }
 }

@@ -98,4 +98,66 @@ class EmployeeModelTest extends TestCase
 
         $this->assertTrue($employee->isActiveOn('2030-01-01'));
     }
+
+    public function test_seniority_counts_completed_years_since_employment(): void
+    {
+        $employee = Employee::factory()->create([
+            'employed_on' => '2016-07-01',
+            'prior_service_months' => 0,
+        ]);
+
+        // 2026-06-30 is one day short of ten full years.
+        $this->assertSame(9, $employee->seniorityYearsOn('2026-06-30'));
+        $this->assertSame(10, $employee->seniorityYearsOn('2026-07-01'));
+    }
+
+    public function test_seniority_adds_the_service_brought_from_elsewhere(): void
+    {
+        $employee = Employee::factory()->create([
+            'employed_on' => '2024-07-01',
+            'prior_service_months' => 90, // seven and a half years
+        ]);
+
+        // Two years here plus seven and a half brought along is nine full years.
+        $this->assertSame(9, $employee->seniorityYearsOn('2026-07-01'));
+    }
+
+    public function test_seniority_is_zero_before_the_employment_date(): void
+    {
+        $employee = Employee::factory()->create([
+            'employed_on' => '2026-07-01',
+            'prior_service_months' => 0,
+        ]);
+
+        $this->assertSame(0, $employee->seniorityYearsOn('2026-01-31'));
+    }
+
+    public function test_seniority_boundary_holds_on_a_mid_month_anniversary(): void
+    {
+        // The 1st-of-the-month cases above are the weakest possible test of
+        // month arithmetic. This one pins a mid-month anniversary instead.
+        $employee = Employee::factory()->create([
+            'employed_on' => '2016-07-15',
+            'prior_service_months' => 0,
+        ]);
+
+        $this->assertSame(9, $employee->seniorityYearsOn('2026-07-14'));
+        $this->assertSame(10, $employee->seniorityYearsOn('2026-07-15'));
+    }
+
+    public function test_seniority_boundary_holds_across_a_leap_day_anniversary(): void
+    {
+        // employed_on falls on a leap day; 2026 is not a leap year, so
+        // 29 February does not exist to land on. Worked out from the
+        // calendar (not from the code): 2020-02-29 to 2026-02-28 is one day
+        // short of six years, and 2026-03-01 is exactly six years — the
+        // missing 29th pushes the anniversary one day later than usual.
+        $employee = Employee::factory()->create([
+            'employed_on' => '2020-02-29',
+            'prior_service_months' => 0,
+        ]);
+
+        $this->assertSame(5, $employee->seniorityYearsOn('2026-02-28'));
+        $this->assertSame(6, $employee->seniorityYearsOn('2026-03-01'));
+    }
 }
