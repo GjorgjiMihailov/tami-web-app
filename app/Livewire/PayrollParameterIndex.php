@@ -99,6 +99,13 @@ class PayrollParameterIndex extends Component
      */
     public function saveMonthHours(): void
     {
+        // Re-checked here, not only in mount(): mount() runs once per component
+        // instantiation, an action call does not re-run it, and addPeriod()
+        // above already guards itself the same way. These values are shared by
+        // every company, so the second lock is cheap next to what a wrong one
+        // would cost.
+        abort_unless(auth()->user()->hasRole('admin'), 403);
+
         $this->validate([
             'fundYear' => ['required', 'integer', 'min:2000', 'max:2100'],
             'fundMonth' => ['required', 'integer', 'min:1', 'max:12'],
