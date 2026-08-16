@@ -3287,9 +3287,13 @@ class PayrollRunShowTest extends TestCase
         $run = $this->openRun();
         $this->admin();
 
+        // Two decimals, Macedonian separators — the same shape the ledger
+        // holds, so the screen ties out against the journal entry to the denar.
+        // Not 26.046: whole-denar rounding is МПИН's write rule in 5c, not a
+        // display rule here.
         Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
             ->assertSee('Николовска')
-            ->assertSee('26.046');
+            ->assertSee('26.045,73');
     }
 
     public function test_adding_a_deduction_lowers_the_amount_for_payment(): void
