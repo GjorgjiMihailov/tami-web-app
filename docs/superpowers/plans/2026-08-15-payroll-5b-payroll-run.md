@@ -4028,7 +4028,7 @@ class PayrollPdfTest extends TestCase
         $response->assertHeader('content-type', 'application/pdf');
     }
 
-    public function test_a_client_cannot_download_a_payslip(): void
+    public function test_a_client_cannot_download_either_document(): void
     {
         $company = Company::factory()->create();
         $run = $this->openRun($company);
@@ -4036,9 +4036,59 @@ class PayrollPdfTest extends TestCase
         $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('client');
 
+        // Both routes, not just one. They share a middleware group today, so
+        // asserting only the recap would keep passing if the payslip's
+        // protection were ever removed — and the payslip is the document with
+        // one person's pay on it.
         $this->actingAs($client)
             ->get(route('payroll.recap-pdf', [$company, $run]))
             ->assertForbidden();
+
+        $this->actingAs($client)
+            ->get(route('payroll.payslip-pdf', [$company, $run, $run->employees->first()]))
+            ->assertForbidden();
+    }
+
+    /**
+     * The PDF tests above prove the documents render. They cannot see what is
+     * printed on them, so the two statements that matter most are asserted
+     * against the rendered Blade instead — cheap, and it fails if the wording
+     * is ever softened.
+     */
+    public function test_the_payslip_says_the_employer_bears_the_top_up(): void
+    {
+        $company = Company::factory()->create();
+        $run = $this->openRun($company);
+        $runEmployee = $run->employees->first();
+        $runEmployee->update(['top_up' => 1234.56]);
+
+        $html = view('pdf.payslip', [
+            'company' => $company,
+            'run' => $run,
+            'runEmployee' => $runEmployee->fresh(['employee', 'lines']),
+        ])->render();
+
+        $this->assertStringContainsString('на товар на работодавачот', $html);
+        $this->assertStringContainsString('Не се одзема од платата на работникот', $html);
+    }
+
+    public function test_the_recap_shows_what_was_posted_to_the_ledger(): void
+    {
+        $company = Company::factory()->create();
+        $run = $this->openRun($company);
+        $user = $this->admin($company);
+
+        $run = app(PayrollRunService::class)->confirm($run, $user->id);
+        $run->load(['employees.employee', 'employees.lines', 'journalEntry.lines.account']);
+
+        $html = view('pdf.payroll-recap', ['company' => $company, 'run' => $run])->render();
+
+        $this->assertStringContainsString('Книжено во главна книга', $html);
+
+        // Every account the entry touched must appear in the block.
+        foreach ($run->journalEntry->lines as $line) {
+            $this->assertStringContainsString($line->account->code, $html);
+        }
     }
 }
 ```
@@ -4187,7 +4237,7 @@ class PayrollRecapPdfController extends Controller
         Gate::authorize('view', $company);
         abort_unless($run->company_id === $company->id, 404);
 
-        $run->load(['employees.employee', 'employees.lines']);
+        $run->load(['employees.employee', 'employees.lines', 'journalEntry.lines.account']);
 
         $pdf = Pdf::loadView('pdf.payroll-recap', [
             'company' => $company,
@@ -4265,9 +4315,45 @@ class PayrollRecapPdfController extends Controller
             </tr>
         </tbody>
     </table>
+
+    <h2 style="font-size: 12px; margin: 14px 0 0 0;">Книжено во главна книга</h2>
+
+    @if ($run->journalEntry)
+        <div class="muted">Налог од {{ $run->endOfMonth() }}</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Конто</th>
+                    <th>Опис</th>
+                    <th class="right">Должи</th>
+                    <th class="right">Побарува</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($run->journalEntry->lines as $line)
+                    <tr>
+                        <td>{{ $line->account->code }}</td>
+                        <td>{{ $line->account->name }}</td>
+                        <td class="right">{{ number_format($line->debit, 2, ',', '.') }}</td>
+                        <td class="right">{{ number_format($line->credit, 2, ',', '.') }}</td>
+                    </tr>
+                @endforeach
+                <tr class="total">
+                    <td colspan="2">Вкупно</td>
+                    <td class="right">{{ number_format($run->journalEntry->lines->sum(fn ($l) => (float) $l->debit), 2, ',', '.') }}</td>
+                    <td class="right">{{ number_format($run->journalEntry->lines->sum(fn ($l) => (float) $l->credit), 2, ',', '.') }}</td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="muted">Книжен е само делот на товар на работодавачот. Кај вработен чие боледување го носи ФЗО, разликата спрема горната табела е токму тој дел — тој се пресметува и се пријавува, но не е трошок на фирмата.</p>
+    @else
+        <p class="muted">Пресметката е во нацрт и сè уште не е книжена.</p>
+    @endif
 </body>
 </html>
 ```
+
+The posted figures are read from the journal entry itself rather than recomputed from the employee rows. That is the point: the top table shows what each employee earned — the full amount, including any part the Fund bears, which is what МПИН declares — while this one shows what reached the company's books. Restating the second from the first would drift the moment a run contains a fund-borne line, because contributions and tax are charged on the whole salary and only apportioned when posted.
 
 - [ ] **Step 6: Add the routes**
 
@@ -4303,7 +4389,7 @@ Replace the placeholder cell in the employee row with:
 - [ ] **Step 8: Run the tests and make sure they pass**
 
 Run: `php artisan test --filter="PayrollPdfTest|PayrollRunShowTest"`
-Expected: PASS, 14 tests — 11 from `PayrollRunShowTest`, which is included because this step changes the view it renders, plus the 3 new ones.
+Expected: PASS, 16 tests — 11 from `PayrollRunShowTest`, which is included because this step changes the view it renders, plus the 5 in `PayrollPdfTest`.
 
 If Cyrillic renders as blank boxes, the font is the cause: dompdf needs `DejaVu Sans`, which the stylesheet above already sets. Compare with `resources/views/pdf/sales-invoice.blade.php`, which already solves this.
 
