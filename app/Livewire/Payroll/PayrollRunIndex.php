@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\PayrollRun;
 use App\Services\Payroll\PayrollRunService;
 use App\Support\WorkingYear;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -36,17 +37,21 @@ class PayrollRunIndex extends Component
         // mistakes, not faults — they belong on the field, not in a 500.
         try {
             $run = $service->open($this->company, $year, $this->newMonth);
+        } catch (QueryException $e) {
+            // Must come first. QueryException extends PDOException, which
+            // extends RuntimeException, so the broader catch below would
+            // swallow it and show the user a raw SQLSTATE string instead of
+            // this sentence.
+            $this->addError('newMonth', 'За тој месец веќе постои пресметка.');
+
+            return null;
         } catch (RuntimeException $e) {
             $this->addError('newMonth', $e->getMessage());
 
             return null;
-        } catch (\Illuminate\Database\QueryException $e) {
-            $this->addError('newMonth', 'За тој месец веќе постои пресметка.');
-
-            return null;
         }
 
-        return $this->redirect(route('payroll-runs.show', [$this->company, $run]), navigate: true);
+        return $this->redirect(route('payroll-runs.show', [$this->company, $run]));
     }
 
     public function render()
