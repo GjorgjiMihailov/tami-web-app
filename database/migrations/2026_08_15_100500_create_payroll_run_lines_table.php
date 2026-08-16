@@ -10,7 +10,17 @@ return new class extends Migration
     {
         Schema::create('payroll_run_lines', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('payroll_run_employee_id')->constrained('payroll_run_employees', 'id', 'payroll_run_lines_employee_fk')->cascadeOnDelete();
+
+            // The explicit index is registered before constrained(): on
+            // MySQL InnoDB, a foreign key with no index already covering its
+            // column auto-creates one. Registering it after constrained()
+            // would leave two indexes on the same column — invisible on
+            // SQLite, which does not have this auto-create behaviour.
+            $table->unsignedBigInteger('payroll_run_employee_id');
+            $table->index('payroll_run_employee_id', 'payroll_run_lines_employee_idx');
+            $table->foreign('payroll_run_employee_id', 'payroll_run_lines_employee_fk')
+                ->references('id')->on('payroll_run_employees')->cascadeOnDelete();
+
             $table->string('kind', 16);
             $table->string('code', 16)->nullable();     // SifraTipRabotenCas
             $table->string('description');
@@ -21,8 +31,6 @@ return new class extends Migration
             $table->string('borne_by', 16)->default('employer');
             $table->boolean('is_automatic')->default(false);
             $table->timestamps();
-
-            $table->index('payroll_run_employee_id', 'payroll_run_lines_employee_idx');
         });
     }
 
