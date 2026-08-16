@@ -9,6 +9,7 @@ use App\Models\EmployeeSalary;
 use App\Models\PayrollMonthHours;
 use App\Models\PayrollParameter;
 use App\Models\PayrollRun;
+use App\Models\PayrollRunLine;
 use App\Models\User;
 use App\Services\Payroll\PayrollRunService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -148,9 +149,37 @@ class PayrollPdfTest extends TestCase
 
         $this->assertStringContainsString('Книжено во главна книга', $html);
 
-        // Every account the entry touched must appear in the block.
-        foreach ($run->journalEntry->lines as $line) {
-            $this->assertStringContainsString($line->account->code, $html);
+        // Hardcoded, not derived from the same collection the view iterates:
+        // deriving them would make this loop vacuous — and therefore green —
+        // if that relation ever came back empty in both places.
+        foreach (['421', '234', '235', '240'] as $code) {
+            $this->assertStringContainsString($code, $html);
         }
+    }
+
+    public function test_the_recap_does_not_call_a_confirmed_run_a_draft(): void
+    {
+        $company = Company::factory()->create();
+        $run = $this->openRun($company);
+        $user = $this->admin($company);
+
+        // The whole month on the Fund: the run confirms but posts nothing, so
+        // journal_entry_id stays null. Saying „во нацрт" there would be wrong
+        // twice over — it is confirmed, and there was nothing to post.
+        $run->employees->first()->lines()->update([
+            'code' => '129',
+            'borne_by' => PayrollRunLine::BORNE_FZO,
+        ]);
+
+        $service = app(PayrollRunService::class);
+        $run = $service->confirm($service->recalculate($run->fresh()), $user->id);
+        $run->load(['employees.employee', 'employees.lines', 'journalEntry.lines.account']);
+
+        $this->assertNull($run->journal_entry_id);
+
+        $html = view('pdf.payroll-recap', ['company' => $company, 'run' => $run])->render();
+
+        $this->assertStringNotContainsString('во нацрт', $html);
+        $this->assertStringContainsString('нема што да се книжи', $html);
     }
 }
