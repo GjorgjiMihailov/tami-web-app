@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\PayrollParameterIndex;
 use App\Models\Company;
+use App\Models\PayrollMonthHours;
 use App\Models\PayrollParameter;
 use App\Models\User;
 use App\Support\Menu;
@@ -22,6 +23,15 @@ class PayrollParameterIndexTest extends TestCase
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
         Role::findOrCreate('client');
+    }
+
+    private function admin(): User
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        return $admin;
     }
 
     public function test_an_admin_may_open_it(): void
@@ -159,5 +169,39 @@ class PayrollParameterIndexTest extends TestCase
 
         $this->assertContains('Параметри за плата', array_column($labels($admin), 'label'));
         $this->assertNotContains('Параметри за плата', array_column($labels($accountant), 'label'));
+    }
+
+    public function test_an_admin_can_enter_a_months_hour_fund(): void
+    {
+        $company = Company::factory()->create();
+        $this->admin();
+
+        Livewire::test(PayrollParameterIndex::class, ['company' => $company])
+            ->set('fundYear', 2027)
+            ->set('fundMonth', 1)
+            ->set('fundHours', 176)
+            ->call('saveMonthHours')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('payroll_month_hours', [
+            'year' => 2027, 'month' => 1, 'hours' => 176,
+        ]);
+    }
+
+    public function test_entering_the_same_month_twice_updates_it(): void
+    {
+        $company = Company::factory()->create();
+        $this->admin();
+        PayrollMonthHours::create(['year' => 2027, 'month' => 1, 'hours' => 176]);
+
+        Livewire::test(PayrollParameterIndex::class, ['company' => $company])
+            ->set('fundYear', 2027)
+            ->set('fundMonth', 1)
+            ->set('fundHours', 168)
+            ->call('saveMonthHours')
+            ->assertHasNoErrors();
+
+        $this->assertSame(168, PayrollMonthHours::forMonth(2027, 1)->hours);
+        $this->assertSame(1, PayrollMonthHours::where('year', 2027)->count());
     }
 }

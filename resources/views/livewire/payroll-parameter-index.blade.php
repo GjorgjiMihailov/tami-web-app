@@ -96,4 +96,55 @@
         </tbody>
     </table>
     </x-card>
+
+    <x-card class="mt-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-1">Фонд на часови по месец</h2>
+        <p class="text-sm text-gray-500 mb-3">Внеси ги дванаесетте месеци на почеток на годината. Од овој број се добива цената по час.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end mb-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Година</label>
+                <input type="number" wire:model.live="fundYear" class="w-full rounded border-gray-300 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Месец</label>
+                <select wire:model="fundMonth" class="w-full rounded border-gray-300 text-sm">
+                    <option value="">Избери</option>
+                    @foreach (['Јануари', 'Февруари', 'Март', 'Април', 'Мај', 'Јуни', 'Јули', 'Август', 'Септември', 'Октомври', 'Ноември', 'Декември'] as $i => $name)
+                        <option value="{{ $i + 1 }}">{{ $name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Часови</label>
+                <input type="number" wire:model="fundHours" class="w-full rounded border-gray-300 text-sm">
+            </div>
+            <div>
+                <button wire:click="saveMonthHours" class="w-full rounded bg-brand px-3 py-2 text-sm text-white">Зачувај</button>
+            </div>
+        </div>
+
+        @error('fundYear') <p class="text-sm text-red-600 mb-2">{{ $message }}</p> @enderror
+        @error('fundMonth') <p class="text-sm text-red-600 mb-2">{{ $message }}</p> @enderror
+        @error('fundHours') <p class="text-sm text-red-600 mb-2">{{ $message }}</p> @enderror
+
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead>
+                <tr class="text-left text-sm text-gray-500 bg-gray-50">
+                    <th class="py-1 px-3">Месец</th>
+                    <th class="py-1 px-3 text-right">Часови</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                @forelse ($monthHours as $fund)
+                    <tr class="text-sm hover:bg-orange-50">
+                        <td class="py-1 px-3">{{ ['', 'Јануари', 'Февруари', 'Март', 'Април', 'Мај', 'Јуни', 'Јули', 'Август', 'Септември', 'Октомври', 'Ноември', 'Декември'][$fund->month] }}</td>
+                        <td class="py-1 px-3 text-right">{{ $fund->hours }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="2" class="py-4 px-3 text-sm text-gray-400">Нема внесени месеци за оваа година.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    </x-card>
 </div>
