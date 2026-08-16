@@ -273,7 +273,10 @@ class PayrollMonthHoursTest extends TestCase
 
     public function test_it_finds_the_fund_for_a_month(): void
     {
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
 
         $this->assertSame(184, PayrollMonthHours::forMonth(2026, 7)->hours);
     }
@@ -288,7 +291,10 @@ class PayrollMonthHoursTest extends TestCase
 
     public function test_a_month_cannot_be_entered_twice(): void
     {
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
 
         $this->expectException(\Illuminate\Database\QueryException::class);
 
@@ -1878,7 +1884,10 @@ class PayrollRunServiceTest extends TestCase
     {
         $company = Company::factory()->create();
         $this->seedParameters();
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
         $this->employeeOn($company, 38507, 'gross');
 
         $run = app(PayrollRunService::class)->open($company, 2026, 7);
@@ -1897,7 +1906,10 @@ class PayrollRunServiceTest extends TestCase
     {
         $company = Company::factory()->create();
         $this->seedParameters();
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
 
         $gone = $this->employeeOn($company, 38507, 'gross');
         $gone->update(['terminated_on' => '2026-03-31']);
@@ -1922,7 +1934,10 @@ class PayrollRunServiceTest extends TestCase
     {
         $company = Company::factory()->create();
         $this->seedParameters();
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
         $employee = $this->employeeOn($company, 36800, 'gross');
         $employee->update(['employed_on' => '2006-07-01']); // 20 years of service
 
@@ -1950,7 +1965,10 @@ class PayrollRunServiceTest extends TestCase
     {
         $company = Company::factory()->create();
         $this->seedParameters();
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
         $this->employeeOn($company, 38507, 'gross');
 
         $service = app(PayrollRunService::class);
@@ -1986,7 +2004,10 @@ class PayrollRunServiceTest extends TestCase
     {
         $company = Company::factory()->create();
         $this->seedParameters();
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
         $this->employeeOn($company, 38507, 'gross');
 
         $service = app(PayrollRunService::class);
@@ -2245,7 +2266,10 @@ class PayrollRunPostingTest extends TestCase
             Account::create(['company_id' => $company->id, 'code' => $code, 'name' => $name]);
         }
 
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
 
         return $company;
     }
@@ -2986,7 +3010,10 @@ class PayrollRunIndexTest extends TestCase
     {
         $company = Company::factory()->create();
         $this->parameter();
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
         $this->admin();
         WorkingYear::set($company, 2026);
 
@@ -3004,7 +3031,10 @@ class PayrollRunIndexTest extends TestCase
     {
         $company = Company::factory()->create();
         $this->parameter();
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
         $this->admin();
         WorkingYear::set($company, 2026);
 
@@ -3264,7 +3294,10 @@ class PayrollRunShowTest extends TestCase
         // chart on Company::created, and 421, 240, 249, 234 and 235 are all in
         // it — creating them by hand collides with the unique index.
 
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
 
         $employee = Employee::factory()->for($company)->create([
             'first_name' => 'Ана', 'last_name' => 'Николовска',
@@ -3424,10 +3457,16 @@ class PayrollRunShowTest extends TestCase
     {
         $run = $this->openRun();
         $user = $this->admin();
-        $line = $run->employees->first()->lines->first();
         app(PayrollRunService::class)->confirm($run, $user->id);
 
-        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run->fresh()])
+        // Read the line AFTER confirming. confirm() recalculates, and
+        // recalculate() deletes and reinserts every line, so an id captured
+        // beforehand is legitimately gone — asserting on it would fail for a
+        // reason that has nothing to do with deleteLine().
+        $run = $run->fresh(['employees.lines']);
+        $line = $run->employees->first()->lines->first();
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
             ->call('selectEmployee', $run->employees->first()->id)
             ->call('deleteLine', $line->id)
             ->assertHasErrors('lineKind');
@@ -3932,7 +3971,10 @@ class PayrollPdfTest extends TestCase
         // chart on Company::created, and 421, 240, 249, 234 and 235 are all in
         // it — creating them by hand collides with the unique index.
 
-        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        // firstOrCreate, not create: the hour fund is a national row, not a
+        // per-company one, so a test that opens runs for two companies in the
+        // same month would otherwise collide on its (year, month) unique index.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
 
         $employee = Employee::factory()->for($company)->create([
             'first_name' => 'Ана', 'last_name' => 'Николовска',
