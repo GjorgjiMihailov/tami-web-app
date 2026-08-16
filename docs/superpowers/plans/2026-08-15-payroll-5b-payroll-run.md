@@ -3231,6 +3231,7 @@ use App\Models\PayrollRun;
 use App\Models\PayrollRunLine;
 use App\Models\User;
 use App\Services\Payroll\PayrollRunService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -3332,7 +3333,11 @@ class PayrollRunShowTest extends TestCase
             ->set('lineDescription', 'Кредит')
             ->set('lineAmount', 1000)
             ->call('saveLine')
-            ->assertHasErrors('lineAmount');
+            ->assertHasErrors('lineAmount')
+            // The sentence itself is the user's decision, so pin it. Without
+            // this the two guards could be merged into one generic message and
+            // every assertion here would still pass.
+            ->assertSee('Нема од што да се задржи');
     }
 
     public function test_it_refuses_a_deduction_larger_than_the_remaining_net(): void
@@ -3346,7 +3351,8 @@ class PayrollRunShowTest extends TestCase
             ->set('lineDescription', 'Преголем кредит')
             ->set('lineAmount', 40000)
             ->call('saveLine')
-            ->assertHasErrors('lineAmount');
+            ->assertHasErrors('lineAmount')
+            ->assertSee('Задршката е поголема од останатото нето за исплата.');
     }
 
     public function test_it_refuses_fractional_hours(): void
@@ -3391,6 +3397,53 @@ class PayrollRunShowTest extends TestCase
             ->call('confirm');
 
         $this->assertSame(PayrollRun::CONFIRMED, $run->fresh()->status);
+    }
+
+    public function test_it_cannot_delete_a_line_belonging_to_another_run(): void
+    {
+        $run = $this->openRun();
+        $foreign = $this->openRun();
+        $this->admin();
+
+        $foreignLine = $foreign->employees->first()->lines->first();
+
+        try {
+            Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
+                ->call('selectEmployee', $run->employees->first()->id)
+                ->call('deleteLine', $foreignLine->id);
+
+            $this->fail('A line belonging to another run must not be deletable from this one.');
+        } catch (ModelNotFoundException $e) {
+            // Expected: the scoped lookup must not find it at all.
+        }
+
+        $this->assertDatabaseHas('payroll_run_lines', ['id' => $foreignLine->id]);
+    }
+
+    public function test_a_confirmed_run_refuses_a_line_deletion(): void
+    {
+        $run = $this->openRun();
+        $user = $this->admin();
+        $line = $run->employees->first()->lines->first();
+        app(PayrollRunService::class)->confirm($run, $user->id);
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run->fresh()])
+            ->call('selectEmployee', $run->employees->first()->id)
+            ->call('deleteLine', $line->id)
+            ->assertHasErrors('lineKind');
+
+        $this->assertDatabaseHas('payroll_run_lines', ['id' => $line->id]);
+    }
+
+    public function test_a_confirmed_run_refuses_a_second_confirmation(): void
+    {
+        $run = $this->openRun();
+        $user = $this->admin();
+        app(PayrollRunService::class)->confirm($run, $user->id);
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run->fresh()])
+            ->call('confirm')
+            ->assertHasErrors('lineKind');
     }
 
     public function test_a_confirmed_run_refuses_edits(): void
@@ -3558,7 +3611,18 @@ class PayrollRunShow extends Component
             return;
         }
 
-        $line = PayrollRunLine::findOrFail($id);
+        // Scoped to this run, not a bare findOrFail. Without the scope any
+        // user who can open one company's run could pass a line id belonging
+        // to another company's run — including a confirmed one — and delete
+        // it: guardDraft() above checks the status of the run on screen, not
+        // of the run the line actually belongs to. The victim run would also
+        // be left with stored totals that no longer match its lines, and
+        // recalculate() refuses to run against a confirmed run, so it could
+        // never heal itself.
+        $line = PayrollRunLine::whereHas(
+            'runEmployee',
+            fn ($query) => $query->where('payroll_run_id', $this->run->id)
+        )->findOrFail($id);
 
         if ($line->is_automatic) {
             $this->addError('lineKind', 'Минатиот труд се пресметува автоматски и не се брише.');
@@ -3798,7 +3862,7 @@ The two placeholder comments where the PDF links belong are deliberate. `route()
 - [ ] **Step 5: Run the tests and make sure they pass**
 
 Run: `php artisan test --filter=PayrollRunShowTest`
-Expected: PASS, 8 tests.
+Expected: PASS, 11 tests.
 
 - [ ] **Step 6: Run the density test**
 
