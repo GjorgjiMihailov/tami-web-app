@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Company;
 use App\Models\PayrollMonthHours;
 use App\Models\PayrollParameter;
+use App\Support\Payroll\MonthCoverage;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -125,9 +126,22 @@ class PayrollParameterIndex extends Component
 
     public function render()
     {
+        $monthHours = PayrollMonthHours::where('year', $this->fundYear)
+            ->orderBy('month')
+            ->get()
+            ->map(function (PayrollMonthHours $fund) {
+                // Attached rather than computed in the view: the warning is a
+                // fact about the entered number, and a Blade template is a poor
+                // place to keep arithmetic a test needs to reach.
+                $fund->expected_working_days = MonthCoverage::workingDaysInMonth($fund->year, $fund->month);
+                $fund->expected_hours = $fund->expected_working_days * 8;
+
+                return $fund;
+            });
+
         return view('livewire.payroll-parameter-index', [
             'parameters' => PayrollParameter::orderByDesc('effective_from')->get(),
-            'monthHours' => PayrollMonthHours::where('year', $this->fundYear)->orderBy('month')->get(),
+            'monthHours' => $monthHours,
         ]);
     }
 }

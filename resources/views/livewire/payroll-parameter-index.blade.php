@@ -139,7 +139,12 @@
                 @forelse ($monthHours as $fund)
                     <tr class="text-sm hover:bg-orange-50">
                         <td class="py-1 px-3">{{ ['', 'Јануари', 'Февруари', 'Март', 'Април', 'Мај', 'Јуни', 'Јули', 'Август', 'Септември', 'Октомври', 'Ноември', 'Декември'][$fund->month] }}</td>
-                        <td class="py-1 px-3 text-right">{{ $fund->hours }}</td>
+                        <td class="py-1 px-3 text-right">
+                            {{ $fund->hours }}
+                            @if ($fund->hours !== $fund->expected_hours)
+                                <span class="block text-xs text-amber-700">{{ $fund->expected_working_days }} × 8 = {{ $fund->expected_hours }} часа според календарот</span>
+                            @endif
+                        </td>
                     </tr>
                 @empty
                     <tr><td colspan="2" class="py-4 px-3 text-sm text-gray-400">Нема внесени месеци за оваа година.</td></tr>
