@@ -47,6 +47,15 @@
                         </td>
                         <td class="py-1 px-3 text-right">
                             {{ $row->staz_days }}
+                            {{-- Zero days of service is deliberate, not a gap: the employment
+                                 no longer touches this month, so the row is an anomaly the
+                                 bookkeeper has to resolve rather than a number to file. A
+                                 forced 1 would hide it. Beside rows reading 31, a bare "0"
+                                 says nothing, so it gets the same amber pill as the hour-fund
+                                 warning one cell to the left. --}}
+                            @if ($row->staz_days === 0)
+                                <span class="text-xs text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">нема стаж — провери ги датумите</span>
+                            @endif
                             @if ($row->staz_days > 0 && $row->staz_days < \Carbon\Carbon::create($run->year, $run->month, 1)->daysInMonth)
                                 <span class="block text-xs text-gray-500">
                                     {{ $row->employee->employed_on->format('d.m.Y') }}

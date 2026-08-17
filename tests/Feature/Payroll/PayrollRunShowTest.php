@@ -291,11 +291,59 @@ class PayrollRunShowTest extends TestCase
         $admin = \App\Models\User::factory()->create();
         $admin->assignRole('admin');
 
-        $this->actingAs($admin)
+        $html = $this->actingAs($admin)
             ->get(route('payroll-runs.show', [$company, $run]))
             ->assertOk()
             ->assertSee('Стаж')
-            ->assertSee('16')
-            ->assertSee('16.08.2026');
+            ->assertSee('16.08.2026')
+            ->getContent();
+
+        // Not assertSee('16'): the page already reads 168 and 16.08.2026, so a
+        // bare substring check passed with the Стаж cell removed entirely. The
+        // dates caption renders only inside that cell, so anchoring to it is
+        // what actually proves the number is on screen. Livewire's block
+        // markers sit between the two, hence the comment strip.
+        $this->assertMatchesRegularExpression(
+            '/16\s*<span class="block text-xs text-gray-500">\s*16\.08\.2026/u',
+            (string) preg_replace('/<!--.*?-->/s', '', $html)
+        );
+    }
+
+    /**
+     * A row whose employee no longer overlaps the month — the dates were edited
+     * after the run was opened — gets `staz_days` 0 rather than a forced 1. Zero
+     * is not a legal МПИН value and that is the point: it is an anomaly marker,
+     * and a forced 1 would hide a broken row and file a false day count. It has
+     * to look wrong on screen, next to rows reading 31.
+     */
+    public function test_a_row_with_no_days_of_service_is_flagged_as_an_anomaly(): void
+    {
+        $company = Company::factory()->create();
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 8], ['hours' => 168]);
+
+        $employee = Employee::factory()->for($company)->create([
+            'first_name' => 'Ана', 'last_name' => 'Стоева',
+            'employed_on' => '2026-08-01', 'prior_service_months' => 0,
+        ]);
+        EmployeeSalary::create([
+            'employee_id' => $employee->id, 'effective_from' => '2026-01-01',
+            'amount' => 38507, 'basis' => 'gross',
+        ]);
+
+        $service = app(PayrollRunService::class);
+        $run = $service->open($company, 2026, 8);
+
+        // Edited after the fact so the employment no longer touches the month.
+        $employee->update(['terminated_on' => '2026-07-31']);
+        $run = $service->recalculate($run->fresh());
+
+        $this->assertSame(0, $run->employees->first()->staz_days);
+
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->get(route('payroll-runs.show', [$company, $run]))
+            ->assertOk()
+            ->assertSee('нема стаж — провери ги датумите');
     }
 }
