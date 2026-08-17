@@ -315,6 +315,71 @@ class PayrollRunPostingTest extends TestCase
         );
     }
 
+    /**
+     * The test the partial-month work was missing. Every other partial-month
+     * test stops at the hours and the days of service, so nothing ever carried
+     * a short month through to gross, contributions and a posted entry — which
+     * is how a whole month of minimum-base contributions on half a month of
+     * insurance survived eight task reviews.
+     *
+     * Ана is hired on Sunday 16 August 2026 at the minimum wage: 11 of August's
+     * 21 working days, so 88 of 168 hours and a gross of 20.170,33. Her floor is
+     * sixteen days of the minimum base, 34.571 / 30 × 16 = 18.437,87, which her
+     * gross clears — so no top-up, no second 421 row, and 421 carries her gross
+     * alone.
+     */
+    public function test_a_mid_month_hire_posts_a_balanced_entry_on_the_prorated_base(): void
+    {
+        $company = $this->company();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
+
+        $employee = $this->employeeOn($company, 38507);
+        $employee->update(['employed_on' => '2026-08-16']);
+
+        $user = User::factory()->create();
+        $service = app(PayrollRunService::class);
+
+        $run = $service->confirm($service->open($company, 2026, 8), $user->id);
+        $runEmployee = $run->employees->first();
+
+        $this->assertSame(88, $runEmployee->lines->firstWhere('code', '001')->hours);
+        $this->assertSame(16, $runEmployee->staz_days);
+        $this->assertSame(20170.33, round($runEmployee->gross, 2));
+
+        // Sixteen days of insurance owe no top-up at the minimum wage. Measured
+        // against the whole-month floor this was 4.032,18 of employer
+        // contributions, posted to 421 and 234.
+        $this->assertSame(0.0, round($runEmployee->top_up, 2));
+
+        $amounts = [];
+
+        foreach ($run->journalEntry->lines as $line) {
+            $code = Account::find($line->account_id)->code;
+            $amounts[$code] = round((float) $line->debit + (float) $line->credit, 2);
+        }
+
+        // 20.170,33 at 19,9 + 7,5 + 0,5 + 0,1 % is 5.647,69 of contributions;
+        // 20.170,33 − 5.647,69 − 10.932 personal allowance is a tax base of
+        // 3.590,64, taxed at 10 %.
+        $this->assertSame([
+            '421' => 20170.33,
+            '234' => 5647.69,
+            '235' => 359.06,
+            '240' => 14163.58,
+        ], $amounts);
+
+        // One 421 row, not two: a zero top-up posts nothing of its own.
+        $this->assertCount(1, $run->journalEntry->lines->filter(
+            fn ($l) => Account::find($l->account_id)->code === '421'
+        ));
+
+        $lines = $run->journalEntry->lines;
+        $this->assertSame(
+            round($lines->sum(fn ($l) => (float) $l->debit), 2),
+            round($lines->sum(fn ($l) => (float) $l->credit), 2)
+        );
+    }
+
     public function test_returning_to_draft_reverses_the_entry_and_reopens_the_run(): void
     {
         $company = $this->company();
