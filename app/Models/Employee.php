@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Payroll\MonthCoverage;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -55,6 +56,24 @@ class Employee extends Model
         }
 
         return $this->terminated_on === null || $this->terminated_on->toDateString() >= $date;
+    }
+
+    /**
+     * How much of the given month this employment covers.
+     *
+     * Note this is a different question from isActiveOn(), which asks about one
+     * instant and is what the employee list uses to decide who is here today. A
+     * payroll month wants the overlap instead: someone who left on the 10th is
+     * not active on the 31st, but is owed ten days of pay.
+     */
+    public function coverageIn(int $year, int $month): MonthCoverage
+    {
+        return MonthCoverage::for(
+            $this->employed_on->toDateString(),
+            $this->terminated_on?->toDateString(),
+            $year,
+            $month,
+        );
     }
 
     public function getFullNameAttribute(): string

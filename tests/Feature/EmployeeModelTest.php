@@ -160,4 +160,29 @@ class EmployeeModelTest extends TestCase
         $this->assertSame(5, $employee->seniorityYearsOn('2026-02-28'));
         $this->assertSame(6, $employee->seniorityYearsOn('2026-03-01'));
     }
+
+    public function test_it_reports_its_coverage_of_a_month(): void
+    {
+        $employee = Employee::factory()->create([
+            'employed_on' => '2026-08-16',
+            'terminated_on' => null,
+        ]);
+
+        $coverage = $employee->coverageIn(2026, 8);
+
+        $this->assertTrue($coverage->overlaps());
+        $this->assertSame(16, $coverage->calendarDays());
+        $this->assertSame(88, $coverage->hours(168));
+    }
+
+    public function test_coverage_carries_the_termination_date_through(): void
+    {
+        $employee = Employee::factory()->create([
+            'employed_on' => '2020-01-01',
+            'terminated_on' => '2026-07-31',
+        ]);
+
+        $this->assertFalse($employee->coverageIn(2026, 8)->overlaps());
+        $this->assertTrue($employee->coverageIn(2026, 7)->overlaps());
+    }
 }
