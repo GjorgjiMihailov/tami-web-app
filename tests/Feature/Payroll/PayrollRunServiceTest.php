@@ -387,6 +387,27 @@ class PayrollRunServiceTest extends TestCase
         $this->assertSame(4079.89, round($runEmployee->top_up, 2));
     }
 
+    /**
+     * Hired on Saturday 31 January 2026: one day of insurance, no working day
+     * in it, so no pay. `confirm()` skips an employee whose employer gross is
+     * zero and posts nothing — correctly — while the payslip prints any stored
+     * top-up above zero. A stored top-up here would advertise money the books
+     * never saw, and would go on to be filed in МПИН from the same columns.
+     */
+    public function test_an_employee_with_nothing_to_pay_stores_no_top_up(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 1, 'hours' => 176]);
+        $this->employeeOn($company, 38507, 'gross')->update(['employed_on' => '2026-01-31']);
+
+        $runEmployee = app(PayrollRunService::class)->open($company, 2026, 1)->employees->first();
+
+        $this->assertSame(0.0, round($runEmployee->gross, 2));
+        $this->assertSame(0.0, round($runEmployee->top_up, 2));
+        $this->assertSame(0.0, round($runEmployee->top_up_pension, 2));
+    }
+
     public function test_service_days_follow_a_change_of_dates_on_recalculation(): void
     {
         $company = Company::factory()->create();

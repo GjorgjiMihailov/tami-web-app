@@ -36,7 +36,14 @@ class SalaryCalculator
         // The top-up to the minimum base is the employer's obligation. It is
         // deliberately outside $contributions, outside $taxBase and outside
         // $net: folding it in would make the employee pay it.
-        $shortfall = max(($minBase ?? $p->min_base) - $gross, 0);
+        //
+        // Nothing paid, nothing topped up. A gross of zero is an employee with
+        // no covered working day in the month, and PayrollRunService::confirm()
+        // posts nothing at all for them — so a top-up computed here would be
+        // printed on their payslip and filed to МПИН while the ledger never
+        // received it. The whole shortfall, not merely a rounded one: this is
+        // the source of the inconsistency, not the payslip that displayed it.
+        $shortfall = $gross > 0 ? max(($minBase ?? $p->min_base) - $gross, 0) : 0.0;
 
         $topUpPension = self::share($shortfall, $p->rate_pension);
         $topUpHealth = self::share($shortfall, $p->rate_health);

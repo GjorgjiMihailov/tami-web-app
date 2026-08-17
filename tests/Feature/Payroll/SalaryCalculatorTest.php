@@ -133,6 +133,24 @@ class SalaryCalculatorTest extends TestCase
         );
     }
 
+    /**
+     * Nobody is paid, so nobody is insured for the month and there is no floor
+     * to reach. This is not cosmetic: the payslip prints the top-up whenever it
+     * is above zero, while confirm() skips an employee whose employer gross is
+     * zero — so a stored top-up on a zero gross advertises money that never
+     * reaches the books, and the stored columns feed the МПИН writer as well.
+     */
+    public function test_a_zero_gross_owes_no_top_up(): void
+    {
+        $breakdown = SalaryCalculator::fromGross(0, PayrollParameter::forDate('2026-07-31'));
+
+        $this->assertSame(0.0, $breakdown->topUp);
+        $this->assertSame(0.0, $breakdown->topUpPension);
+        $this->assertSame(0.0, $breakdown->topUpHealth);
+        $this->assertSame(0.0, $breakdown->topUpInjury);
+        $this->assertSame(0.0, $breakdown->topUpUnemployment);
+    }
+
     public function test_omitting_the_floor_keeps_the_statutory_minimum_base(): void
     {
         $parameter = PayrollParameter::forDate('2026-07-31');
