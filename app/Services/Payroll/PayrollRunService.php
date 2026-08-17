@@ -13,6 +13,7 @@ use App\Models\PayrollRun;
 use App\Models\PayrollRunEmployee;
 use App\Models\PayrollRunLine;
 use App\Support\Payroll\LineType;
+use App\Support\Payroll\MonthCoverage;
 use App\Support\Payroll\PayrollRunCalculator;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -120,6 +121,7 @@ class PayrollRunService
                     seniorityYears: $employee->seniorityYearsOn($asOf),
                     inputLines: $inputLines,
                     parameters: $parameters,
+                    minBase: $this->minimumBaseFor($coverage, $parameters),
                 );
 
                 $runEmployee->lines()->delete();
@@ -168,6 +170,28 @@ class PayrollRunService
 
             return $run->fresh(['employees.lines', 'employees.employee']);
         });
+    }
+
+    /**
+     * The floor the minimum-base top-up is measured against.
+     *
+     * A whole month keeps the statutory figure untouched — that is what the
+     * published minimum-wage calculations are, and dividing it by 30 would
+     * lower it for February and raise it for a 31-day month, breaking an
+     * agreed net that has to come out to the denar.
+     *
+     * A part month is prorated by МПИН's own rule for a monthly statutory
+     * amount: „платата се дели со 30 и се множи со деновите на осигурување" —
+     * thirty, deliberately, not the days in this particular month. Sixteen days
+     * of insurance cannot owe a whole month of minimum-base contributions.
+     */
+    private function minimumBaseFor(MonthCoverage $coverage, PayrollParameter $parameters): float
+    {
+        if ($coverage->isFullMonth()) {
+            return (float) $parameters->min_base;
+        }
+
+        return round($parameters->min_base / 30 * $coverage->calendarDays(), 2);
     }
 
     private function endOfMonth(int $year, int $month): string

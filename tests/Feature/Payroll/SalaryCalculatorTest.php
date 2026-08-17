@@ -117,13 +117,13 @@ class SalaryCalculatorTest extends TestCase
     {
         $parameter = PayrollParameter::forDate('2026-07-31');
 
-        // Half of August's minimum base by МПИН's /30 × days rule:
-        // 34.571 / 30 × 16 = 18.438,13.
-        $breakdown = SalaryCalculator::fromGross(15000, $parameter, 18438.13);
+        // Sixteen days of August's minimum base by МПИН's /30 × days rule:
+        // 34.571 / 30 × 16 = 18.437,87.
+        $breakdown = SalaryCalculator::fromGross(15000, $parameter, 18437.87);
 
-        // 18.438,13 − 15.000 = 3.438,13 short.
-        $this->assertSame(round(3438.13 * 19.9 / 100, 2), $breakdown->topUpPension);
-        $this->assertSame(round(3438.13 * 7.5 / 100, 2), $breakdown->topUpHealth);
+        // 18.437,87 − 15.000 = 3.437,87 short.
+        $this->assertSame(round(3437.87 * 19.9 / 100, 2), $breakdown->topUpPension);
+        $this->assertSame(round(3437.87 * 7.5 / 100, 2), $breakdown->topUpHealth);
 
         // The employee's own side is untouched by the floor, exactly as it is
         // when the floor is the statutory one.
@@ -152,10 +152,10 @@ class SalaryCalculatorTest extends TestCase
     {
         $parameter = PayrollParameter::forDate('2026-07-31');
 
-        $breakdown = SalaryCalculator::fromNet(12000, $parameter, 18438.13);
+        $breakdown = SalaryCalculator::fromNet(12000, $parameter, 18437.87);
 
         $this->assertSame(
-            SalaryCalculator::fromGross($breakdown->gross, $parameter, 18438.13)->topUp,
+            SalaryCalculator::fromGross($breakdown->gross, $parameter, 18437.87)->topUp,
             $breakdown->topUp
         );
 

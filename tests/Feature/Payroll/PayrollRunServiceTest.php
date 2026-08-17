@@ -298,6 +298,95 @@ class PayrollRunServiceTest extends TestCase
         $this->assertSame(1, $run->employees->first()->staz_days);
     }
 
+    /**
+     * The minimum contribution base is prorated for a part month, by МПИН's own
+     * rule for prorating a monthly statutory amount: платата се дели со 30 и се
+     * множи со деновите на осигурување. Sixteen days of August 2026 give a floor
+     * of 34.571 / 30 × 16 = 18.437,87, which the 88-hour minimum wage clears —
+     * so nothing is owed. Measured against the whole-month floor instead, this
+     * employee was charged 4.032,18 of employer contributions for half a month
+     * of insurance.
+     */
+    public function test_a_partial_month_at_the_minimum_wage_owes_no_top_up(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
+        $this->employeeOn($company, 38507, 'gross')->update(['employed_on' => '2026-08-16']);
+
+        $runEmployee = app(PayrollRunService::class)->open($company, 2026, 8)->employees->first();
+
+        $this->assertSame(16, $runEmployee->staz_days);
+        $this->assertSame(20170.33, round($runEmployee->gross, 2));
+        $this->assertSame(0.0, round($runEmployee->top_up, 2));
+    }
+
+    public function test_a_partial_month_below_the_prorated_floor_is_topped_up_only_to_it(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
+        $this->employeeOn($company, 20000, 'gross')->update(['employed_on' => '2026-08-16']);
+
+        $runEmployee = app(PayrollRunService::class)->open($company, 2026, 8)->employees->first();
+
+        // 20.000 / 168 × 88 = 10.476,19 against a floor of 18.437,87 leaves
+        // 7.961,68 short, at 19,9 + 7,5 + 0,5 + 0,1 %.
+        $this->assertSame(10476.19, round($runEmployee->gross, 2));
+        $this->assertSame(1584.37, round($runEmployee->top_up_pension, 2));
+        $this->assertSame(597.13, round($runEmployee->top_up_health, 2));
+        $this->assertSame(39.81, round($runEmployee->top_up_injury, 2));
+        $this->assertSame(7.96, round($runEmployee->top_up_unemployment, 2));
+        $this->assertSame(2229.27, round($runEmployee->top_up, 2));
+
+        // Far below the 6.396,27 the whole-month floor would have charged for
+        // sixteen days of insurance.
+        $this->assertGreaterThan(
+            $runEmployee->top_up,
+            \App\Support\Payroll\SalaryCalculator::fromGross(10476.19, $this->seedParameters())->topUp
+        );
+    }
+
+    /**
+     * The invariant guard. Dividing by 30 unconditionally would give a whole
+     * February 28/30 of the statutory floor and a whole 31-day month 31/30 of
+     * it — both wrong, and both invisible without these two tests. A whole
+     * month keeps `min_base` exactly as it stands, whatever its length.
+     */
+    public function test_a_whole_february_keeps_the_unprorated_floor(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 2, 'hours' => 160]);
+        $this->employeeOn($company, 20000, 'gross');
+
+        $runEmployee = app(PayrollRunService::class)->open($company, 2026, 2)->employees->first();
+
+        $this->assertSame(28, $runEmployee->staz_days);
+        $this->assertSame(20000.0, round($runEmployee->gross, 2));
+
+        // 34.571 − 20.000 = 14.571 short, undivided. Prorating 28/30 would
+        // leave 12.266,27 and a smaller top-up.
+        $this->assertSame(4079.89, round($runEmployee->top_up, 2));
+    }
+
+    public function test_a_whole_thirty_one_day_month_keeps_the_unprorated_floor(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        $this->employeeOn($company, 20000, 'gross');
+
+        $runEmployee = app(PayrollRunService::class)->open($company, 2026, 7)->employees->first();
+
+        $this->assertSame(31, $runEmployee->staz_days);
+        $this->assertSame(20000.0, round($runEmployee->gross, 2));
+
+        // The same 14.571 as February's. Prorating 31/30 would inflate the
+        // floor to 35.723,37 and the top-up with it.
+        $this->assertSame(4079.89, round($runEmployee->top_up, 2));
+    }
+
     public function test_service_days_follow_a_change_of_dates_on_recalculation(): void
     {
         $company = Company::factory()->create();
