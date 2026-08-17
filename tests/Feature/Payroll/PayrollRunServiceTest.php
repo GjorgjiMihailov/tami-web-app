@@ -171,4 +171,91 @@ class PayrollRunServiceTest extends TestCase
 
         $service->recalculate($run->fresh());
     }
+
+    public function test_a_full_month_still_pays_the_whole_fund(): void
+    {
+        // The 5b invariant: an agreed net for a whole month must be untouched by
+        // proration. This is the test that says so out loud.
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
+        $this->employeeOn($company, 30000, 'net');
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 8);
+        $runEmployee = $run->employees->first();
+
+        $this->assertSame(168, $runEmployee->lines->first()->hours);
+
+        // To the denar, not to the cent. SalaryCalculator::fromNet() rounds the
+        // gross it solves for to a whole denar, so the net it reproduces lands
+        // within a denar of the target — 29999.82 for a 30000 target. That is
+        // what the spec's invariant says ("точно до денар") and how the existing
+        // PayrollRunCalculatorTest asserts the same property.
+        $this->assertSame(30000, (int) round($runEmployee->net));
+    }
+
+    public function test_someone_hired_mid_month_gets_only_the_covered_hours(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
+        $this->employeeOn($company, 38507, 'gross')->update(['employed_on' => '2026-08-16']);
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 8);
+
+        $this->assertCount(1, $run->employees);
+        $this->assertSame(88, $run->employees->first()->lines->first()->hours);
+    }
+
+    public function test_someone_who_left_mid_month_is_still_paid_for_it(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
+        $this->employeeOn($company, 38507, 'gross')->update(['terminated_on' => '2026-08-10']);
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 8);
+
+        $this->assertCount(1, $run->employees);
+        // 1-10 August 2026 is 6 working days of 21.
+        $this->assertSame(48, $run->employees->first()->lines->first()->hours);
+    }
+
+    public function test_someone_hired_after_the_month_ended_does_not_enter(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
+        $this->employeeOn($company, 38507, 'gross')->update(['employed_on' => '2026-09-01']);
+
+        $this->assertCount(0, app(PayrollRunService::class)->open($company, 2026, 8)->employees);
+    }
+
+    public function test_hired_and_gone_inside_the_same_month(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
+        $this->employeeOn($company, 38507, 'gross')
+            ->update(['employed_on' => '2026-08-10', 'terminated_on' => '2026-08-20']);
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 8);
+
+        // 10-20 August 2026 is 9 working days of 21: 168 * 9 / 21 = 72.
+        $this->assertSame(72, $run->employees->first()->lines->first()->hours);
+    }
+
+    public function test_a_stretch_with_no_working_day_opens_on_zero_hours(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 1, 'hours' => 176]);
+        // 31 January 2026 is a Saturday and the last day of the month.
+        $this->employeeOn($company, 38507, 'gross')->update(['employed_on' => '2026-01-31']);
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 1);
+
+        $this->assertCount(1, $run->employees);
+        $this->assertSame(0, $run->employees->first()->lines->first()->hours);
+    }
 }

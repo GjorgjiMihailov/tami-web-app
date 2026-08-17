@@ -20,9 +20,14 @@ use RuntimeException;
 class PayrollRunService
 {
     /**
-     * Opens the month and fills it in: every employee still working at the end
-     * of the month, each on a full month of ordinary hours. An unremarkable
-     * month is then one button, not one row of typing per person.
+     * Opens the month and fills it in: everyone whose employment overlaps the
+     * month, each on the hours their employment actually covers.
+     *
+     * Overlap, not "active on the last day" — someone who left on the 10th is
+     * owed ten days of pay, and the old rule silently paid them nothing. The
+     * hours are a starting point, not a verdict: the line stays editable, and
+     * recalculate() never writes them back, so a hand correction for sick leave
+     * or unpaid absence survives.
      */
     public function open(Company $company, int $year, int $month): PayrollRun
     {
@@ -40,13 +45,11 @@ class PayrollRunService
                 )->id,
             ]);
 
-            $asOf = $run->endOfMonth();
-
             $employees = Employee::where('company_id', $company->id)
                 ->orderBy('last_name')
                 ->orderBy('first_name')
                 ->get()
-                ->filter(fn (Employee $e) => $e->isActiveOn($asOf));
+                ->filter(fn (Employee $e) => $e->coverageIn($year, $month)->overlaps());
 
             foreach ($employees as $employee) {
                 $runEmployee = PayrollRunEmployee::create([
@@ -59,7 +62,7 @@ class PayrollRunService
                     'kind' => PayrollRunLine::KIND_HOURS,
                     'code' => '001',
                     'description' => LineType::label('001'),
-                    'hours' => $fund->hours,
+                    'hours' => $employee->coverageIn($year, $month)->hours($fund->hours),
                     'percent' => 100,
                     'amount' => 0,
                     'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
