@@ -10,10 +10,10 @@ use RuntimeException;
  * The month's fund of working hours. A national fact, not a per-company one:
  * the working days in July are the same for every client of the firm.
  *
- * Entered once a year by the admin rather than derived from a calendar. Two of
- * the Macedonian public holidays move with the Orthodox and Muslim calendars,
- * so a built-in calendar would be a maintenance obligation every December in
- * exchange for saving twelve numbers a year.
+ * Entered once a year by the admin rather than derived from a calendar. It is
+ * plain Monday-to-Friday times eight, holidays included: МПИН counts public
+ * holiday hours as effective hours (field 3.6), so nothing is subtracted. The
+ * parameter screen warns when an entered month disagrees with that.
  */
 class PayrollMonthHours extends Model
 {

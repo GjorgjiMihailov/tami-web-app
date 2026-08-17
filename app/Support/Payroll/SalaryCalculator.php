@@ -7,7 +7,16 @@ use InvalidArgumentException;
 
 class SalaryCalculator
 {
-    public static function fromGross(float $gross, PayrollParameter $p): SalaryBreakdown
+    /**
+     * @param  float|null  $minBase  The floor the top-up is measured against.
+     *                               Defaults to the statutory monthly minimum
+     *                               base; a run passes a prorated floor for an
+     *                               employee insured for part of the month, so
+     *                               that half a month of insurance is not
+     *                               charged a whole month of minimum-base
+     *                               contributions.
+     */
+    public static function fromGross(float $gross, PayrollParameter $p, ?float $minBase = null): SalaryBreakdown
     {
         // The employee's own contributions are charged on their gross, capped
         // at the maximum base. The minimum base does NOT raise this — see the
@@ -27,7 +36,14 @@ class SalaryCalculator
         // The top-up to the minimum base is the employer's obligation. It is
         // deliberately outside $contributions, outside $taxBase and outside
         // $net: folding it in would make the employee pay it.
-        $shortfall = max($p->min_base - $gross, 0);
+        //
+        // Nothing paid, nothing topped up. A gross of zero is an employee with
+        // no covered working day in the month, and PayrollRunService::confirm()
+        // posts nothing at all for them — so a top-up computed here would be
+        // printed on their payslip and filed to МПИН while the ledger never
+        // received it. The whole shortfall, not merely a rounded one: this is
+        // the source of the inconsistency, not the payslip that displayed it.
+        $shortfall = $gross > 0 ? max(($minBase ?? $p->min_base) - $gross, 0) : 0.0;
 
         $topUpPension = self::share($shortfall, $p->rate_pension);
         $topUpHealth = self::share($shortfall, $p->rate_health);
@@ -57,7 +73,7 @@ class SalaryCalculator
      * closed formula does not exist: the minimum base and the zero floor on
      * the tax base each put a kink in the curve.
      */
-    public static function fromNet(float $net, PayrollParameter $p): SalaryBreakdown
+    public static function fromNet(float $net, PayrollParameter $p, ?float $minBase = null): SalaryBreakdown
     {
         if ($net < 0) {
             throw new InvalidArgumentException('Нето платата не може да биде негативна.');
@@ -72,7 +88,7 @@ class SalaryCalculator
         for ($i = 0; $i < 200; $i++) {
             $mid = ($low + $high) / 2;
 
-            if (self::fromGross($mid, $p)->net < $net) {
+            if (self::fromGross($mid, $p, $minBase)->net < $net) {
                 $low = $mid;
             } else {
                 $high = $mid;
@@ -81,7 +97,7 @@ class SalaryCalculator
 
         // Salaries are agreed in whole denars; recompute from the rounded gross
         // so every figure in the breakdown belongs to the same gross.
-        return self::fromGross(round($high), $p);
+        return self::fromGross(round($high), $p, $minBase);
     }
 
     private static function share(float $base, float $ratePercent): float

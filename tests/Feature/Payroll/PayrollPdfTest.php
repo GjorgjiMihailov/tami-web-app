@@ -144,6 +144,44 @@ class PayrollPdfTest extends TestCase
         );
     }
 
+    /**
+     * The other side of the sentence above: a payslip with nothing on it must
+     * not claim a top-up either. `confirm()` posts nothing for an employee
+     * whose employer gross is zero, so a printed top-up here would be a figure
+     * the ledger never received — the calculator now refuses to produce one, so
+     * the page has nothing to print.
+     */
+    public function test_a_payslip_with_no_pay_claims_no_top_up(): void
+    {
+        $company = Company::factory()->create();
+
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 1], ['hours' => 176]);
+
+        $employee = Employee::factory()->for($company)->create([
+            'first_name' => 'Ана', 'last_name' => 'Николовска',
+            // Saturday, and the last day of the month: one day of insurance and
+            // no working day in it.
+            'employed_on' => '2026-01-31', 'prior_service_months' => 0,
+        ]);
+        EmployeeSalary::create([
+            'employee_id' => $employee->id, 'effective_from' => '2026-01-01',
+            'amount' => 38507, 'basis' => 'gross',
+        ]);
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 1);
+        $runEmployee = $run->employees->first();
+
+        $this->assertSame(0.0, round($runEmployee->gross, 2));
+
+        $html = view('pdf.payslip', [
+            'company' => $company,
+            'run' => $run,
+            'runEmployee' => $runEmployee->fresh(['employee', 'lines']),
+        ])->render();
+
+        $this->assertStringNotContainsString('Доплата до најниска основица', $html);
+    }
+
     public function test_the_recap_shows_what_was_posted_to_the_ledger(): void
     {
         $company = Company::factory()->create();

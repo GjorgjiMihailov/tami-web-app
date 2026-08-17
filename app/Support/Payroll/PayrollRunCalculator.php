@@ -22,6 +22,11 @@ final class PayrollRunCalculator
      * The gross a full month would pay. For a net agreement this is where the
      * agreement is converted, once, before hours enter the picture — so the
      * hourly rate divides a gross that already honours the agreed net.
+     *
+     * Deliberately solved against the unprorated `min_base`, whatever the
+     * employee's days of insurance: this figure defines what a whole month is
+     * worth, and the per-hour rate everything else derives from divides it.
+     * Prorating here would move the hourly rate itself.
      */
     public static function fullMonthGross(float $amount, string $basis, PayrollParameter $parameters): float
     {
@@ -32,6 +37,10 @@ final class PayrollRunCalculator
 
     /**
      * @param  list<array{kind: string, code: ?string, description: string, hours: ?int, percent: ?float, amount: ?float, borne_by: string}>  $inputLines
+     * @param  float|null  $minBase  The floor the minimum-base top-up is measured
+     *                               against. Null keeps the statutory monthly
+     *                               figure; a run prorates it for an employee
+     *                               insured only part of the month.
      */
     public static function calculate(
         float $fullMonthGross,
@@ -39,6 +48,7 @@ final class PayrollRunCalculator
         int $seniorityYears,
         array $inputLines,
         PayrollParameter $parameters,
+        ?float $minBase = null,
     ): PayrollRunResult {
         // Deliberately NOT rounded before it is multiplied out. Rounding the
         // rate first makes a plain full month miss the agreed gross: 38 507 over
@@ -123,7 +133,7 @@ final class PayrollRunCalculator
         $employerGross = round($employerGross, 2);
         $deductionsTotal = round($deductionsTotal, 2);
 
-        $breakdown = SalaryCalculator::fromGross($gross, $parameters);
+        $breakdown = SalaryCalculator::fromGross($gross, $parameters, $minBase);
 
         // Contributions and tax are charged on the whole salary — the personal
         // allowance is deducted once, not per line — so the employer's share

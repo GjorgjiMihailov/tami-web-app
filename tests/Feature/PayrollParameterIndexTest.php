@@ -227,4 +227,27 @@ class PayrollParameterIndexTest extends TestCase
         $this->assertSame(168, PayrollMonthHours::forMonth(2027, 1)->hours);
         $this->assertSame(1, PayrollMonthHours::where('year', 2027)->count());
     }
+
+    public function test_it_warns_when_an_entered_fund_does_not_match_the_calendar(): void
+    {
+        $company = Company::factory()->create();
+        $this->admin();
+        // August 2026 has 21 working days, so 168 is right and 160 is not.
+        PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 160]);
+
+        Livewire::test(PayrollParameterIndex::class, ['company' => $company])
+            ->set('fundYear', 2026)
+            ->assertSee('21 × 8 = 168 часа според календарот');
+    }
+
+    public function test_it_stays_quiet_when_the_fund_matches(): void
+    {
+        $company = Company::factory()->create();
+        $this->admin();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
+
+        Livewire::test(PayrollParameterIndex::class, ['company' => $company])
+            ->set('fundYear', 2026)
+            ->assertDontSee('според календарот');
+    }
 }

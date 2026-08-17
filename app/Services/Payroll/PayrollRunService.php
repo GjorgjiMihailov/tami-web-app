@@ -13,6 +13,7 @@ use App\Models\PayrollRun;
 use App\Models\PayrollRunEmployee;
 use App\Models\PayrollRunLine;
 use App\Support\Payroll\LineType;
+use App\Support\Payroll\MonthCoverage;
 use App\Support\Payroll\PayrollRunCalculator;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -20,9 +21,14 @@ use RuntimeException;
 class PayrollRunService
 {
     /**
-     * Opens the month and fills it in: every employee still working at the end
-     * of the month, each on a full month of ordinary hours. An unremarkable
-     * month is then one button, not one row of typing per person.
+     * Opens the month and fills it in: everyone whose employment overlaps the
+     * month, each on the hours their employment actually covers.
+     *
+     * Overlap, not "active on the last day" — someone who left on the 10th is
+     * owed ten days of pay, and the old rule silently paid them nothing. The
+     * hours are a starting point, not a verdict: the line stays editable, and
+     * recalculate() never writes them back, so a hand correction for sick leave
+     * or unpaid absence survives.
      */
     public function open(Company $company, int $year, int $month): PayrollRun
     {
@@ -40,13 +46,11 @@ class PayrollRunService
                 )->id,
             ]);
 
-            $asOf = $run->endOfMonth();
-
             $employees = Employee::where('company_id', $company->id)
                 ->orderBy('last_name')
                 ->orderBy('first_name')
                 ->get()
-                ->filter(fn (Employee $e) => $e->isActiveOn($asOf));
+                ->filter(fn (Employee $e) => $e->coverageIn($year, $month)->overlaps());
 
             foreach ($employees as $employee) {
                 $runEmployee = PayrollRunEmployee::create([
@@ -59,7 +63,7 @@ class PayrollRunService
                     'kind' => PayrollRunLine::KIND_HOURS,
                     'code' => '001',
                     'description' => LineType::label('001'),
-                    'hours' => $fund->hours,
+                    'hours' => $employee->coverageIn($year, $month)->hours($fund->hours),
                     'percent' => 100,
                     'amount' => 0,
                     'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
@@ -90,6 +94,7 @@ class PayrollRunService
 
             foreach ($run->employees()->with(['employee', 'lines'])->get() as $runEmployee) {
                 $employee = $runEmployee->employee;
+                $coverage = $employee->coverageIn($run->year, $run->month);
                 $salary = $employee->salaryOn($asOf);
 
                 $fullMonthGross = $salary === null
@@ -116,6 +121,7 @@ class PayrollRunService
                     seniorityYears: $employee->seniorityYearsOn($asOf),
                     inputLines: $inputLines,
                     parameters: $parameters,
+                    minBase: $this->minimumBaseFor($coverage, $parameters),
                 );
 
                 $runEmployee->lines()->delete();
@@ -153,6 +159,7 @@ class PayrollRunService
                     'top_up' => $result->breakdown->topUp,
                     'hourly_rate' => $result->hourlyRate,
                     'seniority_years' => $employee->seniorityYearsOn($asOf),
+                    'staz_days' => $coverage->calendarDays(),
                     'full_month_gross' => $fullMonthGross,
                     'employer_gross' => $result->employerGross,
                     'employer_contributions' => $result->employerContributions,
@@ -163,6 +170,28 @@ class PayrollRunService
 
             return $run->fresh(['employees.lines', 'employees.employee']);
         });
+    }
+
+    /**
+     * The floor the minimum-base top-up is measured against.
+     *
+     * A whole month keeps the statutory figure untouched — that is what the
+     * published minimum-wage calculations are, and dividing it by 30 would
+     * lower it for February and raise it for a 31-day month, breaking an
+     * agreed net that has to come out to the denar.
+     *
+     * A part month is prorated by МПИН's own rule for a monthly statutory
+     * amount: „платата се дели со 30 и се множи со деновите на осигурување" —
+     * thirty, deliberately, not the days in this particular month. Sixteen days
+     * of insurance cannot owe a whole month of minimum-base contributions.
+     */
+    private function minimumBaseFor(MonthCoverage $coverage, PayrollParameter $parameters): float
+    {
+        if ($coverage->isFullMonth()) {
+            return (float) $parameters->min_base;
+        }
+
+        return round($parameters->min_base / 30 * $coverage->calendarDays(), 2);
     }
 
     private function endOfMonth(int $year, int $month): string
