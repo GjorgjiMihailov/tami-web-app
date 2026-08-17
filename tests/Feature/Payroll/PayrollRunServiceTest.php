@@ -258,4 +258,60 @@ class PayrollRunServiceTest extends TestCase
         $this->assertCount(1, $run->employees);
         $this->assertSame(0, $run->employees->first()->lines->first()->hours);
     }
+
+    public function test_a_full_month_records_every_calendar_day_as_service(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
+        $this->employeeOn($company, 38507, 'gross');
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 8);
+
+        $this->assertSame(31, $run->employees->first()->staz_days);
+    }
+
+    public function test_a_partial_month_records_only_the_covered_days(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
+        $this->employeeOn($company, 38507, 'gross')->update(['employed_on' => '2026-08-16']);
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 8);
+
+        $this->assertSame(16, $run->employees->first()->staz_days);
+    }
+
+    public function test_a_single_covered_day_still_counts_as_one(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 1, 'hours' => 176]);
+        $this->employeeOn($company, 38507, 'gross')->update(['employed_on' => '2026-01-31']);
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 1);
+
+        // Zero hours, but the insurance ran for a day. УЈП's field 3.5 may never
+        // be below 1.
+        $this->assertSame(0, $run->employees->first()->lines->first()->hours);
+        $this->assertSame(1, $run->employees->first()->staz_days);
+    }
+
+    public function test_service_days_follow_a_change_of_dates_on_recalculation(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
+        $employee = $this->employeeOn($company, 38507, 'gross');
+
+        $service = app(PayrollRunService::class);
+        $run = $service->open($company, 2026, 8);
+        $this->assertSame(31, $run->employees->first()->staz_days);
+
+        $employee->update(['terminated_on' => '2026-08-20']);
+        $run = $service->recalculate($run->fresh());
+
+        $this->assertSame(20, $run->employees->first()->staz_days);
+    }
 }

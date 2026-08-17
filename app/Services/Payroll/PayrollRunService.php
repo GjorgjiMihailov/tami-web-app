@@ -93,6 +93,7 @@ class PayrollRunService
 
             foreach ($run->employees()->with(['employee', 'lines'])->get() as $runEmployee) {
                 $employee = $runEmployee->employee;
+                $coverage = $employee->coverageIn($run->year, $run->month);
                 $salary = $employee->salaryOn($asOf);
 
                 $fullMonthGross = $salary === null
@@ -156,6 +157,7 @@ class PayrollRunService
                     'top_up' => $result->breakdown->topUp,
                     'hourly_rate' => $result->hourlyRate,
                     'seniority_years' => $employee->seniorityYearsOn($asOf),
+                    'staz_days' => $coverage->calendarDays(),
                     'full_month_gross' => $fullMonthGross,
                     'employer_gross' => $result->employerGross,
                     'employer_contributions' => $result->employerContributions,
