@@ -83,6 +83,28 @@ class MonthCoverageTest extends TestCase
         $this->assertSame(29, MonthCoverage::for('2020-01-01', null, 2024, 2)->calendarDays());
     }
 
+    /**
+     * The question the minimum contribution base asks: a whole month keeps the
+     * statutory floor untouched, anything shorter has it prorated. It has to be
+     * asked as "does this span the month", never as "are there 30 days here" —
+     * February would answer no to that and lose its floor.
+     */
+    public function test_it_knows_a_whole_month_from_a_part_of_one(): void
+    {
+        $this->assertTrue(MonthCoverage::for('2020-01-01', null, 2026, 8)->isFullMonth());
+        $this->assertTrue(MonthCoverage::for('2026-08-01', '2026-08-31', 2026, 8)->isFullMonth());
+
+        // A short February and a 31-day month are both whole months.
+        $this->assertTrue(MonthCoverage::for('2020-01-01', null, 2026, 2)->isFullMonth());
+        $this->assertTrue(MonthCoverage::for('2020-01-01', null, 2026, 7)->isFullMonth());
+
+        $this->assertFalse(MonthCoverage::for('2026-08-02', null, 2026, 8)->isFullMonth());
+        $this->assertFalse(MonthCoverage::for('2020-01-01', '2026-08-30', 2026, 8)->isFullMonth());
+
+        // No overlap at all is not a full month either.
+        $this->assertFalse(MonthCoverage::for('2026-09-01', null, 2026, 8)->isFullMonth());
+    }
+
     public function test_hours_round_half_up(): void
     {
         // 11 of 21 working days out of a 160-hour fund is 83.809…

@@ -57,6 +57,27 @@ final class MonthCoverage
         return $this->from !== null;
     }
 
+    /**
+     * Whether the employment spans the whole month.
+     *
+     * Asked by the minimum contribution base, which is prorated for a part of a
+     * month and left alone for a whole one. Deliberately a span test rather
+     * than a count of days: "28 days" is a whole February and a short March, and
+     * a rule written on the count would quietly move the statutory floor with
+     * the length of the month.
+     */
+    public function isFullMonth(): bool
+    {
+        if ($this->from === null || $this->to === null) {
+            return false;
+        }
+
+        $monthStart = CarbonImmutable::create($this->year, $this->month, 1)->startOfDay();
+
+        return $this->from->equalTo($monthStart)
+            && $this->to->equalTo($monthStart->endOfMonth()->startOfDay());
+    }
+
     /** Days of service: calendar days, counted inclusively on both ends. */
     public function calendarDays(): int
     {
