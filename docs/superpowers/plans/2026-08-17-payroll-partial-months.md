@@ -1073,6 +1073,15 @@ confirmed payroll runs, so the migration in Task 3 will backfill them, and
 `php artisan migrate` has to be run by the user over their own SSH session —
 Claude has no access to the droplet.
 
+**And this one, which is not optional: any draft payroll run opened before this
+deploy must be deleted and reopened, not merely recalculated.** `recalculate()`
+deliberately never rewrites hours, so a draft opened under the old code for a
+mid-month hire still holds a whole month of them. The migration backfills that
+row's `staz_days` correctly, which makes it look *more* right than it is —
+correct days of service beside a whole month of pay. Reopening the month is the
+only thing that recomputes the hours. Confirmed runs are not affected: they stay
+exactly as they were posted.
+
 ---
 
 ## Notes for the reviewer
@@ -1086,7 +1095,14 @@ Claude has no access to the droplet.
   legal МПИН value, and that is the point: it marks an anomaly the bookkeeper
   must resolve instead of hiding it behind a plausible number. 5c will refuse to
   export it.
-- **The salary calculator is untouched.** If a task starts editing
-  `PayrollRunCalculator` or `SalaryCalculator`, stop — fewer hours are supposed to
-  flow through them unchanged, and a change there would put the full-month
-  invariant at risk.
+- **The salary calculator was meant to be untouched**, and while these eight
+  tasks ran it was. The whole-branch review then found what that assumption cost:
+  a part-month gross was still measured against a whole-month minimum
+  contribution base, so half a month of insurance was charged a whole month of
+  employer top-up contributions and `confirm()` posted it. The fix is the spec's
+  rule 5 — the floor is prorated by `min_base / 30 × days of insurance` for a
+  part month and left alone for a whole one — and it does touch both calculators,
+  through one optional argument each. `fullMonthGross()` keeps the unprorated
+  figure; it defines what a whole month is worth and the hourly rate divides it.
+  The full-month invariant is guarded by tests for a whole February and a whole
+  31-day month, which fail if anyone later prorates unconditionally.
