@@ -267,4 +267,35 @@ class PayrollRunShowTest extends TestCase
             ->call('saveLine')
             ->assertHasErrors('lineKind');
     }
+
+    public function test_it_shows_days_of_service_and_the_dates_behind_a_short_month(): void
+    {
+        \Spatie\Permission\Models\Role::findOrCreate('admin');
+
+        $company = \App\Models\Company::factory()->create();
+        \App\Models\PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
+
+        $employee = \App\Models\Employee::factory()->for($company)->create([
+            'first_name' => 'Ана', 'last_name' => 'Стоева',
+            'employed_on' => '2026-08-16',
+        ]);
+        \App\Models\EmployeeSalary::create([
+            'employee_id' => $employee->id,
+            'effective_from' => '2026-01-01',
+            'amount' => 38507,
+            'basis' => 'gross',
+        ]);
+
+        $run = app(\App\Services\Payroll\PayrollRunService::class)->open($company, 2026, 8);
+
+        $admin = \App\Models\User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin)
+            ->get(route('payroll-runs.show', [$company, $run]))
+            ->assertOk()
+            ->assertSee('Стаж')
+            ->assertSee('16')
+            ->assertSee('16.08.2026');
+    }
 }
