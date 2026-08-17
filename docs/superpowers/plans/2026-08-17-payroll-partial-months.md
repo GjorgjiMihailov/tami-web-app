@@ -552,7 +552,13 @@ Note `employeeOn()` is the file's existing private helper, which hires on
         $runEmployee = $run->employees->first();
 
         $this->assertSame(168, $runEmployee->lines->first()->hours);
-        $this->assertSame(30000.0, round($runEmployee->net, 2));
+
+        // To the denar, not to the cent. SalaryCalculator::fromNet() rounds the
+        // gross it solves for to a whole denar, so the net it reproduces lands
+        // within a denar of the target — 29999.82 for a 30000 target. That is
+        // what the spec's invariant says ("точно до денар") and how the existing
+        // PayrollRunCalculatorTest asserts the same property.
+        $this->assertSame(30000, (int) round($runEmployee->net));
     }
 
     public function test_someone_hired_mid_month_gets_only_the_covered_hours(): void
