@@ -173,6 +173,11 @@ class MonthCoverageTest extends TestCase
     public function test_it_matches_the_ujp_published_table_for_2026(int $month, int $days, int $hours): void
     {
         $this->assertSame($days, MonthCoverage::workingDaysInMonth(2026, $month));
+
+        // Not a tautology despite looking like one: the days and the hours are
+        // two independent columns copied from УЈП's table, and this asserts they
+        // still agree on the times-eight rule — which is what catches a typo in
+        // the transcription above, the only way this test could go quietly wrong.
         $this->assertSame($hours, $days * 8);
     }
 }
