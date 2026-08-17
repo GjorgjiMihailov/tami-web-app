@@ -107,4 +107,63 @@ class SalaryCalculatorTest extends TestCase
         $this->assertSame(0, $breakdown->whole()['tax']);
         $this->assertSame(0, $breakdown->whole()['taxBase']);
     }
+
+    /**
+     * A part-month gross measured against a whole-month floor charges a whole
+     * month of minimum-base contributions for half a month of insurance. The
+     * caller supplies the prorated floor; the calculator only has to honour it.
+     */
+    public function test_an_explicit_floor_replaces_the_statutory_minimum_base(): void
+    {
+        $parameter = PayrollParameter::forDate('2026-07-31');
+
+        // Half of August's minimum base by МПИН's /30 × days rule:
+        // 34.571 / 30 × 16 = 18.438,13.
+        $breakdown = SalaryCalculator::fromGross(15000, $parameter, 18438.13);
+
+        // 18.438,13 − 15.000 = 3.438,13 short.
+        $this->assertSame(round(3438.13 * 19.9 / 100, 2), $breakdown->topUpPension);
+        $this->assertSame(round(3438.13 * 7.5 / 100, 2), $breakdown->topUpHealth);
+
+        // The employee's own side is untouched by the floor, exactly as it is
+        // when the floor is the statutory one.
+        $this->assertSame(
+            SalaryCalculator::fromGross(15000, $parameter)->net,
+            $breakdown->net
+        );
+    }
+
+    public function test_omitting_the_floor_keeps_the_statutory_minimum_base(): void
+    {
+        $parameter = PayrollParameter::forDate('2026-07-31');
+
+        $this->assertSame(
+            SalaryCalculator::fromGross(20000, $parameter, 34571.0)->topUp,
+            SalaryCalculator::fromGross(20000, $parameter)->topUp
+        );
+    }
+
+    /**
+     * fromNet() binary-searches through fromGross(), so a net-basis employee
+     * solved against the statutory floor while the run prorates it would land
+     * on a different gross than the one the run then posts.
+     */
+    public function test_the_net_to_gross_search_solves_against_the_floor_it_was_given(): void
+    {
+        $parameter = PayrollParameter::forDate('2026-07-31');
+
+        $breakdown = SalaryCalculator::fromNet(12000, $parameter, 18438.13);
+
+        $this->assertSame(
+            SalaryCalculator::fromGross($breakdown->gross, $parameter, 18438.13)->topUp,
+            $breakdown->topUp
+        );
+
+        // The net side is unaffected by the floor — the search must still land
+        // on the same gross as an unprorated run would.
+        $this->assertSame(
+            SalaryCalculator::fromNet(12000, $parameter)->gross,
+            $breakdown->gross
+        );
+    }
 }
