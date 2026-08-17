@@ -15,6 +15,7 @@ class PayrollRunEmployee extends Model
         'top_up_injury', 'top_up_unemployment', 'top_up', 'hourly_rate',
         'seniority_years', 'full_month_gross',
         'employer_gross', 'employer_contributions', 'employer_tax', 'employer_net',
+        'staz_days',
     ];
 
     protected function casts(): array
@@ -30,6 +31,7 @@ class PayrollRunEmployee extends Model
             'full_month_gross' => 'float', 'seniority_years' => 'integer',
             'employer_gross' => 'float', 'employer_contributions' => 'float',
             'employer_tax' => 'float', 'employer_net' => 'float',
+            'staz_days' => 'integer',
         ];
     }
 
