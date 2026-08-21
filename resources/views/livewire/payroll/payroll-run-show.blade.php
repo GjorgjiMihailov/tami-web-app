@@ -15,6 +15,40 @@
         </div>
     </div>
 
+    @if ($mpin)
+        @if ($mpin->errors)
+            <div class="mt-3 rounded border border-red-200 bg-red-50 p-3">
+                <p class="text-sm font-medium text-red-800">МПИН извозот не е можен:</p>
+                <ul class="mt-1 list-disc pl-5 text-sm text-red-700">
+                    @foreach ($mpin->errors as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @else
+            <a href="{{ route('payroll.mpin-export', [$company, $run]) }}"
+               class="mt-3 inline-block rounded bg-orange-600 px-3 py-1 text-sm font-medium text-white hover:bg-orange-700">
+                Извези МПИН
+            </a>
+        @endif
+
+        @if ($mpin->warnings)
+            <div class="mt-3 rounded border border-amber-200 bg-amber-50 p-3">
+                <ul class="list-disc pl-5 text-sm text-amber-800">
+                    @foreach ($mpin->warnings as $warning)
+                        <li>{{ $warning }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        @if ($run->mpin_exported_at)
+            <p class="mt-2 text-sm text-gray-500">
+                Последно извезено: {{ $run->mpin_exported_at->format('d.m.Y H:i') }}
+            </p>
+        @endif
+    @endif
+
     @error('lineKind') <p class="text-sm text-red-600 mb-4">{{ $message }}</p> @enderror
 
     <x-card padding="p-0" class="overflow-hidden mb-6">

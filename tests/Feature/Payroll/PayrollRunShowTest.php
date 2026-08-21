@@ -16,11 +16,13 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
+use Tests\Feature\Payroll\Concerns\BuildsMpinRuns;
 use Tests\TestCase;
 
 class PayrollRunShowTest extends TestCase
 {
     use RefreshDatabase;
+    use BuildsMpinRuns;
 
     protected function setUp(): void
     {
@@ -345,5 +347,37 @@ class PayrollRunShowTest extends TestCase
             ->get(route('payroll-runs.show', [$company, $run]))
             ->assertOk()
             ->assertSee('нема стаж — провери ги датумите');
+    }
+
+    public function test_the_mpin_button_shows_only_on_a_confirmed_run(): void
+    {
+        $run = $this->mpinRun();
+        $this->admin();
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
+            ->assertSee('Извези МПИН');
+    }
+
+    public function test_a_draft_run_offers_no_export(): void
+    {
+        $company = Company::factory()->create();
+        $this->admin();
+        // mpinRun() seeds this row too, but this test opens its own run
+        // without going through mpinRun() — forMonth() throws without it.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 5], ['hours' => 168]);
+        $run = app(PayrollRunService::class)->open($company, 2026, 5);
+
+        Livewire::test(PayrollRunShow::class, ['company' => $company, 'run' => $run])
+            ->assertDontSee('Извези МПИН');
+    }
+
+    public function test_a_warning_is_shown_without_blocking_the_button(): void
+    {
+        $run = $this->mpinRun([], ['insurance_type_code' => '0047']);
+        $this->admin();
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
+            ->assertSee('неполно работно време')
+            ->assertSee('Извези МПИН');
     }
 }
