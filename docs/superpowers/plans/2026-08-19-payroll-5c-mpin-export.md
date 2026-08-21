@@ -24,6 +24,45 @@
 - Тест-пакетот е SQLite, продукцијата е MySQL. Оваа фаза додава четири колони и два шифрарника.
 - Целиот пакет мора да остане зелен: пред фазата е **1063/1063**.
 
+**Стилот на тестовите — прочитај го ова пред да напишеш ниту еден тест.**
+
+Проектот користи **PHPUnit 12.5 со класи**, НЕ Pest. Нема `vendor/bin/pest`. Секој тест изгледа вака:
+
+```php
+<?php
+
+namespace Tests\Feature\Payroll;
+
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class NestoTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_snake_case_name_in_english(): void
+    {
+        $this->assertSame($expected, $actual);
+    }
+}
+```
+
+Правила извлечени од постоечките тестови:
+
+- Имињата на методите се **англиски** `snake_case` со префикс `test_`. Коментарите и пораките видливи за корисник се македонски.
+- Тврдењата се `$this->assertSame()`, `assertTrue()`, `assertNotNull()`, `assertStringContainsString()`, `assertContains()`. Никогаш `expect()->toBe()`.
+- Unit тестовите што не бараат база extend-аат `PHPUnit\Framework\TestCase`; сѐ што допира база extend-а `Tests\TestCase` со `use RefreshDatabase`.
+- Заеднички подготовки се **приватни методи во класата** (види `PayrollRunServiceTest::employeeOn()`), не глобални помошни функции.
+- Платата се создава со `EmployeeSalary::create(['employee_id' => …, 'effective_from' => …, 'amount' => …, 'basis' => …])`, не преку фабрика.
+
+**Командата за тестирање.** `php artisan test` паѓа во овој worktree — `laravel/pao`, пакет што го форматира излезот за агенти, останува без меморија пред да се пушти ниту еден тест. Употребувај:
+
+```
+php -d memory_limit=1G vendor/bin/phpunit
+```
+
+За еден фајл додај ја патеката, за еден тест додај `--filter test_името`.
+
 ---
 
 ### Task 1: Двата нови шифрарника
@@ -94,28 +133,33 @@ Expected: `4061 => Скопје`.
 
 - [ ] **Step 3: Напиши го тестот што паѓа**
 
-Додај во `tests/Feature/PayrollCodeTest.php`:
+Додај во `tests/Feature/PayrollCodeTest.php`, во постоечката класа:
 
 ```php
-test('шифрарникот за вид обврзник е вчитан', function () {
-    $codes = \App\Models\PayrollCode::ofType('vid_obvrznik');
+    public function test_the_obvrznik_codebook_is_seeded(): void
+    {
+        $codes = PayrollCode::ofType('vid_obvrznik');
 
-    expect($codes)->not->toBeEmpty()
-        ->and($codes->firstWhere('code', '110')?->name)->toBe('Работодавач, правно лице')
-        ->and($codes->firstWhere('code', '111')?->name)->toContain('Самостоен вршител');
-});
+        $this->assertGreaterThan(0, $codes->count());
+        $this->assertSame('Работодавач, правно лице', $codes->firstWhere('code', '110')?->name);
+        $this->assertStringContainsString(
+            'Самостоен вршител',
+            (string) $codes->firstWhere('code', '111')?->name,
+        );
+    }
 
-test('шифрарникот за подрачна здравствена служба е вчитан', function () {
-    $codes = \App\Models\PayrollCode::ofType('podracno_zdravstvo');
+    public function test_the_health_area_codebook_is_seeded(): void
+    {
+        $codes = PayrollCode::ofType('podracno_zdravstvo');
 
-    expect($codes)->not->toBeEmpty()
-        ->and($codes->firstWhere('code', '4061')?->name)->toBe('Скопје');
-});
+        $this->assertGreaterThan(0, $codes->count());
+        $this->assertSame('Скопје', $codes->firstWhere('code', '4061')?->name);
+    }
 ```
 
 - [ ] **Step 4: Пушти го и потврди дека паѓа**
 
-Run: `php artisan test tests/Feature/PayrollCodeTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/PayrollCodeTest.php`
 Expected: FAIL — збирките се празни.
 
 - [ ] **Step 5: Напиши ја миграцијата**
@@ -174,7 +218,7 @@ public const TYPES = [
 
 - [ ] **Step 7: Пушти ги тестовите**
 
-Run: `php artisan test tests/Feature/PayrollCodeTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/PayrollCodeTest.php`
 Expected: PASS
 
 - [ ] **Step 8: Commit**
@@ -194,7 +238,7 @@ git commit -m "feat(payroll): seed the obvrznik and health-area codebooks"
 - Modify: `app/Models/Company.php` (`$fillable`, `casts()`)
 - Modify: `app/Livewire/CompanyDashboard.php`
 - Modify: `resources/views/livewire/company-dashboard.blade.php`
-- Test: `tests/Unit/Payroll/MpinObvrznikTest.php`, `tests/Feature/CompanyDashboardTest.php`
+- Test: `tests/Unit/Payroll/MpinObvrznikTest.php`, `tests/Feature/CompanyDashboardMpinObvrznikTest.php`
 
 **Interfaces:**
 - Consumes: Task 1's `vid_obvrznik` шифрарник (за имињата во паѓачкото мени)
@@ -206,33 +250,44 @@ git commit -m "feat(payroll): seed the obvrznik and health-area codebooks"
 
 `tests/Unit/Payroll/MpinObvrznikTest.php`:
 
+Ова не допира база, па extend-а го чистиот `PHPUnit\Framework\TestCase`, како `tests/Unit/Payroll/MonthCoverageTest.php`:
+
 ```php
 <?php
 
+namespace Tests\Unit\Payroll;
+
 use App\Support\Payroll\MpinObvrznik;
+use PHPUnit\Framework\TestCase;
 
-test('работодавачот плаќа и придонес за вработување и месечен данок', function () {
-    expect(MpinObvrznik::EMPLOYER->chargesUnemployment())->toBeTrue()
-        ->and(MpinObvrznik::EMPLOYER->chargesMonthlyTax())->toBeTrue()
-        ->and(MpinObvrznik::EMPLOYER->value)->toBe('110');
-});
-
-test('самостојниот вршител не плаќа ниту придонес за вработување ниту месечен данок', function () {
-    expect(MpinObvrznik::SELF_EMPLOYED->chargesUnemployment())->toBeFalse()
-        ->and(MpinObvrznik::SELF_EMPLOYED->chargesMonthlyTax())->toBeFalse()
-        ->and(MpinObvrznik::SELF_EMPLOYED->value)->toBe('111');
-});
-
-test('секој случај има македонско име', function () {
-    foreach (MpinObvrznik::cases() as $case) {
-        expect($case->label())->not->toBe('');
+class MpinObvrznikTest extends TestCase
+{
+    public function test_an_employer_pays_unemployment_and_monthly_tax(): void
+    {
+        $this->assertTrue(MpinObvrznik::EMPLOYER->chargesUnemployment());
+        $this->assertTrue(MpinObvrznik::EMPLOYER->chargesMonthlyTax());
+        $this->assertSame('110', MpinObvrznik::EMPLOYER->value);
     }
-});
+
+    public function test_a_self_employed_person_pays_neither(): void
+    {
+        $this->assertFalse(MpinObvrznik::SELF_EMPLOYED->chargesUnemployment());
+        $this->assertFalse(MpinObvrznik::SELF_EMPLOYED->chargesMonthlyTax());
+        $this->assertSame('111', MpinObvrznik::SELF_EMPLOYED->value);
+    }
+
+    public function test_every_case_carries_a_macedonian_label(): void
+    {
+        foreach (MpinObvrznik::cases() as $case) {
+            $this->assertNotSame('', $case->label());
+        }
+    }
+}
 ```
 
 - [ ] **Step 2: Пушти го и потврди дека паѓа**
 
-Run: `php artisan test tests/Unit/Payroll/MpinObvrznikTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Unit/Payroll/MpinObvrznikTest.php`
 Expected: FAIL — класата не постои.
 
 - [ ] **Step 3: Напиши го enum-от**
@@ -291,7 +346,7 @@ enum MpinObvrznik: string
 
 - [ ] **Step 4: Пушти ги тестовите**
 
-Run: `php artisan test tests/Unit/Payroll/MpinObvrznikTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Unit/Payroll/MpinObvrznikTest.php`
 Expected: PASS
 
 - [ ] **Step 5: Напиши ја миграцијата**
@@ -336,42 +391,74 @@ return new class extends Migration
 
 - [ ] **Step 7: Напиши го тестот за екранот**
 
-Додај во `tests/Feature/CompanyDashboardTest.php` (ако не постои, создај го по образецот на постоечките Livewire тестови во `tests/Feature/`):
+Создај `tests/Feature/CompanyDashboardMpinObvrznikTest.php`. Проектот држи по еден фокусиран фајл за секоја тема на овој екран (`CompanyDashboardStructuredAddressTest`, `CompanyDashboardSigningDeviceTest`) — следи го тоа, не додавај во општиот `CompanyDashboardTest`.
+
+Шаблонот е препишан од `CompanyDashboardStructuredAddressTest`, кој прави точно иста работа за адресните полиња:
 
 ```php
-test('видот на обврзник се зачувува од профилот на фирмата', function () {
-    $admin = \App\Models\User::factory()->admin()->create();
-    $company = \App\Models\Company::factory()->create(['mpin_obvrznik_code' => null]);
+<?php
 
-    \Livewire\Livewire::actingAs($admin)
-        ->test(\App\Livewire\CompanyDashboard::class, ['company' => $company])
-        ->call('startEdit')
-        ->set('editMpinObvrznikCode', '111')
-        ->call('save')
-        ->assertHasNoErrors();
+namespace Tests\Feature;
 
-    expect($company->fresh()->mpin_obvrznik_code)
-        ->toBe(\App\Support\Payroll\MpinObvrznik::SELF_EMPLOYED);
-});
+use App\Livewire\CompanyDashboard;
+use App\Models\Company;
+use App\Models\User;
+use App\Support\Payroll\MpinObvrznik;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
 
-test('непознат вид обврзник е одбиен', function () {
-    $admin = \App\Models\User::factory()->admin()->create();
-    $company = \App\Models\Company::factory()->create();
+class CompanyDashboardMpinObvrznikTest extends TestCase
+{
+    use RefreshDatabase;
 
-    \Livewire\Livewire::actingAs($admin)
-        ->test(\App\Livewire\CompanyDashboard::class, ['company' => $company])
-        ->call('startEdit')
-        ->set('editMpinObvrznikCode', '115')
-        ->call('save')
-        ->assertHasErrors('editMpinObvrznikCode');
-});
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Role::findOrCreate('admin');
+    }
+
+    public function test_admin_can_save_the_mpin_obvrznik_type(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $company = Company::factory()->create(['mpin_obvrznik_code' => null]);
+
+        Livewire::actingAs($admin)
+            ->test(CompanyDashboard::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('editMpinObvrznikCode', '111')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $company->refresh();
+        $this->assertSame(MpinObvrznik::SELF_EMPLOYED, $company->mpin_obvrznik_code);
+    }
+
+    public function test_an_unsupported_obvrznik_type_is_rejected(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $company = Company::factory()->create();
+
+        Livewire::actingAs($admin)
+            ->test(CompanyDashboard::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('editMpinObvrznikCode', '115')
+            ->call('save')
+            ->assertHasErrors('editMpinObvrznikCode');
+    }
+}
 ```
 
 `startEdit()` и `save()` се вистинските имиња — проверени. Образецот `edit*` својство плус зачувување во `save()` веќе постои за `street_address` и за `editEfakturaMode`; следи го точно него.
 
+Улогите доаѓаат од Spatie Permission. `User::factory()` **нема** состојба `admin()` — улогата се доделува со `assignRole('admin')` откако `Role::findOrCreate('admin')` ја создала во `setUp()`.
+
 - [ ] **Step 8: Пушти го и потврди дека паѓа**
 
-Run: `php artisan test tests/Feature/CompanyDashboardTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/CompanyDashboardMpinObvrznikTest.php`
 Expected: FAIL — својството `editMpinObvrznikCode` не постои.
 
 - [ ] **Step 9: Додај го полето во компонентата**
@@ -422,13 +509,13 @@ $this->editMpinObvrznikCode = $this->company->mpin_obvrznik_code?->value ?? '';
 
 - [ ] **Step 11: Пушти ги тестовите**
 
-Run: `php artisan test tests/Feature/CompanyDashboardTest.php tests/Unit/Payroll/MpinObvrznikTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/CompanyDashboardMpinObvrznikTest.php tests/Unit/Payroll/MpinObvrznikTest.php`
 Expected: PASS
 
 - [ ] **Step 12: Commit**
 
 ```bash
-git add app/Support/Payroll/MpinObvrznik.php app/Models/Company.php app/Livewire/CompanyDashboard.php resources/views/livewire/company-dashboard.blade.php database/migrations/2026_08_19_100100_add_mpin_obvrznik_code_to_companies_table.php tests/Unit/Payroll/MpinObvrznikTest.php tests/Feature/CompanyDashboardTest.php
+git add app/Support/Payroll/MpinObvrznik.php app/Models/Company.php app/Livewire/CompanyDashboard.php resources/views/livewire/company-dashboard.blade.php database/migrations/2026_08_19_100100_add_mpin_obvrznik_code_to_companies_table.php tests/Unit/Payroll/MpinObvrznikTest.php tests/Feature/CompanyDashboardMpinObvrznikTest.php
 git commit -m "feat(payroll): give a company its МПИН obvrznik type"
 ```
 
@@ -450,37 +537,37 @@ git commit -m "feat(payroll): give a company its МПИН obvrznik type"
 
 - [ ] **Step 1: Напиши го тестот што паѓа**
 
-Додај во `tests/Feature/EmployeeFormTest.php`:
+Додај во постоечката класа `tests/Feature/EmployeeFormTest.php`. Таа веќе има `setUp()` со улогите и приватен помошник `actAsAdmin()` — употреби ги, не дуплирај ги:
 
 ```php
-test('подрачната здравствена служба се зачувува', function () {
-    $admin = \App\Models\User::factory()->admin()->create();
-    $company = \App\Models\Company::factory()->create();
+    public function test_the_health_area_code_is_saved(): void
+    {
+        $company = Company::factory()->create();
+        $this->actAsAdmin();
 
-    \Livewire\Livewire::actingAs($admin)
-        ->test(\App\Livewire\EmployeeForm::class, ['company' => $company])
-        ->set('embg', '3101980455019')
-        ->set('firstName', 'Марко')
-        ->set('lastName', 'Петровски')
-        ->set('municipalityCode', '175')
-        ->set('bankAccount', '300000000000000')
-        ->set('insuranceTypeCode', '0050')
-        ->set('healthAreaCode', '4061')
-        ->set('employedOn', '2026-01-01')
-        ->set('gross', '38507')
-        ->set('salaryEffectiveFrom', '2026-01-01')
-        ->call('save')
-        ->assertHasNoErrors();
+        Livewire::test(EmployeeForm::class, ['company' => $company])
+            ->set('embg', '3101980455019')
+            ->set('firstName', 'Марко')
+            ->set('lastName', 'Петровски')
+            ->set('municipalityCode', '175')
+            ->set('bankAccount', '300000000000000')
+            ->set('insuranceTypeCode', '0050')
+            ->set('healthAreaCode', '4061')
+            ->set('employedOn', '2026-01-01')
+            ->set('salaryEffectiveFrom', '2026-01-01')
+            ->set('gross', '38507')
+            ->call('save')
+            ->assertHasNoErrors();
 
-    expect(\App\Models\Employee::first()->health_area_code)->toBe('4061');
-});
+        $this->assertSame('4061', Employee::first()->health_area_code);
+    }
 ```
 
-Ако постоечките тестови во тој фајл користат помошна функција за пополнување на формата, употреби ја неа и додај го само новото поле — не дуплирај го пополнувањето.
+Ако фајлот веќе има помошник што ја пополнува целата форма, употреби го него и постави го само новото поле — не препишувај го пополнувањето.
 
 - [ ] **Step 2: Пушти го и потврди дека паѓа**
 
-Run: `php artisan test tests/Feature/EmployeeFormTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/EmployeeFormTest.php`
 Expected: FAIL — својството `healthAreaCode` не постои.
 
 - [ ] **Step 3: Напиши ја миграцијата**
@@ -566,7 +653,7 @@ $this->healthAreaCode = (string) $employee->health_area_code;
 
 - [ ] **Step 7: Пушти ги тестовите**
 
-Run: `php artisan test tests/Feature/EmployeeFormTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/EmployeeFormTest.php`
 Expected: PASS
 
 - [ ] **Step 8: Commit**
@@ -593,72 +680,69 @@ git commit -m "feat(payroll): record an employee's health-area code"
 
 - [ ] **Step 1: Напиши го тестот што паѓа**
 
-Додај во `tests/Feature/Payroll/PayrollRunServiceTest.php`:
+Додај во постоечката класа `tests/Feature/Payroll/PayrollRunServiceTest.php`. Таа веќе има приватен помошник `employeeOn(Company $company, float $amount, string $basis): Employee` — овие тестови ѝ треба и `weekly_hours`, па додај втор помошник до него наместо да го менуваш постоечкиот:
 
 ```php
-test('работник со половина работно време добива половина фонд', function () {
-    $company = \App\Models\Company::factory()->create();
-    $employee = \App\Models\Employee::factory()->for($company)->create([
-        'weekly_hours' => 20,
-        'employed_on' => '2026-01-01',
-    ]);
-    \App\Models\EmployeeSalary::factory()->for($employee)->create([
-        'effective_from' => '2026-01-01',
-        'basis' => 'gross',
-        'amount' => 34571,
-    ]);
+    private function partTimeEmployeeOn(Company $company, float $amount, int $weeklyHours): Employee
+    {
+        $employee = Employee::factory()->for($company)->create([
+            'employed_on' => '2026-01-01',
+            'prior_service_months' => 0,
+            'weekly_hours' => $weeklyHours,
+        ]);
 
-    $run = app(\App\Services\Payroll\PayrollRunService::class)->open($company, 2026, 1);
+        EmployeeSalary::create([
+            'employee_id' => $employee->id,
+            'effective_from' => '2026-01-01',
+            'amount' => $amount,
+            'basis' => 'gross',
+        ]);
 
-    // Јануари 2026 има 22 работни дена, значи фонд 176 за полно работно време.
-    expect($run->month_hours)->toBe(176);
+        return $employee;
+    }
 
-    $line = $run->employees->first()->lines->firstWhere('code', '001');
-    expect($line->hours)->toBe(88);
-});
+    public function test_a_half_time_employee_gets_half_the_fund(): void
+    {
+        $company = Company::factory()->create();
+        $this->partTimeEmployeeOn($company, 34571, 20);
 
-test('половина фонд не ја менува договорената бруто плата', function () {
-    $company = \App\Models\Company::factory()->create();
-    $employee = \App\Models\Employee::factory()->for($company)->create([
-        'weekly_hours' => 20,
-        'employed_on' => '2026-01-01',
-    ]);
-    \App\Models\EmployeeSalary::factory()->for($employee)->create([
-        'effective_from' => '2026-01-01',
-        'basis' => 'gross',
-        'amount' => 34571,
-    ]);
+        $run = app(PayrollRunService::class)->open($company, 2026, 1);
 
-    $run = app(\App\Services\Payroll\PayrollRunService::class)->open($company, 2026, 1);
+        // Јануари 2026 има 22 работни дена, значи фонд 176 за полно работно
+        // време. Празниците не се одземаат — потврдено со вистинска МПИН
+        // датотека каде истиот работник има 88 часа.
+        $this->assertSame(176, $run->month_hours);
 
-    expect(round($run->employees->first()->gross))->toBe(34571.0);
-});
+        $line = $run->employees->first()->lines->firstWhere('code', '001');
+        $this->assertSame(88, $line->hours);
+    }
 
-test('работник со полно работно време не е засегнат', function () {
-    $company = \App\Models\Company::factory()->create();
-    $employee = \App\Models\Employee::factory()->for($company)->create([
-        'weekly_hours' => 40,
-        'employed_on' => '2026-01-01',
-    ]);
-    \App\Models\EmployeeSalary::factory()->for($employee)->create([
-        'effective_from' => '2026-01-01',
-        'basis' => 'gross',
-        'amount' => 38507,
-    ]);
+    public function test_half_the_fund_does_not_move_the_agreed_gross(): void
+    {
+        $company = Company::factory()->create();
+        $this->partTimeEmployeeOn($company, 34571, 20);
 
-    $run = app(\App\Services\Payroll\PayrollRunService::class)->open($company, 2026, 5);
+        $run = app(PayrollRunService::class)->open($company, 2026, 1);
 
-    $line = $run->employees->first()->lines->firstWhere('code', '001');
-    expect($line->hours)->toBe(168)
-        ->and(round($run->employees->first()->gross))->toBe(38507.0);
-});
+        $this->assertSame(34571.0, round((float) $run->employees->first()->gross));
+    }
+
+    public function test_a_full_time_employee_is_untouched(): void
+    {
+        $company = Company::factory()->create();
+        $this->partTimeEmployeeOn($company, 38507, 40);
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 5);
+
+        $line = $run->employees->first()->lines->firstWhere('code', '001');
+        $this->assertSame(168, $line->hours);
+        $this->assertSame(38507.0, round((float) $run->employees->first()->gross));
+    }
 ```
-
-Ако имињата на фабриката за плата се други, прочитај ги во `database/factories/` и употреби ги вистинските — образецот „работник плус плата" веќе постои во тој тест-фајл.
 
 - [ ] **Step 2: Пушти го и потврди дека паѓа**
 
-Run: `php artisan test tests/Feature/Payroll/PayrollRunServiceTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll/PayrollRunServiceTest.php`
 Expected: FAIL — часовите се 176 наместо 88.
 
 - [ ] **Step 3: Додај `monthFund()` на моделот**
@@ -703,7 +787,7 @@ $employee->monthFund($run->month_hours),
 
 - [ ] **Step 6: Пушти ги тестовите на фазата**
 
-Run: `php artisan test tests/Feature/Payroll`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll`
 Expected: PASS — сите, вклучувајќи ги постоечките. Ако некој постоечки тест падне, тоа значи дека фабриката некаде поставува `weekly_hours` различно од 40; поправи ја **фабриката или тестот**, никогаш `monthFund()`.
 
 - [ ] **Step 7: Commit**
@@ -729,63 +813,62 @@ git commit -m "fix(payroll): a part-time employee gets a part-time hour fund"
 
 - [ ] **Step 1: Напиши го тестот што паѓа**
 
-Додај во `tests/Feature/Payroll/SalaryCalculatorTest.php`:
+Додај во постоечката класа `tests/Feature/Payroll/SalaryCalculatorTest.php`:
 
 ```php
-test('самостоен вршител не плаќа придонес за вработување ниту месечен данок', function () {
-    $p = \App\Models\PayrollParameter::forDate('2026-01-31');
+    public function test_a_self_employed_person_pays_no_unemployment_and_no_monthly_tax(): void
+    {
+        $p = PayrollParameter::forDate('2026-01-31');
 
-    $b = \App\Support\Payroll\SalaryCalculator::fromGross(
-        34571, $p, null, \App\Support\Payroll\MpinObvrznik::SELF_EMPLOYED
-    );
+        $whole = SalaryCalculator::fromGross(
+            34571, $p, null, MpinObvrznik::SELF_EMPLOYED
+        )->whole();
 
-    $whole = $b->whole();
+        // Секоја бројка е од вистинска поднесена МПИН датотека за јануари 2026.
+        $this->assertSame(6499, $whole['pension']);
+        $this->assertSame(2593, $whole['health']);
+        $this->assertSame(173, $whole['injury']);
+        $this->assertSame(0, $whole['unemployment']);
+        $this->assertSame(9265, $whole['contributions']);
+        $this->assertSame(0, $whole['taxBase']);
+        $this->assertSame(0, $whole['tax']);
+        $this->assertSame(25306, $whole['net']);
+    }
 
-    // Бројките се од вистинска поднесена датотека за јануари 2026.
-    expect($whole['pension'])->toBe(6499)
-        ->and($whole['health'])->toBe(2593)
-        ->and($whole['injury'])->toBe(173)
-        ->and($whole['unemployment'])->toBe(0)
-        ->and($whole['contributions'])->toBe(9265)
-        ->and($whole['taxBase'])->toBe(0)
-        ->and($whole['tax'])->toBe(0)
-        ->and($whole['net'])->toBe(25306);
-});
+    public function test_an_employer_is_unchanged_and_is_the_default_profile(): void
+    {
+        $p = PayrollParameter::forDate('2026-05-31');
 
-test('работодавачот е непроменет и е стандардниот профил', function () {
-    $p = \App\Models\PayrollParameter::forDate('2026-05-31');
+        $default = SalaryCalculator::fromGross(38507, $p);
+        $explicit = SalaryCalculator::fromGross(38507, $p, null, MpinObvrznik::EMPLOYER);
 
-    $default = \App\Support\Payroll\SalaryCalculator::fromGross(38507, $p);
-    $explicit = \App\Support\Payroll\SalaryCalculator::fromGross(
-        38507, $p, null, \App\Support\Payroll\MpinObvrznik::EMPLOYER
-    );
+        $this->assertEquals($explicit, $default);
 
-    expect($default)->toEqual($explicit);
+        // Секоја бројка е од вистинска поднесена МПИН датотека за мај 2026.
+        $whole = $default->whole();
+        $this->assertSame(462, $whole['unemployment']);
+        $this->assertSame(10782, $whole['contributions']);
+        $this->assertSame(16793, $whole['taxBase']);
+        $this->assertSame(1679, $whole['tax']);
+        $this->assertSame(26046, $whole['net']);
+    }
 
-    // Бројките се од вистинска поднесена датотека за мај 2026.
-    $whole = $default->whole();
-    expect($whole['unemployment'])->toBe(462)
-        ->and($whole['contributions'])->toBe(10782)
-        ->and($whole['taxBase'])->toBe(16793)
-        ->and($whole['tax'])->toBe(1679)
-        ->and($whole['net'])->toBe(26046);
-});
+    public function test_the_net_to_gross_search_honours_the_profile(): void
+    {
+        $p = PayrollParameter::forDate('2026-01-31');
 
-test('повратната пресметка го почитува профилот', function () {
-    $p = \App\Models\PayrollParameter::forDate('2026-01-31');
+        $whole = SalaryCalculator::fromNet(
+            25306, $p, null, MpinObvrznik::SELF_EMPLOYED
+        )->whole();
 
-    $b = \App\Support\Payroll\SalaryCalculator::fromNet(
-        25306, $p, null, \App\Support\Payroll\MpinObvrznik::SELF_EMPLOYED
-    );
-
-    expect($b->whole()['gross'])->toBe(34571)
-        ->and($b->whole()['tax'])->toBe(0);
-});
+        $this->assertSame(34571, $whole['gross']);
+        $this->assertSame(0, $whole['tax']);
+    }
 ```
 
 - [ ] **Step 2: Пушти го и потврди дека паѓа**
 
-Run: `php artisan test tests/Feature/Payroll/SalaryCalculatorTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll/SalaryCalculatorTest.php`
 Expected: FAIL — `fromGross()` прима три аргументи.
 
 - [ ] **Step 3: Прошири го `fromGross()`**
@@ -847,7 +930,7 @@ public static function fromNet(
 
 - [ ] **Step 5: Пушти ги тестовите**
 
-Run: `php artisan test tests/Feature/Payroll/SalaryCalculatorTest.php tests/Feature/Payroll/SalaryCalculatorNetToGrossTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll/SalaryCalculatorTest.php tests/Feature/Payroll/SalaryCalculatorNetToGrossTest.php`
 Expected: PASS
 
 - [ ] **Step 6: Commit**
@@ -874,42 +957,40 @@ git commit -m "feat(payroll): teach the calculator what kind of obvrznik pays"
 
 - [ ] **Step 1: Напиши го тестот што паѓа**
 
-Додај во `tests/Feature/Payroll/PayrollRunCalculatorTest.php`:
+Додај во постоечката класа `tests/Feature/Payroll/PayrollRunCalculatorTest.php`:
 
 ```php
-test('пресметката на самостоен вршител нема данок ниту придонес за вработување', function () {
-    $p = \App\Models\PayrollParameter::forDate('2026-01-31');
+    public function test_a_self_employed_run_has_no_tax_and_no_unemployment(): void
+    {
+        $whole = PayrollRunCalculator::calculate(
+            fullMonthGross: 34571,
+            monthHours: 88,
+            seniorityYears: 0,
+            inputLines: [[
+                'kind' => PayrollRunLine::KIND_HOURS,
+                'code' => '001',
+                'description' => 'Редовни работни часови',
+                'hours' => 88,
+                'percent' => 100.0,
+                'amount' => null,
+                'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
+            ]],
+            parameters: PayrollParameter::forDate('2026-01-31'),
+            minBase: null,
+            obvrznik: MpinObvrznik::SELF_EMPLOYED,
+        )->breakdown->whole();
 
-    $result = \App\Support\Payroll\PayrollRunCalculator::calculate(
-        fullMonthGross: 34571,
-        monthHours: 88,
-        seniorityYears: 0,
-        inputLines: [[
-            'kind' => \App\Models\PayrollRunLine::KIND_HOURS,
-            'code' => '001',
-            'description' => 'Редовни работни часови',
-            'hours' => 88,
-            'percent' => 100.0,
-            'amount' => null,
-            'borne_by' => \App\Models\PayrollRunLine::BORNE_EMPLOYER,
-        ]],
-        parameters: $p,
-        minBase: null,
-        obvrznik: \App\Support\Payroll\MpinObvrznik::SELF_EMPLOYED,
-    );
-
-    $whole = $result->breakdown->whole();
-
-    expect($whole['gross'])->toBe(34571)
-        ->and($whole['unemployment'])->toBe(0)
-        ->and($whole['tax'])->toBe(0)
-        ->and($whole['net'])->toBe(25306);
-});
+        // Бројките се од вистинска поднесена МПИН датотека за јануари 2026.
+        $this->assertSame(34571, $whole['gross']);
+        $this->assertSame(0, $whole['unemployment']);
+        $this->assertSame(0, $whole['tax']);
+        $this->assertSame(25306, $whole['net']);
+    }
 ```
 
 - [ ] **Step 2: Пушти го и потврди дека паѓа**
 
-Run: `php artisan test tests/Feature/Payroll/PayrollRunCalculatorTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll/PayrollRunCalculatorTest.php`
 Expected: FAIL — непознат именуван аргумент `obvrznik`.
 
 - [ ] **Step 3: Провлечи го профилот низ `PayrollRunCalculator`**
@@ -933,7 +1014,7 @@ $obvrznik = $run->company->mpin_obvrznik_code ?? MpinObvrznik::EMPLOYER;
 
 - [ ] **Step 5: Пушти ги тестовите на фазата**
 
-Run: `php artisan test tests/Feature/Payroll`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll`
 Expected: PASS
 
 - [ ] **Step 6: Commit**
@@ -1036,65 +1117,103 @@ git commit -m "feat(payroll): carry the obvrznik profile into the monthly run"
 ```php
 <?php
 
+namespace Tests\Feature\Payroll;
+
 use App\Models\Company;
 use App\Models\Employee;
 use App\Models\EmployeeSalary;
+use App\Models\PayrollRun;
+use App\Models\User;
 use App\Services\Payroll\PayrollRunService;
 use App\Support\Payroll\Mpin\MpinDocumentBuilder;
 use App\Support\Payroll\MpinObvrznik;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
-test('обврзник 110 се репродуцира знак по знак', function () {
-    $company = Company::factory()->create([
-        'name' => 'DESIGNIA DOOEL',
-        'tax_id' => '4080000000000',
-        'mpin_obvrznik_code' => MpinObvrznik::EMPLOYER,
-    ]);
+class MpinDocumentBuilderTest extends TestCase
+{
+    use RefreshDatabase;
 
-    $employee = Employee::factory()->for($company)->create([
-        'embg' => '0101990450006',
-        'municipality_code' => '130',
-        'health_area_code' => '4061',
-        'bank_account' => '300000000000000',
-        'insurance_type_code' => '0050',
-        'movement_code' => '1',
-        'exemption_code' => null,
-        'weekly_hours' => 40,
-        'employed_on' => '2026-01-01',
-        'terminated_on' => null,
-    ]);
+    /** @param array<string, mixed> $employeeOverrides */
+    private function confirmedRun(
+        Company $company,
+        array $employeeOverrides,
+        float $gross,
+        int $month,
+    ): PayrollRun {
+        $employee = Employee::factory()->for($company)->create([
+            'exemption_code' => null,
+            'terminated_on' => null,
+            'prior_service_months' => 0,
+            ...$employeeOverrides,
+        ]);
 
-    EmployeeSalary::factory()->for($employee)->create([
-        'effective_from' => '2026-01-01',
-        'basis' => 'gross',
-        'amount' => 38507,
-    ]);
+        EmployeeSalary::create([
+            'employee_id' => $employee->id,
+            'effective_from' => '2026-01-01',
+            'amount' => $gross,
+            'basis' => 'gross',
+        ]);
 
-    $service = app(PayrollRunService::class);
-    $run = $service->confirm($service->open($company, 2026, 5), 1);
+        // confirmed_by е странски клуч кон users, па мора да е вистински корисник.
+        $user = User::factory()->create();
+        $service = app(PayrollRunService::class);
 
-    expect(MpinDocumentBuilder::build($run->fresh()))
-        ->toBe(file_get_contents(base_path('tests/Fixtures/mpin/obvrznik-110.xml')));
-});
+        return $service->confirm($service->open($company, 2026, $month), $user->id)->fresh();
+    }
 
-test('името на датотеката е она што МПИН клиентот го користи', function () {
-    $company = Company::factory()->create([
-        'name' => 'DESIGNIA DOOEL',
-        'mpin_obvrznik_code' => MpinObvrznik::EMPLOYER,
-    ]);
-    $run = \App\Models\PayrollRun::factory()->for($company)->create([
-        'year' => 2026,
-        'month' => 5,
-    ]);
+    public function test_an_obvrznik_110_filing_is_reproduced_byte_for_byte(): void
+    {
+        $company = Company::factory()->create([
+            'name' => 'DESIGNIA DOOEL',
+            'tax_id' => '4080000000000',
+            'mpin_obvrznik_code' => MpinObvrznik::EMPLOYER,
+        ]);
 
-    expect(MpinDocumentBuilder::fileName($run))->toBe('DESIGNIA DOOEL_2026_05_101.xml');
-});
+        $run = $this->confirmedRun($company, [
+            'embg' => '0101990450006',
+            'municipality_code' => '130',
+            'health_area_code' => '4061',
+            'bank_account' => '300000000000000',
+            'insurance_type_code' => '0050',
+            'movement_code' => '1',
+            'weekly_hours' => 40,
+            'employed_on' => '2026-01-01',
+        ], 38507, 5);
+
+        $this->assertSame(
+            file_get_contents(base_path('tests/Fixtures/mpin/obvrznik-110.xml')),
+            MpinDocumentBuilder::build($run),
+        );
+    }
+
+    public function test_the_file_name_matches_what_the_mpin_client_uses(): void
+    {
+        $company = Company::factory()->create([
+            'name' => 'DESIGNIA DOOEL',
+            'mpin_obvrznik_code' => MpinObvrznik::EMPLOYER,
+        ]);
+
+        $run = PayrollRun::factory()->for($company)->create([
+            'year' => 2026,
+            'month' => 5,
+        ]);
+
+        $this->assertSame(
+            'DESIGNIA DOOEL_2026_05_101.xml',
+            MpinDocumentBuilder::fileName($run),
+        );
+    }
+}
 ```
 
-Ако `PayrollRun` нема фабрика, создај ја по образецот на постоечките во `database/factories/`, со `payroll_parameter_id` и `month_hours` пополнети.
+`PayrollRunFactory` веќе постои. Прочитај ги неговите стандардни вредности пред да се потпреш на нив — ако не поставува `payroll_parameter_id` или `month_hours`, постави ги во тестот.
+
+Ако `employed_on` во еталонот мора да даде `DatumPocetok` = `1.05.2026`, тоа значи датумот на вработување е **пред** мај, што овој тест го обезбедува со `2026-01-01`.
 
 - [ ] **Step 3: Пушти го и потврди дека паѓа**
 
-Run: `php artisan test tests/Feature/Payroll/MpinDocumentBuilderTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll/MpinDocumentBuilderTest.php`
 Expected: FAIL — класата не постои.
 
 - [ ] **Step 4: Напиши го градителот**
@@ -1365,7 +1484,7 @@ final class MpinDocumentBuilder
 
 - [ ] **Step 5: Пушти ги тестовите**
 
-Run: `php artisan test tests/Feature/Payroll/MpinDocumentBuilderTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll/MpinDocumentBuilderTest.php`
 Expected: PASS
 
 Ако тестот падне со разлика во еден знак, спореди со `diff`: испиши го произведениот XML во `storage/app/private/mpin-debug.xml` и пушти `diff storage/app/private/mpin-debug.xml tests/Fixtures/mpin/obvrznik-110.xml`. Никогаш не менувај го еталонот за да поминe тестот — еталонот е она што УЈП веќе го прифатила.
@@ -1462,67 +1581,92 @@ git commit -m "feat(payroll): build the МПИН document, byte for byte"
 
 - [ ] **Step 2: Напиши ги тестовите што паѓаат**
 
-Додај во `tests/Feature/Payroll/MpinDocumentBuilderTest.php`:
+Додај во класата `tests/Feature/Payroll/MpinDocumentBuilderTest.php`, употребувајќи го помошникот `confirmedRun()` од Task 7.
+
+Форматните тестови намерно го проверуваат **произведениот** XML, не еталонот: еталон што сам себе се проверува не докажува ништо.
 
 ```php
-test('обврзник 111 со неполно работно време се репродуцира знак по знак', function () {
-    $company = Company::factory()->create([
-        'name' => 'ADVOKAT STEFAN KOTEV',
-        'tax_id' => '4090000000000',
-        'mpin_obvrznik_code' => MpinObvrznik::SELF_EMPLOYED,
-    ]);
+    public function test_an_obvrznik_111_part_time_filing_is_reproduced_byte_for_byte(): void
+    {
+        $company = Company::factory()->create([
+            'name' => 'ADVOKAT STEFAN KOTEV',
+            'tax_id' => '4090000000000',
+            'mpin_obvrznik_code' => MpinObvrznik::SELF_EMPLOYED,
+        ]);
 
-    $employee = Employee::factory()->for($company)->create([
-        'embg' => '1503880410003',
-        'municipality_code' => '182',
-        'health_area_code' => '4061',
-        'bank_account' => '300000000000001',
-        'insurance_type_code' => '0047',
-        'movement_code' => '1',
-        'exemption_code' => '001',
-        'weekly_hours' => 20,
-        'employed_on' => '2020-01-01',
-        'terminated_on' => null,
-    ]);
+        $run = $this->confirmedRun($company, [
+            'embg' => '1503880410003',
+            'municipality_code' => '182',
+            'health_area_code' => '4061',
+            'bank_account' => '300000000000001',
+            'insurance_type_code' => '0047',
+            'movement_code' => '1',
+            'exemption_code' => '001',
+            'weekly_hours' => 20,
+            'employed_on' => '2020-01-01',
+        ], 34571, 1);
 
-    EmployeeSalary::factory()->for($employee)->create([
-        'effective_from' => '2026-01-01',
-        'basis' => 'gross',
-        'amount' => 34571,
-    ]);
+        $this->assertSame(
+            file_get_contents(base_path('tests/Fixtures/mpin/obvrznik-111.xml')),
+            MpinDocumentBuilder::build($run),
+        );
+    }
 
-    $service = app(PayrollRunService::class);
-    $run = $service->confirm($service->open($company, 2026, 1), 1);
+    public function test_an_empty_element_is_not_self_closing(): void
+    {
+        $xml = $this->designiaXml();
 
-    expect(MpinDocumentBuilder::build($run->fresh()))
-        ->toBe(file_get_contents(base_path('tests/Fixtures/mpin/obvrznik-111.xml')));
-});
+        $this->assertStringContainsString('<Zabeleska></Zabeleska>', $xml);
+        $this->assertStringContainsString('<NadlezenOrganEdb></NadlezenOrganEdb>', $xml);
+        $this->assertStringNotContainsString('/>', $xml);
+    }
 
-test('празен елемент не е самозатворачки', function () {
-    $xml = file_get_contents(base_path('tests/Fixtures/mpin/obvrznik-110.xml'));
+    public function test_the_day_has_no_leading_zero_but_the_month_does(): void
+    {
+        $xml = $this->designiaXml();
 
-    expect($xml)->toContain('<Zabeleska></Zabeleska>')
-        ->and($xml)->toContain('<NadlezenOrganEdb></NadlezenOrganEdb>')
-        ->and($xml)->not->toContain('/>');
-});
+        $this->assertStringContainsString('<DatumPocetok>1.05.2026</DatumPocetok>', $xml);
+        $this->assertStringNotContainsString('<DatumPocetok>01.05.2026</DatumPocetok>', $xml);
+    }
 
-test('денот нема водечка нула, месецот има', function () {
-    $xml = file_get_contents(base_path('tests/Fixtures/mpin/obvrznik-110.xml'));
-
-    expect($xml)->toContain('<DatumPocetok>1.05.2026</DatumPocetok>')
-        ->and($xml)->not->toContain('<DatumPocetok>01.05.2026</DatumPocetok>');
-});
-
-test('ниту еден износ нема децимала', function () {
-    $xml = file_get_contents(base_path('tests/Fixtures/mpin/obvrznik-110.xml'));
-
-    expect(preg_match('/<[A-Za-z]*Iznos[A-Za-z]*>[-0-9]+\.[0-9]+</', $xml))->toBe(0);
-});
+    public function test_no_amount_carries_a_decimal(): void
+    {
+        $this->assertSame(
+            0,
+            preg_match('/<[A-Za-z]*Iznos[A-Za-z]*>-?[0-9]+\.[0-9]+</', $this->designiaXml()),
+        );
+    }
 ```
+
+Помошникот што го гради истиот XML што првиот еталон-тест го проверува — извади го тоа повторување од Task 7 во приватен метод:
+
+```php
+    private function designiaXml(): string
+    {
+        $company = Company::factory()->create([
+            'name' => 'DESIGNIA DOOEL',
+            'tax_id' => '4080000000000',
+            'mpin_obvrznik_code' => MpinObvrznik::EMPLOYER,
+        ]);
+
+        return MpinDocumentBuilder::build($this->confirmedRun($company, [
+            'embg' => '0101990450006',
+            'municipality_code' => '130',
+            'health_area_code' => '4061',
+            'bank_account' => '300000000000000',
+            'insurance_type_code' => '0050',
+            'movement_code' => '1',
+            'weekly_hours' => 40,
+            'employed_on' => '2026-01-01',
+        ], 38507, 5));
+    }
+```
+
+`test_an_obvrznik_110_filing_is_reproduced_byte_for_byte` од Task 7 сега исто го вика `designiaXml()` наместо да го повторува пополнувањето.
 
 - [ ] **Step 3: Пушти ги и потврди дека еталонот за 111 паѓа**
 
-Run: `php artisan test tests/Feature/Payroll/MpinDocumentBuilderTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll/MpinDocumentBuilderTest.php`
 Expected: тестовите за формат PASS (проверуваат само еталон), еталонот за 111 или PASS ако Tasks 4–6 се точни, или FAIL со јасна разлика.
 
 Ако падне на часовите (176 наместо 88), Task 4 не е завршена. Ако падне на данокот, Task 5 не е завршена.
@@ -1531,7 +1675,7 @@ Expected: тестовите за формат PASS (проверуваат са
 
 - [ ] **Step 5: Пушти ги тестовите**
 
-Run: `php artisan test tests/Feature/Payroll`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll`
 Expected: PASS
 
 - [ ] **Step 6: Commit**
@@ -1557,111 +1701,163 @@ git commit -m "test(payroll): hold the builder against a real 111 filing"
 
 - [ ] **Step 1: Напиши ги тестовите што паѓаат**
 
+Прво заедничкиот помошник, зашто Task 10 му треба истиот. Во PHPUnit тоа е **trait**, не глобална функција.
+
+`tests/Feature/Payroll/Concerns/BuildsMpinRuns.php`:
+
+```php
+<?php
+
+namespace Tests\Feature\Payroll\Concerns;
+
+use App\Models\Company;
+use App\Models\Employee;
+use App\Models\EmployeeSalary;
+use App\Models\PayrollRun;
+use App\Models\User;
+use App\Services\Payroll\PayrollRunService;
+use App\Support\Payroll\MpinObvrznik;
+
+trait BuildsMpinRuns
+{
+    /**
+     * Потврдена пресметка за мај 2026 што одговара на вистинската поднесена
+     * датотека на обврзник 110. Отстапувањата се предаваат како преклопувања,
+     * за секој тест да менува точно едно нешто.
+     *
+     * @param  array<string, mixed>  $companyOverrides
+     * @param  array<string, mixed>  $employeeOverrides
+     */
+    private function mpinRun(array $companyOverrides = [], array $employeeOverrides = []): PayrollRun
+    {
+        $company = Company::factory()->create([
+            'name' => 'DESIGNIA DOOEL',
+            'tax_id' => '4080000000000',
+            'mpin_obvrznik_code' => MpinObvrznik::EMPLOYER,
+            ...$companyOverrides,
+        ]);
+
+        $employee = Employee::factory()->for($company)->create([
+            'embg' => '0101990450006',
+            'municipality_code' => '130',
+            'health_area_code' => '4061',
+            'bank_account' => '300000000000000',
+            'insurance_type_code' => '0050',
+            'movement_code' => '1',
+            'weekly_hours' => 40,
+            'employed_on' => '2026-01-01',
+            'terminated_on' => null,
+            'prior_service_months' => 0,
+            ...$employeeOverrides,
+        ]);
+
+        EmployeeSalary::create([
+            'employee_id' => $employee->id,
+            'effective_from' => '2026-01-01',
+            'amount' => 38507,
+            'basis' => 'gross',
+        ]);
+
+        $user = User::factory()->create();
+        $service = app(PayrollRunService::class);
+
+        return $service->confirm($service->open($company, 2026, 5), $user->id)->fresh();
+    }
+}
+```
+
 `tests/Feature/Payroll/MpinValidatorTest.php`:
 
 ```php
 <?php
 
+namespace Tests\Feature\Payroll;
+
 use App\Models\Company;
-use App\Models\Employee;
-use App\Models\EmployeeSalary;
 use App\Services\Payroll\PayrollRunService;
 use App\Support\Payroll\Mpin\MpinValidator;
 use App\Support\Payroll\MpinObvrznik;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Feature\Payroll\Concerns\BuildsMpinRuns;
+use Tests\TestCase;
 
-function mpinRun(array $companyOverrides = [], array $employeeOverrides = []): \App\Models\PayrollRun
+class MpinValidatorTest extends TestCase
 {
-    $company = Company::factory()->create([
-        'name' => 'DESIGNIA DOOEL',
-        'tax_id' => '4080000000000',
-        'mpin_obvrznik_code' => MpinObvrznik::EMPLOYER,
-        ...$companyOverrides,
-    ]);
+    use BuildsMpinRuns, RefreshDatabase;
 
-    $employee = Employee::factory()->for($company)->create([
-        'embg' => '0101990450006',
-        'municipality_code' => '130',
-        'health_area_code' => '4061',
-        'bank_account' => '300000000000000',
-        'insurance_type_code' => '0050',
-        'movement_code' => '1',
-        'weekly_hours' => 40,
-        'employed_on' => '2026-01-01',
-        ...$employeeOverrides,
-    ]);
+    public function test_a_sound_run_passes(): void
+    {
+        $result = MpinValidator::check($this->mpinRun());
 
-    EmployeeSalary::factory()->for($employee)->create([
-        'effective_from' => '2026-01-01',
-        'basis' => 'gross',
-        'amount' => 38507,
-    ]);
+        $this->assertTrue($result->passes());
+        $this->assertSame([], $result->errors);
+    }
 
-    $service = app(PayrollRunService::class);
+    public function test_a_draft_run_is_not_exported(): void
+    {
+        $company = Company::factory()->create([
+            'mpin_obvrznik_code' => MpinObvrznik::EMPLOYER,
+        ]);
+        $run = app(PayrollRunService::class)->open($company, 2026, 5);
 
-    return $service->confirm($service->open($company, 2026, 5), 1)->fresh();
+        $result = MpinValidator::check($run);
+
+        $this->assertFalse($result->passes());
+        $this->assertContains('Пресметката мора да биде потврдена пред извоз.', $result->errors);
+    }
+
+    public function test_a_company_without_an_obvrznik_type_is_not_exported(): void
+    {
+        $result = MpinValidator::check($this->mpinRun(['mpin_obvrznik_code' => null]));
+
+        $this->assertContains('Фирмата нема внесен вид обврзник за МПИН.', $result->errors);
+    }
+
+    public function test_a_company_without_a_tax_id_is_not_exported(): void
+    {
+        $result = MpinValidator::check($this->mpinRun(['tax_id' => null]));
+
+        $this->assertContains('Фирмата нема внесен ЕДБ.', $result->errors);
+    }
+
+    public function test_an_employee_without_a_health_area_is_not_exported(): void
+    {
+        $result = MpinValidator::check($this->mpinRun([], ['health_area_code' => null]));
+
+        $this->assertContains(
+            'Марко Петровски: нема внесена подрачна здравствена служба.',
+            $result->errors,
+        );
+    }
+
+    public function test_zero_days_of_service_blocks_the_export(): void
+    {
+        $run = $this->mpinRun();
+        $run->employees->first()->update(['staz_days' => 0]);
+
+        $result = MpinValidator::check($run->fresh());
+
+        $this->assertContains(
+            'Марко Петровски: нула денови стаж — датумите на вработување не го покриваат месецот.',
+            $result->errors,
+        );
+    }
+
+    public function test_a_part_time_code_on_a_full_fund_warns_but_does_not_block(): void
+    {
+        $result = MpinValidator::check($this->mpinRun([], ['insurance_type_code' => '0047']));
+
+        $this->assertTrue($result->passes());
+        $this->assertNotSame([], $result->warnings);
+    }
 }
-
-test('исправна пресметка поминува', function () {
-    $result = MpinValidator::check(mpinRun());
-
-    expect($result->passes())->toBeTrue()
-        ->and($result->errors)->toBeEmpty();
-});
-
-test('нацрт пресметка не се извезува', function () {
-    $company = Company::factory()->create(['mpin_obvrznik_code' => MpinObvrznik::EMPLOYER]);
-    $run = app(PayrollRunService::class)->open($company, 2026, 5);
-
-    $result = MpinValidator::check($run);
-
-    expect($result->passes())->toBeFalse()
-        ->and($result->errors)->toContain('Пресметката мора да биде потврдена пред извоз.');
-});
-
-test('фирма без вид обврзник не се извезува', function () {
-    $result = MpinValidator::check(mpinRun(['mpin_obvrznik_code' => null]));
-
-    expect($result->errors)->toContain('Фирмата нема внесен вид обврзник за МПИН.');
-});
-
-test('фирма без ЕДБ не се извезува', function () {
-    $result = MpinValidator::check(mpinRun(['tax_id' => null]));
-
-    expect($result->errors)->toContain('Фирмата нема внесен ЕДБ.');
-});
-
-test('работник без подрачна здравствена служба не се извезува', function () {
-    $result = MpinValidator::check(mpinRun([], ['health_area_code' => null]));
-
-    expect($result->errors)
-        ->toContain('Марко Петровски: нема внесена подрачна здравствена служба.');
-});
-
-test('нула денови стаж го блокира извозот', function () {
-    $run = mpinRun();
-    $run->employees->first()->update(['staz_days' => 0]);
-
-    $result = MpinValidator::check($run->fresh());
-
-    expect($result->errors)
-        ->toContain('Марко Петровски: нула денови стаж — датумите на вработување не го покриваат месецот.');
-});
-
-test('неполно работно време со полн фонд е предупредување, не грешка', function () {
-    $run = mpinRun([], ['insurance_type_code' => '0047']);
-
-    $result = MpinValidator::check($run);
-
-    expect($result->passes())->toBeTrue()
-        ->and($result->warnings)->not->toBeEmpty();
-});
 ```
 
-Имињата `Марко Петровски` доаѓаат од `EmployeeFactory`; ако фабриката се смени, промени ги и тука.
+Името „Марко Петровски" доаѓа од `EmployeeFactory`; ако фабриката се смени, промени го и тука.
 
 - [ ] **Step 2: Пушти ги и потврди дека паѓаат**
 
-Run: `php artisan test tests/Feature/Payroll/MpinValidatorTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll/MpinValidatorTest.php`
 Expected: FAIL — класата не постои.
 
 - [ ] **Step 3: Напиши го резултатот**
@@ -1804,7 +2000,7 @@ final class MpinValidator
 
 - [ ] **Step 5: Пушти ги тестовите**
 
-Run: `php artisan test tests/Feature/Payroll/MpinValidatorTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll/MpinValidatorTest.php`
 Expected: PASS
 
 - [ ] **Step 6: Commit**
@@ -1831,69 +2027,100 @@ git commit -m "feat(payroll): refuse an МПИН export УЈП would reject"
 
 - [ ] **Step 1: Напиши ги тестовите што паѓаат**
 
-`tests/Feature/Payroll/MpinExportTest.php`:
+`tests/Feature/Payroll/MpinExportTest.php`, употребувајќи го истиот trait од Task 9:
 
 ```php
 <?php
 
+namespace Tests\Feature\Payroll;
+
+use App\Models\Company;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
+use Tests\Feature\Payroll\Concerns\BuildsMpinRuns;
+use Tests\TestCase;
 
-test('потврдена пресметка се симнува како XML', function () {
-    $run = mpinRun();
-    $admin = User::factory()->admin()->create();
+class MpinExportTest extends TestCase
+{
+    use BuildsMpinRuns, RefreshDatabase;
 
-    $response = $this->actingAs($admin)
-        ->get(route('payroll.mpin-export', [$run->company, $run]));
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Role::findOrCreate('admin');
+    }
 
-    $response->assertOk()
-        ->assertHeader('content-type', 'application/xml; charset=UTF-8');
+    private function admin(): User
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
 
-    expect($response->headers->get('content-disposition'))
-        ->toContain('DESIGNIA DOOEL_2026_05_101.xml');
+        return $admin;
+    }
 
-    expect($response->streamedContent() ?: $response->getContent())
-        ->toBe(file_get_contents(base_path('tests/Fixtures/mpin/obvrznik-110.xml')));
-});
+    public function test_a_confirmed_run_downloads_as_xml(): void
+    {
+        $run = $this->mpinRun();
 
-test('извозот се запишува во евиденција', function () {
-    $run = mpinRun();
-    $admin = User::factory()->admin()->create();
+        $response = $this->actingAs($this->admin())
+            ->get(route('payroll.mpin-export', [$run->company, $run]));
 
-    $this->actingAs($admin)->get(route('payroll.mpin-export', [$run->company, $run]));
+        $response->assertOk();
 
-    $run->refresh();
+        $this->assertStringContainsString(
+            'DESIGNIA DOOEL_2026_05_101.xml',
+            (string) $response->headers->get('content-disposition'),
+        );
 
-    expect($run->mpin_exported_at)->not->toBeNull()
-        ->and($run->mpin_exported_by)->toBe($admin->id);
-});
+        $this->assertSame(
+            file_get_contents(base_path('tests/Fixtures/mpin/obvrznik-110.xml')),
+            $response->getContent(),
+        );
+    }
 
-test('пресметка со грешки не се симнува', function () {
-    $run = mpinRun(['mpin_obvrznik_code' => null]);
-    $admin = User::factory()->admin()->create();
+    public function test_the_export_is_recorded(): void
+    {
+        $run = $this->mpinRun();
+        $admin = $this->admin();
 
-    $this->actingAs($admin)
-        ->get(route('payroll.mpin-export', [$run->company, $run]))
-        ->assertRedirect();
+        $this->actingAs($admin)
+            ->get(route('payroll.mpin-export', [$run->company, $run]));
 
-    expect($run->fresh()->mpin_exported_at)->toBeNull();
-});
+        $run->refresh();
 
-test('пресметка од друга фирма не е достапна', function () {
-    $run = mpinRun();
-    $other = \App\Models\Company::factory()->create();
-    $admin = User::factory()->admin()->create();
+        $this->assertNotNull($run->mpin_exported_at);
+        $this->assertSame($admin->id, $run->mpin_exported_by);
+    }
 
-    $this->actingAs($admin)
-        ->get(route('payroll.mpin-export', [$other, $run]))
-        ->assertNotFound();
-});
+    public function test_a_run_with_errors_does_not_download(): void
+    {
+        $run = $this->mpinRun(['mpin_obvrznik_code' => null]);
+
+        $this->actingAs($this->admin())
+            ->get(route('payroll.mpin-export', [$run->company, $run]))
+            ->assertRedirect();
+
+        $this->assertNull($run->fresh()->mpin_exported_at);
+    }
+
+    public function test_a_run_from_another_company_is_not_reachable(): void
+    {
+        $run = $this->mpinRun();
+        $other = Company::factory()->create();
+
+        $this->actingAs($this->admin())
+            ->get(route('payroll.mpin-export', [$other, $run]))
+            ->assertNotFound();
+    }
+}
 ```
 
-Помошната `mpinRun()` е дефинирана во `MpinValidatorTest.php`. Премести ја во `tests/Pest.php` (или во заедничкиот помошен фајл што проектот веќе го користи) за да ја видат обата тест-фајла, наместо да ја дуплираш.
+Рутата е зад `EnsureAccountingAccess`, па корисникот мора да има улога што ја поминува таа проверка — затоа `admin`. Прочитај го `tests/Feature/Payroll/PayrollAccessTest.php` ако е потребно појаснување за кои улоги поминуваат.
 
 - [ ] **Step 2: Пушти ги и потврди дека паѓаат**
 
-Run: `php artisan test tests/Feature/Payroll/MpinExportTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll/MpinExportTest.php`
 Expected: FAIL — рутата не постои.
 
 - [ ] **Step 3: Напиши ја миграцијата**
@@ -1985,7 +2212,7 @@ Route::get('/payroll-runs/{run}/mpin.xml', MpinExportController::class)->name('m
 
 - [ ] **Step 6: Пушти ги тестовите**
 
-Run: `php artisan test tests/Feature/Payroll/MpinExportTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll/MpinExportTest.php`
 Expected: PASS
 
 - [ ] **Step 7: Commit**
@@ -2010,44 +2237,55 @@ git commit -m "feat(payroll): download the МПИН file from a confirmed run"
 
 - [ ] **Step 1: Напиши ги тестовите што паѓаат**
 
-Додај во `tests/Feature/Payroll/PayrollRunShowTest.php`:
+Додај во постоечката класа `tests/Feature/Payroll/PayrollRunShowTest.php`, и додај му го trait-от `BuildsMpinRuns` од Task 9:
 
 ```php
-test('копчето за МПИН се гледа само на потврдена пресметка', function () {
-    $run = mpinRun();
-    $admin = \App\Models\User::factory()->admin()->create();
+    public function test_the_mpin_button_shows_only_on_a_confirmed_run(): void
+    {
+        $run = $this->mpinRun();
 
-    \Livewire\Livewire::actingAs($admin)
-        ->test(\App\Livewire\Payroll\PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
-        ->assertSee('Извези МПИН');
-});
+        Livewire::actingAs($this->mpinAdmin())
+            ->test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
+            ->assertSee('Извези МПИН');
+    }
 
-test('нацрт пресметка не нуди извоз', function () {
-    $company = \App\Models\Company::factory()->create();
-    $run = app(\App\Services\Payroll\PayrollRunService::class)->open($company, 2026, 5);
-    $admin = \App\Models\User::factory()->admin()->create();
+    public function test_a_draft_run_offers_no_export(): void
+    {
+        $company = Company::factory()->create();
+        $run = app(PayrollRunService::class)->open($company, 2026, 5);
 
-    \Livewire\Livewire::actingAs($admin)
-        ->test(\App\Livewire\Payroll\PayrollRunShow::class, ['company' => $company, 'run' => $run])
-        ->assertDontSee('Извези МПИН');
-});
+        Livewire::actingAs($this->mpinAdmin())
+            ->test(PayrollRunShow::class, ['company' => $company, 'run' => $run])
+            ->assertDontSee('Извези МПИН');
+    }
 
-test('предупредувањата се прикажуваат без да го блокираат копчето', function () {
-    $run = mpinRun([], ['insurance_type_code' => '0047']);
-    $admin = \App\Models\User::factory()->admin()->create();
+    public function test_a_warning_is_shown_without_blocking_the_button(): void
+    {
+        $run = $this->mpinRun([], ['insurance_type_code' => '0047']);
 
-    \Livewire\Livewire::actingAs($admin)
-        ->test(\App\Livewire\Payroll\PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
-        ->assertSee('неполно работно време')
-        ->assertSee('Извези МПИН');
-});
+        Livewire::actingAs($this->mpinAdmin())
+            ->test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
+            ->assertSee('неполно работно време')
+            ->assertSee('Извези МПИН');
+    }
+
+    private function mpinAdmin(): User
+    {
+        Role::findOrCreate('admin');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        return $admin;
+    }
 ```
 
-Провери ги вистинските аргументи на `mount()` во `app/Livewire/Payroll/PayrollRunShow.php` и употреби ги — постоечките тестови во тој фајл го покажуваат образецот.
+Провери ги вистинските аргументи на `mount()` во `app/Livewire/Payroll/PayrollRunShow.php`; ако постоечките тестови во фајлот веќе имаат помошник за админ корисник, употреби го него и изостави го `mpinAdmin()`.
+
+**Внимание со `assertSee`:** Livewire го бега HTML-от по стандард. Ако текстот во приказот содржи наводници или тире како „—", употреби `assertSee($text, false)` за да се спореди без бегство, или провери со покус дел од текстот.
 
 - [ ] **Step 2: Пушти ги и потврди дека паѓаат**
 
-Run: `php artisan test tests/Feature/Payroll/PayrollRunShowTest.php`
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Payroll/PayrollRunShowTest.php`
 Expected: FAIL — текстот не постои.
 
 - [ ] **Step 3: Изложи ги проверките во компонентата**
@@ -2112,7 +2350,7 @@ Run: `npm run build`
 
 - [ ] **Step 6: Пушти го целиот пакет**
 
-Run: `php artisan test`
+Run: `php -d memory_limit=1G vendor/bin/phpunit`
 Expected: PASS — сѐ. Пред фазата беше 1063; сега мора да е повеќе, и ниту еден пад.
 
 - [ ] **Step 7: Дополни ја спецификацијата ако нешто отстапило**
