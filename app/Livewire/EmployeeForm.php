@@ -34,6 +34,8 @@ class EmployeeForm extends Component
 
     public string $municipalityCode = '';
 
+    public string $healthAreaCode = '';
+
     public string $bankAccount = '';
 
     public string $insuranceTypeCode = '0050';
@@ -102,6 +104,7 @@ class EmployeeForm extends Component
         $this->firstName = $employee->first_name;
         $this->lastName = $employee->last_name;
         $this->municipalityCode = (string) $employee->municipality_code;
+        $this->healthAreaCode = (string) $employee->health_area_code;
         $this->bankAccount = $employee->bank_account;
         $this->insuranceTypeCode = $employee->insurance_type_code;
         $this->registrationNumber = (string) $employee->registration_number;
@@ -204,6 +207,7 @@ class EmployeeForm extends Component
             // МПИН needs SifraOpstina, so the card may not be saved without it.
             // The column stays nullable so a later partial import is possible.
             'municipalityCode' => 'required|string|max:16',
+            'healthAreaCode' => ['nullable', 'string', 'max:16'],
             'bankAccount' => 'required|string|max:34',
             'insuranceTypeCode' => 'required|string|max:16',
             'registrationNumber' => 'nullable|string|max:32',
@@ -237,6 +241,7 @@ class EmployeeForm extends Component
             'first_name' => $validated['firstName'],
             'last_name' => $validated['lastName'],
             'municipality_code' => $validated['municipalityCode'],
+            'health_area_code' => $validated['healthAreaCode'] ?: null,
             'bank_account' => $validated['bankAccount'],
             'insurance_type_code' => $validated['insuranceTypeCode'],
             'registration_number' => $validated['registrationNumber'] ?: null,

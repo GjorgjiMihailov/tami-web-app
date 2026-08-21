@@ -431,6 +431,28 @@ class EmployeeFormTest extends TestCase
         $this->assertSame(24, Employee::where('embg', '3101980455019')->first()->prior_service_months);
     }
 
+    public function test_the_health_area_code_is_saved(): void
+    {
+        $company = Company::factory()->create();
+        $this->actAsAdmin();
+
+        Livewire::test(EmployeeForm::class, ['company' => $company])
+            ->set('embg', '3101980455019')
+            ->set('firstName', 'Марко')
+            ->set('lastName', 'Петровски')
+            ->set('municipalityCode', '175')
+            ->set('bankAccount', '300000000000000')
+            ->set('insuranceTypeCode', '0050')
+            ->set('healthAreaCode', '4061')
+            ->set('employedOn', '2026-01-01')
+            ->set('salaryEffectiveFrom', '2026-01-01')
+            ->set('gross', '38507')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('4061', Employee::first()->health_area_code);
+    }
+
     public function test_a_client_may_edit_their_own_companys_employee(): void
     {
         $company = Company::factory()->create();

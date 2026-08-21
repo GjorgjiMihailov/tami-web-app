@@ -15,6 +15,7 @@ class Employee extends Model
 
     protected $fillable = [
         'company_id', 'embg', 'first_name', 'last_name', 'municipality_code',
+        'health_area_code',
         'bank_account', 'insurance_type_code', 'registration_number',
         'employed_on', 'terminated_on', 'movement_code', 'exemption_code',
         'weekly_hours', 'prior_service_months', 'address', 'phone', 'email',
