@@ -14,6 +14,7 @@ use App\Models\PayrollRunEmployee;
 use App\Models\PayrollRunLine;
 use App\Support\Payroll\LineType;
 use App\Support\Payroll\MonthCoverage;
+use App\Support\Payroll\MpinObvrznik;
 use App\Support\Payroll\PayrollRunCalculator;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -92,6 +93,11 @@ class PayrollRunService
             $parameters = $run->parameter;
             $asOf = $run->endOfMonth();
 
+            // Once per run, not once per employee: a company whose obvrznik
+            // type is unset behaves exactly as before, and re-fetching it
+            // inside the loop would only repeat the same query.
+            $obvrznik = $run->company->mpin_obvrznik_code ?? MpinObvrznik::EMPLOYER;
+
             foreach ($run->employees()->with(['employee', 'lines'])->get() as $runEmployee) {
                 $employee = $runEmployee->employee;
                 $coverage = $employee->coverageIn($run->year, $run->month);
@@ -99,7 +105,7 @@ class PayrollRunService
 
                 $fullMonthGross = $salary === null
                     ? 0.0
-                    : PayrollRunCalculator::fullMonthGross((float) $salary->amount, $salary->basis, $parameters);
+                    : PayrollRunCalculator::fullMonthGross((float) $salary->amount, $salary->basis, $parameters, $obvrznik);
 
                 $inputLines = $runEmployee->lines
                     ->reject(fn (PayrollRunLine $line) => $line->is_automatic)
@@ -122,6 +128,7 @@ class PayrollRunService
                     inputLines: $inputLines,
                     parameters: $parameters,
                     minBase: $this->minimumBaseFor($coverage, $parameters),
+                    obvrznik: $obvrznik,
                 );
 
                 $runEmployee->lines()->delete();

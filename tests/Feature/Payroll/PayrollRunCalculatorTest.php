@@ -5,6 +5,7 @@ namespace Tests\Feature\Payroll;
 use App\Models\PayrollParameter;
 use App\Models\PayrollRunLine;
 use App\Support\Payroll\LineType;
+use App\Support\Payroll\MpinObvrznik;
 use App\Support\Payroll\PayrollRunCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -279,5 +280,32 @@ class PayrollRunCalculatorTest extends TestCase
         $julyGross = PayrollRunCalculator::fullMonthGross(30000.0, 'net', $july);
 
         $this->assertSame((int) round($januaryGross), (int) round($julyGross));
+    }
+
+    public function test_a_self_employed_run_has_no_tax_and_no_unemployment(): void
+    {
+        $whole = PayrollRunCalculator::calculate(
+            fullMonthGross: 34571,
+            monthHours: 88,
+            seniorityYears: 0,
+            inputLines: [[
+                'kind' => PayrollRunLine::KIND_HOURS,
+                'code' => '001',
+                'description' => 'Редовни работни часови',
+                'hours' => 88,
+                'percent' => 100.0,
+                'amount' => null,
+                'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
+            ]],
+            parameters: PayrollParameter::forDate('2026-01-31'),
+            minBase: null,
+            obvrznik: MpinObvrznik::SELF_EMPLOYED,
+        )->breakdown->whole();
+
+        // Бројките се од вистинска поднесена МПИН датотека за јануари 2026.
+        $this->assertSame(34571, $whole['gross']);
+        $this->assertSame(0, $whole['unemployment']);
+        $this->assertSame(0, $whole['tax']);
+        $this->assertSame(25306, $whole['net']);
     }
 }

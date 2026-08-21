@@ -28,10 +28,14 @@ final class PayrollRunCalculator
      * worth, and the per-hour rate everything else derives from divides it.
      * Prorating here would move the hourly rate itself.
      */
-    public static function fullMonthGross(float $amount, string $basis, PayrollParameter $parameters): float
-    {
+    public static function fullMonthGross(
+        float $amount,
+        string $basis,
+        PayrollParameter $parameters,
+        MpinObvrznik $obvrznik = MpinObvrznik::EMPLOYER,
+    ): float {
         return $basis === 'net'
-            ? SalaryCalculator::fromNet($amount, $parameters)->gross
+            ? SalaryCalculator::fromNet($amount, $parameters, null, $obvrznik)->gross
             : round($amount, 2);
     }
 
@@ -49,6 +53,7 @@ final class PayrollRunCalculator
         array $inputLines,
         PayrollParameter $parameters,
         ?float $minBase = null,
+        MpinObvrznik $obvrznik = MpinObvrznik::EMPLOYER,
     ): PayrollRunResult {
         // Deliberately NOT rounded before it is multiplied out. Rounding the
         // rate first makes a plain full month miss the agreed gross: 38 507 over
@@ -133,7 +138,7 @@ final class PayrollRunCalculator
         $employerGross = round($employerGross, 2);
         $deductionsTotal = round($deductionsTotal, 2);
 
-        $breakdown = SalaryCalculator::fromGross($gross, $parameters, $minBase);
+        $breakdown = SalaryCalculator::fromGross($gross, $parameters, $minBase, $obvrznik);
 
         // Contributions and tax are charged on the whole salary — the personal
         // allowance is deducted once, not per line — so the employer's share
