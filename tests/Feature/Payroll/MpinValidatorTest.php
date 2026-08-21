@@ -4,6 +4,7 @@ namespace Tests\Feature\Payroll;
 
 use App\Models\Company;
 use App\Models\PayrollMonthHours;
+use App\Models\PayrollRunLine;
 use App\Services\Payroll\PayrollRunService;
 use App\Support\Payroll\Mpin\MpinValidator;
 use App\Support\Payroll\MpinObvrznik;
@@ -94,25 +95,83 @@ class MpinValidatorTest extends TestCase
         );
     }
 
+    /**
+     * insurance_type_code 0047 (неполно работно време) со weekly_hours сепак
+     * на 40 дејствуваат два сигнала одеднаш: стариот (внесените часови оваа
+     * пресметка сепак излегуваат на ниво на цел фонд) и директната
+     * противречност шифра/картон подолу (0047 со неделен фонд од 40 часа).
+     * Двете assertContains тврдења овде докажуваат дека и двете сè уште
+     * постојат.
+     */
     public function test_a_part_time_code_on_a_full_fund_warns_but_does_not_block(): void
     {
         $result = MpinValidator::check($this->mpinRun([], ['insurance_type_code' => '0047']));
 
         $this->assertTrue($result->passes());
-        $this->assertNotSame([], $result->warnings);
+        $this->assertContains(
+            'Марко Петровски: шифрата 0047 значи неполно работно време, а часовите се како за полно.',
+            $result->warnings,
+        );
+        $this->assertContains(
+            'Марко Петровски: шифрата 0047 значи неполно работно време, а во картонот на вработениот неделниот фонд е 40 часа.',
+            $result->warnings,
+        );
     }
 
     /**
      * Работник вработен на 15-ти не го покрива целиот месец по дизајн — ова е
      * нормален делумен месец (5c: партиални месеци), не пропуштени часови.
-     * Ако предупредувањето за „часовите се помалку од фондот" не го земе ова
-     * предвид, би пукало на секој нов вработен во текот на месецот — токму
-     * бучавата што предупредувањата треба да ја избегнат.
+     * И очекуваните и вистинските часови се сведени по истото правило на
+     * MonthCoverage, па се совпаѓаат точно и предупредувањето молчи —
+     * наместо да пука на секој нов вработен во текот на месецот, што би била
+     * бучава што учи луѓето да ги игнорираат предупредувањата.
      */
     public function test_a_mid_month_hire_does_not_warn_about_short_hours(): void
     {
         $result = MpinValidator::check($this->mpinRun([], ['employed_on' => '2026-05-15']));
 
         $this->assertSame([], $result->warnings);
+    }
+
+    /**
+     * Спротивниот случај од претходниот тест: истиот делумен месец, но
+     * часовите на линијата се рачно намалени под сведеното очекување (на
+     * пример, неплатено отсуство). Гејт на цел месец (isFullMonth) целосно ќе
+     * го изгасеше ова предупредување за секој делумен месец — сведувањето на
+     * очекувањето наместо тоа го задржува сигналот.
+     */
+    public function test_a_mid_month_hire_with_short_hours_still_warns(): void
+    {
+        $run = $this->mpinRun([], ['employed_on' => '2026-05-15']);
+
+        $run->employees->first()->lines
+            ->firstWhere('kind', PayrollRunLine::KIND_HOURS)
+            ->update(['hours' => 1]);
+
+        $result = MpinValidator::check($run->fresh());
+
+        $this->assertContains(
+            'Марко Петровски: шифрата 0050 значи полно работно време, а часовите се помалку од очекуваните за покриениот период.',
+            $result->warnings,
+        );
+    }
+
+    /**
+     * Огледален случај на 0047-со-40-часа: 0050 (полно работно време) чиј
+     * договорен неделен фонд во картонот на вработениот е под 40 часа.
+     * monthFund() го сведува фондот по weekly_hours без оглед на шифрата, па
+     * часовите излегуваат точно колку „треба" за 20 часа неделно и другите две
+     * предупредувања молчат — само директната проверка шифра-наспроти-картон
+     * го фаќа ова.
+     */
+    public function test_a_full_time_code_with_part_time_hours_warns(): void
+    {
+        $result = MpinValidator::check($this->mpinRun([], ['weekly_hours' => 20]));
+
+        $this->assertTrue($result->passes());
+        $this->assertContains(
+            'Марко Петровски: шифрата 0050 значи полно работно време, а во картонот на вработениот неделниот фонд е под 40 часа.',
+            $result->warnings,
+        );
     }
 }
