@@ -27,3 +27,8 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# УЈП reference material: codebooks, XSDs and the МПИН guide. Downloaded,
+# never authored here, and large binaries. Phase 5c reads them to generate
+# the seeded JSON codebooks; the generated JSON is committed, these are not.
+/ujp_mpin_xml
