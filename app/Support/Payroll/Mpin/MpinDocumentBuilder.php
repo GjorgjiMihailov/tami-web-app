@@ -169,8 +169,16 @@ final class MpinDocumentBuilder
         $employee = $row->employee;
         $amounts = self::amounts($row, $obvrznik);
 
-        $hourLines = $row->lines
-            ->where('kind', PayrollRunLine::KIND_HOURS)
+        // Ниво 3 мора да збирува точно до ниво 2 (BrutoIznosVkVrab = $row->gross),
+        // а $row->gross ги вклучува и не-часовните ставки (на пр. минат труд,
+        // KIND_AMOUNT). Затоа тука не се филтрира само KIND_HOURS — шифрарникот
+        // rab_cas на УЈП за SifraTipRabotenCas ги држи истите шифри во еден
+        // список (001 редовни часови, 037 минат труд, 034 награда - износ, …),
+        // значи ставка со износ без часови е легитимен ред на ниво 3, не
+        // исклучок. Задршките (KIND_DEDUCTION) го намалуваат нетото, не
+        // брутото — $row->gross веќе не ги содржи, па остануваат надвор.
+        $detailLines = $row->lines
+            ->reject(fn (PayrollRunLine $line) => $line->kind === PayrollRunLine::KIND_DEDUCTION)
             ->values();
 
         self::add($dom, $node, 'RedenBroj', (string) $ordinal);
@@ -183,9 +191,12 @@ final class MpinDocumentBuilder
             self::add($dom, $node, $suffix.'VkVrab', (string) $amounts[$key]);
         }
 
-        self::add($dom, $node, 'RabotniCasoviVkVrab', (string) $hourLines->sum('hours'));
+        // Ставките со износ (на пр. минат труд) немаат часови (hours е null),
+        // па придонесуваат 0 во овој збир — вредноста останува иста како кога
+        // се сумираа само KIND_HOURS редовите.
+        self::add($dom, $node, 'RabotniCasoviVkVrab', (string) $detailLines->sum('hours'));
 
-        foreach ($hourLines as $index => $line) {
+        foreach ($detailLines as $index => $line) {
             $node->appendChild(self::detailNode(
                 $dom,
                 $run,
@@ -235,7 +246,9 @@ final class MpinDocumentBuilder
         self::add($dom, $node, 'SifraPodracnoZdravstvo', (string) $employee->health_area_code);
         self::add($dom, $node, 'SifraOsloboduvanje', (string) $employee->exemption_code);
         self::add($dom, $node, 'NadlezenOrganEdb', '');
-        self::add($dom, $node, 'BrojCasovi', (string) $line->hours);
+        // hours е nullable (ставки со износ, на пр. минат труд, немаат часови)
+        // — мора да излезе „0", не празен елемент.
+        self::add($dom, $node, 'BrojCasovi', (string) ($line->hours ?? 0));
         self::add($dom, $node, 'BrutoIznos', (string) (int) round($line->amount));
 
         return $node;
