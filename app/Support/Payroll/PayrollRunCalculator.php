@@ -100,8 +100,13 @@ final class PayrollRunCalculator
         // The seniority bonus is derived, so it is appended rather than
         // entered. It rides on the base lines only: sick leave is already a
         // percentage of the salary, and uplifting overtime or a meal allowance
-        // by length of service is not what минат труд is.
-        $seniorityAmount = round($baseTotal * LineType::SENIORITY_PERCENT_PER_YEAR * $seniorityYears / 100, 2);
+        // by length of service is not what минат труд is. It is also an
+        // employment-relationship benefit — a self-employed obvrznik has no
+        // employer to owe it, confirmed by a real filing with 6 years of
+        // service and no seniority line (MpinObvrznik::paysSeniorityBonus()).
+        $seniorityAmount = $obvrznik->paysSeniorityBonus()
+            ? round($baseTotal * LineType::SENIORITY_PERCENT_PER_YEAR * $seniorityYears / 100, 2)
+            : 0.0;
 
         if ($seniorityAmount > 0) {
             $lines[] = new PayrollRunLineResult(

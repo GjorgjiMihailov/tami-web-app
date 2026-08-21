@@ -25,10 +25,15 @@ class MpinDocumentBuilderTest extends TestCase
         float $gross,
         int $month,
     ): PayrollRun {
-        // 21 работни денови по 8 часа = 168 — фондот што стои во вистинската
-        // датотека за мај 2026. PayrollRunService::open() бара внесен фонд,
-        // тоа не е дел од фабриката.
-        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => $month], ['hours' => 168]);
+        // Фондот што стои во вистинските датотеки: 168 за мај 2026 (21
+        // работен ден по 8 часа) и 176 за јануари 2026 (22 работни дена по 8
+        // часа; празниците не се одземаат). PayrollRunService::open() бара
+        // внесен фонд, тоа не е дел од фабриката.
+        $hoursByMonth = [1 => 176, 5 => 168];
+        PayrollMonthHours::firstOrCreate(
+            ['year' => 2026, 'month' => $month],
+            ['hours' => $hoursByMonth[$month]],
+        );
 
         $employee = Employee::factory()->for($company)->create([
             'exemption_code' => null,
@@ -51,7 +56,13 @@ class MpinDocumentBuilderTest extends TestCase
         return $service->confirm($service->open($company, 2026, $month), $user->id)->fresh();
     }
 
-    public function test_an_obvrznik_110_filing_is_reproduced_byte_for_byte(): void
+    /**
+     * Го гради истиот XML што еталонот за обврзник 110 го проверува. Изваден
+     * во помошник за да не се повторува пополнувањето во форматните тестови,
+     * кои намерно го проверуваат ПРОИЗВЕДЕНИОТ XML, не еталонот — еталон што
+     * сам себе се проверува не докажува ништо.
+     */
+    private function designiaXml(): string
     {
         $company = Company::factory()->create([
             'name' => 'DESIGNIA DOOEL',
@@ -59,7 +70,7 @@ class MpinDocumentBuilderTest extends TestCase
             'mpin_obvrznik_code' => MpinObvrznik::EMPLOYER,
         ]);
 
-        $run = $this->confirmedRun($company, [
+        return MpinDocumentBuilder::build($this->confirmedRun($company, [
             'embg' => '0101990450006',
             'municipality_code' => '130',
             'health_area_code' => '4061',
@@ -68,11 +79,65 @@ class MpinDocumentBuilderTest extends TestCase
             'movement_code' => '1',
             'weekly_hours' => 40,
             'employed_on' => '2026-01-01',
-        ], 38507, 5);
+        ], 38507, 5));
+    }
 
+    public function test_an_obvrznik_110_filing_is_reproduced_byte_for_byte(): void
+    {
         $this->assertSame(
             file_get_contents(base_path('tests/Fixtures/mpin/obvrznik-110.xml')),
+            $this->designiaXml(),
+        );
+    }
+
+    public function test_an_obvrznik_111_part_time_filing_is_reproduced_byte_for_byte(): void
+    {
+        $company = Company::factory()->create([
+            'name' => 'ADVOKAT STEFAN KOTEV',
+            'tax_id' => '4090000000000',
+            'mpin_obvrznik_code' => MpinObvrznik::SELF_EMPLOYED,
+        ]);
+
+        $run = $this->confirmedRun($company, [
+            'embg' => '1503880410003',
+            'municipality_code' => '182',
+            'health_area_code' => '4061',
+            'bank_account' => '300000000000001',
+            'insurance_type_code' => '0047',
+            'movement_code' => '1',
+            'exemption_code' => '001',
+            'weekly_hours' => 20,
+            'employed_on' => '2020-01-01',
+        ], 34571, 1);
+
+        $this->assertSame(
+            file_get_contents(base_path('tests/Fixtures/mpin/obvrznik-111.xml')),
             MpinDocumentBuilder::build($run),
+        );
+    }
+
+    public function test_an_empty_element_is_not_self_closing(): void
+    {
+        $xml = $this->designiaXml();
+
+        $this->assertStringContainsString('<Zabeleska></Zabeleska>', $xml);
+        $this->assertStringContainsString('<NadlezenOrganEdb></NadlezenOrganEdb>', $xml);
+        $this->assertStringNotContainsString('/>', $xml);
+    }
+
+    public function test_the_day_has_no_leading_zero_but_the_month_does(): void
+    {
+        $xml = $this->designiaXml();
+
+        $this->assertStringContainsString('<DatumPocetok>1.05.2026</DatumPocetok>', $xml);
+        $this->assertStringNotContainsString('<DatumPocetok>01.05.2026</DatumPocetok>', $xml);
+    }
+
+    public function test_no_amount_carries_a_decimal(): void
+    {
+        $this->assertSame(
+            0,
+            preg_match('/<[A-Za-z]*Iznos[A-Za-z]*>-?[0-9]+\.[0-9]+</', $this->designiaXml()),
         );
     }
 
