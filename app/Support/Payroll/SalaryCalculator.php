@@ -16,8 +16,12 @@ class SalaryCalculator
      *                               charged a whole month of minimum-base
      *                               contributions.
      */
-    public static function fromGross(float $gross, PayrollParameter $p, ?float $minBase = null): SalaryBreakdown
-    {
+    public static function fromGross(
+        float $gross,
+        PayrollParameter $p,
+        ?float $minBase = null,
+        MpinObvrznik $obvrznik = MpinObvrznik::EMPLOYER,
+    ): SalaryBreakdown {
         // The employee's own contributions are charged on their gross, capped
         // at the maximum base. The minimum base does NOT raise this — see the
         // top-up below.
@@ -26,11 +30,19 @@ class SalaryCalculator
         $pension = self::share($base, $p->rate_pension);
         $health = self::share($base, $p->rate_health);
         $injury = self::share($base, $p->rate_injury);
-        $unemployment = self::share($base, $p->rate_unemployment);
+        $unemployment = $obvrznik->chargesUnemployment()
+            ? self::share($base, $p->rate_unemployment)
+            : 0.0;
         $contributions = round($pension + $health + $injury + $unemployment, 2);
 
-        $taxBase = round(max($gross - $contributions - $p->personal_allowance, 0), 2);
-        $tax = self::share($taxBase, $p->rate_tax);
+        // Самостојниот вршител го плаќа личниот данок годишно, не преку МПИН, па
+        // и основицата и данокот се нула — не само личното ослободување. Ако беше
+        // само отсуство на ослободување, данокот ќе беше 10% од бруто минус
+        // придонеси, што вистинската датотека го демантира.
+        $taxBase = $obvrznik->chargesMonthlyTax()
+            ? round(max($gross - $contributions - $p->personal_allowance, 0), 2)
+            : 0.0;
+        $tax = $obvrznik->chargesMonthlyTax() ? self::share($taxBase, $p->rate_tax) : 0.0;
         $net = round($gross - $contributions - $tax, 2);
 
         // The top-up to the minimum base is the employer's obligation. It is
@@ -48,7 +60,9 @@ class SalaryCalculator
         $topUpPension = self::share($shortfall, $p->rate_pension);
         $topUpHealth = self::share($shortfall, $p->rate_health);
         $topUpInjury = self::share($shortfall, $p->rate_injury);
-        $topUpUnemployment = self::share($shortfall, $p->rate_unemployment);
+        $topUpUnemployment = $obvrznik->chargesUnemployment()
+            ? self::share($shortfall, $p->rate_unemployment)
+            : 0.0;
 
         return new SalaryBreakdown(
             gross: round($gross, 2),
@@ -73,8 +87,12 @@ class SalaryCalculator
      * closed formula does not exist: the minimum base and the zero floor on
      * the tax base each put a kink in the curve.
      */
-    public static function fromNet(float $net, PayrollParameter $p, ?float $minBase = null): SalaryBreakdown
-    {
+    public static function fromNet(
+        float $net,
+        PayrollParameter $p,
+        ?float $minBase = null,
+        MpinObvrznik $obvrznik = MpinObvrznik::EMPLOYER,
+    ): SalaryBreakdown {
         if ($net < 0) {
             throw new InvalidArgumentException('Нето платата не може да биде негативна.');
         }
@@ -88,7 +106,7 @@ class SalaryCalculator
         for ($i = 0; $i < 200; $i++) {
             $mid = ($low + $high) / 2;
 
-            if (self::fromGross($mid, $p, $minBase)->net < $net) {
+            if (self::fromGross($mid, $p, $minBase, $obvrznik)->net < $net) {
                 $low = $mid;
             } else {
                 $high = $mid;
@@ -97,7 +115,7 @@ class SalaryCalculator
 
         // Salaries are agreed in whole denars; recompute from the rounded gross
         // so every figure in the breakdown belongs to the same gross.
-        return self::fromGross(round($high), $p, $minBase);
+        return self::fromGross(round($high), $p, $minBase, $obvrznik);
     }
 
     private static function share(float $base, float $ratePercent): float
