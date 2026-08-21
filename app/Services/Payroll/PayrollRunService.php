@@ -63,7 +63,7 @@ class PayrollRunService
                     'kind' => PayrollRunLine::KIND_HOURS,
                     'code' => '001',
                     'description' => LineType::label('001'),
-                    'hours' => $employee->coverageIn($year, $month)->hours($fund->hours),
+                    'hours' => $employee->coverageIn($year, $month)->hours($employee->monthFund($fund->hours)),
                     'percent' => 100,
                     'amount' => 0,
                     'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
@@ -117,7 +117,7 @@ class PayrollRunService
 
                 $result = PayrollRunCalculator::calculate(
                     fullMonthGross: $fullMonthGross,
-                    monthHours: $run->month_hours,
+                    monthHours: $employee->monthFund($run->month_hours),
                     seniorityYears: $employee->seniorityYearsOn($asOf),
                     inputLines: $inputLines,
                     parameters: $parameters,

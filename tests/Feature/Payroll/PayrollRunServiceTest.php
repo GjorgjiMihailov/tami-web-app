@@ -44,6 +44,24 @@ class PayrollRunServiceTest extends TestCase
         return $employee;
     }
 
+    private function partTimeEmployeeOn(Company $company, float $amount, int $weeklyHours): Employee
+    {
+        $employee = Employee::factory()->for($company)->create([
+            'employed_on' => '2026-01-01',
+            'prior_service_months' => 0,
+            'weekly_hours' => $weeklyHours,
+        ]);
+
+        EmployeeSalary::create([
+            'employee_id' => $employee->id,
+            'effective_from' => '2026-01-01',
+            'amount' => $amount,
+            'basis' => 'gross',
+        ]);
+
+        return $employee;
+    }
+
     public function test_it_opens_a_run_with_every_active_employee_on_full_hours(): void
     {
         $company = Company::factory()->create();
@@ -423,5 +441,49 @@ class PayrollRunServiceTest extends TestCase
         $run = $service->recalculate($run->fresh());
 
         $this->assertSame(20, $run->employees->first()->staz_days);
+    }
+
+    public function test_a_half_time_employee_gets_half_the_fund(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 1, 'hours' => 176]);
+        $this->partTimeEmployeeOn($company, 34571, 20);
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 1);
+
+        // Јануари 2026 има 22 работни дена, значи фонд 176 за полно работно
+        // време. Празниците не се одземаат — потврдено со вистинска МПИН
+        // датотека каде истиот работник има 88 часа.
+        $this->assertSame(176, $run->month_hours);
+
+        $line = $run->employees->first()->lines->firstWhere('code', '001');
+        $this->assertSame(88, $line->hours);
+    }
+
+    public function test_half_the_fund_does_not_move_the_agreed_gross(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 1, 'hours' => 176]);
+        $this->partTimeEmployeeOn($company, 34571, 20);
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 1);
+
+        $this->assertSame(34571.0, round((float) $run->employees->first()->gross));
+    }
+
+    public function test_a_full_time_employee_is_untouched(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 5, 'hours' => 168]);
+        $this->partTimeEmployeeOn($company, 38507, 40);
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 5);
+
+        $line = $run->employees->first()->lines->firstWhere('code', '001');
+        $this->assertSame(168, $line->hours);
+        $this->assertSame(38507.0, round((float) $run->employees->first()->gross));
     }
 }
