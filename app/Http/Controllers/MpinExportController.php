@@ -12,6 +12,15 @@ use Symfony\Component\HttpFoundation\Response;
 
 class MpinExportController extends Controller
 {
+    /**
+     * Знаци што Windows не ги дозволува во име на датотека — корисникот ги
+     * зачувува овие извози во C:\MyGPM\MPIN_XML\..., па име со кое било од
+     * нив би паднало таму тивко (без грешка тука, но и без успешно зачувано
+     * име). Symfony само фрла исклучок за / и \; остатокот го проверуваме
+     * самите за истата причина.
+     */
+    private const WINDOWS_ILLEGAL_CHARACTERS = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
+
     public function __invoke(Company $company, PayrollRun $run): Response
     {
         Gate::authorize('view', $company);
@@ -40,7 +49,23 @@ class MpinExportController extends Controller
         // filename*=UTF-8''... и ASCII резерва преку filename=. Резервата не
         // смее да доаѓа од името на фирмата (транслитерацијата би била
         // погрешна); наместо тоа е составена само од сигурни податоци.
-        $filename = MpinDocumentBuilder::fileName($run);
+        //
+        // MpinDocumentBuilder::fileName() си останува непроменето — тоа е
+        // вистинското име и Task 11 (или некој друг повикувач) можеби сака
+        // токму него. Чистењето се случува само тука, на самата граница
+        // каде името оди во HTTP заглавие: / и \ HeaderUtils директно ги
+        // одбива (фрла исклучок — 500 при секој извоз за фирма со „/“ во
+        // името, на пр. „Импорт/Експорт“, а тоа не е измислен случај за
+        // македонски фирми со комбинирана дејност); : * ? " < > | Symfony ги
+        // прифаќа без исклучок, но Windows ги одбива при зачувување на
+        // датотеката во C:\MyGPM\MPIN_XML\..., што би било тивок неуспех.
+        // Затоа целото множество се третира исто: заменето со цртичка, знак
+        // дозволен насекаде и што не се чита како печатна грешка.
+        $filename = str_replace(
+            self::WINDOWS_ILLEGAL_CHARACTERS,
+            '-',
+            MpinDocumentBuilder::fileName($run),
+        );
         $fallback = sprintf('mpin-%d-%02d-101.xml', $run->year, $run->month);
 
         return response($xml, 200, [

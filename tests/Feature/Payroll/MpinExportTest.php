@@ -147,7 +147,46 @@ class MpinExportTest extends TestCase
 
         $parts = $this->parseDisposition($header);
 
-        $this->assertSame(MpinDocumentBuilder::fileName($run), $parts['filename']);
+        // Наводникот е и знак што Windows го одбива во име на датотека
+        // (корисникот ги зачувува овие XML-иња во C:\MyGPM\MPIN_XML\...), па
+        // заглавието го заменува со цртичка исто како „/“ и „\“ — не само за
+        // да не се скрши заглавието (тоа RFC 5987 енкодирањето веќе го
+        // спречува), туку и датотеката да се зачувува чисто на Windows.
+        $this->assertSame(
+            'АБЦ -ДОО- ДООЕЛ_2026_05_101.xml',
+            $parts['filename'],
+        );
+        $this->assertStringNotContainsString('"', $parts['filename']);
         $this->assertMatchesRegularExpression('/^[\x20-\x7e]*$/', $parts['fallback']);
+    }
+
+    public function test_a_slash_in_the_company_name_does_not_break_the_export(): void
+    {
+        // Комбинирана дејност е сосема обична причина за „/“ во регистрирано
+        // име на македонска фирма („Импорт/Експорт“ и слично). HeaderUtils
+        // фрла исклучок ако „/“ или „\“ стигнат до неа некои
+        // — ова го фаќа тоа пред да стане 500 при секој обид за извоз.
+        $run = $this->mpinRun(['name' => 'TRGOVIJA/USLUGI DOOEL']);
+
+        $response = $this->actingAs($this->admin())
+            ->get(route('payroll.mpin-export', [$run->company, $run]));
+
+        $response->assertOk();
+
+        $parts = $this->parseDisposition((string) $response->headers->get('content-disposition'));
+
+        // Вистинското име на градителот сè уште содржи „/“ — само
+        // заглавието го чисти, не MpinDocumentBuilder::fileName().
+        $trueName = MpinDocumentBuilder::fileName($run);
+        $this->assertStringContainsString('/', $trueName);
+
+        $sanitised = str_replace(
+            ['/', '\\', ':', '*', '?', '"', '<', '>', '|'],
+            '-',
+            $trueName,
+        );
+
+        $this->assertSame($sanitised, $parts['filename']);
+        $this->assertStringNotContainsString('/', $parts['filename']);
     }
 }
