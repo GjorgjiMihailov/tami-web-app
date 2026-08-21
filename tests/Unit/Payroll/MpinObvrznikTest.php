@@ -21,6 +21,12 @@ class MpinObvrznikTest extends TestCase
         $this->assertSame('111', MpinObvrznik::SELF_EMPLOYED->value);
     }
 
+    public function test_only_an_employer_pays_the_seniority_bonus(): void
+    {
+        $this->assertTrue(MpinObvrznik::EMPLOYER->paysSeniorityBonus());
+        $this->assertFalse(MpinObvrznik::SELF_EMPLOYED->paysSeniorityBonus());
+    }
+
     public function test_every_case_carries_a_macedonian_label(): void
     {
         foreach (MpinObvrznik::cases() as $case) {

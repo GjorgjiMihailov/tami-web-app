@@ -101,9 +101,14 @@ final class PayrollRunCalculator
         // entered. It rides on the base lines only: sick leave is already a
         // percentage of the salary, and uplifting overtime or a meal allowance
         // by length of service is not what минат труд is. It is also an
-        // employment-relationship benefit — a self-employed obvrznik has no
-        // employer to owe it, confirmed by a real filing with 6 years of
-        // service and no seniority line (MpinObvrznik::paysSeniorityBonus()).
+        // employment-relationship benefit under the Law on Labor Relations —
+        // gated off for a self-employed obvrznik, who has no employer to owe
+        // it. See MpinObvrznik::paysSeniorityBonus() for the actual evidence:
+        // the real 111 filing's DatumPocetok carries no hire-date information
+        // (it is month coverage, not employed_on), so the gate rests on the
+        // filing's gross being a fixed statutory base rather than a negotiated
+        // salary, plus the self-employed regime codes on the same line — not
+        // on any observed tenure. Pending the accountant's confirmation.
         $seniorityAmount = $obvrznik->paysSeniorityBonus()
             ? round($baseTotal * LineType::SENIORITY_PERCENT_PER_YEAR * $seniorityYears / 100, 2)
             : 0.0;
