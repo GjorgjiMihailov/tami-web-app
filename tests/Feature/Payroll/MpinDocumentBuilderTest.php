@@ -7,8 +7,10 @@ use App\Models\Employee;
 use App\Models\EmployeeSalary;
 use App\Models\PayrollMonthHours;
 use App\Models\PayrollRun;
+use App\Models\PayrollRunLine;
 use App\Models\User;
 use App\Services\Payroll\PayrollRunService;
+use App\Support\Payroll\LineType;
 use App\Support\Payroll\Mpin\MpinDocumentBuilder;
 use App\Support\Payroll\MpinObvrznik;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -207,6 +209,156 @@ class MpinDocumentBuilderTest extends TestCase
         $this->assertNotFalse($seniorityIndex);
         $this->assertSame('0', (string) $details[$seniorityIndex]->DenoviStaz);
         $this->assertSame('0', (string) $details[$seniorityIndex]->BrojCasovi);
+    }
+
+    /**
+     * Потврдена пресметка чии заокружувања намерно се разидуваат: фонд 160
+     * часа, договорено бруто 34 571, 8 часа боледување на 70% и една завршена
+     * година стаж. Линиите излегуваат 32 842,45 + 1 209,99 + 164,21 = 34 216,65
+     * — заокружениот збир е 34 217, а збирот на заокружените линии 34 216.
+     */
+    private function roundingClashRun(): PayrollRun
+    {
+        PayrollMonthHours::firstOrCreate(
+            ['year' => 2026, 'month' => 4],
+            ['hours' => 160],
+        );
+
+        $company = Company::factory()->create([
+            'name' => 'DESIGNIA DOOEL',
+            'tax_id' => '4080000000000',
+            'mpin_obvrznik_code' => MpinObvrznik::EMPLOYER,
+        ]);
+
+        $employee = Employee::factory()->for($company)->create([
+            'embg' => '0101990450006',
+            'municipality_code' => '130',
+            'health_area_code' => '4061',
+            'bank_account' => '300000000000000',
+            'insurance_type_code' => '0050',
+            'movement_code' => '1',
+            'exemption_code' => null,
+            'weekly_hours' => 40,
+            'employed_on' => '2026-01-01',
+            'terminated_on' => null,
+            // 4 месеци во фирмава + 12 донесени = 16 месеци = точно една
+            // завршена година, значи минат труд > 0.
+            'prior_service_months' => 12,
+        ]);
+
+        EmployeeSalary::create([
+            'employee_id' => $employee->id,
+            'effective_from' => '2026-01-01',
+            'amount' => 34571,
+            'basis' => 'gross',
+        ]);
+
+        $service = app(PayrollRunService::class);
+        $run = $service->open($company, 2026, 4);
+        $row = $run->employees->first();
+
+        $row->lines->firstWhere('code', '001')->update(['hours' => 152]);
+
+        PayrollRunLine::create([
+            'payroll_run_employee_id' => $row->id,
+            'kind' => PayrollRunLine::KIND_HOURS,
+            'code' => '125',
+            'description' => LineType::label('125'),
+            'hours' => 8,
+            'percent' => 70,
+            'amount' => 0,
+            'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
+            'is_automatic' => false,
+        ]);
+
+        $user = User::factory()->create();
+
+        return $service->confirm($service->recalculate($run->fresh()), $user->id)->fresh();
+    }
+
+    /**
+     * Ниво 2 е заокружување на збир, ниво 3 беше збир на заокружувања — двете
+     * се разидуваат за денар штом работникот има повеќе од една не-задршкина
+     * ставка. УЈП ги споредува, па филингот излегуваше внатрешно противречен.
+     */
+    public function test_the_level_3_rows_sum_to_the_level_2_gross_when_the_roundings_disagree(): void
+    {
+        $run = $this->roundingClashRun();
+        $row = $run->employees->first();
+
+        // Случајот е репродуциран, не претпоставен: ако формулите се сменат и
+        // овие бројки повеќе не се тие, тестот повеќе не го проверува она што
+        // мисли дека го проверува и мора да падне тука, гласно.
+        $this->assertSame(
+            [32842.45, 1209.99, 164.21],
+            $row->lines
+                ->reject(fn (PayrollRunLine $line) => $line->kind === PayrollRunLine::KIND_DEDUCTION)
+                ->map(fn (PayrollRunLine $line) => round($line->amount, 2))
+                ->values()
+                ->all(),
+        );
+        $this->assertSame(34216.65, round((float) $row->gross, 2));
+
+        $xml = new \SimpleXMLElement(MpinDocumentBuilder::build($run));
+        $employeeNode = $xml->MpinCalculationSt[0];
+
+        $detailSum = array_sum(array_map('intval', $employeeNode->xpath('MpinCalculationStDetail/BrutoIznos')));
+
+        $this->assertSame(34217, (int) $employeeNode->BrutoIznosVkVrab);
+        $this->assertSame(
+            (int) $employeeNode->BrutoIznosVkVrab,
+            $detailSum,
+            'Збирот на BrutoIznos на ниво 3 мора да е еднаков на BrutoIznosVkVrab на ниво 2.'
+        );
+    }
+
+    /**
+     * Денарот на разлика оди на најголемата ставка, не на првата: таму е
+     * пропорционално најмалку видлив. Ова го фиксира изборот — без него
+     * поправката би поминала и со остаток фрлен каде било.
+     */
+    public function test_the_rounding_remainder_lands_on_the_largest_level_3_row(): void
+    {
+        $xml = new \SimpleXMLElement(MpinDocumentBuilder::build($this->roundingClashRun()));
+        $employeeNode = $xml->MpinCalculationSt[0];
+
+        $amounts = array_map('intval', $employeeNode->xpath('MpinCalculationStDetail/BrutoIznos'));
+
+        // 32 842,45 → 32 843 (го носи остатокот), 1 209,99 → 1 210, 164,21 → 164.
+        $this->assertSame([32843, 1210, 164], $amounts);
+    }
+
+    /**
+     * `createElement($name, $value)` не бега од знаци: вредност со „&" му
+     * изгледа како почеток на ентитет, фрла предупредување и запишува ПРАЗЕН
+     * елемент. Не е недостижен случај — `companies.tax_id` е слободен текст и
+     * оди директно во `EdbIsplatitel`.
+     */
+    public function test_an_ampersand_in_a_value_is_escaped_not_dropped(): void
+    {
+        $company = Company::factory()->create([
+            'name' => 'DESIGNIA DOOEL',
+            'tax_id' => '4080000000000&1',
+            'mpin_obvrznik_code' => MpinObvrznik::EMPLOYER,
+        ]);
+
+        $xml = MpinDocumentBuilder::build($this->confirmedRun($company, [
+            'embg' => '0101990450006',
+            'municipality_code' => '130',
+            'health_area_code' => '4061',
+            'bank_account' => '300000000000000',
+            'insurance_type_code' => '0050',
+            'movement_code' => '1',
+            'weekly_hours' => 40,
+            'employed_on' => '2026-01-01',
+        ], 38507, 5));
+
+        $this->assertStringContainsString('<EdbIsplatitel>4080000000000&amp;1</EdbIsplatitel>', $xml);
+        $this->assertStringNotContainsString('<EdbIsplatitel></EdbIsplatitel>', $xml);
+
+        // И назад: по парсирање вредноста мора да е точно она што е внесено.
+        $parsed = new \SimpleXMLElement($xml);
+        $this->assertSame('4080000000000&1', (string) $parsed->EdbIsplatitel);
     }
 
     public function test_the_file_name_matches_what_the_mpin_client_uses(): void

@@ -196,6 +196,18 @@ final class MpinDocumentBuilder
         // се сумираа само KIND_HOURS редовите.
         self::add($dom, $node, 'RabotniCasoviVkVrab', (string) $detailLines->sum('hours'));
 
+        $lineAmounts = self::lineAmounts($detailLines, $amounts['gross']);
+
+        // Деновите стаж одат на првата линија СО ЧАСОВИ, не на првата линија
+        // воопшто: ставка со износ (награда, храна) внесена пред часовната би
+        // ја зазела првата позиција и целиот стаж би заминал на ред чиј
+        // BrojCasovi е 0, што УЈП го одбива. Остатокот добива нула, така што
+        // збирот на ниво 3 останува еднаков на ниво 2. Поделбата на повеќе
+        // линии не е потврдена од ниту еден примерок — види го отвореното
+        // прашање во спецификацијата.
+        $stazIndex = $detailLines->search(fn (PayrollRunLine $line) => (int) $line->hours > 0);
+        $stazIndex = $stazIndex === false ? 0 : $stazIndex;
+
         foreach ($detailLines as $index => $line) {
             $node->appendChild(self::detailNode(
                 $dom,
@@ -203,15 +215,62 @@ final class MpinDocumentBuilder
                 $row,
                 $line,
                 $index + 1,
-                // Сите денови стаж одат на првата линија со часови, а остатокот
-                // добива нула, така што збирот на ниво 3 останува еднаков на
-                // ниво 2. Поделбата на повеќе линии не е потврдена од ниту еден
-                // примерок — види го отвореното прашање во спецификацијата.
-                $index === 0 ? $row->staz_days : 0,
+                $index === $stazIndex ? $row->staz_days : 0,
+                $lineAmounts[$index],
             ));
         }
 
         return $node;
+    }
+
+    /**
+     * Заокружените износи на ниво 3, натерани да збируваат точно на ниво 2.
+     *
+     * Ниво 2 е заокружување на збир, ниво 3 беше збир на заокружувања — двете
+     * се разидуваат за денар штом работникот има повеќе од една не-задршкина
+     * ставка (на пр. редовни часови + боледување + минат труд). УЈП ги
+     * споредува двете нивоа, па таквата датотека е внатрешно противречна.
+     *
+     * Поправено е ниво 3, не ниво 2: другите износи на ниво 2 (придонеси,
+     * данок, нето) се изведени од истиот зачуван бруто, па поместување на
+     * пријавениот бруто би ја скршило внатрешната согласност на ниво 2 —
+     * една проверка би се заменила со друга.
+     *
+     * Разликата се доделува на најголемата ставка, каде еден денар е
+     * пропорционално најмалку видлив. Ова е истата постапка со која
+     * `PayrollRunCalculator` го добива employer-нетото: остаток, не осма
+     * бројка за себе.
+     *
+     * @param  \Illuminate\Support\Collection<int, PayrollRunLine>  $lines
+     * @return array<int, int>
+     */
+    private static function lineAmounts($lines, int $gross): array
+    {
+        $amounts = $lines
+            ->map(fn (PayrollRunLine $line) => (int) round($line->amount))
+            ->all();
+
+        if ($amounts === []) {
+            return $amounts;
+        }
+
+        $remainder = $gross - array_sum($amounts);
+
+        if ($remainder === 0) {
+            return $amounts;
+        }
+
+        $largest = 0;
+
+        foreach ($lines as $index => $line) {
+            if ($line->amount > $lines[$largest]->amount) {
+                $largest = $index;
+            }
+        }
+
+        $amounts[$largest] += $remainder;
+
+        return $amounts;
     }
 
     private static function detailNode(
@@ -221,6 +280,7 @@ final class MpinDocumentBuilder
         PayrollRunLine $line,
         int $ordinal,
         int $stazDays,
+        int $amount,
     ): DOMElement {
         $node = $dom->createElement('MpinCalculationStDetail');
         $employee = $row->employee;
@@ -249,7 +309,7 @@ final class MpinDocumentBuilder
         // hours е nullable (ставки со износ, на пр. минат труд, немаат часови)
         // — мора да излезе „0", не празен елемент.
         self::add($dom, $node, 'BrojCasovi', (string) ($line->hours ?? 0));
-        self::add($dom, $node, 'BrutoIznos', (string) (int) round($line->amount));
+        self::add($dom, $node, 'BrutoIznos', (string) $amount);
 
         return $node;
     }
@@ -263,8 +323,28 @@ final class MpinDocumentBuilder
         return $date->format('j.m.Y');
     }
 
+    /**
+     * Вредноста оди низ текстуален јазол, не низ вториот параметар на
+     * `createElement`.
+     *
+     * Тој параметар НЕ бега од знаци: вредност со „&" го тера DOMDocument да ја
+     * чита како почеток на ентитет, фрла предупредување и запишува ПРАЗЕН
+     * елемент — тивко изгубен податок среде даночна пријава. Не се работи за
+     * теоретски случај: `companies.tax_id` е слободен текст (nullable|string|
+     * max:255) и оди во `EdbIsplatitel`, а `employees.bank_account` е слободен
+     * текст (required|string|max:34) и оди во `TransakciskaSmetka`.
+     *
+     * Празна вредност намерно не добива текстуален јазол — со LIBXML_NOEMPTYTAG
+     * елементот и онака излегува како `<X></X>`, точно како во еталоните.
+     */
     private static function add(DOMDocument $dom, DOMElement $parent, string $name, string $value): void
     {
-        $parent->appendChild($dom->createElement($name, $value));
+        $element = $dom->createElement($name);
+
+        if ($value !== '') {
+            $element->appendChild($dom->createTextNode($value));
+        }
+
+        $parent->appendChild($element);
     }
 }
