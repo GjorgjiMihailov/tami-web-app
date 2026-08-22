@@ -4,6 +4,8 @@ namespace App\Support\Payroll\Mpin;
 
 use App\Models\PayrollRun;
 use App\Models\PayrollRunLine;
+use App\Support\Payroll\MpinObvrznik;
+use SimpleXMLElement;
 
 /**
  * Проверките што УЈП сама ги врти по поднесување, направени пред симнување.
@@ -37,6 +39,12 @@ final class MpinValidator
             $errors[] = 'Пресметката нема ниту еден работник.';
         }
 
+        // Видот обврзник по кој оваа пресметка НАВИСТИНА е пресметана, истиот
+        // што градителот го пишува во заглавието. Резервата 110 ги опишува
+        // редовите отворени пред колоната да постои — види
+        // MpinDocumentBuilder::build().
+        $obvrznik = $run->mpin_obvrznik_code ?? MpinObvrznik::EMPLOYER;
+
         foreach ($run->employees as $row) {
             $employee = $row->employee;
             $name = trim($employee->first_name.' '.$employee->last_name);
@@ -62,6 +70,32 @@ final class MpinValidator
                 if (! $employee->{$column}) {
                     $errors[] = "{$name}: {$message}.";
                 }
+            }
+
+            // Шифрата за ослободување е задолжителна САМО за обврзник 111.
+            // Придонесот за вработување кај 111 се пишува нула по основ на
+            // шифрата 001 („Самостоен вршител ослободен од плаќање на придонес
+            // за вработување") — без неа датотеката носи нулти придонес без
+            // ништо што го оправдува, добро оформена и одбиена. Безусловно
+            // правило не доаѓа предвид: вистинската прифатена датотека за
+            // обврзник 110 носи празен `SifraOsloboduvanje`.
+            if ($obvrznik === MpinObvrznik::SELF_EMPLOYED && ! $employee->exemption_code) {
+                $errors[] = "{$name}: нема внесена шифра за ослободување, а обврзник 111 го пишува придонесот за вработување нула токму по неа.";
+            }
+
+            // Заштитна мрежа за расчекор меѓу зачуваниот вид обврзник и
+            // зачуваните цифри. Пресметката веќе го чува видот обврзник по кој
+            // е пресметана, па нормално двете не можат да се разидат — ова
+            // фаќа рачна интервенција во базата или пат што тоа зачувување не
+            // го покрива. Поправката е бришење и повторно отворање: потврдена
+            // пресметка одбива да се пресмета повторно, па цифрите не можат да
+            // се порамнат на самото место.
+            if (! $obvrznik->chargesUnemployment() && (round($row->unemployment) > 0 || round($row->tax) > 0)) {
+                $errors[] = "{$name}: пресметката е означена како обврзник 111, а носи придонес за вработување или личен данок, што 111 не плаќа — избришете ја пресметката и отворете ја повторно.";
+            }
+
+            if ($obvrznik->chargesUnemployment() && round($row->unemployment) <= 0 && round($row->gross) > 0) {
+                $errors[] = "{$name}: пресметката е означена како обврзник 110, а придонесот за вработување е нула — избришете ја пресметката и отворете ја повторно.";
             }
 
             // Нулата е намерна ознака за аномалија од фазата за делумни месеци:
@@ -136,6 +170,67 @@ final class MpinValidator
             }
         }
 
+        // Последна по ред, и само кога сè друго поминало: датотеката се гради
+        // за да се провери, а градењето претпоставува дека податоците што
+        // проверките погоре ги бараат се тука. Кога веќе има грешка, извозот и
+        // онака е блокиран, па нема што да се добие од уште една.
+        if ($errors === []) {
+            $errors = self::levelSumErrors(MpinDocumentBuilder::build($run));
+        }
+
         return new MpinValidationResult(array_values($errors), array_values($warnings));
+    }
+
+    /**
+     * „Збировите на трите нивоа се совпаѓаат до денар" од спецификацијата.
+     *
+     * Намерно се гледа во ПРОИЗВЕДЕНАТА датотека, не во повторена пресметка на
+     * истата аритметика: повторувањето на она што градителот го прави е
+     * тавтологија што не може да падне, а проверка што не може да падне е
+     * полоша од ниедна. Вака проверката е независна од начинот на кој
+     * градителот стигнал до бројките и паѓа штом тој се врати на грешка —
+     * што е точно нејзината работа, зашто расчекорот меѓу ниво 2 и ниво 3
+     * веќе еднаш поминал незабележан.
+     *
+     * Јавна за да може да се провери и врз намерно расипана датотека; check()
+     * ја повикува со она што градителот го дава.
+     *
+     * @return list<string>
+     */
+    public static function levelSumErrors(string $xml): array
+    {
+        $document = new SimpleXMLElement($xml);
+        $errors = [];
+
+        // Ниво 1 наспроти збирот на ниво 2, поле по поле.
+        foreach (array_keys(MpinDocumentBuilder::AMOUNT_FIELDS) as $field) {
+            $total = (int) $document->{$field.'Vk'};
+            $sum = 0;
+
+            foreach ($document->MpinCalculationSt as $employeeNode) {
+                $sum += (int) $employeeNode->{$field.'VkVrab'};
+            }
+
+            if ($total !== $sum) {
+                $errors[] = "Вкупниот износ {$field}Vk е {$total}, а збирот по работници е {$sum}.";
+            }
+        }
+
+        // Ниво 2 наспроти збирот на ниво 3, работник по работник.
+        foreach ($document->MpinCalculationSt as $employeeNode) {
+            $gross = (int) $employeeNode->BrutoIznosVkVrab;
+            $sum = 0;
+
+            foreach ($employeeNode->MpinCalculationStDetail as $detail) {
+                $sum += (int) $detail->BrutoIznos;
+            }
+
+            if ($gross !== $sum) {
+                $ordinal = (string) $employeeNode->RedenBroj;
+                $errors[] = "Работник со реден број {$ordinal}: бруто износот е {$gross}, а збирот на неговите ставки е {$sum}.";
+            }
+        }
+
+        return $errors;
     }
 }

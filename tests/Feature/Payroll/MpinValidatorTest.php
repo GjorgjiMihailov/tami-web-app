@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\PayrollMonthHours;
 use App\Models\PayrollRunLine;
 use App\Services\Payroll\PayrollRunService;
+use App\Support\Payroll\Mpin\MpinDocumentBuilder;
 use App\Support\Payroll\Mpin\MpinValidator;
 use App\Support\Payroll\MpinObvrznik;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -157,6 +158,78 @@ class MpinValidatorTest extends TestCase
     }
 
     /**
+     * Обврзник 111 го пишува придонесот за вработување нула ПО ОСНОВ на
+     * шифрата за ослободување 001 — тоа е она што ја оправдува нулата пред
+     * УЈП. Празен `SifraOsloboduvanje` со нулти придонес е добро оформена
+     * датотека што сепак се одбива.
+     */
+    public function test_an_obvrznik_111_employee_without_an_exemption_code_is_not_exported(): void
+    {
+        $result = MpinValidator::check($this->mpinRun(
+            ['mpin_obvrznik_code' => MpinObvrznik::SELF_EMPLOYED],
+            ['exemption_code' => null],
+        ));
+
+        $this->assertContains(
+            'Марко Петровски: нема внесена шифра за ослободување, а обврзник 111 го пишува придонесот за вработување нула токму по неа.',
+            $result->errors,
+        );
+    }
+
+    public function test_an_obvrznik_111_employee_with_an_exemption_code_passes(): void
+    {
+        $result = MpinValidator::check($this->mpinRun(
+            ['mpin_obvrznik_code' => MpinObvrznik::SELF_EMPLOYED],
+            ['exemption_code' => '001'],
+        ));
+
+        $this->assertTrue($result->passes(), implode(' | ', $result->errors));
+    }
+
+    /**
+     * Правилото важи САМО за 111: вистинската прифатена датотека за обврзник
+     * 110 носи празен `SifraOsloboduvanje`, па безусловно правило би скршило
+     * филинг што УЈП веќе го прифатила.
+     */
+    public function test_an_obvrznik_110_employee_without_an_exemption_code_still_passes(): void
+    {
+        $result = MpinValidator::check($this->mpinRun([], ['exemption_code' => null]));
+
+        $this->assertTrue($result->passes(), implode(' | ', $result->errors));
+    }
+
+    /**
+     * Заштитна мрежа за расчекор што зачувувањето на видот обврзник на самата
+     * пресметка не го покрива: пресметка означена како 111 чии зачувани цифри
+     * се на 110.
+     */
+    public function test_an_obvrznik_111_run_carrying_110_figures_is_not_exported(): void
+    {
+        $run = $this->mpinRun();
+        $run->forceFill(['mpin_obvrznik_code' => MpinObvrznik::SELF_EMPLOYED])->save();
+
+        $result = MpinValidator::check($run->fresh());
+
+        $this->assertContains(
+            'Марко Петровски: пресметката е означена како обврзник 111, а носи придонес за вработување или личен данок, што 111 не плаќа — избришете ја пресметката и отворете ја повторно.',
+            $result->errors,
+        );
+    }
+
+    public function test_an_obvrznik_110_run_without_unemployment_is_not_exported(): void
+    {
+        $run = $this->mpinRun();
+        $run->employees->first()->update(['unemployment' => 0]);
+
+        $result = MpinValidator::check($run->fresh());
+
+        $this->assertContains(
+            'Марко Петровски: пресметката е означена како обврзник 110, а придонесот за вработување е нула — избришете ја пресметката и отворете ја повторно.',
+            $result->errors,
+        );
+    }
+
+    /**
      * Огледален случај на 0047-со-40-часа: 0050 (полно работно време) чиј
      * договорен неделен фонд во картонот на вработениот е под 40 часа.
      * monthFund() го сведува фондот по weekly_hours без оглед на шифрата, па
@@ -173,5 +246,69 @@ class MpinValidatorTest extends TestCase
             'Марко Петровски: шифрата 0050 значи полно работно време, а во картонот на вработениот неделниот фонд е под 40 часа.',
             $result->warnings,
         );
+    }
+
+    /**
+     * Проверката од спецификацијата („збировите на трите нивоа се совпаѓаат до
+     * денар") се врти врз ПРОИЗВЕДЕНИОТ XML, не врз повторена пресметка на
+     * истата аритметика: повторувањето на она што градителот го прави е
+     * тавтологија што не може да падне, а проверка што не може да падне е
+     * полоша од ниедна. Овде намерно се внесува расчекор во веќе изградената
+     * датотека, за да се докаже дека проверката навистина фаќа.
+     */
+    public function test_the_level_sum_check_catches_a_level_3_row_that_does_not_add_up(): void
+    {
+        $xml = MpinDocumentBuilder::build($this->mpinRun());
+
+        $broken = str_replace(
+            '<BrutoIznos>38507</BrutoIznos>',
+            '<BrutoIznos>38506</BrutoIznos>',
+            $xml,
+        );
+
+        $this->assertNotSame($xml, $broken);
+        $this->assertSame(
+            ['Работник со реден број 1: бруто износот е 38507, а збирот на неговите ставки е 38506.'],
+            MpinValidator::levelSumErrors($broken),
+        );
+    }
+
+    public function test_the_level_sum_check_catches_a_total_that_does_not_add_up(): void
+    {
+        $xml = MpinDocumentBuilder::build($this->mpinRun());
+
+        $broken = str_replace(
+            '<NetoIznosVk>26046</NetoIznosVk>',
+            '<NetoIznosVk>26045</NetoIznosVk>',
+            $xml,
+        );
+
+        $this->assertNotSame($xml, $broken);
+        $this->assertSame(
+            ['Вкупниот износ NetoIznosVk е 26045, а збирот по работници е 26046.'],
+            MpinValidator::levelSumErrors($broken),
+        );
+    }
+
+    public function test_a_sound_document_has_no_level_sum_errors(): void
+    {
+        $this->assertSame(
+            [],
+            MpinValidator::levelSumErrors(MpinDocumentBuilder::build($this->mpinRun())),
+        );
+    }
+
+    /**
+     * Проверката е вклучена во check(), не само достапна одвоено — и тоа врз
+     * точно оној облик што ја роди: пресметка чии заокружувања на ниво 2 и
+     * ниво 3 се разидуваат. Со вратена стара `detailNode` аритметика овој тест
+     * паѓа со „бруто износот е 34217, а збирот на неговите ставки е 34216",
+     * што е целата поента на оваа проверка.
+     */
+    public function test_the_level_sum_check_guards_a_run_whose_roundings_disagree(): void
+    {
+        $result = MpinValidator::check($this->roundingClashRun());
+
+        $this->assertTrue($result->passes(), implode(' | ', $result->errors));
     }
 }
