@@ -98,6 +98,15 @@ class PayrollRunService
             // inside the loop would only repeat the same query.
             $obvrznik = $run->company->mpin_obvrznik_code ?? MpinObvrznik::EMPLOYER;
 
+            // Stored on the run, alongside the figures it is about to produce.
+            // The company's own field is editable at any moment and a confirmed
+            // run refuses to recalculate, so reading it again at export time
+            // would let the МПИН header disagree with the figures underneath it
+            // — a 111 header over unemployment and tax charged at 110. Written
+            // on every recalculation, draft or not, so there is exactly one
+            // source of truth for what this run was computed as.
+            $run->update(['mpin_obvrznik_code' => $obvrznik]);
+
             foreach ($run->employees()->with(['employee', 'lines'])->get() as $runEmployee) {
                 $employee = $runEmployee->employee;
                 $coverage = $employee->coverageIn($run->year, $run->month);

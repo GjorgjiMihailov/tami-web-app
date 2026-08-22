@@ -48,7 +48,16 @@ final class MpinDocumentBuilder
         $root->setAttribute('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
         $dom->appendChild($root);
 
-        $obvrznik = $run->company->mpin_obvrznik_code ?? MpinObvrznik::EMPLOYER;
+        // Видот обврзник се чита од ПРЕСМЕТКАТА, не од фирмата. Фирменото поле
+        // е слободно променливо во секој момент, а потврдена пресметка одбива
+        // да се пресмета повторно — читање оттаму значи заглавие по денешниот
+        // картон врз цифри пресметани по вчерашниот.
+        //
+        // Null е ред отворен пред колоната да постои. Тие цифри се пресметани
+        // како 110 (фирменото поле тогаш беше null и PayrollRunService паѓаше
+        // на EMPLOYER), па 110 е точниот резервен избор — тој ги опишува
+        // цифрите какви што навистина се, не само оној што е најзгоден.
+        $obvrznik = $run->mpin_obvrznik_code ?? MpinObvrznik::EMPLOYER;
         $rows = $run->employees->values();
         $totals = self::totals($rows, $obvrznik);
 
@@ -81,7 +90,7 @@ final class MpinDocumentBuilder
      *
      * @var array<string, string>
      */
-    private const AMOUNT_FIELDS = [
+    public const AMOUNT_FIELDS = [
         'BrutoIznos' => 'gross',
         'ZadPIOIznos' => 'pension',
         'DopPIOIznos' => 'zero',

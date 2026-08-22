@@ -14,11 +14,12 @@ use App\Support\Payroll\LineType;
 use App\Support\Payroll\Mpin\MpinDocumentBuilder;
 use App\Support\Payroll\MpinObvrznik;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Feature\Payroll\Concerns\BuildsMpinRuns;
 use Tests\TestCase;
 
 class MpinDocumentBuilderTest extends TestCase
 {
-    use RefreshDatabase;
+    use BuildsMpinRuns, RefreshDatabase;
 
     /** @param array<string, mixed> $employeeOverrides */
     private function confirmedRun(
@@ -59,20 +60,20 @@ class MpinDocumentBuilderTest extends TestCase
     }
 
     /**
-     * Го гради истиот XML што еталонот за обврзник 110 го проверува. Изваден
-     * во помошник за да не се повторува пополнувањето во форматните тестови,
-     * кои намерно го проверуваат ПРОИЗВЕДЕНИОТ XML, не еталонот — еталон што
-     * сам себе се проверува не докажува ништо.
+     * Потврдената пресметка зад еталонот за обврзник 110.
+     *
+     * @param  array<string, mixed>  $companyOverrides
      */
-    private function designiaXml(): string
+    private function designiaRun(array $companyOverrides = []): PayrollRun
     {
         $company = Company::factory()->create([
             'name' => 'DESIGNIA DOOEL',
             'tax_id' => '4080000000000',
             'mpin_obvrznik_code' => MpinObvrznik::EMPLOYER,
+            ...$companyOverrides,
         ]);
 
-        return MpinDocumentBuilder::build($this->confirmedRun($company, [
+        return $this->confirmedRun($company, [
             'embg' => '0101990450006',
             'municipality_code' => '130',
             'health_area_code' => '4061',
@@ -81,7 +82,18 @@ class MpinDocumentBuilderTest extends TestCase
             'movement_code' => '1',
             'weekly_hours' => 40,
             'employed_on' => '2026-01-01',
-        ], 38507, 5));
+        ], 38507, 5);
+    }
+
+    /**
+     * Го гради истиот XML што еталонот за обврзник 110 го проверува. Изваден
+     * во помошник за да не се повторува пополнувањето во форматните тестови,
+     * кои намерно го проверуваат ПРОИЗВЕДЕНИОТ XML, не еталонот — еталон што
+     * сам себе се проверува не докажува ништо.
+     */
+    private function designiaXml(): string
+    {
+        return MpinDocumentBuilder::build($this->designiaRun());
     }
 
     public function test_an_obvrznik_110_filing_is_reproduced_byte_for_byte(): void
@@ -212,71 +224,6 @@ class MpinDocumentBuilderTest extends TestCase
     }
 
     /**
-     * Потврдена пресметка чии заокружувања намерно се разидуваат: фонд 160
-     * часа, договорено бруто 34 571, 8 часа боледување на 70% и една завршена
-     * година стаж. Линиите излегуваат 32 842,45 + 1 209,99 + 164,21 = 34 216,65
-     * — заокружениот збир е 34 217, а збирот на заокружените линии 34 216.
-     */
-    private function roundingClashRun(): PayrollRun
-    {
-        PayrollMonthHours::firstOrCreate(
-            ['year' => 2026, 'month' => 4],
-            ['hours' => 160],
-        );
-
-        $company = Company::factory()->create([
-            'name' => 'DESIGNIA DOOEL',
-            'tax_id' => '4080000000000',
-            'mpin_obvrznik_code' => MpinObvrznik::EMPLOYER,
-        ]);
-
-        $employee = Employee::factory()->for($company)->create([
-            'embg' => '0101990450006',
-            'municipality_code' => '130',
-            'health_area_code' => '4061',
-            'bank_account' => '300000000000000',
-            'insurance_type_code' => '0050',
-            'movement_code' => '1',
-            'exemption_code' => null,
-            'weekly_hours' => 40,
-            'employed_on' => '2026-01-01',
-            'terminated_on' => null,
-            // 4 месеци во фирмава + 12 донесени = 16 месеци = точно една
-            // завршена година, значи минат труд > 0.
-            'prior_service_months' => 12,
-        ]);
-
-        EmployeeSalary::create([
-            'employee_id' => $employee->id,
-            'effective_from' => '2026-01-01',
-            'amount' => 34571,
-            'basis' => 'gross',
-        ]);
-
-        $service = app(PayrollRunService::class);
-        $run = $service->open($company, 2026, 4);
-        $row = $run->employees->first();
-
-        $row->lines->firstWhere('code', '001')->update(['hours' => 152]);
-
-        PayrollRunLine::create([
-            'payroll_run_employee_id' => $row->id,
-            'kind' => PayrollRunLine::KIND_HOURS,
-            'code' => '125',
-            'description' => LineType::label('125'),
-            'hours' => 8,
-            'percent' => 70,
-            'amount' => 0,
-            'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
-            'is_automatic' => false,
-        ]);
-
-        $user = User::factory()->create();
-
-        return $service->confirm($service->recalculate($run->fresh()), $user->id)->fresh();
-    }
-
-    /**
      * Ниво 2 е заокружување на збир, ниво 3 беше збир на заокружувања — двете
      * се разидуваат за денар штом работникот има повеќе од една не-задршкина
      * ставка. УЈП ги споредува, па филингот излегуваше внатрешно противречен.
@@ -336,22 +283,7 @@ class MpinDocumentBuilderTest extends TestCase
      */
     public function test_an_ampersand_in_a_value_is_escaped_not_dropped(): void
     {
-        $company = Company::factory()->create([
-            'name' => 'DESIGNIA DOOEL',
-            'tax_id' => '4080000000000&1',
-            'mpin_obvrznik_code' => MpinObvrznik::EMPLOYER,
-        ]);
-
-        $xml = MpinDocumentBuilder::build($this->confirmedRun($company, [
-            'embg' => '0101990450006',
-            'municipality_code' => '130',
-            'health_area_code' => '4061',
-            'bank_account' => '300000000000000',
-            'insurance_type_code' => '0050',
-            'movement_code' => '1',
-            'weekly_hours' => 40,
-            'employed_on' => '2026-01-01',
-        ], 38507, 5));
+        $xml = MpinDocumentBuilder::build($this->designiaRun(['tax_id' => '4080000000000&1']));
 
         $this->assertStringContainsString('<EdbIsplatitel>4080000000000&amp;1</EdbIsplatitel>', $xml);
         $this->assertStringNotContainsString('<EdbIsplatitel></EdbIsplatitel>', $xml);
@@ -359,6 +291,79 @@ class MpinDocumentBuilderTest extends TestCase
         // И назад: по парсирање вредноста мора да е точно она што е внесено.
         $parsed = new \SimpleXMLElement($xml);
         $this->assertSame('4080000000000&1', (string) $parsed->EdbIsplatitel);
+    }
+
+    /**
+     * Видот обврзник по кој е пресметано се чува на самата пресметка, па
+     * подоцнежна промена на картонот на фирмата не ја препишува веќе
+     * потврдената пресметка.
+     *
+     * Извезува 110 — цифрите и книжењето се тие на 110 и потврдена пресметка
+     * не се пресметува повторно, па 110 е единствената вистина што оваа
+     * пресметка ја има. Заглавие 111 врз цифри од 110 би било токму
+     * противречниот филинг што ова го спречува.
+     */
+    public function test_a_confirmed_run_keeps_the_obvrznik_it_was_calculated_with(): void
+    {
+        $run = $this->designiaRun();
+
+        $run->company->update(['mpin_obvrznik_code' => MpinObvrznik::SELF_EMPLOYED]);
+
+        $xml = MpinDocumentBuilder::build(PayrollRun::findOrFail($run->id));
+
+        $this->assertSame(
+            file_get_contents(base_path('tests/Fixtures/mpin/obvrznik-110.xml')),
+            $xml,
+        );
+    }
+
+    /**
+     * Ред отворен пред оваа гранка нема зачуван вид обврзник. Неговите цифри
+     * се пресметани како 110 (фирменото поле тогаш беше null и пресметката
+     * паѓаше на EMPLOYER), па 110 е точниот резервен избор — не само
+     * најзгодниот.
+     */
+    public function test_a_run_without_a_stored_obvrznik_falls_back_to_110(): void
+    {
+        $run = $this->designiaRun();
+
+        $run->forceFill(['mpin_obvrznik_code' => null])->save();
+        $run->company->update(['mpin_obvrznik_code' => MpinObvrznik::SELF_EMPLOYED]);
+
+        $xml = MpinDocumentBuilder::build(PayrollRun::findOrFail($run->id));
+
+        $this->assertSame(
+            file_get_contents(base_path('tests/Fixtures/mpin/obvrznik-110.xml')),
+            $xml,
+        );
+    }
+
+    public function test_the_run_stores_the_obvrznik_it_was_calculated_with(): void
+    {
+        $this->assertSame(
+            MpinObvrznik::EMPLOYER,
+            $this->designiaRun()->mpin_obvrznik_code,
+        );
+
+        $company = Company::factory()->create([
+            'name' => 'ADVOKAT STEFAN KOTEV',
+            'tax_id' => '4090000000000',
+            'mpin_obvrznik_code' => MpinObvrznik::SELF_EMPLOYED,
+        ]);
+
+        $run = $this->confirmedRun($company, [
+            'embg' => '1503880410003',
+            'municipality_code' => '182',
+            'health_area_code' => '4061',
+            'bank_account' => '300000000000001',
+            'insurance_type_code' => '0047',
+            'movement_code' => '1',
+            'exemption_code' => '001',
+            'weekly_hours' => 20,
+            'employed_on' => '2020-01-01',
+        ], 34571, 1);
+
+        $this->assertSame(MpinObvrznik::SELF_EMPLOYED, $run->mpin_obvrznik_code);
     }
 
     public function test_the_file_name_matches_what_the_mpin_client_uses(): void
