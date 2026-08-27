@@ -98,7 +98,7 @@ class SidebarTest extends TestCase
 
         $this->get(route('accounting.accounts.index', $company))
             ->assertOk()
-            ->assertSeeHtml(route('companies.dashboard', $company))
+            ->assertSeeHtml(route('companies.profile', $company))
             ->assertDontSeeHtml(route('inventory.warehouses.index', $company));
     }
 
