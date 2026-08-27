@@ -3,7 +3,9 @@
 namespace App\Livewire;
 
 use App\Models\Company;
+use App\Support\CompanyType;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -11,6 +13,8 @@ use Livewire\Component;
 class CompanyIndex extends Component
 {
     public string $newName = '';
+
+    public string $newType = '';
 
     public string $newTaxId = '';
 
@@ -35,6 +39,7 @@ class CompanyIndex extends Component
 
         $validated = $this->validate([
             'newName' => 'required|string|max:255',
+            'newType' => ['required', Rule::enum(CompanyType::class)],
             'newTaxId' => 'nullable|string|max:255',
             'newEmail' => 'nullable|email|max:255',
             'newPhone' => 'nullable|string|max:255',
@@ -43,13 +48,14 @@ class CompanyIndex extends Component
 
         Company::create([
             'name' => $validated['newName'],
+            'type' => $validated['newType'],
             'tax_id' => $validated['newTaxId'] ?: null,
             'email' => $validated['newEmail'] ?: null,
             'phone' => $validated['newPhone'] ?: null,
             'address' => $validated['newAddress'] ?: null,
         ]);
 
-        $this->reset(['newName', 'newTaxId', 'newEmail', 'newPhone', 'newAddress']);
+        $this->reset(['newName', 'newType', 'newTaxId', 'newEmail', 'newPhone', 'newAddress']);
     }
 
     public function render()

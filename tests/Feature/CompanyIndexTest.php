@@ -22,6 +22,13 @@ class CompanyIndexTest extends TestCase
         Role::findOrCreate('client');
     }
 
+    private function actAsAdmin(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+    }
+
     public function test_only_an_admin_may_open_the_companies_screen(): void
     {
         $company = Company::factory()->create();
@@ -80,6 +87,7 @@ class CompanyIndexTest extends TestCase
 
         Livewire::test(CompanyIndex::class)
             ->set('newName', 'New Client DOO')
+            ->set('newType', 'legal')
             ->set('newTaxId', '4012345678901')
             ->set('newEmail', 'contact@newclient.mk')
             ->call('addCompany')
@@ -146,5 +154,43 @@ class CompanyIndexTest extends TestCase
             ->assertDontSeeHtml(route('inventory.warehouses.index', $company))
             ->assertDontSeeHtml(route('sales-invoices.index', $company))
             ->assertDontSeeHtml(route('inventory.stock-movements.create', [$company, 'receipt']));
+    }
+
+    public function test_a_new_profile_records_the_chosen_type(): void
+    {
+        $this->actAsAdmin();
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newName', 'Марко Марковски')
+            ->set('newType', 'individual')
+            ->call('addCompany')
+            ->assertHasNoErrors();
+
+        $this->assertSame(
+            \App\Support\CompanyType::INDIVIDUAL,
+            Company::where('name', 'Марко Марковски')->first()->type,
+        );
+    }
+
+    public function test_the_type_must_be_chosen(): void
+    {
+        $this->actAsAdmin();
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newName', 'ТЕСТ ДООЕЛ')
+            ->set('newType', '')
+            ->call('addCompany')
+            ->assertHasErrors('newType');
+    }
+
+    public function test_an_unknown_type_is_rejected(): void
+    {
+        $this->actAsAdmin();
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newName', 'ТЕСТ ДООЕЛ')
+            ->set('newType', 'something-else')
+            ->call('addCompany')
+            ->assertHasErrors('newType');
     }
 }

@@ -5,6 +5,17 @@
         <x-card class="mb-6">
             <h2 class="font-semibold text-gray-700 mb-2">Додади фирма</h2>
             <form wire:submit="addCompany" class="flex flex-wrap gap-3 items-end">
+                <div>
+                    <x-input-label for="newType" value="Вид на клиент" />
+                    <select id="newType" wire:model="newType" class="border-gray-300 rounded-md text-sm">
+                        <option value="">— изберете —</option>
+                        @foreach (\App\Support\CompanyType::cases() as $case)
+                            <option value="{{ $case->value }}">{{ $case->label() }}</option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-gray-500">Не може да се смени подоцна.</p>
+                    @error('newType') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                </div>
                 <div class="flex-1 min-w-[16rem]">
                     <x-input-label for="newName" value="Назив" />
                     <x-text-input id="newName" wire:model="newName" class="w-full" />
