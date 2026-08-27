@@ -304,11 +304,79 @@ class MpinValidatorTest extends TestCase
      * ниво 3 се разидуваат. Со вратена стара `detailNode` аритметика овој тест
      * паѓа со „бруто износот е 34217, а збирот на неговите ставки е 34216",
      * што е целата поента на оваа проверка.
+     *
+     * Не се тврди дека целата пресметка поминува: разидувањето се создава со
+     * линија минат труд, а таквата линија ја запира привремената брана подолу.
+     * Тука се тврди дека НЕМА грешка за порамнување на нивоата — точно она што
+     * оваа проверка го чува. Кога браната ќе се тргне, ова се враќа на
+     * passes().
      */
     public function test_the_level_sum_check_guards_a_run_whose_roundings_disagree(): void
     {
-        $result = MpinValidator::check($this->roundingClashRun());
+        $errors = MpinValidator::check($this->roundingClashRun())->errors;
+
+        $levelSumErrors = array_filter(
+            $errors,
+            fn (string $error) => str_contains($error, 'збирот на неговите ставки'),
+        );
+
+        $this->assertSame([], array_values($levelSumErrors), implode(' | ', $errors));
+    }
+
+    /**
+     * Привремена брана, не трајно правило.
+     *
+     * Работник со завршена година стаж добива линија „Минат труд“ — износ без
+     * часови — која градителот ја пишува како засебен ред на ниво 3 со нула
+     * часови и нула денови стаж. Нула денови стаж е вредност што овој ист
+     * валидатор ја смета за нелегална едно ниво погоре, а ниту една од двете
+     * вистински поднесени датотеки не го покрива тој пат: обете ставаат цело
+     * бруто во еден ред и обете се за работник без стаж.
+     *
+     * Значи обликот е изведен, не видуван. Додека не пристигне вистинска
+     * датотека со минат труд или надоместок, извозот застанува тука наместо да
+     * погоди во документ што оди во УЈП.
+     */
+    public function test_a_line_without_hours_blocks_the_export_until_a_real_filing_confirms_its_shape(): void
+    {
+        $result = MpinValidator::check($this->mpinRun([], ['prior_service_months' => 12]));
+
+        $this->assertFalse($result->passes());
+        $this->assertContains(
+            'Марко Петровски: линијата „Минат труд“ е износ без часови, а обликот на таквиот ред во МПИН сè уште не е потврден со вистинска поднесена датотека — извозот е запрен намерно.',
+            $result->errors,
+        );
+    }
+
+    public function test_an_ordinary_run_without_such_a_line_still_passes(): void
+    {
+        $result = MpinValidator::check($this->mpinRun());
 
         $this->assertTrue($result->passes(), implode(' | ', $result->errors));
+    }
+
+    /**
+     * Пресметката точно го извезува видот обврзник по кој е пресметана, дури и
+     * кога картонот на фирмата во меѓувреме е сменет — потврдена пресметка
+     * одбива да се пресмета повторно, па 110 е единствениот документ што таа
+     * пресметка може да го произведе без сама да си противречи.
+     *
+     * Тивко е она што е проблем: сметководителот што свесно го сменил картонот
+     * на 111 симнува датотека со заглавие 110 и ништо не му кажува зошто.
+     * Предупредување, не грешка — датотеката е исправна.
+     */
+    public function test_a_run_whose_obvrznik_no_longer_matches_the_company_warns(): void
+    {
+        $run = $this->mpinRun();
+
+        $run->company->update(['mpin_obvrznik_code' => MpinObvrznik::SELF_EMPLOYED]);
+
+        $result = MpinValidator::check($run->fresh());
+
+        $this->assertTrue($result->passes(), implode(' | ', $result->errors));
+        $this->assertContains(
+            'Оваа пресметка е пресметана како обврзник 110, а фирмата сега е означена како 111. Датотеката се извезува како 110; новиот вид важи од следната пресметка.',
+            $result->warnings,
+        );
     }
 }

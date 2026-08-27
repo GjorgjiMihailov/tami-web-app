@@ -102,9 +102,14 @@ class PayrollRunService
             // The company's own field is editable at any moment and a confirmed
             // run refuses to recalculate, so reading it again at export time
             // would let the МПИН header disagree with the figures underneath it
-            // — a 111 header over unemployment and tax charged at 110. Written
-            // on every recalculation, draft or not, so there is exactly one
-            // source of truth for what this run was computed as.
+            // — a 111 header over unemployment and tax charged at 110.
+            //
+            // recalculate() is the only writer of the stored figures, and it
+            // refuses a confirmed run, so stamping here covers every draft.
+            // confirm() re-enters through recalculate() before it flips the
+            // status, which is what freezes the pair together at the last
+            // moment a run can still change. One source of truth for what this
+            // run was actually computed as.
             $run->update(['mpin_obvrznik_code' => $obvrznik]);
 
             foreach ($run->employees()->with(['employee', 'lines'])->get() as $runEmployee) {
