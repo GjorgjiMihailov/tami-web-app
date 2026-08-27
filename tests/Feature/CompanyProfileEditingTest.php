@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\CompanyDashboard;
+use App\Livewire\CompanyProfile;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,7 +12,7 @@ use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
-class CompanyDashboardTest extends TestCase
+class CompanyProfileEditingTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -30,7 +30,7 @@ class CompanyDashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->assertSee('Alpha Ltd');
     }
 
@@ -41,7 +41,7 @@ class CompanyDashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->assertSeeHtml(route('accounting.accounts.index', $company))
             ->assertSeeHtml(route('inventory.warehouses.index', $company))
             ->assertSeeHtml(route('sales-invoices.index', $company))
@@ -57,7 +57,7 @@ class CompanyDashboardTest extends TestCase
         $client->assignRole('client');
         $this->actingAs($client);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->assertForbidden();
     }
 
@@ -68,7 +68,7 @@ class CompanyDashboardTest extends TestCase
         $admin->assignRole('admin');
 
         $this->actingAs($admin)
-            ->get(route('companies.dashboard', $company))
+            ->get(route('companies.profile', $company))
             ->assertOk()
             ->assertSee('Alpha Ltd');
     }
@@ -80,7 +80,7 @@ class CompanyDashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->assertSee('Уреди');
     }
 
@@ -91,7 +91,7 @@ class CompanyDashboardTest extends TestCase
         $client->assignRole('client');
         $this->actingAs($client);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->assertDontSee('Уреди');
     }
 
@@ -102,7 +102,7 @@ class CompanyDashboardTest extends TestCase
         $client->assignRole('client');
         $this->actingAs($client);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->assertForbidden();
     }
@@ -114,7 +114,7 @@ class CompanyDashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->set('editName', 'Ажурирана фирма ДОО')
             ->set('editShortName', 'АФ')
@@ -151,7 +151,7 @@ class CompanyDashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->set('editName', '')
             ->call('save')
@@ -165,7 +165,7 @@ class CompanyDashboardTest extends TestCase
         $client->assignRole('client');
         $this->actingAs($client);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->call('save')
             ->assertForbidden();
     }
@@ -177,7 +177,7 @@ class CompanyDashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->assertSet('bankAccounts', [['bank_name' => '', 'account_number' => '']]);
     }
@@ -189,7 +189,7 @@ class CompanyDashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        $component = Livewire::test(CompanyDashboard::class, ['company' => $company])
+        $component = Livewire::test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->set('bankAccounts.0.account_number', 'MK07300701104789126');
 
@@ -203,7 +203,7 @@ class CompanyDashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        $component = Livewire::test(CompanyDashboard::class, ['company' => $company])
+        $component = Livewire::test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit');
 
         foreach (range(0, 4) as $index) {
@@ -220,7 +220,7 @@ class CompanyDashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->set('bankAccounts.0.bank_name', 'Комерцијална банка')
             ->set('bankAccounts.0.account_number', 'MK07300701104789126')
@@ -252,7 +252,7 @@ class CompanyDashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->assertSet('bankAccounts.0.account_number', 'MK00OLD00000000000')
             ->set('bankAccounts.0.bank_name', 'Нова банка')
@@ -275,7 +275,7 @@ class CompanyDashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->set('bankAccounts.0.bank_name', 'Комерцијална банка')
             ->set('bankAccounts.0.account_number', 'MK07300701104789126')
@@ -295,7 +295,7 @@ class CompanyDashboardTest extends TestCase
 
         $file = UploadedFile::fake()->image('logo.png');
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->set('newLogo', $file)
             ->set('editLogoPosition', 'center')
@@ -315,7 +315,7 @@ class CompanyDashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->set('editInvoiceFooterNote', 'Ви благодариме за соработката.')
             ->call('save')
@@ -334,7 +334,7 @@ class CompanyDashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        Livewire::test(CompanyDashboard::class, ['company' => $company])
+        Livewire::test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->assertSet('editLogoPosition', 'left');
     }
@@ -345,7 +345,7 @@ class CompanyDashboardTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
 
-        $response = $this->actingAs($admin)->get(route('companies.dashboard', $company));
+        $response = $this->actingAs($admin)->get(route('companies.profile', $company));
 
         $response->assertOk();
         $response->assertSee('hover:shadow-card-hover', false);

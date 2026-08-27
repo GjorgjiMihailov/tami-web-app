@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\CompanyDashboard;
+use App\Livewire\CompanyProfile;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -10,7 +10,7 @@ use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
-class CompanyDashboardEfakturaRequestTest extends TestCase
+class CompanyProfileEfakturaRequestTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -28,7 +28,7 @@ class CompanyDashboardEfakturaRequestTest extends TestCase
         $client->assignRole('client');
 
         Livewire::actingAs($client)
-            ->test(CompanyDashboard::class, ['company' => $company])
+            ->test(CompanyProfile::class, ['company' => $company])
             ->call('requestFirmEfakturaAccess');
 
         $this->assertSame(Company::EFAKTURA_STATUS_REQUESTED, $company->fresh()->efaktura_firm_access_status);
@@ -41,7 +41,7 @@ class CompanyDashboardEfakturaRequestTest extends TestCase
         $client->assignRole('client');
 
         Livewire::actingAs($client)
-            ->test(CompanyDashboard::class, ['company' => $company])
+            ->test(CompanyProfile::class, ['company' => $company])
             ->call('requestFirmEfakturaAccess');
 
         $this->assertSame(Company::EFAKTURA_STATUS_NONE, $company->fresh()->efaktura_firm_access_status);
@@ -55,7 +55,7 @@ class CompanyDashboardEfakturaRequestTest extends TestCase
         $unrelatedClient->assignRole('client');
 
         Livewire::actingAs($unrelatedClient)
-            ->test(CompanyDashboard::class, ['company' => $company])
+            ->test(CompanyProfile::class, ['company' => $company])
             ->assertForbidden();
     }
 }

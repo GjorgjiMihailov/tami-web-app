@@ -26,6 +26,7 @@ use App\Livewire\Accounting\TrialBalanceReport;
 use App\Livewire\ComingSoon;
 use App\Livewire\CompanyDashboard;
 use App\Livewire\CompanyIndex;
+use App\Livewire\CompanyProfile;
 use App\Livewire\Dashboard;
 use App\Livewire\DocumentIndex;
 use App\Livewire\EfakturaAccessRequests;
@@ -74,6 +75,7 @@ Route::middleware(['auth'])->get('/efaktura/access-requests', [EfakturaAccessReq
 
 Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
     Route::get('/dashboard', [CompanyDashboard::class, '__invoke'])->name('companies.dashboard');
+    Route::get('/profile', [CompanyProfile::class, '__invoke'])->name('companies.profile');
 });
 
 // NOTE: Route::get($uri, ClassString::class) (bare class-string) resolves

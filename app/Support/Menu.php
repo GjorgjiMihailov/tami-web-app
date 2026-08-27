@@ -163,7 +163,7 @@ class Menu
                 'key' => 'settings',
                 'label' => 'ПОСТАВКИ',
                 'items' => [
-                    ['label' => 'Компанија', 'url' => route('companies.dashboard', $company), 'pattern' => 'companies.dashboard', 'roles' => null],
+                    ['label' => 'Компанија', 'url' => route('companies.profile', $company), 'pattern' => 'companies.profile', 'roles' => null],
                     ['label' => 'Контен план', 'url' => route('accounting.accounts.index', $company), 'pattern' => 'accounting.accounts.*', 'roles' => ['admin', 'accountant']],
                     ['label' => 'е-Фактура барања', 'url' => route('efaktura.access-requests'), 'pattern' => 'efaktura.access-requests', 'roles' => ['admin']],
                     ['label' => 'Параметри за плата', 'url' => route('payroll-parameters.index', $company), 'pattern' => 'payroll-parameters.*', 'roles' => ['admin']],
