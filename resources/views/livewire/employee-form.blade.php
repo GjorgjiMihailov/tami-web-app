@@ -33,6 +33,16 @@
                     @error('municipalityCode') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <div>
+                    <x-input-label for="healthAreaCode" value="Подрачна здравствена служба" />
+                    <select id="healthAreaCode" wire:model="healthAreaCode" class="border-gray-300 rounded-md text-sm w-full">
+                        <option value="">— не е одредено —</option>
+                        @foreach (\App\Models\PayrollCode::ofType('podracno_zdravstvo') as $code)
+                            <option value="{{ $code->code }}">{{ $code->code }} — {{ $code->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('healthAreaCode') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                </div>
+                <div>
                     <x-input-label for="bankAccount" value="Трансакциска сметка" />
                     <x-text-input id="bankAccount" wire:model="bankAccount" class="w-full" />
                     @error('bankAccount') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror

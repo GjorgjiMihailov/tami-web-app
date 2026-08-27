@@ -10,6 +10,7 @@ use App\Models\PayrollParameter;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunLine;
 use App\Services\Payroll\PayrollRunService;
+use App\Support\Payroll\MpinObvrznik;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RuntimeException;
 use Tests\TestCase;
@@ -39,6 +40,24 @@ class PayrollRunServiceTest extends TestCase
             'effective_from' => '2026-01-01',
             'amount' => $amount,
             'basis' => $basis,
+        ]);
+
+        return $employee;
+    }
+
+    private function partTimeEmployeeOn(Company $company, float $amount, int $weeklyHours): Employee
+    {
+        $employee = Employee::factory()->for($company)->create([
+            'employed_on' => '2026-01-01',
+            'prior_service_months' => 0,
+            'weekly_hours' => $weeklyHours,
+        ]);
+
+        EmployeeSalary::create([
+            'employee_id' => $employee->id,
+            'effective_from' => '2026-01-01',
+            'amount' => $amount,
+            'basis' => 'gross',
         ]);
 
         return $employee;
@@ -423,5 +442,96 @@ class PayrollRunServiceTest extends TestCase
         $run = $service->recalculate($run->fresh());
 
         $this->assertSame(20, $run->employees->first()->staz_days);
+    }
+
+    public function test_a_half_time_employee_gets_half_the_fund(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 1, 'hours' => 176]);
+        $this->partTimeEmployeeOn($company, 34571, 20);
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 1);
+
+        // Јануари 2026 има 22 работни дена, значи фонд 176 за полно работно
+        // време. Празниците не се одземаат — потврдено со вистинска МПИН
+        // датотека каде истиот работник има 88 часа.
+        $this->assertSame(176, $run->month_hours);
+
+        $line = $run->employees->first()->lines->firstWhere('code', '001');
+        $this->assertSame(88, $line->hours);
+    }
+
+    public function test_half_the_fund_does_not_move_the_agreed_gross(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 1, 'hours' => 176]);
+        $this->partTimeEmployeeOn($company, 34571, 20);
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 1);
+
+        $this->assertSame(34571.0, round((float) $run->employees->first()->gross));
+    }
+
+    public function test_a_full_time_employee_is_untouched(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 5, 'hours' => 168]);
+        $this->partTimeEmployeeOn($company, 38507, 40);
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 5);
+
+        $line = $run->employees->first()->lines->firstWhere('code', '001');
+        $this->assertSame(168, $line->hours);
+        $this->assertSame(38507.0, round((float) $run->employees->first()->gross));
+    }
+
+    /**
+     * The seam this whole task exists for: open() reaches the calculator only
+     * through recalculate(), and it is easy for a future change to drop the
+     * obvrznik argument from one of the two calculator calls in the service
+     * without any test noticing, because PayrollRunCalculatorTest exercises
+     * the calculator directly and never goes through the service at all.
+     */
+    public function test_a_self_employed_company_run_has_no_tax_and_no_unemployment(): void
+    {
+        $company = Company::factory()->create([
+            'mpin_obvrznik_code' => MpinObvrznik::SELF_EMPLOYED,
+        ]);
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        $this->employeeOn($company, 38507, 'gross');
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 7);
+        $runEmployee = $run->employees->first();
+
+        $this->assertGreaterThan(0.0, round((float) $runEmployee->gross, 2));
+        $this->assertSame(0.0, round((float) $runEmployee->unemployment, 2));
+        $this->assertSame(0.0, round((float) $runEmployee->tax, 2));
+    }
+
+    /**
+     * The complementary case: a company with no obvrznik type recorded yet —
+     * true for most companies today — must still be charged exactly as before
+     * `?? MpinObvrznik::EMPLOYER` existed. This pins that default so it cannot
+     * be quietly "simplified" away.
+     */
+    public function test_a_company_with_no_obvrznik_recorded_still_pays_tax_and_unemployment(): void
+    {
+        $company = Company::factory()->create([
+            'mpin_obvrznik_code' => null,
+        ]);
+        $this->seedParameters();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
+        $this->employeeOn($company, 38507, 'gross');
+
+        $run = app(PayrollRunService::class)->open($company, 2026, 7);
+        $runEmployee = $run->employees->first();
+
+        $this->assertGreaterThan(0.0, round((float) $runEmployee->gross, 2));
+        $this->assertGreaterThan(0.0, round((float) $runEmployee->unemployment, 2));
+        $this->assertGreaterThan(0.0, round((float) $runEmployee->tax, 2));
     }
 }

@@ -15,6 +15,7 @@ class Employee extends Model
 
     protected $fillable = [
         'company_id', 'embg', 'first_name', 'last_name', 'municipality_code',
+        'health_area_code',
         'bank_account', 'insurance_type_code', 'registration_number',
         'employed_on', 'terminated_on', 'movement_code', 'exemption_code',
         'weekly_hours', 'prior_service_months', 'address', 'phone', 'email',
@@ -74,6 +75,21 @@ class Employee extends Model
             $year,
             $month,
         );
+    }
+
+    /**
+     * Месечниот фонд часови сведен на договореното работно време.
+     *
+     * Полно работно време е 40 часа неделно, па за таков работник ова го враќа
+     * фондот непроменет и ниту една постоечка пресметка не се поместува. За
+     * неполно работно време и делителот на часовната стапка и бројот часови се
+     * сведуваат со ист множител, така што договорената бруто плата останува иста
+     * — се менува само бројот часови, кој е она што МПИН го пријавува и што мора
+     * да се согласува со шифрата за вид на стаж.
+     */
+    public function monthFund(int $runFund): int
+    {
+        return (int) round($runFund * $this->weekly_hours / 40);
     }
 
     public function getFullNameAttribute(): string

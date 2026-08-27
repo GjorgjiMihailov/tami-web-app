@@ -3,6 +3,7 @@
 namespace Tests\Feature\Payroll;
 
 use App\Models\PayrollParameter;
+use App\Support\Payroll\MpinObvrznik;
 use App\Support\Payroll\SalaryCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -183,5 +184,54 @@ class SalaryCalculatorTest extends TestCase
             SalaryCalculator::fromNet(12000, $parameter)->gross,
             $breakdown->gross
         );
+    }
+
+    public function test_a_self_employed_person_pays_no_unemployment_and_no_monthly_tax(): void
+    {
+        $p = PayrollParameter::forDate('2026-01-31');
+
+        $whole = SalaryCalculator::fromGross(
+            34571, $p, null, MpinObvrznik::SELF_EMPLOYED
+        )->whole();
+
+        // Секоја бројка е од вистинска поднесена МПИН датотека за јануари 2026.
+        $this->assertSame(6499, $whole['pension']);
+        $this->assertSame(2593, $whole['health']);
+        $this->assertSame(173, $whole['injury']);
+        $this->assertSame(0, $whole['unemployment']);
+        $this->assertSame(9265, $whole['contributions']);
+        $this->assertSame(0, $whole['taxBase']);
+        $this->assertSame(0, $whole['tax']);
+        $this->assertSame(25306, $whole['net']);
+    }
+
+    public function test_an_employer_is_unchanged_and_is_the_default_profile(): void
+    {
+        $p = PayrollParameter::forDate('2026-05-31');
+
+        $default = SalaryCalculator::fromGross(38507, $p);
+        $explicit = SalaryCalculator::fromGross(38507, $p, null, MpinObvrznik::EMPLOYER);
+
+        $this->assertEquals($explicit, $default);
+
+        // Секоја бројка е од вистинска поднесена МПИН датотека за мај 2026.
+        $whole = $default->whole();
+        $this->assertSame(462, $whole['unemployment']);
+        $this->assertSame(10782, $whole['contributions']);
+        $this->assertSame(16793, $whole['taxBase']);
+        $this->assertSame(1679, $whole['tax']);
+        $this->assertSame(26046, $whole['net']);
+    }
+
+    public function test_the_net_to_gross_search_honours_the_profile(): void
+    {
+        $p = PayrollParameter::forDate('2026-01-31');
+
+        $whole = SalaryCalculator::fromNet(
+            25306, $p, null, MpinObvrznik::SELF_EMPLOYED
+        )->whole();
+
+        $this->assertSame(34571, $whole['gross']);
+        $this->assertSame(0, $whole['tax']);
     }
 }

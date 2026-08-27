@@ -16,11 +16,13 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
+use Tests\Feature\Payroll\Concerns\BuildsMpinRuns;
 use Tests\TestCase;
 
 class PayrollRunShowTest extends TestCase
 {
     use RefreshDatabase;
+    use BuildsMpinRuns;
 
     protected function setUp(): void
     {
@@ -345,5 +347,62 @@ class PayrollRunShowTest extends TestCase
             ->get(route('payroll-runs.show', [$company, $run]))
             ->assertOk()
             ->assertSee('нема стаж — провери ги датумите');
+    }
+
+    public function test_the_mpin_button_shows_only_on_a_confirmed_run(): void
+    {
+        $run = $this->mpinRun();
+        $this->admin();
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
+            ->assertSee('Извези МПИН');
+    }
+
+    public function test_a_draft_run_offers_no_export(): void
+    {
+        $company = Company::factory()->create();
+        $this->admin();
+        // mpinRun() seeds this row too, but this test opens its own run
+        // without going through mpinRun() — forMonth() throws without it.
+        PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 5], ['hours' => 168]);
+        $run = app(PayrollRunService::class)->open($company, 2026, 5);
+
+        // Without this second assertion, deleting the isDraft() guard in
+        // PayrollRunShow::render() still passes the test: MpinValidator would
+        // then run against the draft, add its own "must be confirmed" error,
+        // and the Blade would render the red error box instead of the
+        // button. No button either way, so checking the button text alone
+        // can't tell the two apart. A draft must show neither.
+        Livewire::test(PayrollRunShow::class, ['company' => $company, 'run' => $run])
+            ->assertDontSee('Извези МПИН')
+            ->assertDontSee('МПИН извозот не е можен');
+    }
+
+    /**
+     * The middle state: a confirmed run the validator actually blocks. A
+     * company missing mpin_obvrznik_code is the cheapest way to force a
+     * blocking error without touching employee fixtures. Nothing else
+     * exercises this branch through the component — a regression here (the
+     * button rendering alongside the errors, or the message escaping
+     * breaking) would ship unnoticed.
+     */
+    public function test_blocking_errors_are_listed_and_the_button_is_withheld(): void
+    {
+        $run = $this->mpinRun(['mpin_obvrznik_code' => null]);
+        $this->admin();
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
+            ->assertSee('Фирмата нема внесен вид обврзник за МПИН')
+            ->assertDontSee('Извези МПИН');
+    }
+
+    public function test_a_warning_is_shown_without_blocking_the_button(): void
+    {
+        $run = $this->mpinRun([], ['insurance_type_code' => '0047']);
+        $this->admin();
+
+        Livewire::test(PayrollRunShow::class, ['company' => $run->company, 'run' => $run])
+            ->assertSee('неполно работно време')
+            ->assertSee('Извези МПИН');
     }
 }

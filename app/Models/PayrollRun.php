@@ -19,6 +19,7 @@ class PayrollRun extends Model
     protected $fillable = [
         'company_id', 'year', 'month', 'status', 'month_hours',
         'payroll_parameter_id', 'journal_entry_id', 'confirmed_by', 'confirmed_at',
+        'mpin_obvrznik_code', 'mpin_exported_at', 'mpin_exported_by',
     ];
 
     protected function casts(): array
@@ -28,6 +29,8 @@ class PayrollRun extends Model
             'month' => 'integer',
             'month_hours' => 'integer',
             'confirmed_at' => 'datetime',
+            'mpin_obvrznik_code' => \App\Support\Payroll\MpinObvrznik::class,
+            'mpin_exported_at' => 'datetime',
         ];
     }
 

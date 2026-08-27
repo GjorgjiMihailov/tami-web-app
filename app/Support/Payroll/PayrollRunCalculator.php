@@ -28,10 +28,14 @@ final class PayrollRunCalculator
      * worth, and the per-hour rate everything else derives from divides it.
      * Prorating here would move the hourly rate itself.
      */
-    public static function fullMonthGross(float $amount, string $basis, PayrollParameter $parameters): float
-    {
+    public static function fullMonthGross(
+        float $amount,
+        string $basis,
+        PayrollParameter $parameters,
+        MpinObvrznik $obvrznik = MpinObvrznik::EMPLOYER,
+    ): float {
         return $basis === 'net'
-            ? SalaryCalculator::fromNet($amount, $parameters)->gross
+            ? SalaryCalculator::fromNet($amount, $parameters, null, $obvrznik)->gross
             : round($amount, 2);
     }
 
@@ -49,6 +53,7 @@ final class PayrollRunCalculator
         array $inputLines,
         PayrollParameter $parameters,
         ?float $minBase = null,
+        MpinObvrznik $obvrznik = MpinObvrznik::EMPLOYER,
     ): PayrollRunResult {
         // Deliberately NOT rounded before it is multiplied out. Rounding the
         // rate first makes a plain full month miss the agreed gross: 38 507 over
@@ -95,8 +100,18 @@ final class PayrollRunCalculator
         // The seniority bonus is derived, so it is appended rather than
         // entered. It rides on the base lines only: sick leave is already a
         // percentage of the salary, and uplifting overtime or a meal allowance
-        // by length of service is not what минат труд is.
-        $seniorityAmount = round($baseTotal * LineType::SENIORITY_PERCENT_PER_YEAR * $seniorityYears / 100, 2);
+        // by length of service is not what минат труд is. It is also an
+        // employment-relationship benefit under the Law on Labor Relations —
+        // gated off for a self-employed obvrznik, who has no employer to owe
+        // it. See MpinObvrznik::paysSeniorityBonus() for the actual evidence:
+        // the real 111 filing's DatumPocetok carries no hire-date information
+        // (it is month coverage, not employed_on), so the gate rests on the
+        // filing's gross being a fixed statutory base rather than a negotiated
+        // salary, plus the self-employed regime codes on the same line — not
+        // on any observed tenure. Pending the accountant's confirmation.
+        $seniorityAmount = $obvrznik->paysSeniorityBonus()
+            ? round($baseTotal * LineType::SENIORITY_PERCENT_PER_YEAR * $seniorityYears / 100, 2)
+            : 0.0;
 
         if ($seniorityAmount > 0) {
             $lines[] = new PayrollRunLineResult(
@@ -133,7 +148,7 @@ final class PayrollRunCalculator
         $employerGross = round($employerGross, 2);
         $deductionsTotal = round($deductionsTotal, 2);
 
-        $breakdown = SalaryCalculator::fromGross($gross, $parameters, $minBase);
+        $breakdown = SalaryCalculator::fromGross($gross, $parameters, $minBase, $obvrznik);
 
         // Contributions and tax are charged on the whole salary — the personal
         // allowance is deducted once, not per line — so the employer's share

@@ -14,6 +14,7 @@ use App\Models\PayrollRunEmployee;
 use App\Models\PayrollRunLine;
 use App\Support\Payroll\LineType;
 use App\Support\Payroll\MonthCoverage;
+use App\Support\Payroll\MpinObvrznik;
 use App\Support\Payroll\PayrollRunCalculator;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -63,7 +64,7 @@ class PayrollRunService
                     'kind' => PayrollRunLine::KIND_HOURS,
                     'code' => '001',
                     'description' => LineType::label('001'),
-                    'hours' => $employee->coverageIn($year, $month)->hours($fund->hours),
+                    'hours' => $employee->coverageIn($year, $month)->hours($employee->monthFund($fund->hours)),
                     'percent' => 100,
                     'amount' => 0,
                     'borne_by' => PayrollRunLine::BORNE_EMPLOYER,
@@ -92,6 +93,25 @@ class PayrollRunService
             $parameters = $run->parameter;
             $asOf = $run->endOfMonth();
 
+            // Once per run, not once per employee: a company whose obvrznik
+            // type is unset behaves exactly as before, and re-fetching it
+            // inside the loop would only repeat the same query.
+            $obvrznik = $run->company->mpin_obvrznik_code ?? MpinObvrznik::EMPLOYER;
+
+            // Stored on the run, alongside the figures it is about to produce.
+            // The company's own field is editable at any moment and a confirmed
+            // run refuses to recalculate, so reading it again at export time
+            // would let the МПИН header disagree with the figures underneath it
+            // — a 111 header over unemployment and tax charged at 110.
+            //
+            // recalculate() is the only writer of the stored figures, and it
+            // refuses a confirmed run, so stamping here covers every draft.
+            // confirm() re-enters through recalculate() before it flips the
+            // status, which is what freezes the pair together at the last
+            // moment a run can still change. One source of truth for what this
+            // run was actually computed as.
+            $run->update(['mpin_obvrznik_code' => $obvrznik]);
+
             foreach ($run->employees()->with(['employee', 'lines'])->get() as $runEmployee) {
                 $employee = $runEmployee->employee;
                 $coverage = $employee->coverageIn($run->year, $run->month);
@@ -99,7 +119,7 @@ class PayrollRunService
 
                 $fullMonthGross = $salary === null
                     ? 0.0
-                    : PayrollRunCalculator::fullMonthGross((float) $salary->amount, $salary->basis, $parameters);
+                    : PayrollRunCalculator::fullMonthGross((float) $salary->amount, $salary->basis, $parameters, $obvrznik);
 
                 $inputLines = $runEmployee->lines
                     ->reject(fn (PayrollRunLine $line) => $line->is_automatic)
@@ -117,11 +137,12 @@ class PayrollRunService
 
                 $result = PayrollRunCalculator::calculate(
                     fullMonthGross: $fullMonthGross,
-                    monthHours: $run->month_hours,
+                    monthHours: $employee->monthFund($run->month_hours),
                     seniorityYears: $employee->seniorityYearsOn($asOf),
                     inputLines: $inputLines,
                     parameters: $parameters,
                     minBase: $this->minimumBaseFor($coverage, $parameters),
+                    obvrznik: $obvrznik,
                 );
 
                 $runEmployee->lines()->delete();

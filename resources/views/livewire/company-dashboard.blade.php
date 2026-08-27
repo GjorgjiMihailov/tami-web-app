@@ -115,6 +115,17 @@
                             <x-text-input id="editTaxId" wire:model="editTaxId" class="w-full" />
                         </div>
                         <div>
+                            <x-input-label for="editMpinObvrznikCode" value="Вид обврзник (МПИН)" />
+                            <select id="editMpinObvrznikCode" wire:model="editMpinObvrznikCode"
+                                    class="border-gray-300 focus:border-brand focus:ring-brand rounded-lg shadow-sm transition duration-150 ease-in-out w-full text-sm">
+                                <option value="">— не е одредено —</option>
+                                @foreach (\App\Support\Payroll\MpinObvrznik::cases() as $case)
+                                    <option value="{{ $case->value }}">{{ $case->value }} — {{ $case->label() }}</option>
+                                @endforeach
+                            </select>
+                            @error('editMpinObvrznikCode') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
                             <x-input-label for="editRegistrationNumber" value="ЕМБС" />
                             <x-text-input id="editRegistrationNumber" wire:model="editRegistrationNumber" class="w-full" />
                         </div>

@@ -63,4 +63,24 @@ class PayrollCodeTest extends TestCase
 
         $this->assertEmpty($hours->intersect($compensations));
     }
+
+    public function test_the_obvrznik_codebook_is_seeded(): void
+    {
+        $codes = PayrollCode::ofType('vid_obvrznik');
+
+        $this->assertGreaterThan(0, $codes->count());
+        $this->assertSame('Работодавач, правно лице', $codes->firstWhere('code', '110')?->name);
+        $this->assertStringContainsString(
+            'Самостоен вршител',
+            (string) $codes->firstWhere('code', '111')?->name,
+        );
+    }
+
+    public function test_the_health_area_codebook_is_seeded(): void
+    {
+        $codes = PayrollCode::ofType('podracno_zdravstvo');
+
+        $this->assertGreaterThan(0, $codes->count());
+        $this->assertSame('Скопје', $codes->firstWhere('code', '4061')?->name);
+    }
 }

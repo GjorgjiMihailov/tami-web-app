@@ -8,6 +8,7 @@ use App\Models\PayrollRunEmployee;
 use App\Models\PayrollRunLine;
 use App\Services\Payroll\PayrollRunService;
 use App\Support\Payroll\LineType;
+use App\Support\Payroll\Mpin\MpinValidator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -246,10 +247,16 @@ class PayrollRunShow extends Component
             ? null
             : $rows->firstWhere('id', $this->selectedEmployeeId);
 
+        // Draft runs never reach the validator: MpinValidator itself would
+        // report "must be confirmed first", but the screen already shows a
+        // Confirm button for that — reporting it twice would just be noise.
+        $mpin = $this->run->isDraft() ? null : MpinValidator::check($this->run);
+
         return view('livewire.payroll.payroll-run-show', [
             'rows' => $rows,
             'selected' => $selected,
             'offered' => LineType::OFFERED,
+            'mpin' => $mpin,
         ]);
     }
 }

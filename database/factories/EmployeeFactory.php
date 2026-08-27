@@ -17,6 +17,7 @@ class EmployeeFactory extends Factory
             'first_name' => 'Марко',
             'last_name' => 'Петровски',
             'municipality_code' => '175',
+            'health_area_code' => '4061',
             'bank_account' => '300000000000000',
             'insurance_type_code' => '0050',
             'registration_number' => null,
