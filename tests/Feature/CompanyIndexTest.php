@@ -156,7 +156,15 @@ class CompanyIndexTest extends TestCase
             ->assertDontSeeHtml(route('inventory.stock-movements.create', [$company, 'receipt']));
     }
 
-    public function test_a_new_profile_records_the_chosen_type(): void
+    /**
+     * Миграцијата (2026_08_21_100000_add_type_to_companies_table) го поставува
+     * default-от на колоната `type` на 'legal'. Тој default е безбеден само
+     * затоа што оваа форма секогаш испраќа изречно избран тип во
+     * Company::create() — никогаш не остава Eloquent да не го спомене полето
+     * и да падне на default-от од базата. Овој тест токму тоа го докажува:
+     * избраниот тип ('individual') завршува зачуван, не default-от ('legal').
+     */
+    public function test_a_new_profile_records_the_chosen_type_not_the_database_default(): void
     {
         $this->actAsAdmin();
 
@@ -166,13 +174,21 @@ class CompanyIndexTest extends TestCase
             ->call('addCompany')
             ->assertHasNoErrors();
 
-        $this->assertSame(
-            \App\Support\CompanyType::INDIVIDUAL,
-            Company::where('name', 'Марко Марковски')->first()->type,
-        );
+        $type = Company::where('name', 'Марко Марковски')->first()->type;
+
+        $this->assertSame(\App\Support\CompanyType::INDIVIDUAL, $type);
+        $this->assertNotSame(\App\Support\CompanyType::LEGAL, $type);
     }
 
-    public function test_the_type_must_be_chosen(): void
+    /**
+     * И 'required', и Rule::enum(CompanyType::class) сами по себе го отфрлаат
+     * празниот string: CompanyType::tryFrom('') враќа null, па Enum-правилото
+     * веќе го отфрла празниот избор без 'required'. Овој тест не изолира кое
+     * од двете правила е причина за грешката — тоа не е ниту целта. Целта е
+     * да докаже дека формата не може да заврши без избран тип, без разлика
+     * кое правило застанува на пат.
+     */
+    public function test_the_form_refuses_to_complete_with_no_type_chosen(): void
     {
         $this->actAsAdmin();
 
@@ -181,6 +197,8 @@ class CompanyIndexTest extends TestCase
             ->set('newType', '')
             ->call('addCompany')
             ->assertHasErrors('newType');
+
+        $this->assertDatabaseMissing('companies', ['name' => 'ТЕСТ ДООЕЛ']);
     }
 
     public function test_an_unknown_type_is_rejected(): void
