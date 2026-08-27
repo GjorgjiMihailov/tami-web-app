@@ -109,10 +109,19 @@
                             <x-input-label for="editShortName" value="Кратко име" />
                             <x-text-input id="editShortName" wire:model="editShortName" class="w-full" />
                         </div>
-                        <div>
-                            <x-input-label for="editTaxId" value="ЕДБ" />
-                            <x-text-input id="editTaxId" wire:model="editTaxId" class="w-full" />
-                        </div>
+                        @if ($company->type->isLegal())
+                            <div>
+                                <x-input-label for="editTaxId" value="ЕДБ" />
+                                <x-text-input id="editTaxId" wire:model="editTaxId" class="w-full" />
+                            </div>
+                        @endif
+                        @if ($company->type->isIndividual())
+                            <div>
+                                <x-input-label for="editEmbg" value="ЕМБГ" />
+                                <x-text-input id="editEmbg" wire:model="editEmbg" class="w-full" />
+                                @error('editEmbg') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                            </div>
+                        @endif
                         <div>
                             <x-input-label for="editMpinObvrznikCode" value="Вид обврзник (МПИН)" />
                             <select id="editMpinObvrznikCode" wire:model="editMpinObvrznikCode"
@@ -124,18 +133,20 @@
                             </select>
                             @error('editMpinObvrznikCode') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                         </div>
-                        <div>
-                            <x-input-label for="editRegistrationNumber" value="ЕМБС" />
-                            <x-text-input id="editRegistrationNumber" wire:model="editRegistrationNumber" class="w-full" />
-                        </div>
-                        <div>
-                            <x-input-label for="editNkdCode" value="Шифра на дејност (НКД)" />
-                            <x-text-input id="editNkdCode" wire:model="editNkdCode" class="w-full" />
-                        </div>
-                        <div>
-                            <x-input-label for="editNkdName" value="Назив на дејност (НКД)" />
-                            <x-text-input id="editNkdName" wire:model="editNkdName" class="w-full" />
-                        </div>
+                        @if ($company->type->isLegal())
+                            <div>
+                                <x-input-label for="editRegistrationNumber" value="ЕМБС" />
+                                <x-text-input id="editRegistrationNumber" wire:model="editRegistrationNumber" class="w-full" />
+                            </div>
+                            <div>
+                                <x-input-label for="editNkdCode" value="Шифра на дејност (НКД)" />
+                                <x-text-input id="editNkdCode" wire:model="editNkdCode" class="w-full" />
+                            </div>
+                            <div>
+                                <x-input-label for="editNkdName" value="Назив на дејност (НКД)" />
+                                <x-text-input id="editNkdName" wire:model="editNkdName" class="w-full" />
+                            </div>
+                        @endif
                         <div>
                             <x-input-label for="editEmail" value="Е-пошта" />
                             <x-text-input id="editEmail" wire:model="editEmail" class="w-full" />
@@ -169,23 +180,25 @@
                             <x-input-label for="editCity" value="Град" />
                             <x-text-input id="editCity" wire:model="editCity" class="w-full" />
                         </div>
-                        <div>
-                            <x-input-label for="editDirectorName" value="Управител - име" />
-                            <x-text-input id="editDirectorName" wire:model="editDirectorName" class="w-full" />
-                        </div>
-                        <div>
-                            <x-input-label for="editDirectorPhone" value="Управител - телефон" />
-                            <x-text-input id="editDirectorPhone" wire:model="editDirectorPhone" class="w-full" />
-                        </div>
-                        <div>
-                            <x-input-label for="editDirectorEmail" value="Управител - е-пошта" />
-                            <x-text-input id="editDirectorEmail" wire:model="editDirectorEmail" class="w-full" />
-                            @error('editDirectorEmail') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                        </div>
-                        <div class="flex items-center gap-2 pb-2">
-                            <input type="checkbox" id="editIsVatRegistered" wire:model="editIsVatRegistered">
-                            <label for="editIsVatRegistered" class="text-sm">Во ДДВ систем</label>
-                        </div>
+                        @if ($company->type->isLegal())
+                            <div>
+                                <x-input-label for="editDirectorName" value="Управител - име" />
+                                <x-text-input id="editDirectorName" wire:model="editDirectorName" class="w-full" />
+                            </div>
+                            <div>
+                                <x-input-label for="editDirectorPhone" value="Управител - телефон" />
+                                <x-text-input id="editDirectorPhone" wire:model="editDirectorPhone" class="w-full" />
+                            </div>
+                            <div>
+                                <x-input-label for="editDirectorEmail" value="Управител - е-пошта" />
+                                <x-text-input id="editDirectorEmail" wire:model="editDirectorEmail" class="w-full" />
+                                @error('editDirectorEmail') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                            </div>
+                            <div class="flex items-center gap-2 pb-2">
+                                <input type="checkbox" id="editIsVatRegistered" wire:model="editIsVatRegistered">
+                                <label for="editIsVatRegistered" class="text-sm">Во ДДВ систем</label>
+                            </div>
+                        @endif
                     </div>
 
                     <div>
@@ -233,28 +246,30 @@
                         </div>
                     </div>
 
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-700 mb-2">е-Фактура акредитиви</h3>
-                        <div class="flex gap-4 mb-3">
-                            <label class="inline-flex items-center gap-2">
-                                <input type="radio" wire:model="editEfakturaMode" value="firm">
-                                <span>Користи го фирменото</span>
-                            </label>
-                            <label class="inline-flex items-center gap-2">
-                                <input type="radio" wire:model="editEfakturaMode" value="own">
-                                <span>Сопствени акредитиви</span>
-                            </label>
-                        </div>
-
-                        @if ($editEfakturaMode === 'own')
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1">X-EUJP-ID</label>
-                                <input type="text" wire:model="editEfakturaEujpId" class="w-full rounded-lg border-gray-300">
-                                @error('editEfakturaEujpId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                                <p class="text-xs text-gray-500 mt-1">Потпишувачкиот уред (USB токен) се регистрира одделно, погоре на страницата — не преку овој формулар.</p>
+                    @if ($company->type->isLegal())
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-700 mb-2">е-Фактура акредитиви</h3>
+                            <div class="flex gap-4 mb-3">
+                                <label class="inline-flex items-center gap-2">
+                                    <input type="radio" wire:model="editEfakturaMode" value="firm">
+                                    <span>Користи го фирменото</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2">
+                                    <input type="radio" wire:model="editEfakturaMode" value="own">
+                                    <span>Сопствени акредитиви</span>
+                                </label>
                             </div>
-                        @endif
-                    </div>
+
+                            @if ($editEfakturaMode === 'own')
+                                <div>
+                                    <label class="block text-sm text-gray-600 mb-1">X-EUJP-ID</label>
+                                    <input type="text" wire:model="editEfakturaEujpId" class="w-full rounded-lg border-gray-300">
+                                    @error('editEfakturaEujpId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                    <p class="text-xs text-gray-500 mt-1">Потпишувачкиот уред (USB токен) се регистрира одделно, погоре на страницата — не преку овој формулар.</p>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
 
                     <div>
                         <x-input-label for="editInvoiceFooterNote" value="Забелешка за фуснота на фактура" />

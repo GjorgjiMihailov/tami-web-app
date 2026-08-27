@@ -25,7 +25,7 @@ class Company extends Model
     public const EFAKTURA_STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
-        'name', 'short_name', 'tax_id', 'mpin_obvrznik_code', 'registration_number', 'nkd_code', 'nkd_name',
+        'name', 'short_name', 'tax_id', 'embg', 'mpin_obvrznik_code', 'registration_number', 'nkd_code', 'nkd_name',
         'email', 'phone', 'address', 'street_address', 'street_number', 'postal_code', 'city',
         'website', 'director_name', 'director_phone', 'director_email',
         'logo_path', 'logo_position', 'is_vat_registered', 'invoice_footer_note',

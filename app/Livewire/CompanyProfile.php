@@ -25,6 +25,8 @@ class CompanyProfile extends Component
 
     public string $editTaxId = '';
 
+    public string $editEmbg = '';
+
     public string $editMpinObvrznikCode = '';
 
     public string $editRegistrationNumber = '';
@@ -82,6 +84,7 @@ class CompanyProfile extends Component
         $this->editName = $this->company->name;
         $this->editShortName = (string) $this->company->short_name;
         $this->editTaxId = (string) $this->company->tax_id;
+        $this->editEmbg = (string) $this->company->embg;
         $this->editMpinObvrznikCode = $this->company->mpin_obvrznik_code?->value ?? '';
         $this->editRegistrationNumber = (string) $this->company->registration_number;
         $this->editNkdCode = (string) $this->company->nkd_code;
@@ -187,6 +190,9 @@ class CompanyProfile extends Component
             'editName' => 'required|string|max:255',
             'editShortName' => 'nullable|string|max:255',
             'editTaxId' => 'nullable|string|max:255',
+            'editEmbg' => $this->company->type->isIndividual() && $this->editEmbg !== ''
+                ? ['nullable', 'max:13', new \App\Rules\ValidEmbg]
+                : ['nullable', 'max:13'],
             'editMpinObvrznikCode' => ['nullable', Rule::enum(\App\Support\Payroll\MpinObvrznik::class)],
             'editRegistrationNumber' => 'nullable|string|max:255',
             'editNkdCode' => 'nullable|string|max:255',
@@ -226,6 +232,7 @@ class CompanyProfile extends Component
                 'name' => $validated['editName'],
                 'short_name' => $validated['editShortName'] ?: null,
                 'tax_id' => $validated['editTaxId'] ?: null,
+                'embg' => $validated['editEmbg'] ?: null,
                 'mpin_obvrznik_code' => $validated['editMpinObvrznikCode'] ?: null,
                 'registration_number' => $validated['editRegistrationNumber'] ?: null,
                 'nkd_code' => $validated['editNkdCode'] ?: null,
