@@ -33,7 +33,7 @@ class Company extends Model
         'efaktura_firm_access_decided_by', 'efaktura_firm_access_decided_at',
         'efaktura_token_serial_number', 'efaktura_token_subject_name',
         'efaktura_token_not_before', 'efaktura_token_not_after', 'efaktura_token_registered_at',
-        'efaktura_purchase_last_checked_at',
+        'efaktura_purchase_last_checked_at', 'type',
     ];
 
     protected function casts(): array
@@ -41,6 +41,7 @@ class Company extends Model
         return [
             'is_vat_registered' => 'boolean',
             'mpin_obvrznik_code' => \App\Support\Payroll\MpinObvrznik::class,
+            'type' => \App\Support\CompanyType::class,
             'efaktura_token_not_before' => 'datetime',
             'efaktura_token_not_after' => 'datetime',
             'efaktura_token_registered_at' => 'datetime',

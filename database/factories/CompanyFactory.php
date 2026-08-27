@@ -16,6 +16,9 @@ class CompanyFactory extends Factory
             'address' => $this->faker->address(),
             'efaktura_credential_mode' => 'firm',
             'efaktura_firm_access_status' => 'none',
+            // Фабриката прави правно лице, зашто така изгледа секој постоечки тест.
+            // Тест за физичко лице го поставува изречно.
+            'type' => \App\Support\CompanyType::LEGAL,
         ];
     }
 }
