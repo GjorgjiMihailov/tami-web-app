@@ -6,6 +6,7 @@ use App\Livewire\Layout\Sidebar;
 use App\Models\Company;
 use App\Models\JournalEntry;
 use App\Models\User;
+use App\Support\CompanyType;
 use App\Support\CurrentCompany;
 use App\Support\WorkingYear;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -172,6 +173,28 @@ class SidebarTest extends TestCase
         $this->get(route('inventory.warehouses.index', $company))
             ->assertOk()
             ->assertSeeHtml(route('documents.index', $company));
+    }
+
+    /**
+     * Документи is absent from the spec's individual menu table — an
+     * individual profile has no bookkeeping documents to file. Without this,
+     * a future edit could reintroduce the link for individuals and the rest
+     * of the suite would stay green, since every other Документи assertion
+     * above uses the factory's default legal company.
+     */
+    public function test_documents_is_hidden_for_an_individual_but_shown_for_a_legal_entity(): void
+    {
+        $individual = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+        $legal = Company::factory()->create(['type' => CompanyType::LEGAL]);
+        $this->actingAs($this->admin());
+
+        $this->get(route('sales-invoices.index', $individual))
+            ->assertOk()
+            ->assertDontSeeHtml(route('documents.index', $individual));
+
+        $this->get(route('sales-invoices.index', $legal))
+            ->assertOk()
+            ->assertSeeHtml(route('documents.index', $legal));
     }
 
     public function test_the_company_selector_lists_only_visible_companies(): void
