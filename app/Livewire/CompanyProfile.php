@@ -221,22 +221,20 @@ class CompanyProfile extends Component
             'editEfakturaEujpId' => 'nullable|string|max:100',
         ]);
 
-        if ($validated['editEfakturaMode'] === Company::EFAKTURA_MODE_OWN && blank($validated['editEfakturaEujpId'])) {
+        $isLegal = $this->company->type->isLegal();
+
+        if ($isLegal && $validated['editEfakturaMode'] === Company::EFAKTURA_MODE_OWN && blank($validated['editEfakturaEujpId'])) {
             $this->addError('editEfakturaEujpId', 'X-EUJP-ID е задолжителен за сопствен е-Фактура пристап.');
 
             return;
         }
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, $isLegal) {
             $companyData = [
                 'name' => $validated['editName'],
                 'short_name' => $validated['editShortName'] ?: null,
                 'tax_id' => $validated['editTaxId'] ?: null,
                 'embg' => $validated['editEmbg'] ?: null,
-                'mpin_obvrznik_code' => $validated['editMpinObvrznikCode'] ?: null,
-                'registration_number' => $validated['editRegistrationNumber'] ?: null,
-                'nkd_code' => $validated['editNkdCode'] ?: null,
-                'nkd_name' => $validated['editNkdName'] ?: null,
                 'email' => $validated['editEmail'] ?: null,
                 'phone' => $validated['editPhone'] ?: null,
                 'website' => $validated['editWebsite'] ?: null,
@@ -245,21 +243,36 @@ class CompanyProfile extends Component
                 'street_number' => $validated['editStreetNumber'] ?: null,
                 'postal_code' => $validated['editPostalCode'] ?: null,
                 'city' => $validated['editCity'] ?: null,
-                'director_name' => $validated['editDirectorName'] ?: null,
-                'director_phone' => $validated['editDirectorPhone'] ?: null,
-                'director_email' => $validated['editDirectorEmail'] ?: null,
-                'is_vat_registered' => $validated['editIsVatRegistered'],
                 'logo_position' => $validated['editLogoPosition'],
                 'invoice_footer_note' => $validated['editInvoiceFooterNote'] ?: null,
-                'efaktura_credential_mode' => $validated['editEfakturaMode'],
             ];
 
-            if ($validated['editEfakturaMode'] === Company::EFAKTURA_MODE_OWN) {
-                if (filled($validated['editEfakturaEujpId'])) {
-                    $companyData['efaktura_eujp_id'] = $validated['editEfakturaEujpId'];
+            // Полињата подолу важат само за правно лице (ДДВ обврзник, МПИН
+            // обврзник, матичен број, НКД, директор, е-Фактура). Формата секогаш
+            // испраќа некоја вредност за нив — вклучително стандардни вредности
+            // како "firm" за е-Фактура режим или true за ДДВ обврзник — иако тие
+            // полиња се скриени во формата за физичко лице. Затоа не смее да се
+            // запишуваат безусловно: физичко лице нема ЕДБ, па режим на
+            // е-Фактура и слично се бесмислени за него, а секое зачувување на
+            // профилот (дури и на несврзано поле) би ги презапишало на секогаш.
+            if ($isLegal) {
+                $companyData['is_vat_registered'] = $validated['editIsVatRegistered'];
+                $companyData['mpin_obvrznik_code'] = $validated['editMpinObvrznikCode'] ?: null;
+                $companyData['registration_number'] = $validated['editRegistrationNumber'] ?: null;
+                $companyData['nkd_code'] = $validated['editNkdCode'] ?: null;
+                $companyData['nkd_name'] = $validated['editNkdName'] ?: null;
+                $companyData['director_name'] = $validated['editDirectorName'] ?: null;
+                $companyData['director_phone'] = $validated['editDirectorPhone'] ?: null;
+                $companyData['director_email'] = $validated['editDirectorEmail'] ?: null;
+                $companyData['efaktura_credential_mode'] = $validated['editEfakturaMode'];
+
+                if ($validated['editEfakturaMode'] === Company::EFAKTURA_MODE_OWN) {
+                    if (filled($validated['editEfakturaEujpId'])) {
+                        $companyData['efaktura_eujp_id'] = $validated['editEfakturaEujpId'];
+                    }
+                } else {
+                    $companyData['efaktura_eujp_id'] = null;
                 }
-            } else {
-                $companyData['efaktura_eujp_id'] = null;
             }
 
             $this->company->update($companyData);

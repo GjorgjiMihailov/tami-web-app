@@ -8,7 +8,7 @@
         @endcan
     </div>
 
-    @if ($company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_FIRM)
+    @if ($company->type->isLegal() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_FIRM)
         <x-card class="mb-6">
             <h3 class="text-sm font-semibold text-gray-700 mb-2">е-Фактура пристап</h3>
             @if (in_array($company->efaktura_firm_access_status, [
@@ -26,7 +26,7 @@
         </x-card>
     @endif
 
-    @if (auth()->user()->hasAnyRole(['admin', 'accountant']))
+    @if ($company->type->isLegal() && auth()->user()->hasAnyRole(['admin', 'accountant']))
         <x-card class="mb-6" x-data="signingDeviceRegistration()">
             <h3 class="text-sm font-semibold text-gray-700 mb-2">Потпишувачки уред (USB токен)</h3>
 
@@ -122,18 +122,18 @@
                                 @error('editEmbg') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                             </div>
                         @endif
-                        <div>
-                            <x-input-label for="editMpinObvrznikCode" value="Вид обврзник (МПИН)" />
-                            <select id="editMpinObvrznikCode" wire:model="editMpinObvrznikCode"
-                                    class="border-gray-300 focus:border-brand focus:ring-brand rounded-lg shadow-sm transition duration-150 ease-in-out w-full text-sm">
-                                <option value="">— не е одредено —</option>
-                                @foreach (\App\Support\Payroll\MpinObvrznik::cases() as $case)
-                                    <option value="{{ $case->value }}">{{ $case->value }} — {{ $case->label() }}</option>
-                                @endforeach
-                            </select>
-                            @error('editMpinObvrznikCode') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                        </div>
                         @if ($company->type->isLegal())
+                            <div>
+                                <x-input-label for="editMpinObvrznikCode" value="Вид обврзник (МПИН)" />
+                                <select id="editMpinObvrznikCode" wire:model="editMpinObvrznikCode"
+                                        class="border-gray-300 focus:border-brand focus:ring-brand rounded-lg shadow-sm transition duration-150 ease-in-out w-full text-sm">
+                                    <option value="">— не е одредено —</option>
+                                    @foreach (\App\Support\Payroll\MpinObvrznik::cases() as $case)
+                                        <option value="{{ $case->value }}">{{ $case->value }} — {{ $case->label() }}</option>
+                                    @endforeach
+                                </select>
+                                @error('editMpinObvrznikCode') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                            </div>
                             <div>
                                 <x-input-label for="editRegistrationNumber" value="ЕМБС" />
                                 <x-text-input id="editRegistrationNumber" wire:model="editRegistrationNumber" class="w-full" />

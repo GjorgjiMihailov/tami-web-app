@@ -109,4 +109,65 @@ class CompanyProfileFieldsTest extends TestCase
             ->call('save')
             ->assertHasNoErrors();
     }
+
+    /**
+     * Формата за уредување секогаш испраќа вредност за е-Фактура режимот, МПИН
+     * обврзникот и слични полиња — дури и стандардна вредност како "firm" —
+     * бидејќи тие се полиња на компонентата, не празни низи. За физичко лице
+     * тие полиња се скриени во формата и немаат смисла (нема ЕДБ = нема
+     * е-Фактура пристап), па зачувувањето не смее да ги допре: секое уредување
+     * на несврзано поле не смее да ги презапише со стандардна вредност.
+     */
+    public function test_an_individual_profile_saves_without_touching_the_company_only_columns(): void
+    {
+        $company = Company::factory()->create([
+            'type' => CompanyType::INDIVIDUAL,
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'EUJP-KEEP-ME',
+            'mpin_obvrznik_code' => null,
+            'is_vat_registered' => false,
+        ]);
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyProfile::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('editPhone', '070999888')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $fresh = $company->fresh();
+        $this->assertSame('070999888', $fresh->phone);
+        $this->assertSame(Company::EFAKTURA_MODE_OWN, $fresh->efaktura_credential_mode);
+        $this->assertSame('EUJP-KEEP-ME', $fresh->efaktura_eujp_id);
+        $this->assertNull($fresh->mpin_obvrznik_code);
+        $this->assertFalse($fresh->is_vat_registered);
+    }
+
+    public function test_a_legal_profile_still_saves_its_efaktura_mode(): void
+    {
+        $company = Company::factory()->create(['type' => CompanyType::LEGAL]);
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyProfile::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('editEfakturaMode', Company::EFAKTURA_MODE_OWN)
+            ->set('editEfakturaEujpId', 'EUJP-123')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $fresh = $company->fresh();
+        $this->assertSame(Company::EFAKTURA_MODE_OWN, $fresh->efaktura_credential_mode);
+        $this->assertSame('EUJP-123', $fresh->efaktura_eujp_id);
+    }
+
+    public function test_an_individual_profile_does_not_show_the_mpin_or_efaktura_sections(): void
+    {
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyProfile::class, ['company' => $company])
+            ->call('startEdit')
+            ->assertDontSee('МПИН')
+            ->assertDontSee('е-Фактура акредитиви');
+    }
 }
