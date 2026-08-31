@@ -44,7 +44,7 @@ class ComingSoonTest extends TestCase
         $this->actingAs($accountant)
             ->get(route('coming-soon', [$company, 'izvodi']))
             ->assertOk()
-            ->assertSee('Изводи');
+            ->assertSee('Банкарски документи');
     }
 
     public function test_a_client_is_refused_even_by_direct_url(): void

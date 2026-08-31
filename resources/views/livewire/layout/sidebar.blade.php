@@ -77,10 +77,12 @@
                     @endif
                 @endforeach
 
-                <a href="{{ route('documents.index', $company) }}" wire:navigate
-                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 mt-1 {{ str_starts_with($currentRoute, 'documents.') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
-                    Документи
-                </a>
+                @if (! $company->type->isIndividual())
+                    <a href="{{ route('documents.index', $company) }}" wire:navigate
+                       class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 mt-1 {{ str_starts_with($currentRoute, 'documents.') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
+                        Документи
+                    </a>
+                @endif
             </div>
         @endif
     </nav>

@@ -26,8 +26,16 @@ class Menu
      */
     public const SOON_FEATURES = [
         'izvodi' => [
-            'label' => 'Изводи',
-            'sentence' => 'Овде ќе се внесуваат и прегледуваат денарските и девизните изводи од банка.',
+            'label' => 'Банкарски документи',
+            'sentence' => 'Овде ќе се прикачуваат и прегледуваат изводите од банка, денарски и девизни.',
+        ],
+        'obrazec-743' => [
+            'label' => '743 обрасци',
+            'sentence' => 'Овде клиентот ќе ги прикачува обрасците 743 добиени од банка.',
+        ],
+        'drugi-trosoci' => [
+            'label' => 'Други трошоци',
+            'sentence' => 'Овде ќе се внесуваат трошоци што не доаѓаат преку влезна фактура, со прикачување на документ.',
         ],
         'profakturi' => [
             'label' => 'Профактури',
@@ -107,7 +115,20 @@ class Menu
     }
 
     /**
-     * The full, unfiltered tree. 'roles' => null means every role.
+     * The tree branches on the client's type — a legal entity and an
+     * individual see almost entirely different applications. See
+     * legalTree() and individualTree() below.
+     */
+    private static function tree(Company $company): array
+    {
+        return $company->type->isIndividual()
+            ? self::individualTree($company)
+            : self::legalTree($company);
+    }
+
+    /**
+     * The full, unfiltered tree for a правно лице (company). 'roles' => null
+     * means every role.
      *
      * Прием / Излез / Пренос share one route (inventory.stock-movements.create)
      * distinguished only by a path parameter, so a route-name glob cannot tell
@@ -115,7 +136,7 @@ class Menu
      * highlight together on any stock-movement screen, rather than the sidebar
      * reading request()->route('type'), which it must never do.
      */
-    private static function tree(Company $company): array
+    private static function legalTree(Company $company): array
     {
         return [
             [
@@ -132,9 +153,16 @@ class Menu
                 'label' => 'ПРОДАЖБА',
                 'items' => [
                     ['label' => 'Излезни фактури', 'url' => route('sales-invoices.index', $company), 'pattern' => 'sales-invoices.*', 'roles' => null],
-                    ['label' => 'Влезни фактури', 'url' => route('purchase-invoices.index', $company), 'pattern' => 'purchase-invoices.*', 'roles' => null],
                     self::soon($company, 'profakturi'),
                     ['label' => 'Кооперанти', 'url' => route('partners.index', $company), 'pattern' => 'partners.*', 'roles' => null],
+                ],
+            ],
+            [
+                'key' => 'costs',
+                'label' => 'ТРОШОЦИ',
+                'items' => [
+                    ['label' => 'Влезни фактури', 'url' => route('purchase-invoices.index', $company), 'pattern' => 'purchase-invoices.*', 'roles' => null],
+                    self::soon($company, 'drugi-trosoci'),
                 ],
             ],
             [
@@ -167,6 +195,45 @@ class Menu
                     ['label' => 'Контен план', 'url' => route('accounting.accounts.index', $company), 'pattern' => 'accounting.accounts.*', 'roles' => ['admin', 'accountant']],
                     ['label' => 'е-Фактура барања', 'url' => route('efaktura.access-requests'), 'pattern' => 'efaktura.access-requests', 'roles' => ['admin']],
                     ['label' => 'Параметри за плата', 'url' => route('payroll-parameters.index', $company), 'pattern' => 'payroll-parameters.*', 'roles' => ['admin']],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * The full, unfiltered tree for a физичко лице (individual). No главна
+     * книга, ДДВ, залиха или плати — тие групи не важат за овој тип клиент.
+     */
+    private static function individualTree(Company $company): array
+    {
+        return [
+            [
+                'key' => 'sales',
+                'label' => 'ПРОДАЖБА',
+                'items' => [
+                    ['label' => 'Излезни фактури', 'url' => route('sales-invoices.index', $company), 'pattern' => 'sales-invoices.*', 'roles' => null],
+                    ['label' => 'Кооперанти', 'url' => route('partners.index', $company), 'pattern' => 'partners.*', 'roles' => null],
+                ],
+            ],
+            [
+                'key' => 'bank',
+                'label' => 'БАНКАРСКИ ДОКУМЕНТИ',
+                'items' => [
+                    self::soon($company, 'obrazec-743'),
+                ],
+            ],
+            [
+                'key' => 'filings',
+                'label' => 'ПРИЈАВИ',
+                'items' => [
+                    self::soon($company, 'e-pdd') + ['roles' => ['admin', 'accountant']],
+                ],
+            ],
+            [
+                'key' => 'settings',
+                'label' => 'ПОСТАВКИ',
+                'items' => [
+                    ['label' => 'Профил', 'url' => route('companies.profile', $company), 'pattern' => 'companies.profile', 'roles' => null],
                 ],
             ],
         ];
