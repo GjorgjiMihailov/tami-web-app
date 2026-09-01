@@ -63,4 +63,56 @@
             </a>
         </div>
     @endif
+
+    @if ($company->type->isIndividual())
+        <p class="mt-1 text-xs text-gray-400">Работна година {{ $workingYear }}</p>
+
+        <div class="mt-4 grid gap-4 sm:grid-cols-2">
+            <a href="{{ route('sales-invoices.index', $company) }}" wire:navigate
+               class="block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition">
+                <span class="text-sm text-gray-500">Приход</span>
+                <p class="mt-1 text-xl font-semibold text-gray-800">{{ \App\Support\Format::money($revenue) }}</p>
+            </a>
+
+            <a href="{{ route('sales-invoices.index', $company) }}" wire:navigate
+               class="block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition">
+                <span class="text-sm text-gray-500">Ненаплатено</span>
+                <p class="mt-1 text-xl font-semibold text-gray-800">{{ \App\Support\Format::money($receivable) }}</p>
+            </a>
+        </div>
+
+        {{-- Поднесени/обработени пријави и износот на ДЛД не постојат никаде
+             во апликацијата — доаѓаат со фаза Г (е-ПДД). Овие плочки се
+             намерно сиви и без бројки, за никој да не ги помеша со вистински
+             податок. Види „Dashboard на физичко лице" во design.md. --}}
+        <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="block bg-white rounded-2xl shadow-card p-4 opacity-60">
+                <span class="font-semibold text-gray-500 flex items-center gap-2">
+                    Поднесени пријави
+                    <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">наскоро</span>
+                </span>
+            </div>
+
+            <div class="block bg-white rounded-2xl shadow-card p-4 opacity-60">
+                <span class="font-semibold text-gray-500 flex items-center gap-2">
+                    Обработени пријави
+                    <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">наскоро</span>
+                </span>
+            </div>
+
+            <div class="block bg-white rounded-2xl shadow-card p-4 opacity-60">
+                <span class="font-semibold text-gray-500 flex items-center gap-2">
+                    Износ на ДЛД
+                    <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">наскоро</span>
+                </span>
+            </div>
+
+            <div class="block bg-white rounded-2xl shadow-card p-4 opacity-60">
+                <span class="font-semibold text-gray-500 flex items-center gap-2">
+                    Примени 743 обрасци
+                    <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">наскоро</span>
+                </span>
+            </div>
+        </div>
+    @endif
 </div>

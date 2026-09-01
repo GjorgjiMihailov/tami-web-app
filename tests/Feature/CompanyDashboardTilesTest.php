@@ -239,4 +239,37 @@ class CompanyDashboardTilesTest extends TestCase
             ->assertDontSee('Приход за работната година')
             ->assertDontSee('Вредност на залихата');
     }
+
+    public function test_an_individual_profile_shows_income_and_what_is_owed(): void
+    {
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+        $this->invoice($company, '2026-03-10');
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyDashboard::class, ['company' => $company])
+            ->assertSee('Приход')
+            ->assertSee('Ненаплатено');
+    }
+
+    public function test_an_individual_profile_does_not_show_the_company_tiles(): void
+    {
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyDashboard::class, ['company' => $company])
+            ->assertDontSee('Вредност на залиха')
+            ->assertDontSee('ДДВ');
+    }
+
+    public function test_an_individual_profile_names_what_is_still_missing(): void
+    {
+        // Празно ветување е полошо од ништо; именувано ветување му кажува на
+        // сметководителот што допрва доаѓа.
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyDashboard::class, ['company' => $company])
+            ->assertSee('Поднесени пријави')
+            ->assertSee('наскоро');
+    }
 }
