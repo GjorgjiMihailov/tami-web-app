@@ -97,7 +97,7 @@
     @can('update', $company)
         @if ($editing)
             <x-card class="mb-6">
-                <h2 class="font-semibold text-gray-700 mb-3">Профил на фирма</h2>
+                <h2 class="font-semibold text-gray-700 mb-3">{{ $company->type->isLegal() ? 'Профил на фирма' : 'Профил на физичко лице' }}</h2>
                 <form wire:submit="save" class="space-y-4">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>

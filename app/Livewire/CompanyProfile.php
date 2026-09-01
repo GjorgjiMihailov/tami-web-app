@@ -125,9 +125,20 @@ class CompanyProfile extends Component
         $this->editing = false;
     }
 
+    /**
+     * е-Фактура бара ЕДБ, што физичко лице нема — табелата „Полиња по тип" во
+     * docs/superpowers/specs/2026-08-21-client-profile-types-design.md.
+     *
+     * Копчето е скриено во профилот на физичко лице, но Livewire метод се вика
+     * преку жица без разлика што е исцртано, па криењето во Blade не е брана.
+     * Чуварот стои сам за себе: не се потпира на тоа со кој режим профилот е
+     * создаден, како што ни создавањето не се потпира на овој чувар.
+     */
     public function requestFirmEfakturaAccess(): void
     {
         Gate::authorize('view', $this->company);
+
+        abort_if($this->company->type->isIndividual(), 403, 'е-Фактура важи само за профил на правно лице.');
 
         if ($this->company->efaktura_credential_mode !== Company::EFAKTURA_MODE_FIRM) {
             return;
@@ -136,6 +147,12 @@ class CompanyProfile extends Component
         $this->company->update(['efaktura_firm_access_status' => Company::EFAKTURA_STATUS_REQUESTED]);
     }
 
+    /**
+     * Потпишувачкиот уред служи за е-Фактура, па важи по истото правило како
+     * requestFirmEfakturaAccess() погоре: физичко лице нема ЕДБ и нема што да
+     * потпишува. Картичката е скриена во Blade, но методот е достапен преку
+     * жица, па чуварот мора да е тука.
+     */
     public function registerSigningDevice(string $serialNumber, string $subjectName, string $notBefore, string $notAfter): void
     {
         abort_unless(
@@ -143,6 +160,8 @@ class CompanyProfile extends Component
                 && auth()->user()->visibleCompanies()->whereKey($this->company->id)->exists(),
             403
         );
+
+        abort_if($this->company->type->isIndividual(), 403, 'Потпишувачки уред се регистрира само на профил на правно лице.');
 
         if (blank($serialNumber)) {
             $this->addError('signingDevice', 'Не е добиен сериски број од токенот.');
@@ -234,7 +253,6 @@ class CompanyProfile extends Component
                 'name' => $validated['editName'],
                 'short_name' => $validated['editShortName'] ?: null,
                 'tax_id' => $validated['editTaxId'] ?: null,
-                'embg' => $validated['editEmbg'] ?: null,
                 'email' => $validated['editEmail'] ?: null,
                 'phone' => $validated['editPhone'] ?: null,
                 'website' => $validated['editWebsite'] ?: null,
@@ -246,6 +264,12 @@ class CompanyProfile extends Component
                 'logo_position' => $validated['editLogoPosition'],
                 'invoice_footer_note' => $validated['editInvoiceFooterNote'] ?: null,
             ];
+
+            // ЕМБГ е поле на физичко лице, како што ЕДБ и НКД се полиња на
+            // правно лице — затоа се запишува под истиот услов, а не безусловно.
+            if ($this->company->type->isIndividual()) {
+                $companyData['embg'] = $validated['editEmbg'] ?: null;
+            }
 
             // Полињата подолу важат само за правно лице (ДДВ обврзник, МПИН
             // обврзник, матичен број, НКД, директор, е-Фактура). Формата секогаш

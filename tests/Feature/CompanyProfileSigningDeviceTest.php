@@ -81,4 +81,23 @@ class CompanyProfileSigningDeviceTest extends TestCase
 
         $this->assertSame(Company::EFAKTURA_MODE_FIRM, $company->fresh()->efaktura_credential_mode);
     }
+
+    /**
+     * Потпишувачкиот уред служи за е-Фактура, што бара ЕДБ — физичко лице нема
+     * што да потпишува. Картичката е скриена во профилот на физичко лице, но
+     * Livewire метод се вика преку жица без разлика што е исцртано.
+     */
+    public function test_an_individual_profile_cannot_register_a_signing_device(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $company = Company::factory()->create(['type' => \App\Support\CompanyType::INDIVIDUAL]);
+
+        Livewire::actingAs($admin)
+            ->test(CompanyProfile::class, ['company' => $company])
+            ->call('registerSigningDevice', '1A2B3C', 'CN=Test Company', '2025-01-01T00:00:00Z', '2027-01-01T00:00:00Z')
+            ->assertForbidden();
+
+        $this->assertNull($company->fresh()->efaktura_token_serial_number);
+    }
 }

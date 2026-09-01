@@ -100,7 +100,7 @@ class CompanyProfileFieldsTest extends TestCase
 
     public function test_a_legal_profile_ignores_an_embg_value(): void
     {
-        $company = Company::factory()->create(['type' => CompanyType::LEGAL]);
+        $company = Company::factory()->create(['type' => CompanyType::LEGAL, 'embg' => null]);
 
         Livewire::actingAs($this->admin())
             ->test(CompanyProfile::class, ['company' => $company])
@@ -108,6 +108,11 @@ class CompanyProfileFieldsTest extends TestCase
             ->set('editEmbg', 'ABCDEFGHIJKLM')
             ->call('save')
             ->assertHasNoErrors();
+
+        // „Игнорира" значи дека вредноста не завршува во базата, не само дека
+        // не паѓа на валидација. ЕМБГ е поле на физичко лице, исто како што
+        // ЕДБ и НКД се полиња на правно лице.
+        $this->assertNull($company->fresh()->embg);
     }
 
     /**
@@ -158,6 +163,27 @@ class CompanyProfileFieldsTest extends TestCase
         $fresh = $company->fresh();
         $this->assertSame(Company::EFAKTURA_MODE_OWN, $fresh->efaktura_credential_mode);
         $this->assertSame('EUJP-123', $fresh->efaktura_eujp_id);
+    }
+
+    public function test_an_individual_profile_is_not_called_a_company(): void
+    {
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyProfile::class, ['company' => $company])
+            ->call('startEdit')
+            ->assertSee('Профил на физичко лице')
+            ->assertDontSee('Профил на фирма');
+    }
+
+    public function test_a_legal_profile_is_still_called_a_company(): void
+    {
+        $company = Company::factory()->create(['type' => CompanyType::LEGAL]);
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyProfile::class, ['company' => $company])
+            ->call('startEdit')
+            ->assertSee('Профил на фирма');
     }
 
     public function test_an_individual_profile_does_not_show_the_mpin_or_efaktura_sections(): void
