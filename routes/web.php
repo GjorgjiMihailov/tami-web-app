@@ -215,6 +215,12 @@ Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
     Route::get('/naskoro/{feature}', [ComingSoon::class, '__invoke'])->name('coming-soon');
 });
 
+// Документите тука се сметководствени прилози на фирма (влезни фактури, изводи,
+// договори), па групата намерно е затворена за профил на физичко лице.
+//
+// Фаза Б додава прикачување на 743 обрасци токму за физички лица. Тоа НЕ значи
+// дека EnsureLegalEntity се тргнува од оваа група — 743 обрасците излегуваат од
+// неа во сопствена група со сопствена рута, а оваа останува каква што е.
 Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('documents.')->group(function () {
     Route::get('/documents', [DocumentIndex::class, '__invoke'])->name('index');
     Route::get('/documents/{document}', [DocumentController::class, '__invoke'])->name('download');
