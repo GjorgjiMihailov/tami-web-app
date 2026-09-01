@@ -9,6 +9,7 @@ use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceLine;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceLine;
+use App\Models\SalesInvoicePayment;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Inventory\StockMovementService;
@@ -243,12 +244,23 @@ class CompanyDashboardTilesTest extends TestCase
     public function test_an_individual_profile_shows_income_and_what_is_owed(): void
     {
         $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
-        $this->invoice($company, '2026-03-10');
+        // Приход 59.000, делумно платена со 20.000.00 -> ненаплатено 39.000.
+        // Две различни бројки, за тест да не помине ако едната плочка по
+        // грешка ја чита туѓата променлива — истата причина како кај Task 8's
+        // 88.500 / 59.000 / 29.500.
+        $invoice = $this->invoice($company, '2026-03-10');
+        SalesInvoicePayment::factory()->for($invoice, 'salesInvoice')->create([
+            'amount' => '20000.00',
+            'payment_date' => '2026-03-20',
+        ]);
 
         Livewire::actingAs($this->admin())
             ->test(CompanyDashboard::class, ['company' => $company])
-            ->assertSee('Приход')
-            ->assertSee('Ненаплатено');
+            // assertSeeInOrder, not two assertSee pairs — pins each number to
+            // its own label so a Приход/Ненаплатено variable swap fails too,
+            // not just a hardcoded 0.00 (same reasoning as Task 8's
+            // Ненаплатено/Обврски assertSeeInOrder).
+            ->assertSeeInOrder(['Приход', '59.000', 'Ненаплатено', '39.000']);
     }
 
     public function test_an_individual_profile_does_not_show_the_company_tiles(): void
