@@ -211,4 +211,157 @@ class CompanyIndexTest extends TestCase
             ->call('addCompany')
             ->assertHasErrors('newType');
     }
+
+    /**
+     * Физичко лице нема ЕДБ, па не е во ДДВ систем — види ја табелата
+     * „Полиња по тип" во
+     * docs/superpowers/specs/2026-08-21-client-profile-types-design.md.
+     *
+     * Колоната `is_vat_registered` има default `true` во базата (миграцијата
+     * 2026_07_20_100000_add_invoicing_fields_to_companies_table), а формата за
+     * уредување на профил ја запишува само за правно лице. Значи ако оваа
+     * форма не ја постави изречно при создавање, физичкото лице засекогаш
+     * останува ДДВ обврзник — нема екран во апликацијата што тоа може да го
+     * поправи, а бројката оди право на фактурата што ја добива закупецот.
+     *
+     * Затоа тестот мора да оди низ формата. Фабрика на која ѝ се предава
+     * 'is_vat_registered' => false докажува состојба што продукцијата никогаш
+     * ја нема.
+     */
+    public function test_a_new_individual_profile_is_not_in_the_vat_system(): void
+    {
+        $this->actAsAdmin();
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newName', 'Марко Марковски')
+            ->set('newType', 'individual')
+            ->call('addCompany')
+            ->assertHasNoErrors();
+
+        $this->assertFalse(Company::where('name', 'Марко Марковски')->first()->is_vat_registered);
+    }
+
+    public function test_a_new_legal_profile_stays_in_the_vat_system(): void
+    {
+        $this->actAsAdmin();
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newName', 'ТЕСТ ДООЕЛ')
+            ->set('newType', 'legal')
+            ->call('addCompany')
+            ->assertHasNoErrors();
+
+        $this->assertTrue(Company::where('name', 'ТЕСТ ДООЕЛ')->first()->is_vat_registered);
+    }
+
+    /**
+     * Режимот на е-Фактура акредитиви е NOT NULL колона со default 'firm'.
+     * За физичко лице тој поим не важи (е-Фактура бара ЕДБ), но вредноста
+     * сепак се запишува изречно за да не зависи ниту еден профил од default
+     * на базата. Она што мора да важи е дека новосоздадено физичко лице нема
+     * пристап до е-Фактура.
+     */
+    public function test_a_new_individual_profile_has_no_efaktura_access(): void
+    {
+        $this->actAsAdmin();
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newName', 'Ана Анастасова')
+            ->set('newType', 'individual')
+            ->call('addCompany')
+            ->assertHasNoErrors();
+
+        $company = Company::where('name', 'Ана Анастасова')->first();
+
+        $this->assertFalse($company->hasEfakturaAccess());
+        $this->assertSame(Company::EFAKTURA_STATUS_NONE, $company->efaktura_firm_access_status);
+    }
+
+    public function test_the_form_asks_an_individual_for_an_embg_and_not_for_an_edb(): void
+    {
+        $this->actAsAdmin();
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newType', 'individual')
+            ->assertSee('ЕМБГ')
+            ->assertDontSee('ЕДБ');
+    }
+
+    public function test_the_form_asks_a_company_for_an_edb_and_not_for_an_embg(): void
+    {
+        $this->actAsAdmin();
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newType', 'legal')
+            ->assertSee('ЕДБ')
+            ->assertDontSee('ЕМБГ');
+    }
+
+    public function test_a_new_individual_profile_stores_its_embg(): void
+    {
+        $this->actAsAdmin();
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newName', 'Марко Марковски')
+            ->set('newType', 'individual')
+            ->set('newEmbg', '3101980455019')
+            ->call('addCompany')
+            ->assertHasNoErrors();
+
+        $company = Company::where('name', 'Марко Марковски')->first();
+
+        $this->assertSame('3101980455019', $company->embg);
+        $this->assertNull($company->tax_id);
+    }
+
+    public function test_an_invalid_embg_is_refused_when_adding_an_individual(): void
+    {
+        $this->actAsAdmin();
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newName', 'Марко Марковски')
+            ->set('newType', 'individual')
+            ->set('newEmbg', '1234567890123')
+            ->call('addCompany')
+            ->assertHasErrors('newEmbg');
+
+        $this->assertDatabaseMissing('companies', ['name' => 'Марко Марковски']);
+    }
+
+    /**
+     * Формата се менува кога ќе се смени типот, но веќе внесената вредност
+     * останува во компонентата. ЕДБ впишан пред да се избере „физичко лице" не
+     * смее да заврши на профилот: полето ЕДБ потоа е скриено во формата за
+     * уредување, па таква вредност никогаш не би можела да се поправи или
+     * избрише.
+     */
+    public function test_an_edb_typed_before_choosing_individual_never_lands_on_the_profile(): void
+    {
+        $this->actAsAdmin();
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newName', 'Марко Марковски')
+            ->set('newType', 'legal')
+            ->set('newTaxId', '4012345678901')
+            ->set('newType', 'individual')
+            ->call('addCompany')
+            ->assertHasNoErrors();
+
+        $this->assertNull(Company::where('name', 'Марко Марковски')->first()->tax_id);
+    }
+
+    public function test_an_embg_typed_before_choosing_a_company_never_lands_on_the_profile(): void
+    {
+        $this->actAsAdmin();
+
+        Livewire::test(CompanyIndex::class)
+            ->set('newName', 'ТЕСТ ДООЕЛ')
+            ->set('newType', 'individual')
+            ->set('newEmbg', '3101980455019')
+            ->set('newType', 'legal')
+            ->call('addCompany')
+            ->assertHasNoErrors();
+
+        $this->assertNull(Company::where('name', 'ТЕСТ ДООЕЛ')->first()->embg);
+    }
 }

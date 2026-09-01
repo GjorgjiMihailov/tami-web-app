@@ -7,7 +7,11 @@
             <form wire:submit="addCompany" class="flex flex-wrap gap-3 items-end">
                 <div>
                     <x-input-label for="newType" value="Вид на клиент" />
-                    <select id="newType" wire:model="newType" class="border-gray-300 rounded-md text-sm">
+                    {{-- .live, зашто полето под изборот (ЕДБ или ЕМБГ) зависи
+                         од оваа вредност. Без .live Livewire 3 ја испраќа
+                         промената дури при поднесување, па избраниот тип не би
+                         го сменил полето пред очите на корисникот. --}}
+                    <select id="newType" wire:model.live="newType" class="border-gray-300 rounded-md text-sm">
                         <option value="">— изберете —</option>
                         @foreach (\App\Support\CompanyType::cases() as $case)
                             <option value="{{ $case->value }}">{{ $case->label() }}</option>
@@ -21,11 +25,24 @@
                     <x-text-input id="newName" wire:model="newName" class="w-full" />
                     @error('newName') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                 </div>
-                <div>
-                    <x-input-label for="newTaxId" value="ЕДБ" />
-                    <x-text-input id="newTaxId" wire:model="newTaxId" class="w-40" />
-                    @error('newTaxId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                </div>
+                {{-- Правно лице има ЕДБ, физичко лице има ЕМБГ и нема ЕДБ —
+                     табелата „Полиња по тип" во дизајнот. Додека тип не е
+                     избран не се прикажува ниту едно од двете, зашто прво се
+                     избира типот. Изборот погоре е wire:model.live, па
+                     Livewire ја исцртува формата повторно при секоја промена. --}}
+                @if ($newType === \App\Support\CompanyType::LEGAL->value)
+                    <div>
+                        <x-input-label for="newTaxId" value="ЕДБ" />
+                        <x-text-input id="newTaxId" wire:model="newTaxId" class="w-40" />
+                        @error('newTaxId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                    </div>
+                @elseif ($newType === \App\Support\CompanyType::INDIVIDUAL->value)
+                    <div>
+                        <x-input-label for="newEmbg" value="ЕМБГ" />
+                        <x-text-input id="newEmbg" wire:model="newEmbg" class="w-40" />
+                        @error('newEmbg') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                    </div>
+                @endif
                 <div>
                     <x-input-label for="newEmail" value="Е-пошта" />
                     <x-text-input id="newEmail" wire:model="newEmail" class="w-48" />

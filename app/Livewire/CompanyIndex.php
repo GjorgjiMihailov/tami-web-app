@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Company;
+use App\Rules\ValidEmbg;
 use App\Support\CompanyType;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -17,6 +18,8 @@ class CompanyIndex extends Component
     public string $newType = '';
 
     public string $newTaxId = '';
+
+    public string $newEmbg = '';
 
     public string $newEmail = '';
 
@@ -41,21 +44,52 @@ class CompanyIndex extends Component
             'newName' => 'required|string|max:255',
             'newType' => ['required', Rule::enum(CompanyType::class)],
             'newTaxId' => 'nullable|string|max:255',
+            // ЕМБГ се проверува со контролна цифра само кога навистина е внесен
+            // и кога типот е физичко лице — истиот образец како во
+            // App\Livewire\CompanyProfile::save(). Профил може да се создаде и
+            // без ЕМБГ, па да се дополни подоцна во профилот.
+            'newEmbg' => $this->newType === CompanyType::INDIVIDUAL->value && $this->newEmbg !== ''
+                ? ['nullable', 'max:13', new ValidEmbg]
+                : ['nullable', 'max:13'],
             'newEmail' => 'nullable|email|max:255',
             'newPhone' => 'nullable|string|max:255',
             'newAddress' => 'nullable|string|max:255',
         ]);
 
+        $type = CompanyType::from($validated['newType']);
+        $isLegal = $type->isLegal();
+
+        // Полињата по тип се решени во табелата „Полиња по тип" во
+        // docs/superpowers/specs/2026-08-21-client-profile-types-design.md.
+        //
+        // Ниту едно поле што зависи од типот не смее да се остави на default од
+        // базата. `is_vat_registered` има default `true` во миграцијата, а
+        // формата за уредување на профил го запишува само за правно лице —
+        // значи ако тука не се постави изречно, физичкото лице засекогаш
+        // останува ДДВ обврзник и на фактурата на закупецот излегува ДДВ што
+        // не постои. Ниту еден екран потоа не може тоа да го врати.
+        //
+        // Од истата причина ЕДБ и ЕМБГ се запишуваат само на својот тип:
+        // формата ги менува полињата кога типот ќе се смени, но веќе внесената
+        // вредност останува во компонентата, а полето на погрешниот тип потоа
+        // е скриено во профилот и не може да се поправи.
         Company::create([
             'name' => $validated['newName'],
-            'type' => $validated['newType'],
-            'tax_id' => $validated['newTaxId'] ?: null,
+            'type' => $type,
+            'tax_id' => $isLegal ? ($validated['newTaxId'] ?: null) : null,
+            'embg' => $isLegal ? null : ($validated['newEmbg'] ?: null),
             'email' => $validated['newEmail'] ?: null,
             'phone' => $validated['newPhone'] ?: null,
             'address' => $validated['newAddress'] ?: null,
+            'is_vat_registered' => $isLegal,
+            // Колоната е NOT NULL и нема вредност што значи „не важи". За
+            // физичко лице 'firm' е најблиску до вистината — нема сопствени
+            // акредитиви — а пристапот и онака е затворен со чуварот по тип во
+            // CompanyProfile и со EnsureLegalEntity врз е-Фактура рутите.
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM,
         ]);
 
-        $this->reset(['newName', 'newType', 'newTaxId', 'newEmail', 'newPhone', 'newAddress']);
+        $this->reset(['newName', 'newType', 'newTaxId', 'newEmbg', 'newEmail', 'newPhone', 'newAddress']);
     }
 
     public function render()
