@@ -69,6 +69,11 @@ class Company extends Model
         return $this->hasMany(IncomingEfakturaDocument::class);
     }
 
+    public function form743s(): HasMany
+    {
+        return $this->hasMany(Form743::class);
+    }
+
     public function decidedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'efaktura_firm_access_decided_by');

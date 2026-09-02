@@ -8,6 +8,7 @@ use App\Http\Controllers\EfakturaIncomingRejectController;
 use App\Http\Controllers\EfakturaPdfController;
 use App\Http\Controllers\EfakturaSendController;
 use App\Http\Controllers\EfakturaStatusController;
+use App\Http\Controllers\Form743DocumentController;
 use App\Http\Controllers\ItemImportTemplateController;
 use App\Http\Controllers\JournalEntryPdfController;
 use App\Http\Controllers\MpinExportController;
@@ -24,6 +25,7 @@ use App\Livewire\Accounting\JournalEntryIndex;
 use App\Livewire\Accounting\JournalGroupIndex;
 use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
+use App\Livewire\Bank\Form743Upload;
 use App\Livewire\ComingSoon;
 use App\Livewire\CompanyDashboard;
 use App\Livewire\CompanyIndex;
@@ -213,6 +215,14 @@ Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{compan
 
 Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
     Route::get('/naskoro/{feature}', [ComingSoon::class, '__invoke'])->name('coming-soon');
+});
+
+// 743 обрасците се на физичко лице, па оваа група стои надвор од `documents.`
+// и намерно нема `EnsureLegalEntity`. Заклучувањето само на физичко лице доаѓа
+// во задача 7 од оваа фаза.
+Route::middleware(['auth'])->prefix('companies/{company}')->name('form743.')->group(function () {
+    Route::get('/743', [Form743Upload::class, '__invoke'])->name('index');
+    Route::get('/743/{form743}/download', [Form743DocumentController::class, '__invoke'])->name('download');
 });
 
 // Документите тука се сметководствени прилози на фирма (влезни фактури, изводи,
