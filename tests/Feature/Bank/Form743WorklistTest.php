@@ -7,6 +7,8 @@ use App\Models\Company;
 use App\Models\Form743;
 use App\Models\User;
 use App\Support\CompanyType;
+use App\Support\Form743Status;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -110,5 +112,93 @@ class Form743WorklistTest extends TestCase
         $this->actingAs($client);
 
         $this->get(route('form743.worklist'))->assertForbidden();
+    }
+
+    public function test_an_empty_processing_form_is_refused(): void
+    {
+        $company = $this->individual();
+        $form = Form743::factory()->for($company)->create();
+        $this->actingAs($this->admin());
+
+        Livewire::test(Form743Worklist::class)
+            ->call('edit', $form->id)
+            ->call('save')
+            ->assertHasErrors(['payer', 'amount', 'currency', 'paymentDate', 'basis']);
+
+        $this->assertSame(Form743Status::PENDING, $form->fresh()->status);
+    }
+
+    /**
+     * Полна форма ја затвора задачата: податоците од образецот се запишуваат,
+     * состојбата станува „внесен" и се знае кој и кога ја внел пријавата.
+     */
+    public function test_a_complete_form_closes_the_task(): void
+    {
+        $company = $this->individual();
+        $form = Form743::factory()->for($company)->create();
+        $admin = $this->admin();
+        $this->actingAs($admin);
+
+        Livewire::test(Form743Worklist::class)
+            ->call('edit', $form->id)
+            ->set('payer', 'UPWORK GLOBAL INC')
+            ->set('amount', '61500.00')
+            ->set('currency', 'eur')
+            ->set('paymentDate', '2026-03-10')
+            ->set('basis', 'Услуги извршени во странство')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertViewHas('forms', fn ($forms) => $forms->isEmpty());
+
+        $form = $form->fresh();
+
+        $this->assertSame(Form743Status::FILED, $form->status);
+        $this->assertSame('UPWORK GLOBAL INC', $form->payer);
+        $this->assertSame('61500.00', $form->amount);
+        $this->assertSame('EUR', $form->currency);
+        $this->assertSame('2026-03-10', $form->payment_date->toDateString());
+        $this->assertSame('Услуги извршени во странство', $form->basis);
+        $this->assertSame($admin->id, $form->filed_by);
+        $this->assertNotNull($form->filed_at);
+    }
+
+    /**
+     * Датум во иднина на потврда за веќе примена исплата значи испечатена
+     * грешка — најчесто погрешна година.
+     */
+    public function test_a_payment_date_in_the_future_is_refused(): void
+    {
+        $company = $this->individual();
+        $form = Form743::factory()->for($company)->create();
+        $this->actingAs($this->admin());
+
+        Livewire::test(Form743Worklist::class)
+            ->call('edit', $form->id)
+            ->set('payer', 'UPWORK GLOBAL INC')
+            ->set('amount', '100')
+            ->set('currency', 'EUR')
+            ->set('paymentDate', now()->addDay()->toDateString())
+            ->set('basis', 'Услуги')
+            ->call('save')
+            ->assertHasErrors('paymentDate');
+
+        $this->assertSame(Form743Status::PENDING, $form->fresh()->status);
+    }
+
+    /**
+     * Id испратено рачно не смее да стигне до туѓ клиент — списокот е филтриран,
+     * ама повикот доаѓа од прелистувачот.
+     */
+    public function test_an_accountant_cannot_reach_a_form_outside_their_clients(): void
+    {
+        $theirs = $this->individual();
+        $form = Form743::factory()->for($theirs)->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $this->actingAs($accountant);
+
+        $this->expectException(ModelNotFoundException::class);
+
+        Livewire::test(Form743Worklist::class)->call('edit', $form->id);
     }
 }
