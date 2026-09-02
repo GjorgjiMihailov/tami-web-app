@@ -26,6 +26,7 @@ use App\Livewire\Accounting\JournalGroupIndex;
 use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
 use App\Livewire\Bank\Form743Upload;
+use App\Livewire\Bank\Form743Worklist;
 use App\Livewire\ComingSoon;
 use App\Livewire\CompanyDashboard;
 use App\Livewire\CompanyIndex;
@@ -216,6 +217,10 @@ Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{compan
 Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
     Route::get('/naskoro/{feature}', [ComingSoon::class, '__invoke'])->name('coming-soon');
 });
+
+// Работниот список е на канцеларијата и ги собира обрасците од сите клиенти,
+// па намерно стои надвор од `companies/{company}`.
+Route::middleware(['auth'])->get('/743-obrasci', [Form743Worklist::class, '__invoke'])->name('form743.worklist');
 
 // 743 обрасците се на физичко лице, па оваа група стои надвор од `documents.`
 // и намерно нема `EnsureLegalEntity`. Заклучувањето само на физичко лице доаѓа
