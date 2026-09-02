@@ -29,15 +29,15 @@ class CompanyDashboard extends Component
         $year = WorkingYear::for($this->company);
 
         if ($this->company->type->isIndividual()) {
-            // Само приход и ненаплатено се пресметливи денес. Поднесени/
-            // обработени пријави и износот на ДЛД не постојат никаде во
-            // апликацијата — доаѓаат со фаза Г (е-ПДД). Види „Dashboard на
-            // физичко лице" во design.md: празен екран е полош, а измислени
-            // бројки се најлоши, па екранот именува наместо да измисли.
+            // Износот на ДЛД останува без бројка. Тој се знае дури откако
+            // пријавата е внесена во е-ПДД, а е-ПДД нема API — апликацијата
+            // нема од каде да го дознае. Празен екран е полош, а измислени
+            // бројки се најлоши, па плочката именува наместо да измисли.
             return view('livewire.company-dashboard', [
                 'workingYear' => $year,
                 'revenue' => CompanyDashboardQuery::revenue($this->company, $year),
                 'receivable' => CompanyDashboardQuery::receivable($this->company, $year),
+                'form743Counts' => CompanyDashboardQuery::form743Counts($this->company, $year),
             ]);
         }
 

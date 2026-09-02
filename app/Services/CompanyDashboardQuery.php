@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\Company;
+use App\Models\Form743;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
+use App\Support\Form743Status;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -108,6 +110,35 @@ class CompanyDashboardQuery
             ->whereYear('invoice_date', $year)
             ->where('efaktura_status', 'failed')
             ->count();
+    }
+
+    /**
+     * Трите бројки за 743 обрасците на физичко лице: колку стигнале во
+     * работната година, колку од нив чекаат и колку се внесени во е-ПДД.
+     *
+     * Сите три се делат по иста година на качување, па собрани го даваат
+     * примените. Ако внесените се броеја по `filed_at`, збирот ќе се
+     * разминуваше секој јануари.
+     *
+     * @return array{received: int, pending: int, filed: int}
+     */
+    public static function form743Counts(Company $company, int $year): array
+    {
+        $byStatus = Form743::query()
+            ->where('company_id', $company->id)
+            ->whereYear('created_at', $year)
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $pending = (int) $byStatus->get(Form743Status::PENDING->value, 0);
+        $filed = (int) $byStatus->get(Form743Status::FILED->value, 0);
+
+        return [
+            'received' => $pending + $filed,
+            'pending' => $pending,
+            'filed' => $filed,
+        ];
     }
 
     private static function confirmedSalesInvoicesQuery(Company $company, int $year): Builder

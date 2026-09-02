@@ -81,35 +81,33 @@
             </a>
         </div>
 
-        {{-- Поднесени/обработени пријави и износот на ДЛД не постојат никаде
-             во апликацијата — доаѓаат со фаза Г (е-ПДД). Овие плочки се
-             намерно сиви и без бројки, за никој да не ги помеша со вистински
-             податок. Види „Dashboard на физичко лице" во design.md. --}}
+        {{-- Износот на ДЛД останува сив и без бројка: тој се знае дури
+             откако пријавата е внесена во е-ПДД, а таму нема поврзување.
+             Измислена бројка на почетен екран е полоша од именувана празнина. --}}
         <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="block bg-white rounded-2xl shadow-card p-4 opacity-60">
-                <span class="font-semibold text-gray-500 flex items-center gap-2">
-                    Поднесени пријави
-                    <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">наскоро</span>
-                </span>
-            </div>
+            <a href="{{ route('form743.index', $company) }}" wire:navigate
+               class="block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition">
+                <span class="text-sm text-gray-500">Примени 743 обрасци</span>
+                <p class="mt-1 text-xl font-semibold text-gray-800">{{ $form743Counts['received'] }}</p>
+            </a>
 
-            <div class="block bg-white rounded-2xl shadow-card p-4 opacity-60">
-                <span class="font-semibold text-gray-500 flex items-center gap-2">
-                    Обработени пријави
-                    <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">наскоро</span>
-                </span>
-            </div>
+            <a href="{{ route('form743.index', $company) }}" wire:navigate
+               class="block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition">
+                <span class="text-sm text-gray-500">Необработени</span>
+                <p class="mt-1 text-xl font-semibold {{ $form743Counts['pending'] > 0 ? 'text-amber-700' : 'text-gray-800' }}">
+                    {{ $form743Counts['pending'] }}
+                </p>
+            </a>
+
+            <a href="{{ route('form743.index', $company) }}" wire:navigate
+               class="block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition">
+                <span class="text-sm text-gray-500">Внесени пријави</span>
+                <p class="mt-1 text-xl font-semibold text-gray-800">{{ $form743Counts['filed'] }}</p>
+            </a>
 
             <div class="block bg-white rounded-2xl shadow-card p-4 opacity-60">
                 <span class="font-semibold text-gray-500 flex items-center gap-2">
                     Износ на ДЛД
-                    <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">наскоро</span>
-                </span>
-            </div>
-
-            <div class="block bg-white rounded-2xl shadow-card p-4 opacity-60">
-                <span class="font-semibold text-gray-500 flex items-center gap-2">
-                    Примени 743 обрасци
                     <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">наскоро</span>
                 </span>
             </div>
