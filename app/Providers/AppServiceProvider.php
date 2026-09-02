@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureAccountingAccess;
+use App\Models\BankStatement;
 use App\Models\Company;
 use App\Models\Form743;
 use App\Models\JournalEntry;
@@ -39,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
             'partner' => Partner::class,
             'user' => User::class,
             'form743' => Form743::class,
+            'bank_statement' => BankStatement::class,
         ]);
 
         // Route-group middleware protects the initial page load only.
