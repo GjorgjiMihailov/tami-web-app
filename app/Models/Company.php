@@ -25,7 +25,7 @@ class Company extends Model
     public const EFAKTURA_STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
-        'name', 'short_name', 'tax_id', 'mpin_obvrznik_code', 'registration_number', 'nkd_code', 'nkd_name',
+        'name', 'short_name', 'tax_id', 'embg', 'mpin_obvrznik_code', 'registration_number', 'nkd_code', 'nkd_name',
         'email', 'phone', 'address', 'street_address', 'street_number', 'postal_code', 'city',
         'website', 'director_name', 'director_phone', 'director_email',
         'logo_path', 'logo_position', 'is_vat_registered', 'invoice_footer_note',
@@ -33,7 +33,7 @@ class Company extends Model
         'efaktura_firm_access_decided_by', 'efaktura_firm_access_decided_at',
         'efaktura_token_serial_number', 'efaktura_token_subject_name',
         'efaktura_token_not_before', 'efaktura_token_not_after', 'efaktura_token_registered_at',
-        'efaktura_purchase_last_checked_at',
+        'efaktura_purchase_last_checked_at', 'type',
     ];
 
     protected function casts(): array
@@ -41,6 +41,7 @@ class Company extends Model
         return [
             'is_vat_registered' => 'boolean',
             'mpin_obvrznik_code' => \App\Support\Payroll\MpinObvrznik::class,
+            'type' => \App\Support\CompanyType::class,
             'efaktura_token_not_before' => 'datetime',
             'efaktura_token_not_after' => 'datetime',
             'efaktura_token_registered_at' => 'datetime',

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\CompanyDashboard;
+use App\Livewire\CompanyProfile;
 use App\Models\Company;
 use App\Models\User;
 use App\Support\Payroll\MpinObvrznik;
@@ -11,7 +11,7 @@ use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
-class CompanyDashboardMpinObvrznikTest extends TestCase
+class CompanyProfileMpinObvrznikTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -28,7 +28,7 @@ class CompanyDashboardMpinObvrznikTest extends TestCase
         $company = Company::factory()->create(['mpin_obvrznik_code' => null]);
 
         Livewire::actingAs($admin)
-            ->test(CompanyDashboard::class, ['company' => $company])
+            ->test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->set('editMpinObvrznikCode', '111')
             ->call('save')
@@ -45,7 +45,7 @@ class CompanyDashboardMpinObvrznikTest extends TestCase
         $company = Company::factory()->create();
 
         Livewire::actingAs($admin)
-            ->test(CompanyDashboard::class, ['company' => $company])
+            ->test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->set('editMpinObvrznikCode', '115')
             ->call('save')

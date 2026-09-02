@@ -52,7 +52,7 @@ class MenuTest extends TestCase
         $company = Company::factory()->create();
 
         $this->assertSame(
-            ['ФИНАНСИИ', 'ПРОДАЖБА', 'ЗАЛИХА', 'ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ', 'ПОСТАВКИ'],
+            ['ФИНАНСИИ', 'ПРОДАЖБА', 'ТРОШОЦИ', 'ЗАЛИХА', 'ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ', 'ПОСТАВКИ'],
             $this->groupLabels(Menu::for($this->userWithRole('admin'), $company))
         );
     }
@@ -62,7 +62,7 @@ class MenuTest extends TestCase
         $company = Company::factory()->create();
         $menu = Menu::for($this->userWithRole('admin'), $company);
 
-        $this->assertSame(['Главна книга', 'Извештаи и обрасци', 'Изводи'], $this->itemLabels($menu, 'finance'));
+        $this->assertSame(['Главна книга', 'Извештаи и обрасци', 'Банкарски документи'], $this->itemLabels($menu, 'finance'));
         $this->assertSame(['Компанија', 'Контен план', 'е-Фактура барања', 'Параметри за плата'], $this->itemLabels($menu, 'settings'));
     }
 
@@ -138,12 +138,14 @@ class MenuTest extends TestCase
         $this->assertFalse($item['soon'], 'Плата (МПИН) must not be a "наскоро" stub.');
     }
 
-    public function test_a_client_still_gets_the_full_sales_and_stock_groups(): void
+    public function test_a_client_still_gets_the_full_sales_costs_and_stock_groups(): void
     {
         $company = Company::factory()->create();
         $menu = Menu::for($this->userWithRole('client', $company), $company);
 
-        $this->assertSame(['Излезни фактури', 'Влезни фактури', 'Кооперанти'], $this->itemLabels($menu, 'sales'));
+        // Влезни фактури moved out of ПРОДАЖБА into its own ТРОШОЦИ group.
+        $this->assertSame(['Излезни фактури', 'Кооперанти'], $this->itemLabels($menu, 'sales'));
+        $this->assertSame(['Влезни фактури'], $this->itemLabels($menu, 'costs'));
         $this->assertSame(
             ['Магацини', 'Артикли', 'Состојба', 'Прием', 'Излез', 'Пренос'],
             $this->itemLabels($menu, 'stock')

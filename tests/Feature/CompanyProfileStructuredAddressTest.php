@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\CompanyDashboard;
+use App\Livewire\CompanyProfile;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -10,7 +10,7 @@ use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
-class CompanyDashboardStructuredAddressTest extends TestCase
+class CompanyProfileStructuredAddressTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -27,7 +27,7 @@ class CompanyDashboardStructuredAddressTest extends TestCase
         $company = Company::factory()->create();
 
         Livewire::actingAs($admin)
-            ->test(CompanyDashboard::class, ['company' => $company])
+            ->test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->set('editStreetAddress', 'Мајка Тереза')
             ->set('editStreetNumber', '12')
