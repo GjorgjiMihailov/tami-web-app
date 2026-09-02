@@ -18,6 +18,7 @@ use App\Http\Controllers\PayslipPdfController;
 use App\Http\Controllers\SalesInvoicePdfController;
 use App\Http\Controllers\StockOnHandPdfController;
 use App\Http\Middleware\EnsureAccountingAccess;
+use App\Http\Middleware\EnsureIndividual;
 use App\Http\Middleware\EnsureLegalEntity;
 use App\Livewire\Accounting\AccountIndex;
 use App\Livewire\Accounting\JournalEntryForm;
@@ -224,9 +225,8 @@ Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
 Route::middleware(['auth'])->get('/743-obrasci', [Form743Worklist::class, '__invoke'])->name('form743.worklist');
 
 // 743 обрасците се на физичко лице, па оваа група стои надвор од `documents.`
-// и намерно нема `EnsureLegalEntity`. Заклучувањето само на физичко лице доаѓа
-// во задача 7 од оваа фаза.
-Route::middleware(['auth'])->prefix('companies/{company}')->name('form743.')->group(function () {
+// и носи сопствена брана — огледалото на `EnsureLegalEntity`.
+Route::middleware(['auth', EnsureIndividual::class])->prefix('companies/{company}')->name('form743.')->group(function () {
     Route::get('/743', [Form743Upload::class, '__invoke'])->name('index');
     Route::get('/743/{form743}/download', [Form743DocumentController::class, '__invoke'])->name('download');
 });
