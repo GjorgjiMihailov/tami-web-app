@@ -116,6 +116,40 @@ class CompanyProfileFieldsTest extends TestCase
     }
 
     /**
+     * editTaxId е јавно Livewire својство — може да се постави преку жица
+     * без разлика што прикажува Blade-от. Формата го крие полето ЕДБ за
+     * физичко лице по зачувувањето, па вредност запишана овде би била
+     * недостапна за прегледување или бришење. Затоа не смее да се запише.
+     */
+    public function test_an_individual_profile_ignores_a_tax_id_value(): void
+    {
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL, 'tax_id' => null]);
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyProfile::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('editTaxId', '4012345678901')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertNull($company->fresh()->tax_id);
+    }
+
+    public function test_a_legal_profile_still_saves_its_tax_id(): void
+    {
+        $company = Company::factory()->create(['type' => CompanyType::LEGAL, 'tax_id' => null]);
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyProfile::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('editTaxId', '4012345678901')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('4012345678901', $company->fresh()->tax_id);
+    }
+
+    /**
      * Формата за уредување секогаш испраќа вредност за е-Фактура режимот, МПИН
      * обврзникот и слични полиња — дури и стандардна вредност како "firm" —
      * бидејќи тие се полиња на компонентата, не празни низи. За физичко лице

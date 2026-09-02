@@ -252,7 +252,6 @@ class CompanyProfile extends Component
             $companyData = [
                 'name' => $validated['editName'],
                 'short_name' => $validated['editShortName'] ?: null,
-                'tax_id' => $validated['editTaxId'] ?: null,
                 'email' => $validated['editEmail'] ?: null,
                 'phone' => $validated['editPhone'] ?: null,
                 'website' => $validated['editWebsite'] ?: null,
@@ -269,6 +268,15 @@ class CompanyProfile extends Component
             // правно лице — затоа се запишува под истиот услов, а не безусловно.
             if ($this->company->type->isIndividual()) {
                 $companyData['embg'] = $validated['editEmbg'] ?: null;
+            }
+
+            // ЕДБ е поле на правно лице. editTaxId е јавно Livewire својство —
+            // може да се постави преку жица без разлика што прикажува Blade-от
+            // — а полето е скриено за физичко лице по зачувувањето, па ЕДБ
+            // запишан овде би бил недостапен ниту за преглед, ниту за бришење.
+            // Затоа се запишува под истиот услов, а не безусловно.
+            if ($isLegal) {
+                $companyData['tax_id'] = $validated['editTaxId'] ?: null;
             }
 
             // Полињата подолу важат само за правно лице (ДДВ обврзник, МПИН
