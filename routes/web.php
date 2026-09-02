@@ -8,6 +8,7 @@ use App\Http\Controllers\EfakturaIncomingRejectController;
 use App\Http\Controllers\EfakturaPdfController;
 use App\Http\Controllers\EfakturaSendController;
 use App\Http\Controllers\EfakturaStatusController;
+use App\Http\Controllers\Form743DocumentController;
 use App\Http\Controllers\ItemImportTemplateController;
 use App\Http\Controllers\JournalEntryPdfController;
 use App\Http\Controllers\MpinExportController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\PayslipPdfController;
 use App\Http\Controllers\SalesInvoicePdfController;
 use App\Http\Controllers\StockOnHandPdfController;
 use App\Http\Middleware\EnsureAccountingAccess;
+use App\Http\Middleware\EnsureIndividual;
 use App\Http\Middleware\EnsureLegalEntity;
 use App\Livewire\Accounting\AccountIndex;
 use App\Livewire\Accounting\JournalEntryForm;
@@ -24,6 +26,9 @@ use App\Livewire\Accounting\JournalEntryIndex;
 use App\Livewire\Accounting\JournalGroupIndex;
 use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
+use App\Livewire\Bank\BankStatementIndex;
+use App\Livewire\Bank\Form743Upload;
+use App\Livewire\Bank\Form743Worklist;
 use App\Livewire\ComingSoon;
 use App\Livewire\CompanyDashboard;
 use App\Livewire\CompanyIndex;
@@ -215,12 +220,27 @@ Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
     Route::get('/naskoro/{feature}', [ComingSoon::class, '__invoke'])->name('coming-soon');
 });
 
+// Работниот список е на канцеларијата и ги собира обрасците од сите клиенти,
+// па намерно стои надвор од `companies/{company}`.
+Route::middleware(['auth'])->get('/743-obrasci', [Form743Worklist::class, '__invoke'])->name('form743.worklist');
+
+// 743 обрасците се на физичко лице, па оваа група стои надвор од `documents.`
+// и носи сопствена брана — огледалото на `EnsureLegalEntity`.
+Route::middleware(['auth', EnsureIndividual::class])->prefix('companies/{company}')->name('form743.')->group(function () {
+    Route::get('/743', [Form743Upload::class, '__invoke'])->name('index');
+    Route::get('/743/{form743}/download', [Form743DocumentController::class, '__invoke'])->name('download');
+});
+
 // Документите тука се сметководствени прилози на фирма (влезни фактури, изводи,
 // договори), па групата намерно е затворена за профил на физичко лице.
 //
 // Фаза Б додава прикачување на 743 обрасци токму за физички лица. Тоа НЕ значи
 // дека EnsureLegalEntity се тргнува од оваа група — 743 обрасците излегуваат од
 // неа во сопствена група со сопствена рута, а оваа останува каква што е.
+Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('bank-statements.')->group(function () {
+    Route::get('/izvodi', [BankStatementIndex::class, '__invoke'])->name('index');
+});
+
 Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('documents.')->group(function () {
     Route::get('/documents', [DocumentIndex::class, '__invoke'])->name('index');
     Route::get('/documents/{document}', [DocumentController::class, '__invoke'])->name('download');

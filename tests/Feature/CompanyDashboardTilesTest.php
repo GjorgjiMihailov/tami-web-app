@@ -273,15 +273,20 @@ class CompanyDashboardTilesTest extends TestCase
             ->assertDontSee('ДДВ');
     }
 
+    /**
+     * Трите плочки за 743 обрасците добија бројки во фаза Б. Износот на ДЛД
+     * останува именуван и празен: тој се знае дури откако пријавата е внесена
+     * во е-ПДД, а таму нема поврзување. Празно ветување е полошо од ништо;
+     * именувано ветување му кажува на сметководителот што допрва доаѓа.
+     */
     public function test_an_individual_profile_names_what_is_still_missing(): void
     {
-        // Празно ветување е полошо од ништо; именувано ветување му кажува на
-        // сметководителот што допрва доаѓа.
         $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
 
         Livewire::actingAs($this->admin())
             ->test(CompanyDashboard::class, ['company' => $company])
-            ->assertSee('Поднесени пријави')
-            ->assertSee('наскоро');
+            ->assertSee('Износ на ДЛД')
+            ->assertSee('наскоро')
+            ->assertDontSee('Поднесени пријави');
     }
 }

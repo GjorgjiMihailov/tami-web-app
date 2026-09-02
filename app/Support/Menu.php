@@ -25,17 +25,6 @@ class Menu
      * @var array<string, array{label: string, sentence: string}>
      */
     public const SOON_FEATURES = [
-        'izvodi' => [
-            'label' => 'Банкарски документи',
-            'sentence' => 'Овде ќе се прикачуваат и прегледуваат изводите од банка, денарски и девизни.',
-        ],
-        // Ова е ставка на физичко лице. Кога фаза Б ќе го изведе прикачувањето,
-        // рутата не оди во групата `documents.` — таа е затворена за физичко
-        // лице и останува затворена; види го коментарот над неа во routes/web.php.
-        'obrazec-743' => [
-            'label' => '743 обрасци',
-            'sentence' => 'Овде клиентот ќе ги прикачува обрасците 743 добиени од банка.',
-        ],
         'drugi-trosoci' => [
             'label' => 'Други трошоци',
             'sentence' => 'Овде ќе се внесуваат трошоци што не доаѓаат преку влезна фактура, со прикачување на документ.',
@@ -148,7 +137,7 @@ class Menu
                 'items' => [
                     ['label' => 'Главна книга', 'url' => route('accounting.journal-groups.index', $company), 'pattern' => 'accounting.journal-groups.*', 'roles' => ['admin', 'accountant']],
                     ['label' => 'Извештаи и обрасци', 'url' => route('reports.index', $company), 'pattern' => 'reports.*', 'roles' => ['admin', 'accountant']],
-                    self::soon($company, 'izvodi') + ['roles' => ['admin', 'accountant']],
+                    ['label' => 'Банкарски документи', 'url' => route('bank-statements.index', $company), 'pattern' => 'bank-statements.*', 'roles' => ['admin', 'accountant']],
                 ],
             ],
             [
@@ -222,7 +211,7 @@ class Menu
                 'key' => 'bank',
                 'label' => 'БАНКАРСКИ ДОКУМЕНТИ',
                 'items' => [
-                    self::soon($company, 'obrazec-743'),
+                    ['label' => '743 обрасци', 'url' => route('form743.index', $company), 'pattern' => 'form743.*', 'roles' => null],
                 ],
             ],
             [
