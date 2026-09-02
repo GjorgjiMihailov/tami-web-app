@@ -25,6 +25,7 @@ use App\Livewire\Accounting\JournalEntryIndex;
 use App\Livewire\Accounting\JournalGroupIndex;
 use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
+use App\Livewire\Bank\BankStatementIndex;
 use App\Livewire\Bank\Form743Upload;
 use App\Livewire\Bank\Form743Worklist;
 use App\Livewire\ComingSoon;
@@ -236,6 +237,10 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('form743.')->gr
 // Фаза Б додава прикачување на 743 обрасци токму за физички лица. Тоа НЕ значи
 // дека EnsureLegalEntity се тргнува од оваа група — 743 обрасците излегуваат од
 // неа во сопствена група со сопствена рута, а оваа останува каква што е.
+Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('bank-statements.')->group(function () {
+    Route::get('/izvodi', [BankStatementIndex::class, '__invoke'])->name('index');
+});
+
 Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('documents.')->group(function () {
     Route::get('/documents', [DocumentIndex::class, '__invoke'])->name('index');
     Route::get('/documents/{document}', [DocumentController::class, '__invoke'])->name('download');

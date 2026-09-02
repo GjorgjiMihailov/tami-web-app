@@ -25,10 +25,6 @@ class Menu
      * @var array<string, array{label: string, sentence: string}>
      */
     public const SOON_FEATURES = [
-        'izvodi' => [
-            'label' => 'Банкарски документи',
-            'sentence' => 'Овде ќе се прикачуваат и прегледуваат изводите од банка, денарски и девизни.',
-        ],
         'drugi-trosoci' => [
             'label' => 'Други трошоци',
             'sentence' => 'Овде ќе се внесуваат трошоци што не доаѓаат преку влезна фактура, со прикачување на документ.',
@@ -141,7 +137,7 @@ class Menu
                 'items' => [
                     ['label' => 'Главна книга', 'url' => route('accounting.journal-groups.index', $company), 'pattern' => 'accounting.journal-groups.*', 'roles' => ['admin', 'accountant']],
                     ['label' => 'Извештаи и обрасци', 'url' => route('reports.index', $company), 'pattern' => 'reports.*', 'roles' => ['admin', 'accountant']],
-                    self::soon($company, 'izvodi') + ['roles' => ['admin', 'accountant']],
+                    ['label' => 'Банкарски документи', 'url' => route('bank-statements.index', $company), 'pattern' => 'bank-statements.*', 'roles' => ['admin', 'accountant']],
                 ],
             ],
             [
