@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Document;
+use App\Services\DocumentStorage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -38,39 +39,12 @@ class DocumentManager extends Component
             'newNote' => 'nullable|string|max:255',
         ]);
 
-        $originalFilename = basename($this->newFile->getClientOriginalName());
-
-        $document = new Document([
-            'company_id' => $this->documentable->company_id,
-            'category' => $this->newCategory,
-            'note' => $this->newNote ?: null,
-            // Placeholder: the real storage path depends on this document's
-            // own id (see below), so it isn't known yet. The `path` column
-            // is NOT NULL with no default, so we can't leave it unset on
-            // this first save.
-            'path' => '',
-            'original_filename' => $originalFilename,
-            'mime_type' => $this->newFile->getMimeType(),
-            'size' => $this->newFile->getSize(),
-            'uploaded_by' => auth()->id(),
-        ]);
-        $document->documentable()->associate($this->documentable);
-        $document->save();
-
-        try {
-            $document->path = $this->newFile->storeAs(
-                "documents/{$this->documentable->company_id}/{$document->documentable_type}/{$this->documentable->id}",
-                "{$document->id}_{$originalFilename}",
-                'google'
-            );
-            $document->save();
-        } catch (\Throwable $e) {
-            // The placeholder row must not survive a failed upload - remove
-            // it completely rather than leaving a broken (soft-deleted) row.
-            $document->forceDelete();
-
-            throw $e;
-        }
+        DocumentStorage::store(
+            $this->documentable,
+            $this->newFile,
+            $this->newCategory,
+            $this->newNote,
+        );
 
         $this->reset(['newFile', 'newNote']);
         $this->newCategory = 'Other';
