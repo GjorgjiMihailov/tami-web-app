@@ -61,7 +61,10 @@ use App\Livewire\Reports\Ddv04Report;
 use App\Livewire\Reports\ReportIndex;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome');
+// Јавната влезна страна. Отворена и за најавени корисници — за нив копчињата
+// пишуваат „Влези во порталот" наместо „Најави се", па нема причина да се
+// пренасочуваат.
+Route::view('/', 'marketing.home')->name('home');
 
 Route::get('dashboard', [Dashboard::class, '__invoke'])
     ->middleware(['auth', 'verified'])
