@@ -5,8 +5,13 @@ use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 Route::middleware('guest')->group(function () {
-    Volt::route('register', 'pages.auth.register')
-        ->name('register');
+    // Нема јавна регистрација. Сметките ги отвора канцеларијата — клиент не
+    // смее сам да си направи пристап до сметководствена апликација, а откако
+    // порталот има јавна влезна страна, адресата ја знае секој.
+    //
+    // Рутата е тргната наместо да е заклучена со middleware: `Route::has('register')`
+    // е она што Breeze-овите шаблони го прашуваат, па отсуството на рутата
+    // автоматски ја крие секаде каде би се појавила.
 
     Volt::route('login', 'pages.auth.login')
         ->name('login');
