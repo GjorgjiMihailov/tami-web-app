@@ -25,10 +25,6 @@ class Menu
      * @var array<string, array{label: string, sentence: string}>
      */
     public const SOON_FEATURES = [
-        'drugi-trosoci' => [
-            'label' => 'Други трошоци',
-            'sentence' => 'Овде ќе се внесуваат трошоци што не доаѓаат преку влезна фактура, со прикачување на документ.',
-        ],
         'profakturi' => [
             'label' => 'Профактури',
             'sentence' => 'Овде ќе се издаваат профактури кои подоцна се претвораат во фактури.',
@@ -154,7 +150,7 @@ class Menu
                 'label' => 'ТРОШОЦИ',
                 'items' => [
                     ['label' => 'Влезни фактури', 'url' => route('purchase-invoices.index', $company), 'pattern' => 'purchase-invoices.*', 'roles' => null],
-                    self::soon($company, 'drugi-trosoci'),
+                    ['label' => 'Други трошоци', 'url' => route('other-costs.index', $company), 'pattern' => 'other-costs.*', 'roles' => null],
                 ],
             ],
             [

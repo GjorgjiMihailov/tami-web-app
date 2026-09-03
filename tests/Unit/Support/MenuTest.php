@@ -145,7 +145,9 @@ class MenuTest extends TestCase
 
         // Влезни фактури moved out of ПРОДАЖБА into its own ТРОШОЦИ group.
         $this->assertSame(['Излезни фактури', 'Кооперанти'], $this->itemLabels($menu, 'sales'));
-        $this->assertSame(['Влезни фактури'], $this->itemLabels($menu, 'costs'));
+        // Други трошоци се отвори за клиент во фаза В — фискалните сметки ги
+        // качува тој, како и влезните фактури.
+        $this->assertSame(['Влезни фактури', 'Други трошоци'], $this->itemLabels($menu, 'costs'));
         $this->assertSame(
             ['Магацини', 'Артикли', 'Состојба', 'Прием', 'Излез', 'Пренос'],
             $this->itemLabels($menu, 'stock')
