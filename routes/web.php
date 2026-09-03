@@ -33,6 +33,7 @@ use App\Livewire\ComingSoon;
 use App\Livewire\CompanyDashboard;
 use App\Livewire\CompanyIndex;
 use App\Livewire\CompanyProfile;
+use App\Livewire\Costs\OtherCostIndex;
 use App\Livewire\Dashboard;
 use App\Livewire\DocumentIndex;
 use App\Livewire\EfakturaAccessRequests;
@@ -237,6 +238,10 @@ Route::middleware(['auth', EnsureIndividual::class])->prefix('companies/{company
 // Фаза Б додава прикачување на 743 обрасци токму за физички лица. Тоа НЕ значи
 // дека EnsureLegalEntity се тргнува од оваа група — 743 обрасците излегуваат од
 // неа во сопствена група со сопствена рута, а оваа останува каква што е.
+Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('other-costs.')->group(function () {
+    Route::get('/drugi-trosoci', [OtherCostIndex::class, '__invoke'])->name('index');
+});
+
 Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('bank-statements.')->group(function () {
     Route::get('/izvodi', [BankStatementIndex::class, '__invoke'])->name('index');
 });
