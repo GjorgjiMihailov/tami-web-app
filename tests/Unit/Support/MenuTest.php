@@ -174,4 +174,73 @@ class MenuTest extends TestCase
             $this->assertNotContains('Корекција', array_column($group['items'], 'label'));
         }
     }
+
+    public function test_a_switched_off_module_takes_its_group_out_of_the_menu(): void
+    {
+        $company = Company::factory()->create(['uses_payroll' => false]);
+
+        $this->assertNotContains(
+            'ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ',
+            $this->groupLabels(Menu::for($this->userWithRole('admin'), $company))
+        );
+    }
+
+    public function test_switching_off_finance_takes_the_chart_of_accounts_out_of_settings(): void
+    {
+        $company = Company::factory()->create(['uses_finance' => false]);
+        $menu = Menu::for($this->userWithRole('admin'), $company);
+
+        $this->assertNotContains('ФИНАНСИИ', $this->groupLabels($menu));
+        $this->assertNotContains('Контен план', $this->itemLabels($menu, 'settings'));
+        // Останатите поставки остануваат — тие немаат модул.
+        $this->assertContains('Компанија', $this->itemLabels($menu, 'settings'));
+    }
+
+    public function test_partners_survive_when_material_is_switched_off(): void
+    {
+        // Партнерите ги бара и книжењето, не само фактурирањето, па намерно
+        // немаат модул. Групата ПРОДАЖБА останува со неа единствена внатре.
+        $company = Company::factory()->create(['uses_material' => false]);
+        $menu = Menu::for($this->userWithRole('admin'), $company);
+
+        $this->assertSame(['Кооперанти'], $this->itemLabels($menu, 'sales'));
+        $this->assertNotContains('ТРОШОЦИ', $this->groupLabels($menu));
+    }
+
+    public function test_stock_disappears_with_material_even_when_its_own_flag_is_on(): void
+    {
+        $company = Company::factory()->create([
+            'uses_material' => false,
+            'uses_stock' => true,
+        ]);
+
+        $this->assertNotContains(
+            'ЗАЛИХА',
+            $this->groupLabels(Menu::for($this->userWithRole('admin'), $company))
+        );
+    }
+
+    public function test_stock_can_be_switched_off_on_its_own(): void
+    {
+        $company = Company::factory()->create(['uses_stock' => false]);
+        $menu = Menu::for($this->userWithRole('admin'), $company);
+
+        $this->assertNotContains('ЗАЛИХА', $this->groupLabels($menu));
+        $this->assertContains('ПРОДАЖБА', $this->groupLabels($menu));
+        $this->assertContains('ТРОШОЦИ', $this->groupLabels($menu));
+    }
+
+    public function test_an_individual_profile_ignores_the_module_flags(): void
+    {
+        $company = Company::factory()->create([
+            'type' => \App\Support\CompanyType::INDIVIDUAL,
+            'uses_material' => false,
+            'uses_finance' => false,
+        ]);
+
+        $this->assertSame(
+            ['ПРОДАЖБА', 'БАНКАРСКИ ДОКУМЕНТИ', 'ПРИЈАВИ', 'ПОСТАВКИ'],
+            $this->groupLabels(Menu::for($this->userWithRole('admin'), $company))
+        );
+    }
 }

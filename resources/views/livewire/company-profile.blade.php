@@ -198,6 +198,36 @@
                                 <input type="checkbox" id="editIsVatRegistered" wire:model="editIsVatRegistered">
                                 <label for="editIsVatRegistered" class="text-sm">Во ДДВ систем</label>
                             </div>
+                            <div class="pt-2">
+                                <span class="block text-sm font-medium text-gray-700 mb-1">Што користи клиентот</span>
+                                <div class="flex flex-wrap gap-x-6 gap-y-2">
+                                    <div>
+                                        <label class="flex items-center gap-2 text-sm">
+                                            {{-- .live, зашто подкутијата Залиха
+                                                 сивее штом Материјално се
+                                                 отштиклира. --}}
+                                            <input type="checkbox" wire:model.live="editUsesMaterial">
+                                            Материјално работење
+                                        </label>
+                                        <label class="flex items-center gap-2 text-sm ms-6 mt-1 {{ $editUsesMaterial ? '' : 'text-gray-400' }}">
+                                            <input type="checkbox" wire:model="editUsesStock" @disabled(! $editUsesMaterial)>
+                                            Залиха
+                                        </label>
+                                    </div>
+                                    <label class="flex items-center gap-2 text-sm">
+                                        <input type="checkbox" wire:model="editUsesPayroll">
+                                        Плата
+                                    </label>
+                                    <label class="flex items-center gap-2 text-sm">
+                                        <input type="checkbox" wire:model="editUsesFinance">
+                                        Финансии
+                                    </label>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Исклучен модул исчезнува од менито и неговите екрани не се отвораат.
+                                    Внесените податоци остануваат и се враќаат кога модулот пак ќе се вклучи.
+                                </p>
+                            </div>
                         @endif
                     </div>
 

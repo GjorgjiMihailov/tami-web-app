@@ -5,7 +5,17 @@
     @if ($company->type->isLegal())
         <p class="mt-1 text-xs text-gray-400">Работна година {{ $workingYear }}</p>
 
+        {{-- Плочките ги следат модулите на фирмата, исто како менито. Плочка
+             што води кон екран затворен со `EnsureCompanyModule` не смее да
+             стои тука — врската би завршила со „Забранет пристап". --}}
+        @php
+            $usesMaterial = $company->usesModule(\App\Support\CompanyModule::MATERIAL);
+            $usesStock = $company->usesModule(\App\Support\CompanyModule::STOCK);
+            $usesFinance = $company->usesModule(\App\Support\CompanyModule::FINANCE);
+        @endphp
+
         <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            @if ($usesMaterial)
             <a href="{{ route('sales-invoices.index', $company) }}" wire:navigate
                class="block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition">
                 <span class="text-sm text-gray-500">Приход за работната година</span>
@@ -38,8 +48,9 @@
                 <p class="mt-1 text-xl font-semibold text-gray-800">{{ \App\Support\Format::money($payable) }}</p>
                 <p class="mt-1 text-xs text-gray-500">од тоа доспеано: {{ \App\Support\Format::money($payableOverdue) }}</p>
             </a>
+            @endif
 
-            @if ($canSeeVat)
+            @if ($canSeeVat && $usesFinance)
                 <a href="{{ route('reports.ddv04', $company) }}" wire:navigate
                    class="block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition">
                     <span class="text-sm text-gray-500">ДДВ за тековниот период</span>
@@ -47,12 +58,15 @@
                 </a>
             @endif
 
+            @if ($usesStock)
             <a href="{{ route('inventory.reports.stock-on-hand', $company) }}" wire:navigate
                class="block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition">
                 <span class="text-sm text-gray-500">Вредност на залихата</span>
                 <p class="mt-1 text-xl font-semibold text-gray-800">{{ \App\Support\Format::money($stockValue) }}</p>
             </a>
+            @endif
 
+            @if ($usesMaterial)
             <a href="{{ route('sales-invoices.index', $company) }}" wire:navigate
                class="block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition">
                 <span class="text-sm text-gray-500">е-Фактура: испратени и со грешка</span>
@@ -61,6 +75,7 @@
                     {{ $efakturaFailed }} со грешка
                 </p>
             </a>
+            @endif
         </div>
     @endif
 

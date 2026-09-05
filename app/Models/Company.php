@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CompanyModule;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,12 +35,32 @@ class Company extends Model
         'efaktura_token_serial_number', 'efaktura_token_subject_name',
         'efaktura_token_not_before', 'efaktura_token_not_after', 'efaktura_token_registered_at',
         'efaktura_purchase_last_checked_at', 'type',
+        'uses_material', 'uses_stock', 'uses_payroll', 'uses_finance',
+    ];
+
+    /**
+     * Стандардните вредности на колоните за модули се повторуваат тука намерно.
+     * Стандардна вредност во базата важи за самиот ред, но НЕ се враќа во
+     * моделот што штотуку е создаден — `Company::create()` без овие клучеви
+     * остава `null` во меморија, а `null` за `usesModule()` значи исклучено.
+     * Со ова новосоздадената фирма чита исто и во меморија и по повторно
+     * читање од базата.
+     */
+    protected $attributes = [
+        'uses_material' => true,
+        'uses_stock' => true,
+        'uses_payroll' => true,
+        'uses_finance' => true,
     ];
 
     protected function casts(): array
     {
         return [
             'is_vat_registered' => 'boolean',
+            'uses_material' => 'boolean',
+            'uses_stock' => 'boolean',
+            'uses_payroll' => 'boolean',
+            'uses_finance' => 'boolean',
             'mpin_obvrznik_code' => \App\Support\Payroll\MpinObvrznik::class,
             'type' => \App\Support\CompanyType::class,
             'efaktura_token_not_before' => 'datetime',
@@ -86,5 +107,33 @@ class Company extends Model
         }
 
         return $this->efaktura_firm_access_status === self::EFAKTURA_STATUS_APPROVED;
+    }
+
+    /**
+     * Дали оваа фирма го користи модулот.
+     *
+     * Единственото место каде се чита состојбата на модул. Менито, плочките и
+     * `EnsureCompanyModule` сите поминуваат оттука, за правилото за Залиха и
+     * исклучокот за физичко лице да живеат само на едно место.
+     */
+    public function usesModule(CompanyModule $module): bool
+    {
+        // Модулите не важат за физичко лице. Типот веќе одлучува што гледа тој
+        // профил, па колона со заостаната вредност не смее да му затвори екран
+        // што типот му го дава. Истата грешка беше вистинска кај
+        // `is_vat_registered`, каде стандардна вредност во базата го запиша
+        // физичкото лице како ДДВ обврзник.
+        if ($this->type->isIndividual()) {
+            return true;
+        }
+
+        // Залиха е подмодул: без Материјално не постои, без разлика што пишува
+        // во колоната. Формата ја отштиклира и зачувувањето ја запишува како
+        // исклучена — ова е третата брана, за ред сменет со рака.
+        if ($module === CompanyModule::STOCK && ! $this->uses_material) {
+            return false;
+        }
+
+        return (bool) $this->{$module->column()};
     }
 }
