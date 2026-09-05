@@ -59,6 +59,14 @@ class CompanyProfile extends Component
 
     public bool $editIsVatRegistered = true;
 
+    public bool $editUsesMaterial = true;
+
+    public bool $editUsesStock = true;
+
+    public bool $editUsesPayroll = true;
+
+    public bool $editUsesFinance = true;
+
     public array $bankAccounts = [];
 
     public string $editLogoPosition = 'left';
@@ -101,6 +109,10 @@ class CompanyProfile extends Component
         $this->editDirectorPhone = (string) $this->company->director_phone;
         $this->editDirectorEmail = (string) $this->company->director_email;
         $this->editIsVatRegistered = $this->company->is_vat_registered;
+        $this->editUsesMaterial = $this->company->uses_material;
+        $this->editUsesStock = $this->company->uses_stock;
+        $this->editUsesPayroll = $this->company->uses_payroll;
+        $this->editUsesFinance = $this->company->uses_finance;
 
         $existing = $this->company->bankAccounts()->get();
         $this->bankAccounts = $existing->isEmpty()
@@ -228,6 +240,10 @@ class CompanyProfile extends Component
             'editDirectorPhone' => 'nullable|string|max:255',
             'editDirectorEmail' => 'nullable|email|max:255',
             'editIsVatRegistered' => 'boolean',
+            'editUsesMaterial' => 'boolean',
+            'editUsesStock' => 'boolean',
+            'editUsesPayroll' => 'boolean',
+            'editUsesFinance' => 'boolean',
             'bankAccounts' => 'array|max:5',
             'bankAccounts.*.bank_name' => 'nullable|string|max:255',
             'bankAccounts.*.account_number' => 'nullable|string|max:255',
@@ -289,6 +305,12 @@ class CompanyProfile extends Component
             // профилот (дури и на несврзано поле) би ги презапишало на секогаш.
             if ($isLegal) {
                 $companyData['is_vat_registered'] = $validated['editIsVatRegistered'];
+                $companyData['uses_material'] = $validated['editUsesMaterial'];
+                // Залиха без Материјално не постои — се запишува исклучена без
+                // разлика што дошло од формата.
+                $companyData['uses_stock'] = $validated['editUsesMaterial'] && $validated['editUsesStock'];
+                $companyData['uses_payroll'] = $validated['editUsesPayroll'];
+                $companyData['uses_finance'] = $validated['editUsesFinance'];
                 $companyData['mpin_obvrznik_code'] = $validated['editMpinObvrznikCode'] ?: null;
                 $companyData['registration_number'] = $validated['editRegistrationNumber'] ?: null;
                 $companyData['nkd_code'] = $validated['editNkdCode'] ?: null;
