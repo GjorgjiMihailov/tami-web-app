@@ -51,7 +51,7 @@ class Menu
         foreach (self::tree($company) as $group) {
             $items = array_values(array_filter(
                 $group['items'],
-                fn (array $item) => self::itemVisible($user, $item)
+                fn (array $item) => self::itemVisible($user, $company, $item)
             ));
 
             // A group with nothing left in it is dropped entirely — never
@@ -79,11 +79,21 @@ class Menu
         return $groups;
     }
 
-    private static function itemVisible(User $user, array $item): bool
+    private static function itemVisible(User $user, Company $company, array $item): bool
     {
         // Unbuilt entries double as the admin's remaining-work map. A client
         // only ever sees working features.
         if (($item['soon'] ?? false) && ! $user->hasAnyRole(['admin', 'accountant'])) {
+            return false;
+        }
+
+        // Модулот се проверува пред улогата: ставка од исклучен модул не ја
+        // гледа никој, ниту админ. Модулот е поставка на фирмата, не право на
+        // корисникот. Групата потоа сама исчезнува кога ќе остане празна —
+        // правилото веќе постои во `for()` и не се менува.
+        $module = $item['module'] ?? null;
+
+        if ($module instanceof CompanyModule && ! $company->usesModule($module)) {
             return false;
         }
 
@@ -92,13 +102,14 @@ class Menu
         return $roles === null || $user->hasAnyRole($roles);
     }
 
-    private static function soon(Company $company, string $slug): array
+    private static function soon(Company $company, string $slug, ?CompanyModule $module = null): array
     {
         return [
             'label' => self::SOON_FEATURES[$slug]['label'],
             'url' => route('coming-soon', [$company, $slug]),
             'pattern' => 'coming-soon',
             'soon' => true,
+            'module' => $module,
         ];
     }
 
@@ -131,17 +142,20 @@ class Menu
                 'key' => 'finance',
                 'label' => 'ФИНАНСИИ',
                 'items' => [
-                    ['label' => 'Главна книга', 'url' => route('accounting.journal-groups.index', $company), 'pattern' => 'accounting.journal-groups.*', 'roles' => ['admin', 'accountant']],
-                    ['label' => 'Извештаи и обрасци', 'url' => route('reports.index', $company), 'pattern' => 'reports.*', 'roles' => ['admin', 'accountant']],
-                    ['label' => 'Банкарски документи', 'url' => route('bank-statements.index', $company), 'pattern' => 'bank-statements.*', 'roles' => ['admin', 'accountant']],
+                    ['label' => 'Главна книга', 'url' => route('accounting.journal-groups.index', $company), 'pattern' => 'accounting.journal-groups.*', 'roles' => ['admin', 'accountant'], 'module' => CompanyModule::FINANCE],
+                    ['label' => 'Извештаи и обрасци', 'url' => route('reports.index', $company), 'pattern' => 'reports.*', 'roles' => ['admin', 'accountant'], 'module' => CompanyModule::FINANCE],
+                    ['label' => 'Банкарски документи', 'url' => route('bank-statements.index', $company), 'pattern' => 'bank-statements.*', 'roles' => ['admin', 'accountant'], 'module' => CompanyModule::FINANCE],
                 ],
             ],
             [
                 'key' => 'sales',
                 'label' => 'ПРОДАЖБА',
                 'items' => [
-                    ['label' => 'Излезни фактури', 'url' => route('sales-invoices.index', $company), 'pattern' => 'sales-invoices.*', 'roles' => null],
-                    self::soon($company, 'profakturi'),
+                    ['label' => 'Излезни фактури', 'url' => route('sales-invoices.index', $company), 'pattern' => 'sales-invoices.*', 'roles' => null, 'module' => CompanyModule::MATERIAL],
+                    self::soon($company, 'profakturi', CompanyModule::MATERIAL),
+                    // Кооперанти намерно немаат модул: партнерите ги бара и
+                    // книжењето, не само фактурирањето. Кога Материјално е
+                    // исклучено, оваа ставка останува сама во групата.
                     ['label' => 'Кооперанти', 'url' => route('partners.index', $company), 'pattern' => 'partners.*', 'roles' => null],
                 ],
             ],
@@ -149,30 +163,30 @@ class Menu
                 'key' => 'costs',
                 'label' => 'ТРОШОЦИ',
                 'items' => [
-                    ['label' => 'Влезни фактури', 'url' => route('purchase-invoices.index', $company), 'pattern' => 'purchase-invoices.*', 'roles' => null],
-                    ['label' => 'Други трошоци', 'url' => route('other-costs.index', $company), 'pattern' => 'other-costs.*', 'roles' => null],
+                    ['label' => 'Влезни фактури', 'url' => route('purchase-invoices.index', $company), 'pattern' => 'purchase-invoices.*', 'roles' => null, 'module' => CompanyModule::MATERIAL],
+                    ['label' => 'Други трошоци', 'url' => route('other-costs.index', $company), 'pattern' => 'other-costs.*', 'roles' => null, 'module' => CompanyModule::MATERIAL],
                 ],
             ],
             [
                 'key' => 'stock',
                 'label' => 'ЗАЛИХА',
                 'items' => [
-                    ['label' => 'Магацини', 'url' => route('inventory.warehouses.index', $company), 'pattern' => 'inventory.warehouses.*', 'roles' => null],
-                    ['label' => 'Артикли', 'url' => route('inventory.items.index', $company), 'pattern' => 'inventory.items.*', 'roles' => null],
-                    ['label' => 'Состојба', 'url' => route('inventory.reports.stock-on-hand', $company), 'pattern' => 'inventory.reports.*', 'roles' => null],
-                    ['label' => 'Прием', 'url' => route('inventory.stock-movements.create', [$company, 'receipt']), 'pattern' => 'inventory.stock-movements.create', 'roles' => null],
-                    ['label' => 'Излез', 'url' => route('inventory.stock-movements.create', [$company, 'issue']), 'pattern' => 'inventory.stock-movements.create', 'roles' => null],
-                    ['label' => 'Пренос', 'url' => route('inventory.stock-movements.create', [$company, 'transfer']), 'pattern' => 'inventory.stock-movements.create', 'roles' => null],
-                    self::soon($company, 'popis'),
+                    ['label' => 'Магацини', 'url' => route('inventory.warehouses.index', $company), 'pattern' => 'inventory.warehouses.*', 'roles' => null, 'module' => CompanyModule::STOCK],
+                    ['label' => 'Артикли', 'url' => route('inventory.items.index', $company), 'pattern' => 'inventory.items.*', 'roles' => null, 'module' => CompanyModule::STOCK],
+                    ['label' => 'Состојба', 'url' => route('inventory.reports.stock-on-hand', $company), 'pattern' => 'inventory.reports.*', 'roles' => null, 'module' => CompanyModule::STOCK],
+                    ['label' => 'Прием', 'url' => route('inventory.stock-movements.create', [$company, 'receipt']), 'pattern' => 'inventory.stock-movements.create', 'roles' => null, 'module' => CompanyModule::STOCK],
+                    ['label' => 'Излез', 'url' => route('inventory.stock-movements.create', [$company, 'issue']), 'pattern' => 'inventory.stock-movements.create', 'roles' => null, 'module' => CompanyModule::STOCK],
+                    ['label' => 'Пренос', 'url' => route('inventory.stock-movements.create', [$company, 'transfer']), 'pattern' => 'inventory.stock-movements.create', 'roles' => null, 'module' => CompanyModule::STOCK],
+                    self::soon($company, 'popis', CompanyModule::STOCK),
                 ],
             ],
             [
                 'key' => 'payroll',
                 'label' => 'ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ',
                 'items' => [
-                    ['label' => 'Вработени', 'url' => route('employees.index', $company), 'pattern' => 'employees.*', 'roles' => null],
-                    ['label' => 'Плата (МПИН)', 'url' => route('payroll-runs.index', $company), 'pattern' => 'payroll-runs.*', 'roles' => ['admin', 'accountant']],
-                    self::soon($company, 'e-pdd'),
+                    ['label' => 'Вработени', 'url' => route('employees.index', $company), 'pattern' => 'employees.*', 'roles' => null, 'module' => CompanyModule::PAYROLL],
+                    ['label' => 'Плата (МПИН)', 'url' => route('payroll-runs.index', $company), 'pattern' => 'payroll-runs.*', 'roles' => ['admin', 'accountant'], 'module' => CompanyModule::PAYROLL],
+                    self::soon($company, 'e-pdd', CompanyModule::PAYROLL),
                 ],
             ],
             [
@@ -180,9 +194,11 @@ class Menu
                 'label' => 'ПОСТАВКИ',
                 'items' => [
                     ['label' => 'Компанија', 'url' => route('companies.profile', $company), 'pattern' => 'companies.profile', 'roles' => null],
-                    ['label' => 'Контен план', 'url' => route('accounting.accounts.index', $company), 'pattern' => 'accounting.accounts.*', 'roles' => ['admin', 'accountant']],
+                    // Контниот план и параметрите за плата седат во Поставки, но
+                    // припаѓаат на својот модул и заминуваат заедно со него.
+                    ['label' => 'Контен план', 'url' => route('accounting.accounts.index', $company), 'pattern' => 'accounting.accounts.*', 'roles' => ['admin', 'accountant'], 'module' => CompanyModule::FINANCE],
                     ['label' => 'е-Фактура барања', 'url' => route('efaktura.access-requests'), 'pattern' => 'efaktura.access-requests', 'roles' => ['admin']],
-                    ['label' => 'Параметри за плата', 'url' => route('payroll-parameters.index', $company), 'pattern' => 'payroll-parameters.*', 'roles' => ['admin']],
+                    ['label' => 'Параметри за плата', 'url' => route('payroll-parameters.index', $company), 'pattern' => 'payroll-parameters.*', 'roles' => ['admin'], 'module' => CompanyModule::PAYROLL],
                 ],
             ],
         ];
