@@ -27,6 +27,16 @@ class CompanyIndex extends Component
 
     public string $newAddress = '';
 
+    // Стандардно сѐ вклучено: најчестиот случај е клиент што користи сѐ, а
+    // отштиклирањето е свесен потег.
+    public bool $newUsesMaterial = true;
+
+    public bool $newUsesStock = true;
+
+    public bool $newUsesPayroll = true;
+
+    public bool $newUsesFinance = true;
+
     public function mount(): void
     {
         // Фирми is an admin screen — see the role table in
@@ -54,10 +64,20 @@ class CompanyIndex extends Component
             'newEmail' => 'nullable|email|max:255',
             'newPhone' => 'nullable|string|max:255',
             'newAddress' => 'nullable|string|max:255',
+            'newUsesMaterial' => 'boolean',
+            'newUsesStock' => 'boolean',
+            'newUsesPayroll' => 'boolean',
+            'newUsesFinance' => 'boolean',
         ]);
 
         $type = CompanyType::from($validated['newType']);
         $isLegal = $type->isLegal();
+
+        // Модулите важат само за правно лице. Кај физичко лице формата не ги ни
+        // прикажува, па вредноста заостаната во компонентата од претходен избор
+        // на тип не смее да заврши во базата — истата замка како кај ЕДБ/ЕМБГ и
+        // `is_vat_registered` подолу.
+        $usesMaterial = $isLegal ? $validated['newUsesMaterial'] : true;
 
         // Полињата по тип се решени во табелата „Полиња по тип" во
         // docs/superpowers/specs/2026-08-21-client-profile-types-design.md.
@@ -82,6 +102,12 @@ class CompanyIndex extends Component
             'phone' => $validated['newPhone'] ?: null,
             'address' => $validated['newAddress'] ?: null,
             'is_vat_registered' => $isLegal,
+            'uses_material' => $usesMaterial,
+            // Залиха без Материјално не постои. Се запишува исклучена без
+            // разлика што дошло од формата.
+            'uses_stock' => $usesMaterial && ($isLegal ? $validated['newUsesStock'] : true),
+            'uses_payroll' => $isLegal ? $validated['newUsesPayroll'] : true,
+            'uses_finance' => $isLegal ? $validated['newUsesFinance'] : true,
             // Колоната е NOT NULL и нема вредност што значи „не важи". За
             // физичко лице 'firm' е најблиску до вистината — нема сопствени
             // акредитиви — а пристапот и онака е затворен со чуварот по тип во
@@ -89,7 +115,8 @@ class CompanyIndex extends Component
             'efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM,
         ]);
 
-        $this->reset(['newName', 'newType', 'newTaxId', 'newEmbg', 'newEmail', 'newPhone', 'newAddress']);
+        $this->reset(['newName', 'newType', 'newTaxId', 'newEmbg', 'newEmail', 'newPhone', 'newAddress',
+            'newUsesMaterial', 'newUsesStock', 'newUsesPayroll', 'newUsesFinance']);
     }
 
     public function render()
