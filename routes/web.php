@@ -18,6 +18,7 @@ use App\Http\Controllers\PayslipPdfController;
 use App\Http\Controllers\SalesInvoicePdfController;
 use App\Http\Controllers\StockOnHandPdfController;
 use App\Http\Middleware\EnsureAccountingAccess;
+use App\Http\Middleware\EnsureCompanyModule;
 use App\Http\Middleware\EnsureIndividual;
 use App\Http\Middleware\EnsureLegalEntity;
 use App\Livewire\Accounting\AccountIndex;
@@ -100,7 +101,7 @@ Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
 // classes (JournalEntryIndex, JournalEntryForm, LedgerCardReport,
 // TrialBalanceReport) are only built in later tasks. Both forms resolve to
 // the same action at dispatch time once the class exists.
-Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class])->prefix('companies/{company}')->name('accounting.')->group(function () {
+Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class, EnsureCompanyModule::class.':finance'])->prefix('companies/{company}')->name('accounting.')->group(function () {
     Route::get('/accounts', [AccountIndex::class, '__invoke'])->name('accounts.index');
     Route::get('/journal-groups', [JournalGroupIndex::class, '__invoke'])->name('journal-groups.index');
     Route::get('/journal-groups/{journalGroup}/entries', [JournalEntryIndex::class, '__invoke'])->name('journal-groups.entries');
@@ -117,7 +118,7 @@ Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::cla
 // didn't exist yet during earlier Inventory tasks, which would have
 // crashed route registration with a bare class-string; all classes in
 // this group exist now.)
-Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('inventory.')->group(function () {
+Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':stock'])->prefix('companies/{company}')->name('inventory.')->group(function () {
     Route::get('/warehouses', [WarehouseIndex::class, '__invoke'])->name('warehouses.index');
     Route::get('/items', [ItemIndex::class, '__invoke'])->name('items.index');
     Route::get('/items/bulk-import', [ItemBulkImport::class, '__invoke'])->name('items.bulk-import');
@@ -139,19 +140,19 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('partners.')->g
 // accounting.* group above: EmployeeIndex and EmployeeForm don't exist until
 // Tasks 8 and 9, and a bare class-string would crash route registration
 // immediately.
-Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('employees.')->group(function () {
+Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('employees.')->group(function () {
     Route::get('/employees', [EmployeeIndex::class, '__invoke'])->name('index');
     Route::get('/employees/create', [EmployeeForm::class, '__invoke'])->name('create');
     Route::get('/employees/{employee}/edit', [EmployeeForm::class, '__invoke'])->name('edit');
 });
 
-Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('payroll-parameters.')->group(function () {
+Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('payroll-parameters.')->group(function () {
     Route::get('/payroll-parameters', [PayrollParameterIndex::class, '__invoke'])->name('index');
 });
 
 // Registered before payroll-runs. below so /payroll-runs/{run}/recap.pdf is
 // not swallowed by /payroll-runs/{run}.
-Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class])->prefix('companies/{company}')->name('payroll.')->group(function () {
+Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('payroll.')->group(function () {
     Route::get('/payroll-runs/{run}/recap.pdf', PayrollRecapPdfController::class)->name('recap-pdf');
     Route::get('/payroll-runs/{run}/payslip/{runEmployee}.pdf', PayslipPdfController::class)->name('payslip-pdf');
     Route::get('/payroll-runs/{run}/mpin.xml', MpinExportController::class)->name('mpin-export');
@@ -160,7 +161,7 @@ Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::cla
 // EnsureAccountingAccess, not a policy: payroll is the firm's work, not the
 // client's, and a group-level gate covers screens added later by default
 // instead of by remembering.
-Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class])->prefix('companies/{company}')->name('payroll-runs.')->group(function () {
+Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('payroll-runs.')->group(function () {
     Route::get('/payroll-runs', [PayrollRunIndex::class, '__invoke'])->name('index');
     Route::get('/payroll-runs/{run}', [PayrollRunShow::class, '__invoke'])->name('show');
 });
@@ -169,7 +170,7 @@ Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::cla
 // accounting.* and inventory.* groups above: four of these five target
 // classes don't exist until later Invoicing tasks, and a bare class-string
 // would crash route registration immediately.
-Route::middleware(['auth'])->prefix('companies/{company}')->name('sales-invoices.')->group(function () {
+Route::middleware(['auth', EnsureCompanyModule::class.':material'])->prefix('companies/{company}')->name('sales-invoices.')->group(function () {
     Route::get('/sales-invoices', [SalesInvoiceIndex::class, '__invoke'])->name('index');
     Route::get('/sales-invoices/create', [SalesInvoiceForm::class, '__invoke'])->name('create');
     Route::get('/sales-invoices/{salesInvoice}/edit', [SalesInvoiceForm::class, '__invoke'])->name('edit');
@@ -177,7 +178,7 @@ Route::middleware(['auth'])->prefix('companies/{company}')->name('sales-invoices
     Route::get('/sales-invoices/{salesInvoice}/pdf', [SalesInvoicePdfController::class, '__invoke'])->name('pdf');
 });
 
-Route::middleware(['auth'])->prefix('companies/{company}/sales-invoices/{salesInvoice}')->name('sales-invoices.efaktura.')->group(function () {
+Route::middleware(['auth', EnsureCompanyModule::class.':material'])->prefix('companies/{company}/sales-invoices/{salesInvoice}')->name('sales-invoices.efaktura.')->group(function () {
     Route::post('/efaktura/signing-input', [EfakturaSendController::class, 'signingInput'])->name('signing-input');
     Route::post('/efaktura/send', [EfakturaSendController::class, 'send'])->name('send');
     Route::post('/efaktura/pdf/signing-input', [EfakturaPdfController::class, 'signingInput'])->name('pdf.signing-input');
@@ -185,7 +186,7 @@ Route::middleware(['auth'])->prefix('companies/{company}/sales-invoices/{salesIn
     Route::get('/efaktura/pdf/download', [EfakturaPdfController::class, 'download'])->name('pdf.download');
 });
 
-Route::middleware(['auth'])->prefix('companies/{company}/sales-invoices')->name('sales-invoices.efaktura.')->group(function () {
+Route::middleware(['auth', EnsureCompanyModule::class.':material'])->prefix('companies/{company}/sales-invoices')->name('sales-invoices.efaktura.')->group(function () {
     Route::post('/efaktura/refresh-statuses/signing-input', [EfakturaStatusController::class, 'signingInput'])->name('refresh-statuses.signing-input');
     Route::post('/efaktura/refresh-statuses', [EfakturaStatusController::class, 'refresh'])->name('refresh-statuses');
 });
@@ -194,14 +195,14 @@ Route::middleware(['auth'])->prefix('companies/{company}/sales-invoices')->name(
 // accounting.*, inventory.*, and sales-invoices.* groups above: four of
 // these five target classes don't exist until later Purchase Invoicing
 // tasks, and a bare class-string would crash route registration immediately.
-Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('purchase-invoices.')->group(function () {
+Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':material'])->prefix('companies/{company}')->name('purchase-invoices.')->group(function () {
     Route::get('/purchase-invoices', [PurchaseInvoiceIndex::class, '__invoke'])->name('index');
     Route::get('/purchase-invoices/create', [PurchaseInvoiceForm::class, '__invoke'])->name('create');
     Route::get('/purchase-invoices/{purchaseInvoice}/edit', [PurchaseInvoiceForm::class, '__invoke'])->name('edit');
     Route::get('/purchase-invoices/{purchaseInvoice}', [PurchaseInvoiceShow::class, '__invoke'])->name('show');
 });
 
-Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}/incoming-efaktura')->name('incoming-efaktura.')->group(function () {
+Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':material'])->prefix('companies/{company}/incoming-efaktura')->name('incoming-efaktura.')->group(function () {
     Route::post('/discover/ids/signing-input', [EfakturaIncomingDiscoveryController::class, 'idsSigningInput'])->name('discover.ids.signing-input');
     Route::post('/discover/ids', [EfakturaIncomingDiscoveryController::class, 'ids'])->name('discover.ids');
     Route::post('/discover/payload/signing-input', [EfakturaIncomingDiscoveryController::class, 'payloadSigningInput'])->name('discover.payload.signing-input');
@@ -210,7 +211,7 @@ Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{compan
     Route::post('/discover/status', [EfakturaIncomingDiscoveryController::class, 'status'])->name('discover.status');
 });
 
-Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}/incoming-efaktura/{incomingEfakturaDocument}')->name('incoming-efaktura.')->group(function () {
+Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':material'])->prefix('companies/{company}/incoming-efaktura/{incomingEfakturaDocument}')->name('incoming-efaktura.')->group(function () {
     Route::post('/accept/signing-input', [EfakturaIncomingAcceptController::class, 'signingInput'])->name('accept.signing-input');
     Route::post('/accept', [EfakturaIncomingAcceptController::class, 'store'])->name('accept');
     Route::post('/reject/signing-input', [EfakturaIncomingRejectController::class, 'signingInput'])->name('reject.signing-input');
@@ -241,11 +242,11 @@ Route::middleware(['auth', EnsureIndividual::class])->prefix('companies/{company
 // Фаза Б додава прикачување на 743 обрасци токму за физички лица. Тоа НЕ значи
 // дека EnsureLegalEntity се тргнува од оваа група — 743 обрасците излегуваат од
 // неа во сопствена група со сопствена рута, а оваа останува каква што е.
-Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('other-costs.')->group(function () {
+Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':material'])->prefix('companies/{company}')->name('other-costs.')->group(function () {
     Route::get('/drugi-trosoci', [OtherCostIndex::class, '__invoke'])->name('index');
 });
 
-Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('bank-statements.')->group(function () {
+Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':finance'])->prefix('companies/{company}')->name('bank-statements.')->group(function () {
     Route::get('/izvodi', [BankStatementIndex::class, '__invoke'])->name('index');
 });
 
@@ -254,7 +255,7 @@ Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{compan
     Route::get('/documents/{document}', [DocumentController::class, '__invoke'])->name('download');
 });
 
-Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class])->prefix('companies/{company}')->name('reports.')->group(function () {
+Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class, EnsureCompanyModule::class.':finance'])->prefix('companies/{company}')->name('reports.')->group(function () {
     Route::get('/reports', [ReportIndex::class, '__invoke'])->name('index');
     Route::get('/reports/ddv04', [Ddv04Report::class, '__invoke'])->name('ddv04');
 });
