@@ -289,4 +289,44 @@ class CompanyDashboardTilesTest extends TestCase
             ->assertSee('наскоро')
             ->assertDontSee('Поднесени пријави');
     }
+
+    public function test_the_stock_tile_disappears_when_stock_is_switched_off(): void
+    {
+        $company = Company::factory()->create([
+            'type' => CompanyType::LEGAL,
+            'uses_stock' => false,
+        ]);
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyDashboard::class, ['company' => $company])
+            ->assertDontSee('Вредност на залихата')
+            ->assertSee('Приход за работната година');
+    }
+
+    public function test_the_material_tiles_disappear_when_material_is_switched_off(): void
+    {
+        $company = Company::factory()->create([
+            'type' => CompanyType::LEGAL,
+            'uses_material' => false,
+        ]);
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyDashboard::class, ['company' => $company])
+            ->assertDontSee('Приход за работната година')
+            ->assertDontSee('Обврски кон добавувачи')
+            // Залиха паѓа заедно со Материјално.
+            ->assertDontSee('Вредност на залихата');
+    }
+
+    public function test_the_vat_tile_disappears_when_finance_is_switched_off(): void
+    {
+        $company = Company::factory()->create([
+            'type' => CompanyType::LEGAL,
+            'uses_finance' => false,
+        ]);
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyDashboard::class, ['company' => $company])
+            ->assertDontSee('ДДВ за тековниот период');
+    }
 }
