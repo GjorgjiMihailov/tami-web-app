@@ -1,8 +1,8 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Users;
 
-use App\Livewire\CompanyProfile;
+use App\Livewire\CompanyModules;
 use App\Models\Company;
 use App\Models\Partner;
 use App\Models\User;
@@ -12,7 +12,7 @@ use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
-class CompanyProfileModulesTest extends TestCase
+class CompanyModulesScreenTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -36,9 +36,8 @@ class CompanyProfileModulesTest extends TestCase
         $company = Company::factory()->create();
 
         Livewire::actingAs($this->admin())
-            ->test(CompanyProfile::class, ['company' => $company])
-            ->call('startEdit')
-            ->set('editUsesPayroll', false)
+            ->test(CompanyModules::class, ['company' => $company])
+            ->set('usesPayroll', false)
             ->call('save')
             ->assertHasNoErrors();
 
@@ -51,10 +50,9 @@ class CompanyProfileModulesTest extends TestCase
         $company = Company::factory()->create();
 
         Livewire::actingAs($this->admin())
-            ->test(CompanyProfile::class, ['company' => $company])
-            ->call('startEdit')
-            ->set('editUsesMaterial', false)
-            ->set('editUsesStock', true)
+            ->test(CompanyModules::class, ['company' => $company])
+            ->set('usesMaterial', false)
+            ->set('usesStock', true)
             ->call('save')
             ->assertHasNoErrors();
 
@@ -82,8 +80,7 @@ class CompanyProfileModulesTest extends TestCase
         $company->accountants()->attach($accountant);
 
         Livewire::actingAs($accountant)
-            ->test(CompanyProfile::class, ['company' => $company])
-            ->call('startEdit')
+            ->test(CompanyModules::class, ['company' => $company])
             ->assertForbidden();
     }
 
@@ -92,8 +89,27 @@ class CompanyProfileModulesTest extends TestCase
         $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
 
         Livewire::actingAs($this->admin())
-            ->test(CompanyProfile::class, ['company' => $company])
-            ->call('startEdit')
+            ->test(CompanyModules::class, ['company' => $company])
             ->assertDontSee('Материјално работење');
+    }
+
+    public function test_a_client_cannot_reach_the_modules_tab(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create();
+        Role::findOrCreate('client');
+        $client->assignRole('client');
+        $client->forceFill(['company_id' => $company->id])->save();
+
+        $this->actingAs($client)->get(route('companies.modules', $company))->assertForbidden();
+    }
+
+    public function test_an_accountant_cannot_reach_the_modules_tab(): void
+    {
+        $company = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+
+        $this->actingAs($accountant)->get(route('companies.modules', $company))->assertForbidden();
     }
 }

@@ -95,12 +95,6 @@ Route::middleware(['auth'])->get('/companies/office', [OfficeUsers::class, '__in
 Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
     Route::get('/dashboard', [CompanyDashboard::class, '__invoke'])->name('companies.dashboard');
     Route::get('/profile', [CompanyProfile::class, '__invoke'])->name('companies.profile');
-    // App\Livewire\CompanyModules doesn't exist yet — it's built in a later
-    // task. App\Support\CompanyTabs already links to 'companies.modules' for
-    // admins, so the name must resolve now for route() to build that tab's
-    // URL. Array-callable form (not bare class-string) avoids the eager
-    // method_exists() check at registration time, same reason as the
-    // accounting.* group below.
     Route::get('/modules', [CompanyModules::class, '__invoke'])->name('companies.modules');
     Route::get('/users', [CompanyUsers::class, '__invoke'])->name('companies.users');
 });
