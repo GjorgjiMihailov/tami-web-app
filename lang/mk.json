@@ -3,5 +3,10 @@
     "Whoops!": "Упс!",
     "Hello!": "Здраво!",
     "Regards,": "Поздрав,",
-    "All rights reserved.": "Сите права задржани."
+    "All rights reserved.": "Сите права задржани.",
+    "Reset your password": "Нова лозинка за порталот",
+    "You are receiving this email because we received a password reset request for your account.": "Ја добивате оваа порака затоа што е побарана нова лозинка за вашата сметка.",
+    "Reset Password": "Постави нова лозинка",
+    "This password reset link will expire in :count minutes.": "Линкот важи :count минути.",
+    "If you did not request a password reset, no further action is required.": "Ако вие не сте побарале нова лозинка, не треба да правите ништо."
 }
