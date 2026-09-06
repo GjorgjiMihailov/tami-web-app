@@ -78,4 +78,43 @@
             </tbody>
         </table>
     </x-card>
+
+    <x-card class="mt-6">
+        <h2 class="font-semibold text-gray-700 mb-2">Сметководители на оваа фирма</h2>
+
+        <ul class="text-sm divide-y">
+            @forelse ($assigned as $accountant)
+                <li class="py-1 flex justify-between items-center">
+                    <span>{{ $accountant->name }} <span class="text-gray-500">({{ $accountant->email }})</span></span>
+                    @can('create', \App\Models\User::class)
+                        <button type="button" wire:click="removeAccountant({{ $accountant->id }})"
+                                class="text-red-600 hover:underline">Тргни</button>
+                    @endcan
+                </li>
+            @empty
+                <li class="py-1 text-gray-500">Нема доделен сметководител.</li>
+            @endforelse
+        </ul>
+
+        @can('create', \App\Models\User::class)
+            @if ($available->isNotEmpty())
+                <div class="mt-3 flex gap-2 items-center">
+                    <select wire:model="accountantToAssign" class="border-gray-300 rounded-md text-sm">
+                        <option value="">— изберете —</option>
+                        @foreach ($available as $accountant)
+                            <option value="{{ $accountant->id }}">{{ $accountant->name }}</option>
+                        @endforeach
+                    </select>
+                    {{-- Само еден начин на повикување: бројот доаѓа од
+                         својството, не од Blade израз. --}}
+                    <div x-data>
+                        <x-secondary-button type="button"
+                                            x-on:click="$wire.assignAccountant($wire.accountantToAssign)">
+                            Додели
+                        </x-secondary-button>
+                    </div>
+                </div>
+            @endif
+        @endcan
+    </x-card>
 </div>

@@ -22,6 +22,8 @@ class CompanyUsers extends Component
 
     public string $newEmail = '';
 
+    public string $accountantToAssign = '';
+
     public function mount(Company $company): void
     {
         Gate::authorize('view', $company);
@@ -81,6 +83,25 @@ class CompanyUsers extends Component
         $user->forceFill(['disabled_at' => null])->save();
     }
 
+    public function assignAccountant(int $userId): void
+    {
+        Gate::authorize('create', User::class);
+
+        $accountant = User::role('accountant')->findOrFail($userId);
+
+        // syncWithoutDetaching, не attach: двоен клик не смее да остави два реда.
+        $this->company->accountants()->syncWithoutDetaching([$accountant->id]);
+
+        $this->accountantToAssign = '';
+    }
+
+    public function removeAccountant(int $userId): void
+    {
+        Gate::authorize('create', User::class);
+
+        $this->company->accountants()->detach($userId);
+    }
+
     /**
      * Правилото „админ не може да си го одземе сопствениот пристап" мора да
      * важи и кога тој самиот не е сметка на оваа фирма (нормален случај —
@@ -129,6 +150,11 @@ class CompanyUsers extends Component
                 ->orderBy('name')
                 ->get(),
             'tabs' => CompanyTabs::for(auth()->user(), $this->company, 'companies.users'),
+            'assigned' => $this->company->accountants()->orderBy('name')->get(),
+            'available' => User::role('accountant')
+                ->whereDoesntHave('assignedCompanies', fn ($query) => $query->whereKey($this->company->id))
+                ->orderBy('name')
+                ->get(),
         ]);
     }
 }
