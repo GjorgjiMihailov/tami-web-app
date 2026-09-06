@@ -38,6 +38,18 @@ class LoginForm extends Form
             ]);
         }
 
+        // Исклучена сметка минува низ Auth::attempt зашто лозинката е точна —
+        // проверката мора да дојде по неа, со изречно одјавување.
+        if (Auth::user()->disabled_at !== null) {
+            Auth::logout();
+
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'form.email' => 'Пристапот за оваа сметка е исклучен. Обратете се во канцеларијата.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

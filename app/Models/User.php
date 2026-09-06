@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -30,6 +31,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'disabled_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -59,5 +61,28 @@ class User extends Authenticatable
         }
 
         return Company::query()->whereNull('id');
+    }
+
+    public function latestInvitation(): HasOne
+    {
+        return $this->hasOne(UserInvitation::class)->latestOfMany();
+    }
+
+    /**
+     * Состојбата што ја гледа канцеларијата во списокот корисници.
+     */
+    public function accessStatus(): string
+    {
+        if ($this->disabled_at !== null) {
+            return 'disabled';
+        }
+
+        $invitation = $this->latestInvitation;
+
+        if ($invitation === null || $invitation->accepted_at !== null) {
+            return 'active';
+        }
+
+        return $invitation->expires_at->isFuture() ? 'invited' : 'invitation_expired';
     }
 }

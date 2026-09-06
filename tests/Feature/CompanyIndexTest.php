@@ -29,6 +29,14 @@ class CompanyIndexTest extends TestCase
         $this->actingAs($admin);
     }
 
+    private function admin(): User
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        return $admin;
+    }
+
     public function test_only_an_admin_may_open_the_companies_screen(): void
     {
         $company = Company::factory()->create();
@@ -89,14 +97,12 @@ class CompanyIndexTest extends TestCase
             ->set('newName', 'New Client DOO')
             ->set('newType', 'legal')
             ->set('newTaxId', '4012345678901')
-            ->set('newEmail', 'contact@newclient.mk')
             ->call('addCompany')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('companies', [
             'name' => 'New Client DOO',
             'tax_id' => '4012345678901',
-            'email' => 'contact@newclient.mk',
         ]);
     }
 
@@ -365,15 +371,16 @@ class CompanyIndexTest extends TestCase
         $this->assertNull(Company::where('name', 'ТЕСТ ДООЕЛ')->first()->embg);
     }
 
-    public function test_a_new_company_is_created_with_the_ticked_modules(): void
+    public function test_a_new_legal_company_ignores_module_state_from_the_form(): void
     {
+        // Формата веќе не штиклира модули (тие се преселени на картичката
+        // „Модули" на профилот) — сите модули излегуваат вклучени по
+        // создавање, без разлика на типот.
         $this->actAsAdmin();
 
         Livewire::test(CompanyIndex::class)
             ->set('newType', \App\Support\CompanyType::LEGAL->value)
             ->set('newName', 'Тест ДООЕЛ')
-            ->set('newUsesPayroll', false)
-            ->set('newUsesStock', false)
             ->call('addCompany')
             ->assertHasNoErrors();
 
@@ -381,26 +388,26 @@ class CompanyIndexTest extends TestCase
 
         $this->assertTrue($company->uses_material);
         $this->assertTrue($company->uses_finance);
-        $this->assertFalse($company->uses_payroll);
-        $this->assertFalse($company->uses_stock);
+        $this->assertTrue($company->uses_payroll);
+        $this->assertTrue($company->uses_stock);
     }
 
-    public function test_stock_is_written_off_when_material_is_not_ticked(): void
+    public function test_a_new_legal_company_starts_with_material_and_stock_on(): void
     {
+        // Истата причина: штиклирањата за Материјално/Залиха ги нема веќе на
+        // оваа форма, па нова фирма секогаш излегува со двете вклучени.
         $this->actAsAdmin();
 
         Livewire::test(CompanyIndex::class)
             ->set('newType', \App\Support\CompanyType::LEGAL->value)
             ->set('newName', 'Без материјално ДОО')
-            ->set('newUsesMaterial', false)
-            ->set('newUsesStock', true)
             ->call('addCompany')
             ->assertHasNoErrors();
 
         $company = Company::where('name', 'Без материјално ДОО')->sole();
 
-        $this->assertFalse($company->uses_material);
-        $this->assertFalse($company->uses_stock);
+        $this->assertTrue($company->uses_material);
+        $this->assertTrue($company->uses_stock);
     }
 
     public function test_an_individual_profile_is_created_with_every_module_on(): void
@@ -411,7 +418,6 @@ class CompanyIndexTest extends TestCase
 
         Livewire::test(CompanyIndex::class)
             ->set('newType', \App\Support\CompanyType::LEGAL->value)
-            ->set('newUsesPayroll', false)
             ->set('newType', \App\Support\CompanyType::INDIVIDUAL->value)
             ->set('newName', 'Петар Петров')
             ->call('addCompany')
@@ -425,14 +431,45 @@ class CompanyIndexTest extends TestCase
         $this->assertTrue($company->uses_finance);
     }
 
-    public function test_the_module_boxes_only_show_for_a_legal_entity(): void
+    public function test_creating_a_company_lands_on_its_profile(): void
     {
-        $this->actAsAdmin();
-
-        Livewire::test(CompanyIndex::class)
+        Livewire::actingAs($this->admin())
+            ->test(\App\Livewire\CompanyIndex::class)
             ->set('newType', \App\Support\CompanyType::LEGAL->value)
-            ->assertSee('Материјално работење')
+            ->set('newName', 'ТЕСТ ДООЕЛ')
+            ->set('newTaxId', '4080012345678')
+            ->call('addCompany')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('companies.profile', \App\Models\Company::where('name', 'ТЕСТ ДООЕЛ')->firstOrFail()));
+    }
+
+    public function test_a_new_company_starts_with_every_module_on(): void
+    {
+        Livewire::actingAs($this->admin())
+            ->test(\App\Livewire\CompanyIndex::class)
+            ->set('newType', \App\Support\CompanyType::LEGAL->value)
+            ->set('newName', 'ТЕСТ ДООЕЛ')
+            ->call('addCompany');
+
+        $company = \App\Models\Company::where('name', 'ТЕСТ ДООЕЛ')->firstOrFail();
+
+        $this->assertTrue($company->uses_material);
+        $this->assertTrue($company->uses_stock);
+        $this->assertTrue($company->uses_payroll);
+        $this->assertTrue($company->uses_finance);
+        $this->assertTrue($company->is_vat_registered);
+    }
+
+    public function test_a_new_individual_is_not_vat_registered(): void
+    {
+        Livewire::actingAs($this->admin())
+            ->test(\App\Livewire\CompanyIndex::class)
             ->set('newType', \App\Support\CompanyType::INDIVIDUAL->value)
-            ->assertDontSee('Материјално работење');
+            ->set('newName', 'Петар Петров')
+            ->call('addCompany');
+
+        $this->assertFalse(
+            \App\Models\Company::where('name', 'Петар Петров')->firstOrFail()->is_vat_registered
+        );
     }
 }

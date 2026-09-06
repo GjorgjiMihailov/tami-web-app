@@ -21,6 +21,11 @@ Route::middleware('guest')->group(function () {
 
     Volt::route('reset-password/{token}', 'pages.auth.reset-password')
         ->name('password.reset');
+
+    // Поканата е единствениот начин да се постави лозинка на нова сметка.
+    // Јавна е како и екраните за ресетирање — линкот сам по себе е доказот.
+    Volt::route('invitation/{token}', 'pages.auth.accept-invitation')
+        ->name('invitation.accept');
 });
 
 Route::middleware('auth')->group(function () {

@@ -33,7 +33,9 @@ use App\Livewire\Bank\Form743Worklist;
 use App\Livewire\ComingSoon;
 use App\Livewire\CompanyDashboard;
 use App\Livewire\CompanyIndex;
+use App\Livewire\CompanyModules;
 use App\Livewire\CompanyProfile;
+use App\Livewire\CompanyUsers;
 use App\Livewire\Costs\OtherCostIndex;
 use App\Livewire\Dashboard;
 use App\Livewire\DocumentIndex;
@@ -53,6 +55,7 @@ use App\Livewire\Invoicing\PurchaseInvoiceShow;
 use App\Livewire\Invoicing\SalesInvoiceForm;
 use App\Livewire\Invoicing\SalesInvoiceIndex;
 use App\Livewire\Invoicing\SalesInvoiceShow;
+use App\Livewire\OfficeUsers;
 use App\Livewire\PartnerIndex;
 use App\Livewire\PartnerShow;
 use App\Livewire\Payroll\PayrollRunIndex;
@@ -84,9 +87,16 @@ Route::middleware(['auth'])->group(function () {
 // at route registration time.
 Route::middleware(['auth'])->get('/efaktura/access-requests', [EfakturaAccessRequests::class, '__invoke'])->name('efaktura.access-requests');
 
+// Мора да стои пред групата `companies/{company}`, инаку 'office' би бил фатен
+// како фирма.
+Route::middleware(['auth'])->get('/companies/office', [OfficeUsers::class, '__invoke'])
+    ->name('companies.office');
+
 Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
     Route::get('/dashboard', [CompanyDashboard::class, '__invoke'])->name('companies.dashboard');
     Route::get('/profile', [CompanyProfile::class, '__invoke'])->name('companies.profile');
+    Route::get('/modules', [CompanyModules::class, '__invoke'])->name('companies.modules');
+    Route::get('/users', [CompanyUsers::class, '__invoke'])->name('companies.users');
 });
 
 // NOTE: Route::get($uri, ClassString::class) (bare class-string) resolves
