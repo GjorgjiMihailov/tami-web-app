@@ -240,6 +240,29 @@ class CompanyUsersTest extends TestCase
         Notification::assertSentTo($client, UserInvitationNotification::class);
     }
 
+    /**
+     * Регресија (наод I1): покана за исклучена сметка `UserInvitations::accept()`
+     * секогаш ја одбива (disabled_at !== null), додека екранот и пораката
+     * тврдат дека линкот важи 7 дена — а издавањето уште и ја брише
+     * претходната сѐ уште важечка покана. Затоа `invite` мора да пропадне
+     * пред да се стигне до `sendInvitation()`.
+     */
+    public function test_reinviting_a_disabled_user_is_refused_and_nothing_is_sent(): void
+    {
+        Notification::fake();
+
+        $company = Company::factory()->create();
+        $client = $this->userWithRole('client', $company);
+        $client->forceFill(['disabled_at' => now()])->save();
+
+        Livewire::actingAs($this->userWithRole('admin'))
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->call('reinvite', $client->id)
+            ->assertForbidden();
+
+        Notification::assertNothingSent();
+    }
+
     public function test_a_client_cannot_reinvite_a_user(): void
     {
         Notification::fake();

@@ -51,7 +51,7 @@ class CompanyIndex extends Component
         $isLegal = $type->isLegal();
 
         // Ниту едно поле што зависи од типот не смее да остане на стандардна
-        // вредност од базата — inaку физичко лице засекогаш останува ДДВ
+        // вредност од базата — инаку физичко лице засекогаш останува ДДВ
         // обврзник и на фактурата излегува ДДВ што не постои. Причината е
         // опишана во docs/superpowers/specs/2026-08-21-client-profile-types-design.md.
         $company = Company::create([

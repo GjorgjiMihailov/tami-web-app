@@ -121,6 +121,26 @@ class OfficeUsersTest extends TestCase
     }
 
     /**
+     * Регресија (наод I1): исто како кај CompanyUsers — покана за исклучена
+     * канцелариска сметка `UserInvitations::accept()` секогаш ја одбива, па
+     * `invite` мора да пропадне пред да се испрати нова.
+     */
+    public function test_reinviting_a_disabled_office_account_is_refused_and_nothing_is_sent(): void
+    {
+        Notification::fake();
+
+        $accountant = $this->userWithRole('accountant');
+        $accountant->forceFill(['disabled_at' => now()])->save();
+
+        Livewire::actingAs($this->userWithRole('admin'))
+            ->test(OfficeUsers::class)
+            ->call('reinvite', $accountant->id)
+            ->assertForbidden();
+
+        Notification::assertNothingSent();
+    }
+
+    /**
      * Истото правило како кај CompanyUsers: админ не смее да си го одземе
      * сопствениот пристап. Тука officeUser() го опфаќа и самиот актер (тој е
      * 'admin', а опсегот е ['accountant', 'admin']), па findOrFail никогаш не

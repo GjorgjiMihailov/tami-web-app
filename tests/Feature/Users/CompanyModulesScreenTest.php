@@ -37,6 +37,7 @@ class CompanyModulesScreenTest extends TestCase
 
         Livewire::actingAs($this->admin())
             ->test(CompanyModules::class, ['company' => $company])
+            ->assertSee('Материјално работење')
             ->set('usesPayroll', false)
             ->call('save')
             ->assertHasNoErrors();

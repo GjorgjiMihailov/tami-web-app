@@ -22,7 +22,9 @@ class UserPolicy
 
     public function invite(User $user, User $target): bool
     {
-        return $user->hasRole('admin');
+        // Покана за исклучена сметка не може да се прифати (UserInvitations::accept),
+        // па не смее ни да се издаде — инаку екранот ветува линк што не работи.
+        return $user->hasRole('admin') && $target->disabled_at === null;
     }
 
     /**

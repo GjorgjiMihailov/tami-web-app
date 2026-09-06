@@ -82,6 +82,26 @@ class CompanyAccountantsTest extends TestCase
         }
     }
 
+    /**
+     * Регресија: копчето „Додели" праќа `$wire.accountantToAssign`, а
+     * placeholder-опцијата во листата носи празна вредност. Пред поправката
+     * тоа удираше во параметар типизиран `int`, кој PHP 8 не може присилно да
+     * го конвертира од непразна нецифрена низа — резултат: нефатена
+     * `TypeError` (500) само со кликање на копчето без избор. Мора да биде
+     * тивко ништо.
+     */
+    public function test_assigning_an_accountant_with_nothing_selected_is_a_no_op(): void
+    {
+        $company = Company::factory()->create();
+
+        Livewire::actingAs($this->userWithRole('admin'))
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->call('assignAccountant', '')
+            ->assertHasNoErrors();
+
+        $this->assertSame(0, $company->fresh()->accountants->count());
+    }
+
     public function test_a_client_cannot_assign_an_accountant(): void
     {
         $company = Company::factory()->create();

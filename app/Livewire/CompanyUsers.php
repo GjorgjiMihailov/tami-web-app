@@ -83,9 +83,13 @@ class CompanyUsers extends Component
         $user->forceFill(['disabled_at' => null])->save();
     }
 
-    public function assignAccountant(int $userId): void
+    public function assignAccountant(int|string $userId): void
     {
         Gate::authorize('create', User::class);
+
+        if ($userId === '' || $userId === null) {
+            return;
+        }
 
         $accountant = User::role('accountant')->findOrFail($userId);
 

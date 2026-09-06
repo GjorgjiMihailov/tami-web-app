@@ -73,9 +73,9 @@
                         <td class="py-1 text-right">
                             @can('disable', $user)
                                 <div class="flex gap-2 justify-end">
-                                    <button type="button" wire:click="reinvite({{ $user->id }})"
-                                            class="text-brand hover:underline">Издај нова покана</button>
                                     @if ($user->disabled_at === null)
+                                        <button type="button" wire:click="reinvite({{ $user->id }})"
+                                                class="text-brand hover:underline">Издај нова покана</button>
                                         <button type="button" wire:click="disable({{ $user->id }})"
                                                 class="text-red-600 hover:underline">Исклучи пристап</button>
                                     @else

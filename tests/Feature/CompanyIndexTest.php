@@ -371,7 +371,7 @@ class CompanyIndexTest extends TestCase
         $this->assertNull(Company::where('name', 'ТЕСТ ДООЕЛ')->first()->embg);
     }
 
-    public function test_a_new_company_is_created_with_the_ticked_modules(): void
+    public function test_a_new_legal_company_ignores_module_state_from_the_form(): void
     {
         // Формата веќе не штиклира модули (тие се преселени на картичката
         // „Модули" на профилот) — сите модули излегуваат вклучени по
@@ -392,7 +392,7 @@ class CompanyIndexTest extends TestCase
         $this->assertTrue($company->uses_stock);
     }
 
-    public function test_stock_is_written_off_when_material_is_not_ticked(): void
+    public function test_a_new_legal_company_starts_with_material_and_stock_on(): void
     {
         // Истата причина: штиклирањата за Материјално/Залиха ги нема веќе на
         // оваа форма, па нова фирма секогаш излегува со двете вклучени.
