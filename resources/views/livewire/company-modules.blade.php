@@ -38,5 +38,9 @@
                 </div>
             </form>
         </x-card>
+    @else
+        <x-card>
+            <p class="text-sm text-gray-600">Модулите важат само за профил на правно лице.</p>
+        </x-card>
     @endif
 </div>

@@ -93,6 +93,15 @@ class CompanyModulesScreenTest extends TestCase
             ->assertDontSee('Материјално работење');
     }
 
+    public function test_an_individual_profile_shows_the_modules_do_not_apply_message(): void
+    {
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyModules::class, ['company' => $company])
+            ->assertSee('Модулите важат само за профил на правно лице.');
+    }
+
     public function test_a_client_cannot_reach_the_modules_tab(): void
     {
         $company = Company::factory()->create();

@@ -5,6 +5,7 @@ namespace Tests\Unit\Support;
 use App\Models\Company;
 use App\Models\User;
 use App\Support\CompanyTabs;
+use App\Support\CompanyType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -39,6 +40,14 @@ class CompanyTabsTest extends TestCase
         $this->assertSame(
             ['Профил', 'Модули', 'Корисници'],
             $this->labels($this->userWithRole('admin'), Company::factory()->create()),
+        );
+    }
+
+    public function test_an_admin_does_not_see_the_modules_tab_for_an_individual_company(): void
+    {
+        $this->assertSame(
+            ['Профил', 'Корисници'],
+            $this->labels($this->userWithRole('admin'), Company::factory()->create(['type' => CompanyType::INDIVIDUAL])),
         );
     }
 
