@@ -7,27 +7,11 @@ use App\Models\UserInvitation;
 use App\Support\UserInvitations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class UserInvitationsTest extends TestCase
 {
     use RefreshDatabase;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        // Привремено, додека Задача 3 не ја внесе вистинската рута.
-        // ТРГНИ ГО ОВОЈ БЛОК во Задача 3.
-        if (! Route::has('invitation.accept')) {
-            Route::get('invitation/{token}', fn () => '')->name('invitation.accept');
-            // Именуваните рути се пребаруваат преку табела што се гради само
-            // при подигање на апликацијата; рута додадена runtime мора рачно
-            // да ја освежи за route() да ја пронајде во истиот тест.
-            Route::getRoutes()->refreshNameLookups();
-        }
-    }
 
     public function test_a_fresh_invitation_sets_the_password_and_returns_the_user(): void
     {
