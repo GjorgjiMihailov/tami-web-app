@@ -48,53 +48,6 @@
                         @error('newEmbg') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                     </div>
                 @endif
-                <div>
-                    <x-input-label for="newEmail" value="Е-пошта" />
-                    <x-text-input id="newEmail" wire:model="newEmail" class="w-48" />
-                    @error('newEmail') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                </div>
-                <div>
-                    <x-input-label for="newPhone" value="Телефон" />
-                    <x-text-input id="newPhone" wire:model="newPhone" class="w-32" />
-                    @error('newPhone') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                </div>
-                <div class="flex-1 min-w-[16rem]">
-                    <x-input-label for="newAddress" value="Адреса" />
-                    <x-text-input id="newAddress" wire:model="newAddress" class="w-full" />
-                    @error('newAddress') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                </div>
-                {{-- Модулите важат само за правно лице — кај физичко лице типот
-                     веќе одлучува што се гледа. Изборот погоре е
-                     wire:model.live, па блокот се појавува штом типот ќе се
-                     избере. --}}
-                @if ($newType === \App\Support\CompanyType::LEGAL->value)
-                    <div class="w-full">
-                        <span class="block text-sm font-medium text-gray-700 mb-1">Што користи клиентот</span>
-                        <div class="flex flex-wrap gap-x-6 gap-y-2">
-                            <div>
-                                <label class="flex items-center gap-2 text-sm">
-                                    {{-- .live, зашто подкутијата Залиха сивее
-                                         штом Материјално се отштиклира. --}}
-                                    <input type="checkbox" wire:model.live="newUsesMaterial">
-                                    Материјално работење
-                                </label>
-                                <label class="flex items-center gap-2 text-sm ms-6 mt-1 {{ $newUsesMaterial ? '' : 'text-gray-400' }}">
-                                    <input type="checkbox" wire:model="newUsesStock" @disabled(! $newUsesMaterial)>
-                                    Залиха
-                                </label>
-                            </div>
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" wire:model="newUsesPayroll">
-                                Плата
-                            </label>
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" wire:model="newUsesFinance">
-                                Финансии
-                            </label>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">Може да се смени подоцна во профилот на фирмата.</p>
-                    </div>
-                @endif
                 <x-primary-button type="submit">Додади фирма</x-primary-button>
             </form>
         </x-card>
