@@ -1,6 +1,11 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-4">Фирми</h1>
 
+    <x-tab-strip :tabs="[
+        ['label' => 'Клиенти', 'url' => route('companies.index'), 'active' => true],
+        ['label' => 'Канцеларија', 'url' => route('companies.office'), 'active' => false],
+    ]" />
+
     @can('create', \App\Models\Company::class)
         <x-card class="mb-6">
             <h2 class="font-semibold text-gray-700 mb-2">Додади фирма</h2>

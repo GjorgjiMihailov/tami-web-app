@@ -55,6 +55,7 @@ use App\Livewire\Invoicing\PurchaseInvoiceShow;
 use App\Livewire\Invoicing\SalesInvoiceForm;
 use App\Livewire\Invoicing\SalesInvoiceIndex;
 use App\Livewire\Invoicing\SalesInvoiceShow;
+use App\Livewire\OfficeUsers;
 use App\Livewire\PartnerIndex;
 use App\Livewire\PartnerShow;
 use App\Livewire\Payroll\PayrollRunIndex;
@@ -85,6 +86,11 @@ Route::middleware(['auth'])->group(function () {
 // below for the accounting.* group: avoids an eager method_exists() check
 // at route registration time.
 Route::middleware(['auth'])->get('/efaktura/access-requests', [EfakturaAccessRequests::class, '__invoke'])->name('efaktura.access-requests');
+
+// Мора да стои пред групата `companies/{company}`, инаку 'office' би бил фатен
+// како фирма.
+Route::middleware(['auth'])->get('/companies/office', [OfficeUsers::class, '__invoke'])
+    ->name('companies.office');
 
 Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
     Route::get('/dashboard', [CompanyDashboard::class, '__invoke'])->name('companies.dashboard');
