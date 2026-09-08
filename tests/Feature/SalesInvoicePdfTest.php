@@ -532,4 +532,35 @@ class SalesInvoicePdfTest extends TestCase
         // ...а не залепен до процентот во тесната колона ДДВ %.
         $this->assertStringNotContainsString('('.$treatment.')', $html);
     }
+
+    public function test_a_standard_vat_treatment_shows_no_label_under_the_description(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
+        $invoice->lines()->create([
+            'description' => 'Konsultantski uslugi standarden tretman',
+            'quantity' => '1',
+            'unit_price' => '1000.00',
+            'vat_rate' => '18.00',
+            'vat_treatment' => 'standard',
+        ]);
+
+        $html = view('pdf.sales-invoice', [
+            'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
+        ])->render();
+
+        // Етикетата „Стандардна" воопшто не смее да се печати на фактурата —
+        // третманот се прикажува само кога е различен од стандарден.
+        $this->assertStringNotContainsString(\App\Support\Format::vatTreatment('standard'), $html);
+
+        // Ниту еден <div> не смее да стои помеѓу описот и затворачкото </td> на
+        // таа ќелија. Не бараме голо class="small muted" затоа што истите класи
+        // се користат и на други места во темплејтот (податоци за издавачот и
+        // купувачот) — таквo тврдење би поминало и кога условот е расипан.
+        $descriptionStart = strpos($html, 'Konsultantski uslugi standarden tretman');
+        $descriptionCellEnd = strpos($html, '</td>', $descriptionStart);
+        $descriptionCell = substr($html, $descriptionStart, $descriptionCellEnd - $descriptionStart);
+        $this->assertStringNotContainsString('<div', $descriptionCell);
+    }
 }
