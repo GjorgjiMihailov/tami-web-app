@@ -26,4 +26,13 @@ class CompanyPolicy
     {
         return $user->hasRole('admin');
     }
+
+    /**
+     * Пошироко од `update` намерно: форматот на бројот на фактурата е одлука на
+     * клиентот, а целиот профил на фирмата останува само за админ.
+     */
+    public function updateInvoiceSettings(User $user, Company $company): bool
+    {
+        return $this->view($user, $company);
+    }
 }

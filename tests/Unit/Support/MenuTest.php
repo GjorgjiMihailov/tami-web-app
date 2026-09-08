@@ -63,7 +63,7 @@ class MenuTest extends TestCase
         $menu = Menu::for($this->userWithRole('admin'), $company);
 
         $this->assertSame(['Главна книга', 'Извештаи и обрасци', 'Банкарски документи'], $this->itemLabels($menu, 'finance'));
-        $this->assertSame(['Компанија', 'Контен план', 'е-Фактура барања', 'Параметри за плата'], $this->itemLabels($menu, 'settings'));
+        $this->assertSame(['Компанија', 'Фактурирање', 'Контен план', 'е-Фактура барања', 'Параметри за плата'], $this->itemLabels($menu, 'settings'));
     }
 
     public function test_an_accountant_sees_finance_but_no_efaktura_requests(): void
@@ -72,7 +72,7 @@ class MenuTest extends TestCase
         $menu = Menu::for($this->userWithRole('accountant'), $company);
 
         $this->assertContains('ФИНАНСИИ', $this->groupLabels($menu));
-        $this->assertSame(['Компанија', 'Контен план'], $this->itemLabels($menu, 'settings'));
+        $this->assertSame(['Компанија', 'Фактурирање', 'Контен план'], $this->itemLabels($menu, 'settings'));
     }
 
     public function test_a_client_sees_no_finance_group_at_all(): void
@@ -88,7 +88,7 @@ class MenuTest extends TestCase
         $company = Company::factory()->create();
         $menu = Menu::for($this->userWithRole('client', $company), $company);
 
-        $this->assertSame(['Компанија'], $this->itemLabels($menu, 'settings'));
+        $this->assertSame(['Компанија', 'Фактурирање'], $this->itemLabels($menu, 'settings'));
     }
 
     public function test_a_client_never_sees_a_naskoro_item(): void
