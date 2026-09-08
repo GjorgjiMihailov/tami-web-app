@@ -34,7 +34,7 @@ class InvoiceSettingsTest extends TestCase
         $company = Company::factory()->create();
 
         $this->actingAs($this->client($company))
-            ->get(route('sales-invoices.settings', $company))
+            ->get(route('invoice-settings.index', $company))
             ->assertOk()
             ->assertSee('Формат на бројот на фактурата');
     }
@@ -45,7 +45,7 @@ class InvoiceSettingsTest extends TestCase
         $other = Company::factory()->create();
 
         $this->actingAs($this->client($own))
-            ->get(route('sales-invoices.settings', $other))
+            ->get(route('invoice-settings.index', $other))
             ->assertForbidden();
     }
 

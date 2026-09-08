@@ -194,7 +194,7 @@ class Menu
                 'label' => 'ПОСТАВКИ',
                 'items' => [
                     ['label' => 'Компанија', 'url' => route('companies.profile', $company), 'pattern' => 'companies.profile', 'roles' => null],
-                    ['label' => 'Фактурирање', 'url' => route('sales-invoices.settings', $company), 'pattern' => 'sales-invoices.settings', 'roles' => null, 'module' => CompanyModule::MATERIAL],
+                    ['label' => 'Фактурирање', 'url' => route('invoice-settings.index', $company), 'pattern' => 'invoice-settings.*', 'roles' => null, 'module' => CompanyModule::MATERIAL],
                     // Контниот план и параметрите за плата седат во Поставки, но
                     // припаѓаат на својот модул и заминуваат заедно со него.
                     ['label' => 'Контен план', 'url' => route('accounting.accounts.index', $company), 'pattern' => 'accounting.accounts.*', 'roles' => ['admin', 'accountant'], 'module' => CompanyModule::FINANCE],
@@ -239,7 +239,7 @@ class Menu
                 'label' => 'ПОСТАВКИ',
                 'items' => [
                     ['label' => 'Профил', 'url' => route('companies.profile', $company), 'pattern' => 'companies.profile', 'roles' => null],
-                    ['label' => 'Фактурирање', 'url' => route('sales-invoices.settings', $company), 'pattern' => 'sales-invoices.settings', 'roles' => null],
+                    ['label' => 'Фактурирање', 'url' => route('invoice-settings.index', $company), 'pattern' => 'invoice-settings.*', 'roles' => null],
                 ],
             ],
         ];

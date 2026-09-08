@@ -103,6 +103,26 @@ class SidebarTest extends TestCase
             ->assertDontSeeHtml(route('inventory.warehouses.index', $company));
     }
 
+    /**
+     * Regression for a route-namespace bug: `Фактурирање` lived under
+     * `invoice-settings.*`, and `groupMatchingCurrentRoute()` returns the
+     * FIRST matching group key. ПРОДАЖБА's `Излезни фактури` item used the
+     * wildcard pattern `sales-invoices.*` and ПРОДАЖБА is listed before
+     * ПОСТАВКИ, so if the settings route ever shares that namespace again,
+     * ПРОДАЖБА wins the highlight instead of ПОСТАВКИ — the group the user
+     * actually just opened silently loses its expanded/highlighted state.
+     */
+    public function test_visiting_invoice_settings_expands_the_settings_group_not_sales(): void
+    {
+        $company = Company::factory()->create();
+        $this->actingAs($this->admin());
+
+        $this->get(route('invoice-settings.index', $company))
+            ->assertOk()
+            ->assertSeeHtml(route('companies.profile', $company))
+            ->assertDontSeeHtml(route('sales-invoices.index', $company));
+    }
+
     public function test_clicking_a_different_group_collapses_the_previous_one(): void
     {
         $company = Company::factory()->create();

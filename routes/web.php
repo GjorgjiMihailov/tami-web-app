@@ -184,11 +184,20 @@ Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::cla
 Route::middleware(['auth', EnsureCompanyModule::class.':material'])->prefix('companies/{company}')->name('sales-invoices.')->group(function () {
     Route::get('/sales-invoices', [SalesInvoiceIndex::class, '__invoke'])->name('index');
     Route::get('/sales-invoices/create', [SalesInvoiceForm::class, '__invoke'])->name('create');
-    // Мора да стои пред `{salesInvoice}`, како `create` погоре.
-    Route::get('/sales-invoices/settings', [InvoiceSettings::class, '__invoke'])->name('settings');
     Route::get('/sales-invoices/{salesInvoice}/edit', [SalesInvoiceForm::class, '__invoke'])->name('edit');
     Route::get('/sales-invoices/{salesInvoice}', [SalesInvoiceShow::class, '__invoke'])->name('show');
     Route::get('/sales-invoices/{salesInvoice}/pdf', [SalesInvoicePdfController::class, '__invoke'])->name('pdf');
+});
+
+// Намерно ВОН sales-invoices.* — Menu.php ги бои групите со Str::is() врз
+// првото совпаѓање, а „Излезни фактури" во ПРОДАЖБА веќе користи
+// sales-invoices.* како шаблон. Кога поставките седеа на
+// sales-invoices.settings, ПРОДАЖБА секогаш го краднеше означувањето од
+// ПОСТАВКИ (Sidebar::groupMatchingCurrentRoute() го враќа првиот погодок).
+// Истите middleware како sales-invoices. групата — истите правила на пристап
+// како листата со фактури.
+Route::middleware(['auth', EnsureCompanyModule::class.':material'])->prefix('companies/{company}')->name('invoice-settings.')->group(function () {
+    Route::get('/invoice-settings', [InvoiceSettings::class, '__invoke'])->name('index');
 });
 
 Route::middleware(['auth', EnsureCompanyModule::class.':material'])->prefix('companies/{company}/sales-invoices/{salesInvoice}')->name('sales-invoices.efaktura.')->group(function () {
