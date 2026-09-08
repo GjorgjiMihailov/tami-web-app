@@ -17,9 +17,10 @@ class InvoiceNumber
     {
         $prefix = (string) ($company->invoice_number_prefix ?? '');
 
-        // Стеснувањето е одбрана од невалидна вредност во базата, не замена за
-        // валидација на екранот — str_pad со должина 0 би вратил празно.
-        $padding = max(1, min(6, (int) $company->invoice_number_padding));
+        // Горниот праг е одбрана од невалидна вредност во базата, не замена за
+        // валидација на екранот. Долен праг нема потреба — str_pad никогаш не
+        // крати стринг, а бројот секогаш дава барем една цифра.
+        $padding = min(6, (int) $company->invoice_number_padding);
         $number = str_pad((string) $sequence, $padding, '0', STR_PAD_LEFT);
 
         if (! $company->invoice_number_include_year) {
