@@ -129,14 +129,15 @@
         <table class="items">
             <thead>
                 <tr>
-                    <th style="width: 24px;">Р.б.</th>
+                    <th style="width: 22px;">Р.б.</th>
                     <th>Опис</th>
-                    <th style="width: 50px;">Кол.</th>
-                    <th style="width: 80px;">Ед. цена</th>
+                    <th style="width: 42px;">Кол.</th>
+                    <th style="width: 68px;">Ед. цена</th>
                     @if ($vatRegistered)
-                        <th style="width: 100px;">ДДВ %</th>
+                        <th style="width: 62px;">ДДВ %</th>
+                        <th style="width: 72px;">Износ на ДДВ</th>
                     @endif
-                    <th style="width: 100px;">{{ $vatRegistered ? 'Вкупно со ДДВ' : 'Вкупно' }}</th>
+                    <th style="width: 82px;">{{ $vatRegistered ? 'Вкупно со ДДВ' : 'Вкупно' }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -148,6 +149,7 @@
                         <td>{{ \App\Support\Format::money($line->unit_price) }}</td>
                         @if ($vatRegistered)
                             <td>{{ $line->vat_rate }}{{ $line->vat_treatment !== 'standard' ? ' ('.\App\Support\Format::vatTreatment($line->vat_treatment).')' : '' }}</td>
+                            <td>{{ \App\Support\Format::money($line->vatAmount()) }}</td>
                         @endif
                         <td>{{ \App\Support\Format::money(bcadd($line->lineTotal(), $line->vatAmount(), 2)) }}</td>
                     </tr>

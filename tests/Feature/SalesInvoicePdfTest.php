@@ -262,8 +262,10 @@ class SalesInvoicePdfTest extends TestCase
         ])->render();
 
         $this->assertStringNotContainsString('ДДВ %', $html);
-        // Scoped to the items-table header so the totals-box "Вкупно" cell can't satisfy it.
-        $this->assertStringContainsString('<th style="width: 100px;">Вкупно</th>', $html);
+        // Scoped via the closing </th> so the totals-box "Вкупно" cell (a <td>) can't
+        // satisfy it — deliberately not asserting on the column width, which changes
+        // whenever the layout changes.
+        $this->assertStringContainsString('>Вкупно</th>', $html);
         $this->assertStringNotContainsString('Вкупно со ДДВ', $html);
     }
 
@@ -437,5 +439,38 @@ class SalesInvoicePdfTest extends TestCase
 
         $this->assertStringContainsString('Нема внесена банкарска сметка.', $html);
         $this->assertStringContainsString('Цел на дознака', $html);
+    }
+
+    public function test_it_shows_the_vat_amount_for_each_line(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
+        $invoice->lines()->create(['description' => 'Prva stavka', 'quantity' => '2', 'unit_price' => '500.00', 'vat_rate' => '18.00']);
+        $invoice->lines()->create(['description' => 'Vtora stavka', 'quantity' => '1', 'unit_price' => '300.00', 'vat_rate' => '5.00']);
+
+        $html = view('pdf.sales-invoice', [
+            'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
+        ])->render();
+
+        $this->assertStringContainsString('Износ на ДДВ', $html);
+        // 2 * 500.00 = 1000.00 основа, 18% = 180.00
+        $this->assertStringContainsString(\App\Support\Format::money('180.00'), $html);
+        // 300.00 основа, 5% = 15.00
+        $this->assertStringContainsString(\App\Support\Format::money('15.00'), $html);
+    }
+
+    public function test_a_company_outside_vat_gets_no_vat_amount_column(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => false]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
+        $invoice->lines()->create(['description' => 'Item', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0.00']);
+
+        $html = view('pdf.sales-invoice', [
+            'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
+        ])->render();
+
+        $this->assertStringNotContainsString('Износ на ДДВ', $html);
     }
 }
