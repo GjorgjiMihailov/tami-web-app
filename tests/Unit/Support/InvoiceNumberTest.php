@@ -86,4 +86,22 @@ class InvoiceNumberTest extends TestCase
 
         $this->assertSame('2026/000001', InvoiceNumber::format($company, 2026, 1));
     }
+
+    // Вакви вредности не доаѓаат од екранот за поставки — валидацијата таму веќе
+    // ги спречува. Доаѓаат од невалиден ред во базата, па класата мора сама да се
+    // брани со стеснување на опсегот.
+
+    public function test_a_padding_above_the_upper_bound_is_clamped_to_six_digits(): void
+    {
+        $company = $this->company(['invoice_number_padding' => 9]);
+
+        $this->assertSame('2026/000001', InvoiceNumber::format($company, 2026, 1));
+    }
+
+    public function test_a_padding_below_the_lower_bound_is_clamped_to_one_digit(): void
+    {
+        $company = $this->company(['invoice_number_padding' => 0]);
+
+        $this->assertSame('2026/1', InvoiceNumber::format($company, 2026, 1));
+    }
 }
