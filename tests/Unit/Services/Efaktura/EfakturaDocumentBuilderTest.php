@@ -42,7 +42,8 @@ class EfakturaDocumentBuilderTest extends TestCase
 
         $document = (new EfakturaDocumentBuilder)->build($invoice->fresh(['lines', 'company', 'partner']));
 
-        $this->assertSame('2026-42', $document['document']['header']['docNumber']);
+        // Кон УЈП оди истиот број како на хартија — стандардниот разделник е коса црта.
+        $this->assertSame('2026/42', $document['document']['header']['docNumber']);
         $this->assertSame('4030001234567', $document['document']['seller']['sellerTin']);
         $this->assertSame('Мајка Тереза', $document['document']['seller']['sellerAddress']['streetAddress']);
         $this->assertSame('4030007654321', $document['document']['buyer']['buyerTin']);

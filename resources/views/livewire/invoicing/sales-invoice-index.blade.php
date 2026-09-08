@@ -40,7 +40,7 @@
         <tbody class="divide-y divide-gray-100">
             @forelse ($invoices as $invoice)
                 <tr class="text-sm hover:bg-orange-50">
-                    <td class="py-1 px-3">{{ $invoice->invoice_number ? "{$invoice->fiscal_year}/{$invoice->invoice_number}" : '—' }}</td>
+                    <td class="py-1 px-3">{{ $invoice->formattedNumber() ?? '—' }}</td>
                     <td class="py-1 px-3">{{ $invoice->partner->name }}</td>
                     <td class="py-1 px-3">{{ \App\Support\Format::date($invoice->invoice_date) }}</td>
                     <td class="py-1 px-3"><x-badge :status="$invoice->status">{{ \App\Support\Format::invoiceStatus($invoice->status) }}</x-badge></td>

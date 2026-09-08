@@ -1,6 +1,6 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-1">
-        {{ $invoice->status === 'confirmed' ? "Фактура бр. {$invoice->fiscal_year}/{$invoice->invoice_number}" : 'Нацрт фактура' }}
+        {{ $invoice->status === 'confirmed' ? "Фактура бр. {$invoice->formattedNumber()}" : 'Нацрт фактура' }}
     </h1>
     <p class="text-sm text-gray-500 mb-4 flex items-center gap-2">
         {{ $invoice->partner->name }}

@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\Partner;
 use App\Models\SalesInvoice;
 use App\Models\User;
+use App\Services\Efaktura\EfakturaDocumentBuilder;
 use App\Services\Invoicing\SalesInvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -159,5 +160,57 @@ class InvoiceNumberFormatTest extends TestCase
         $other = $service->confirm($this->draft($second), $admin->id);
 
         $this->assertSame(1, $other->fresh()->invoice_number);
+    }
+
+    public function test_the_efaktura_document_number_matches_the_printed_number(): void
+    {
+        $company = Company::factory()->create([
+            'invoice_number_year_digits' => 2,
+            'invoice_number_separator' => '-',
+            'invoice_number_padding' => 4,
+        ]);
+        $admin = $this->admin();
+
+        $invoice = app(SalesInvoiceService::class)->confirm($this->draft($company), $admin->id);
+        $document = app(EfakturaDocumentBuilder::class)
+            ->build($invoice->fresh(['lines', 'partner', 'company']));
+
+        $this->assertSame('26-0001', $invoice->fresh()->formattedNumber());
+        $this->assertSame('26-0001', $document['document']['header']['docNumber']);
+        // docId го носи истиот број — мора да се движи заедно со docNumber.
+        $this->assertSame('26-0001', $document['document']['header']['docId']);
+    }
+
+    public function test_the_pdf_shows_the_formatted_number(): void
+    {
+        $company = Company::factory()->create([
+            'invoice_number_separator' => '-',
+            'invoice_number_padding' => 5,
+        ]);
+        $admin = $this->admin();
+
+        $invoice = app(SalesInvoiceService::class)->confirm($this->draft($company), $admin->id);
+
+        $html = view('pdf.sales-invoice', [
+            'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
+        ])->render();
+
+        $this->assertStringContainsString('ФАКТУРА 2026-00001', $html);
+    }
+
+    public function test_the_pdf_filename_carries_no_slash(): void
+    {
+        $company = Company::factory()->create();
+        $admin = $this->admin();
+
+        $invoice = app(SalesInvoiceService::class)->confirm($this->draft($company), $admin->id);
+
+        $response = $this->actingAs($admin)
+            ->get(route('sales-invoices.pdf', [$company, $invoice]));
+
+        $response->assertOk();
+        $disposition = $response->headers->get('Content-Disposition');
+        $this->assertStringContainsString('invoice-2026-1.pdf', $disposition);
+        $this->assertStringNotContainsString('2026/1', $disposition);
     }
 }

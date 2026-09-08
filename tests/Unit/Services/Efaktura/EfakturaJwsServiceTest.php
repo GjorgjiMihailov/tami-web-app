@@ -41,7 +41,8 @@ class EfakturaJwsServiceTest extends TestCase
 
         $this->assertSame('RS256', $header['alg']);
         $this->assertSame([$certDer], $header['x5c']);
-        $this->assertSame('2026-1', $payload['document']['header']['docNumber']);
+        // Кон УЈП оди истиот број како на хартија — стандардниот разделник е коса црта.
+        $this->assertSame('2026/1', $payload['document']['header']['docNumber']);
         $this->assertSame($result['payloadJson'], Base64Url::decode($payloadPart));
     }
 

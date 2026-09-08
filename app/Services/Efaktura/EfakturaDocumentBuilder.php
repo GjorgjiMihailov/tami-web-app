@@ -11,7 +11,7 @@ class EfakturaDocumentBuilder
     {
         $company = $invoice->company;
         $partner = $invoice->partner;
-        $docNumber = "{$invoice->fiscal_year}-{$invoice->invoice_number}";
+        $docNumber = $invoice->formattedNumber();
         $today = $invoice->invoice_date->toDateString();
 
         $items = $invoice->lines->values()->map(fn ($line, $index) => $this->buildItem($line, $index + 1))->all();

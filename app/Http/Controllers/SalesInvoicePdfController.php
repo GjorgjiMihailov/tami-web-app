@@ -20,6 +20,10 @@ class SalesInvoicePdfController extends Controller
 
         $pdf = Pdf::loadView('pdf.sales-invoice', ['invoice' => $salesInvoice]);
 
-        return $pdf->download("invoice-{$salesInvoice->fiscal_year}-{$salesInvoice->invoice_number}.pdf");
+        // Форматираниот број може да содржи коса црта, а таа не смее во име на
+        // датотека. Сè што не е буква, цифра или цртичка станува цртичка.
+        $slug = preg_replace('/[^\p{L}\p{N}-]+/u', '-', $salesInvoice->formattedNumber());
+
+        return $pdf->download("invoice-{$slug}.pdf");
     }
 }

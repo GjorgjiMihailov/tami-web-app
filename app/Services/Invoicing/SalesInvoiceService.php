@@ -77,7 +77,7 @@ class SalesInvoiceService
             $net = $invoice->subtotal();
             $vat = $vatRegistered ? $invoice->vatTotal() : '0.00';
             $gross = bcadd($net, $vat, 2);
-            $label = "Invoice {$fiscalYear}/{$invoiceNumber}";
+            $label = 'Invoice '.InvoiceNumber::format($invoice->company, $fiscalYear, $invoiceNumber);
 
             $entry = JournalEntry::create([
                 'company_id' => $invoice->company_id,
@@ -178,7 +178,7 @@ class SalesInvoiceService
                 'company_id' => $invoice->company_id,
                 'journal_group_id' => $this->systemJournalGroup($invoice->company)->id,
                 'entry_date' => now()->toDateString(),
-                'description' => "Reversal of invoice {$invoice->fiscal_year}/{$invoice->invoice_number}",
+                'description' => "Reversal of invoice {$invoice->formattedNumber()}",
                 'created_by' => $userId,
             ]);
 
@@ -220,7 +220,7 @@ class SalesInvoiceService
             ]);
 
             $cashOrBankCode = $paymentMethod === 'cash' ? '102' : '100';
-            $label = "Payment for invoice {$invoice->fiscal_year}/{$invoice->invoice_number}";
+            $label = "Payment for invoice {$invoice->formattedNumber()}";
 
             $entry = JournalEntry::create([
                 'company_id' => $invoice->company_id,

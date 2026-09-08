@@ -64,7 +64,7 @@
             <tr>
                 @if ($logoPosition === 'right')
                     <td style="text-align: left;">
-                        <span class="badge">ФАКТУРА {{ $invoice->fiscal_year }}/{{ $invoice->invoice_number }}</span>
+                        <span class="badge">ФАКТУРА {{ $invoice->formattedNumber() }}</span>
                         <div class="small muted" style="margin-top: 6px;">
                             Датум на фактура: {{ \App\Support\Format::date($invoice->invoice_date) }}<br>
                             Датум на доспевање: {{ \App\Support\Format::date($invoice->due_date) }}
@@ -82,7 +82,7 @@
                         @endif
                     </td>
                     <td style="text-align: right;">
-                        <span class="badge">ФАКТУРА {{ $invoice->fiscal_year }}/{{ $invoice->invoice_number }}</span>
+                        <span class="badge">ФАКТУРА {{ $invoice->formattedNumber() }}</span>
                         <div class="small muted" style="margin-top: 6px;">
                             Датум на фактура: {{ \App\Support\Format::date($invoice->invoice_date) }}<br>
                             Датум на доспевање: {{ \App\Support\Format::date($invoice->due_date) }}

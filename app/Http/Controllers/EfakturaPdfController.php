@@ -80,7 +80,8 @@ class EfakturaPdfController extends Controller
         abort_if($salesInvoice->company_id !== $company->id, 404);
         abort_unless($salesInvoice->efaktura_pdf_path && Storage::disk('local')->exists($salesInvoice->efaktura_pdf_path), 404);
 
-        $filename = "faktura-{$salesInvoice->fiscal_year}-{$salesInvoice->invoice_number}.pdf";
+        $slug = preg_replace('/[^\p{L}\p{N}-]+/u', '-', $salesInvoice->formattedNumber());
+        $filename = "faktura-{$slug}.pdf";
 
         return Storage::disk('local')->download($salesInvoice->efaktura_pdf_path, $filename);
     }
