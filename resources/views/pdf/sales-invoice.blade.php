@@ -39,6 +39,9 @@
         table.bottom-row td { vertical-align: top; }
         .pay-box { background-color: #f9fafb; border-radius: 8px; padding: 10px 12px; font-size: 10px; }
         .pay-box h4 { font-size: 9px; text-transform: uppercase; color: #6b7280; margin: 0 0 6px; }
+        table.pay-table { width: 100%; border-collapse: collapse; }
+        table.pay-table td { padding: 1px 0; vertical-align: top; }
+        td.pay-label { width: 108px; color: #6b7280; }
         .totals-box { background-color: #fff3ea; border-radius: 8px; padding: 10px 14px; font-size: 11px; }
         table.totals { width: 100%; border-collapse: collapse; font-size: 11px; }
         .totals-box tr.grand td { border-top: 1px solid #ffd4b0; font-weight: bold; color: #b34700; }
@@ -157,11 +160,36 @@
                 <td style="padding-right: 12px;">
                     <div class="pay-box">
                         <h4>Начин на плаќање</h4>
-                        @forelse ($company->bankAccounts as $bankAccount)
-                            <div>{{ $bankAccount->bank_name ? $bankAccount->bank_name.': ' : '' }}{{ $bankAccount->account_number }}</div>
-                        @empty
-                            <div class="muted">Нема внесена банкарска сметка.</div>
-                        @endforelse
+                        @php $mainAccount = $company->bankAccounts->first(); @endphp
+                        <table class="pay-table">
+                            <tr>
+                                <td class="pay-label">Назив на примач</td>
+                                <td>{{ $company->name }}</td>
+                            </tr>
+                            @if ($mainAccount && $mainAccount->bank_name)
+                                <tr>
+                                    <td class="pay-label">Банка на примач</td>
+                                    <td>{{ $mainAccount->bank_name }}</td>
+                                </tr>
+                            @endif
+                            @if ($mainAccount && $mainAccount->account_number)
+                                <tr>
+                                    <td class="pay-label">Сметка</td>
+                                    <td>{{ $mainAccount->account_number }}</td>
+                                </tr>
+                            @endif
+                            <tr>
+                                <td class="pay-label">Износ</td>
+                                <td>{{ \App\Support\Format::money($invoice->grandTotal()) }}</td>
+                            </tr>
+                            <tr>
+                                <td class="pay-label">Цел на дознака</td>
+                                <td>{{ $invoice->formattedNumber() }}</td>
+                            </tr>
+                        </table>
+                        @unless ($mainAccount)
+                            <div class="muted" style="margin-top: 4px;">Нема внесена банкарска сметка.</div>
+                        @endunless
                     </div>
                 </td>
                 <td style="width: 210px;">
