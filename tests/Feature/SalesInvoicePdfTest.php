@@ -474,4 +474,37 @@ class SalesInvoicePdfTest extends TestCase
 
         $this->assertStringNotContainsString('Износ на ДДВ', $html);
     }
+
+    public function test_it_prints_signature_lines_for_both_sides(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
+        $invoice->lines()->create(['description' => 'Item', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00']);
+
+        $html = view('pdf.sales-invoice', [
+            'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
+        ])->render();
+
+        $this->assertStringContainsString('ОВЛАСТЕНО ЛИЦЕ', $html);
+        $this->assertStringContainsString('ПРИМИЛ', $html);
+    }
+
+    public function test_signature_lines_appear_even_when_there_is_no_footnote(): void
+    {
+        $company = Company::factory()->create([
+            'is_vat_registered' => true,
+            'invoice_footer_note' => null,
+        ]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
+        $invoice->lines()->create(['description' => 'Item', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00']);
+
+        $html = view('pdf.sales-invoice', [
+            'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
+        ])->render();
+
+        $this->assertStringNotContainsString('footnotes', $html);
+        $this->assertStringContainsString('ОВЛАСТЕНО ЛИЦЕ', $html);
+    }
 }
