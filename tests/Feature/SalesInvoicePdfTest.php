@@ -247,7 +247,7 @@ class SalesInvoicePdfTest extends TestCase
             'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
         ])->render();
 
-        $this->assertStringContainsString('(Извоз)', $html);
+        $this->assertStringContainsString('<div class="small muted">Извоз</div>', $html);
     }
 
     public function test_it_hides_the_vat_column_for_a_non_vat_registered_company(): void
@@ -506,5 +506,30 @@ class SalesInvoicePdfTest extends TestCase
 
         $this->assertStringNotContainsString('footnotes', $html);
         $this->assertStringContainsString('ОВЛАСТЕНО ЛИЦЕ', $html);
+    }
+
+    public function test_a_non_standard_vat_treatment_sits_under_the_description(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
+        $invoice->lines()->create([
+            'description' => 'Konsultantski uslugi',
+            'quantity' => '1',
+            'unit_price' => '1000.00',
+            'vat_rate' => '0.00',
+            'vat_treatment' => 'exempt_without_credit',
+        ]);
+
+        $html = view('pdf.sales-invoice', [
+            'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
+        ])->render();
+
+        $treatment = \App\Support\Format::vatTreatment('exempt_without_credit');
+
+        // Третманот стои под описот, како ситен приглушен текст...
+        $this->assertStringContainsString('<div class="small muted">'.$treatment.'</div>', $html);
+        // ...а не залепен до процентот во тесната колона ДДВ %.
+        $this->assertStringNotContainsString('('.$treatment.')', $html);
     }
 }
