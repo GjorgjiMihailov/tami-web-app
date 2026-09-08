@@ -454,10 +454,11 @@ class SalesInvoicePdfTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('Износ на ДДВ', $html);
-        // 2 * 500.00 = 1000.00 основа, 18% = 180.00
-        $this->assertStringContainsString(\App\Support\Format::money('180.00'), $html);
-        // 300.00 основа, 5% = 15.00
-        $this->assertStringContainsString(\App\Support\Format::money('15.00'), $html);
+        // 2 * 500.00 = 1000.00 основа, 18% = 180.00 — точна ќелија, не гола подниза
+        // (180,00 ден е и подниза од 1.180,00 ден во колоната „Вкупно со ДДВ")
+        $this->assertStringContainsString('<td>'.\App\Support\Format::money('180.00').'</td>', $html);
+        // 300.00 основа, 5% = 15.00 — точна ќелија, не гола подниза од 315,00 ден
+        $this->assertStringContainsString('<td>'.\App\Support\Format::money('15.00').'</td>', $html);
     }
 
     public function test_a_company_outside_vat_gets_no_vat_amount_column(): void
