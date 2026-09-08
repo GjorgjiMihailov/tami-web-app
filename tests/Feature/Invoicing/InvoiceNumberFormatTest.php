@@ -104,4 +104,60 @@ class InvoiceNumberFormatTest extends TestCase
 
         $this->assertSame('2026/0007', $invoice->formattedNumber());
     }
+
+    public function test_a_format_with_a_year_restarts_the_counter_each_year(): void
+    {
+        $company = Company::factory()->create();
+        $admin = $this->admin();
+        $service = app(SalesInvoiceService::class);
+
+        $service->confirm($this->draft($company, '2026-03-10'), $admin->id);
+        $second = $service->confirm($this->draft($company, '2027-01-05'), $admin->id);
+
+        $this->assertSame(1, $second->fresh()->invoice_number);
+        $this->assertSame('2027/1', $second->fresh()->formattedNumber());
+    }
+
+    public function test_a_format_without_a_year_keeps_counting_across_years(): void
+    {
+        // Без година во бројот, рестартирањето би дало две фактури со ист број
+        // 00001 во две различни години — истиот број на два документа.
+        $company = Company::factory()->create([
+            'invoice_number_include_year' => false,
+            'invoice_number_padding' => 5,
+        ]);
+        $admin = $this->admin();
+        $service = app(SalesInvoiceService::class);
+
+        $service->confirm($this->draft($company, '2026-03-10'), $admin->id);
+        $second = $service->confirm($this->draft($company, '2027-01-05'), $admin->id);
+
+        $this->assertSame(2, $second->fresh()->invoice_number);
+        $this->assertSame('00002', $second->fresh()->formattedNumber());
+    }
+
+    public function test_the_fiscal_year_still_follows_the_invoice_date_without_a_year_in_the_number(): void
+    {
+        // fiscal_year останува основа за ДДВ и извештаите, без оглед на тоа
+        // дали годината се гледа во бројот.
+        $company = Company::factory()->create(['invoice_number_include_year' => false]);
+        $admin = $this->admin();
+
+        $invoice = app(SalesInvoiceService::class)->confirm($this->draft($company, '2027-01-05'), $admin->id);
+
+        $this->assertSame(2027, (int) $invoice->fresh()->fiscal_year);
+    }
+
+    public function test_counters_never_leak_between_companies(): void
+    {
+        $first = Company::factory()->create(['invoice_number_include_year' => false]);
+        $second = Company::factory()->create(['invoice_number_include_year' => false]);
+        $admin = $this->admin();
+        $service = app(SalesInvoiceService::class);
+
+        $service->confirm($this->draft($first), $admin->id);
+        $other = $service->confirm($this->draft($second), $admin->id);
+
+        $this->assertSame(1, $other->fresh()->invoice_number);
+    }
 }

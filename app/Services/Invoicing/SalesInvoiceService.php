@@ -40,10 +40,18 @@ class SalesInvoiceService
 
         return DB::transaction(function () use ($invoice, $userId) {
             $fiscalYear = $invoice->invoice_date->year;
-            $maxNumber = SalesInvoice::where('company_id', $invoice->company_id)
-                ->where('fiscal_year', $fiscalYear)
-                ->lockForUpdate()
-                ->max('invoice_number');
+
+            // Опсегот на бројачот го диктира форматот. Со година во бројот,
+            // сериите се одвојуваат по година како досега. Без година, серијата
+            // мора да тече непрекинато — инаку 2027 би почнала пак од 1 и две
+            // фактури би носеле ист број.
+            $numberQuery = SalesInvoice::where('company_id', $invoice->company_id);
+
+            if ($invoice->company->invoice_number_include_year) {
+                $numberQuery->where('fiscal_year', $fiscalYear);
+            }
+
+            $maxNumber = $numberQuery->lockForUpdate()->max('invoice_number');
             $invoiceNumber = ($maxNumber ?? 0) + 1;
 
             $cogsTotal = '0.00';
