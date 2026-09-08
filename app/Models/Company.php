@@ -36,6 +36,8 @@ class Company extends Model
         'efaktura_token_not_before', 'efaktura_token_not_after', 'efaktura_token_registered_at',
         'efaktura_purchase_last_checked_at', 'type',
         'uses_material', 'uses_stock', 'uses_payroll', 'uses_finance',
+        'invoice_number_prefix', 'invoice_number_include_year', 'invoice_number_year_first',
+        'invoice_number_year_digits', 'invoice_number_separator', 'invoice_number_padding',
     ];
 
     /**
@@ -51,6 +53,11 @@ class Company extends Model
         'uses_stock' => true,
         'uses_payroll' => true,
         'uses_finance' => true,
+        'invoice_number_include_year' => true,
+        'invoice_number_year_first' => true,
+        'invoice_number_year_digits' => 4,
+        'invoice_number_separator' => '/',
+        'invoice_number_padding' => 1,
     ];
 
     protected function casts(): array
@@ -61,6 +68,10 @@ class Company extends Model
             'uses_stock' => 'boolean',
             'uses_payroll' => 'boolean',
             'uses_finance' => 'boolean',
+            'invoice_number_include_year' => 'boolean',
+            'invoice_number_year_first' => 'boolean',
+            'invoice_number_year_digits' => 'integer',
+            'invoice_number_padding' => 'integer',
             'mpin_obvrznik_code' => \App\Support\Payroll\MpinObvrznik::class,
             'type' => \App\Support\CompanyType::class,
             'efaktura_token_not_before' => 'datetime',
