@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasInvoiceTotals;
+use App\Support\InvoiceNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,7 +35,7 @@ class SalesInvoice extends Model
 
     protected $fillable = [
         'company_id', 'partner_id', 'warehouse_id', 'journal_entry_id',
-        'fiscal_year', 'invoice_number', 'invoice_date', 'due_date',
+        'fiscal_year', 'invoice_number', 'invoice_number_formatted', 'invoice_date', 'due_date',
         'status', 'payment_type_code', 'sent_at', 'notes', 'created_by',
         'efaktura_status', 'efaktura_doc_id', 'efaktura_sent_at', 'efaktura_error',
         'efaktura_ujp_status_code', 'efaktura_ujp_status_name', 'efaktura_pdf_path',
@@ -48,6 +49,27 @@ class SalesInvoice extends Model
             'sent_at' => 'datetime',
             'efaktura_sent_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Бројот што стои на фактурата.
+     *
+     * Замрзнатиот текст е вистината — се запишува при потврдување и подоцнежна
+     * промена на форматот на фирмата не го допира. Пресметката во лет служи
+     * само за редови што останале без текст (нацрт што сè уште нема број, или
+     * ред создаден заобиколувајќи го сервисот во тест).
+     */
+    public function formattedNumber(): ?string
+    {
+        if (filled($this->invoice_number_formatted)) {
+            return $this->invoice_number_formatted;
+        }
+
+        if ($this->invoice_number === null) {
+            return null;
+        }
+
+        return InvoiceNumber::format($this->company, (int) $this->fiscal_year, (int) $this->invoice_number);
     }
 
     public function isEfakturaAccepted(): bool

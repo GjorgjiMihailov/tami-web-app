@@ -11,6 +11,7 @@ use App\Models\SalesInvoice;
 use App\Models\SalesInvoicePayment;
 use App\Services\Inventory\StockMovementService;
 use App\Support\Bcmath;
+use App\Support\InvoiceNumber;
 use Illuminate\Support\Facades\DB;
 
 class SalesInvoiceService
@@ -128,6 +129,7 @@ class SalesInvoiceService
             $invoice->update([
                 'fiscal_year' => $fiscalYear,
                 'invoice_number' => $invoiceNumber,
+                'invoice_number_formatted' => InvoiceNumber::format($invoice->company, $fiscalYear, $invoiceNumber),
                 'journal_entry_id' => $entry->id,
                 'status' => 'confirmed',
             ]);
