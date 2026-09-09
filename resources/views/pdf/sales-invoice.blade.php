@@ -45,7 +45,9 @@
         .totals-box { background-color: #fff3ea; border-radius: 8px; padding: 10px 14px; font-size: 11px; }
         table.totals { width: 100%; border-collapse: collapse; font-size: 11px; }
         .totals-box tr.grand td { border-top: 1px solid #ffd4b0; font-weight: bold; color: #b34700; }
-        table.signatures { width: 100%; border-collapse: collapse; margin-top: 34px; page-break-inside: avoid; }
+        /* Размакот е намерно голем: линијата треба да има простор над себе за
+           вистински потпис, и да се одвои од фуснотата и од износите. */
+        table.signatures { width: 100%; border-collapse: collapse; margin-top: 90px; page-break-inside: avoid; }
         table.signatures td { width: 50%; padding: 0 24px; vertical-align: bottom; }
         .sig-line { border-top: 1px solid #9ca3af; height: 0; font-size: 0; }
         .sig-label { text-align: center; font-size: 9px; color: #6b7280; margin-top: 4px; letter-spacing: .05em; }
