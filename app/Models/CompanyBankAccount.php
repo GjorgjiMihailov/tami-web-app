@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CompanyBankAccount extends Model
 {
-    protected $fillable = ['company_id', 'bank_name', 'account_number', 'position'];
+    protected $fillable = ['company_id', 'bank_name', 'account_number', 'iban', 'swift', 'position'];
 
     public function company(): BelongsTo
     {

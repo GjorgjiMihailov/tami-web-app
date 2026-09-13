@@ -16,6 +16,11 @@ class Partner extends Model
         'company_id', 'name', 'type', 'tax_id', 'registration_number',
         'director_name', 'is_vat_registered', 'vat_number',
         'email', 'phone', 'address', 'street_address', 'street_number', 'postal_code', 'city',
+        'invoice_language', 'country',
+    ];
+
+    protected $attributes = [
+        'invoice_language' => 'mk',
     ];
 
     protected function casts(): array

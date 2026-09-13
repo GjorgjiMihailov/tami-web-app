@@ -33,12 +33,27 @@ class SalesInvoice extends Model
     // different codes for "Прифатена"/"Автоматски прифатена", fix them here only.
     public const EFAKTURA_ACCEPTED_STATUS_CODES = ['03', '04'];
 
+    /** Валутите во кои може да се издаде фактура. Точно овие пет. */
+    public const CURRENCIES = ['MKD', 'EUR', 'USD', 'GBP', 'CHF'];
+
     protected $fillable = [
         'company_id', 'partner_id', 'warehouse_id', 'journal_entry_id',
         'fiscal_year', 'invoice_number', 'invoice_number_formatted', 'invoice_date', 'due_date',
         'status', 'payment_type_code', 'sent_at', 'notes', 'created_by',
+        'language', 'currency', 'exchange_rate',
         'efaktura_status', 'efaktura_doc_id', 'efaktura_sent_at', 'efaktura_error',
         'efaktura_ujp_status_code', 'efaktura_ujp_status_name', 'efaktura_pdf_path',
+    ];
+
+    /**
+     * Колона со `default` во базата НЕ полни свежо создаден објект во меморија.
+     * Формата и сервисот читаат од објектот пред тој да биде зачуван, па
+     * стандардните вредности мора да стојат и овде.
+     */
+    protected $attributes = [
+        'language' => 'mk',
+        'currency' => 'MKD',
+        'exchange_rate' => '1.000000',
     ];
 
     protected function casts(): array
@@ -48,6 +63,7 @@ class SalesInvoice extends Model
             'due_date' => 'date',
             'sent_at' => 'datetime',
             'efaktura_sent_at' => 'datetime',
+            'exchange_rate' => 'decimal:6',
         ];
     }
 
@@ -75,6 +91,12 @@ class SalesInvoice extends Model
     public function isEfakturaAccepted(): bool
     {
         return in_array($this->efaktura_ujp_status_code, self::EFAKTURA_ACCEPTED_STATUS_CODES, true);
+    }
+
+    /** Дали фактурата е во странска валута, т.е. дали курсот воопшто значи нешто. */
+    public function isForeignCurrency(): bool
+    {
+        return $this->currency !== 'MKD';
     }
 
     public function company(): BelongsTo
