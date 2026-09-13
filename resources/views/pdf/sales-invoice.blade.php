@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     @php
         $company = $invoice->company;
+        $lang = $invoice->language;
+        $currency = $invoice->currency;
         $logoPosition = ($company->logo_position ?? null) ?: 'left';
         $vatRegistered = (bool) $company->is_vat_registered;
         // Only treat the logo as usable when the configured file actually exists on
@@ -73,10 +75,10 @@
             <tr>
                 @if ($logoPosition === 'right')
                     <td style="text-align: left;">
-                        <span class="badge">ФАКТУРА {{ $invoice->formattedNumber() }}</span>
+                        <span class="badge">{{ $lang->t('invoice') }} {{ $invoice->formattedNumber() }}</span>
                         <div class="small muted" style="margin-top: 6px;">
-                            Датум на фактура: {{ \App\Support\Format::date($invoice->invoice_date) }}<br>
-                            Датум на доспевање: {{ \App\Support\Format::date($invoice->due_date) }}
+                            {{ $lang->t('invoice_date') }}: {{ $lang->date($invoice->invoice_date) }}<br>
+                            {{ $lang->t('due_date') }}: {{ $lang->date($invoice->due_date) }}
                         </div>
                     </td>
                     <td style="text-align: right;">
@@ -91,10 +93,10 @@
                         @endif
                     </td>
                     <td style="text-align: right;">
-                        <span class="badge">ФАКТУРА {{ $invoice->formattedNumber() }}</span>
+                        <span class="badge">{{ $lang->t('invoice') }} {{ $invoice->formattedNumber() }}</span>
                         <div class="small muted" style="margin-top: 6px;">
-                            Датум на фактура: {{ \App\Support\Format::date($invoice->invoice_date) }}<br>
-                            Датум на доспевање: {{ \App\Support\Format::date($invoice->due_date) }}
+                            {{ $lang->t('invoice_date') }}: {{ $lang->date($invoice->invoice_date) }}<br>
+                            {{ $lang->t('due_date') }}: {{ $lang->date($invoice->due_date) }}
                         </div>
                     </td>
                 @endif
@@ -105,13 +107,13 @@
             <tr>
                 <td style="padding-right: 6px;">
                     <div class="party-box">
-                        <h4>Издавач</h4>
+                        <h4>{{ $lang->t('seller') }}</h4>
                         <div><strong>{{ $company->name }}</strong></div>
                         <div class="small muted">{{ $company->address }}</div>
                         <div class="small muted">
-                            ЕДБ: {{ $company->tax_id }}
+                            {{ $lang->t('tax_id') }}: {{ $company->tax_id }}
                             @if ($company->registration_number)
-                                · ЕМБС: {{ $company->registration_number }}
+                                · {{ $lang->t('registration_number') }}: {{ $company->registration_number }}
                             @endif
                         </div>
                         @if ($company->phone || $company->email)
@@ -121,11 +123,11 @@
                 </td>
                 <td style="padding-left: 6px;">
                     <div class="party-box">
-                        <h4>Купувач</h4>
+                        <h4>{{ $lang->t('buyer') }}</h4>
                         <div><strong>{{ $invoice->partner->name }}</strong></div>
                         <div class="small muted">{{ $invoice->partner->address }}</div>
                         @if ($invoice->partner->tax_id)
-                            <div class="small muted">ЕДБ: {{ $invoice->partner->tax_id }}</div>
+                            <div class="small muted">{{ $lang->t('tax_id') }}: {{ $invoice->partner->tax_id }}</div>
                         @endif
                     </div>
                 </td>
@@ -135,15 +137,15 @@
         <table class="items">
             <thead>
                 <tr>
-                    <th style="width: 22px;">Р.б.</th>
-                    <th>Опис</th>
-                    <th style="width: 42px;">Кол.</th>
-                    <th style="width: 68px;">Ед. цена</th>
+                    <th style="width: 22px;">{{ $lang->t('line_no') }}</th>
+                    <th>{{ $lang->t('description') }}</th>
+                    <th style="width: 42px;">{{ $lang->t('quantity') }}</th>
+                    <th style="width: 68px;">{{ $lang->t('unit_price') }}</th>
                     @if ($vatRegistered)
-                        <th style="width: 62px;">ДДВ %</th>
-                        <th style="width: 72px;">Износ на ДДВ</th>
+                        <th style="width: 62px;">{{ $lang->t('vat_percent') }}</th>
+                        <th style="width: 72px;">{{ $lang->t('vat_amount') }}</th>
                     @endif
-                    <th style="width: 82px;">{{ $vatRegistered ? 'Вкупно со ДДВ' : 'Вкупно' }}</th>
+                    <th style="width: 82px;">{{ $vatRegistered ? $lang->t('total_with_vat') : $lang->t('total') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -153,16 +155,16 @@
                         <td>
                             {{ $line->description }}
                             @if ($line->vat_treatment !== 'standard')
-                                <div class="small muted">{{ \App\Support\Format::vatTreatment($line->vat_treatment) }}</div>
+                                <div class="small muted">{{ $lang->vatTreatment($line->vat_treatment) }}</div>
                             @endif
                         </td>
                         <td>{{ $line->quantity }}</td>
-                        <td>{{ \App\Support\Format::money($line->unit_price) }}</td>
+                        <td>{{ $lang->money($line->unit_price, $currency) }}</td>
                         @if ($vatRegistered)
                             <td>{{ $line->vat_rate }}</td>
-                            <td>{{ \App\Support\Format::money($line->vatAmount()) }}</td>
+                            <td>{{ $lang->money($line->vatAmount(), $currency) }}</td>
                         @endif
-                        <td>{{ \App\Support\Format::money(bcadd($line->lineTotal(), $line->vatAmount(), 2)) }}</td>
+                        <td>{{ $lang->money(bcadd($line->lineTotal(), $line->vatAmount(), 2), $currency) }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -172,36 +174,36 @@
             <tr>
                 <td style="padding-right: 12px;">
                     <div class="pay-box">
-                        <h4>Начин на плаќање</h4>
+                        <h4>{{ $lang->t('payment_details') }}</h4>
                         @php $mainAccount = $company->bankAccounts->first(); @endphp
                         <table class="pay-table">
                             <tr>
-                                <td class="pay-label">Назив на примач</td>
+                                <td class="pay-label">{{ $lang->t('beneficiary') }}</td>
                                 <td>{{ $company->name }}</td>
                             </tr>
                             @if ($mainAccount && $mainAccount->bank_name)
                                 <tr>
-                                    <td class="pay-label">Банка на примач</td>
+                                    <td class="pay-label">{{ $lang->t('beneficiary_bank') }}</td>
                                     <td>{{ $mainAccount->bank_name }}</td>
                                 </tr>
                             @endif
                             @if ($mainAccount && $mainAccount->account_number)
                                 <tr>
-                                    <td class="pay-label">Сметка</td>
+                                    <td class="pay-label">{{ $lang->t('account') }}</td>
                                     <td>{{ $mainAccount->account_number }}</td>
                                 </tr>
                             @endif
                             <tr>
-                                <td class="pay-label">Износ</td>
-                                <td>{{ \App\Support\Format::money($invoice->grandTotal()) }}</td>
+                                <td class="pay-label">{{ $lang->t('amount') }}</td>
+                                <td>{{ $lang->money($invoice->grandTotal(), $currency) }}</td>
                             </tr>
                             <tr>
-                                <td class="pay-label">Цел на дознака</td>
+                                <td class="pay-label">{{ $lang->t('payment_reference') }}</td>
                                 <td>{{ $invoice->formattedNumber() }}</td>
                             </tr>
                         </table>
                         @unless ($mainAccount)
-                            <div class="muted" style="margin-top: 4px;">Нема внесена банкарска сметка.</div>
+                            <div class="muted" style="margin-top: 4px;">{{ $lang->t('no_bank_account') }}</div>
                         @endunless
                     </div>
                 </td>
@@ -209,20 +211,20 @@
                     <div class="totals-box">
                         <table class="totals">
                             <tr>
-                                <td style="text-align: left; padding: 2px 0;">Основа</td>
-                                <td style="text-align: right; padding: 2px 0;">{{ \App\Support\Format::money($invoice->subtotal()) }}</td>
+                                <td style="text-align: left; padding: 2px 0;">{{ $lang->t('subtotal') }}</td>
+                                <td style="text-align: right; padding: 2px 0;">{{ $lang->money($invoice->subtotal(), $currency) }}</td>
                             </tr>
                             <tr>
-                                <td style="text-align: left; padding: 2px 0;">ДДВ</td>
-                                <td style="text-align: right; padding: 2px 0;">{{ \App\Support\Format::money($invoice->vatTotal()) }}</td>
+                                <td style="text-align: left; padding: 2px 0;">{{ $lang->t('vat') }}</td>
+                                <td style="text-align: right; padding: 2px 0;">{{ $lang->money($invoice->vatTotal(), $currency) }}</td>
                             </tr>
                             <tr class="grand">
-                                <td style="text-align: left; padding: 6px 0 2px;">Вкупно</td>
-                                <td style="text-align: right; padding: 6px 0 2px;">{{ \App\Support\Format::money($invoice->grandTotal()) }}</td>
+                                <td style="text-align: left; padding: 6px 0 2px;">{{ $lang->t('total') }}</td>
+                                <td style="text-align: right; padding: 6px 0 2px;">{{ $lang->money($invoice->grandTotal(), $currency) }}</td>
                             </tr>
                             <tr>
-                                <td style="text-align: left; padding: 2px 0;">За доплата</td>
-                                <td style="text-align: right; padding: 2px 0;">{{ \App\Support\Format::money($invoice->balanceDue()) }}</td>
+                                <td style="text-align: left; padding: 2px 0;">{{ $lang->t('balance_due') }}</td>
+                                <td style="text-align: right; padding: 2px 0;">{{ $lang->money($invoice->balanceDue(), $currency) }}</td>
                             </tr>
                         </table>
                     </div>
@@ -232,7 +234,7 @@
         @php
             $footnotes = [];
             if (! $vatRegistered) {
-                $footnotes[] = 'Фирмава не е ДДВ обврзник.';
+                $footnotes[] = $lang->t('not_vat_registered');
             }
             if ($company->invoice_footer_note) {
                 $footnotes[] = $company->invoice_footer_note;
@@ -250,11 +252,11 @@
             <tr>
                 <td>
                     <div class="sig-line"></div>
-                    <div class="sig-label">ОВЛАСТЕНО ЛИЦЕ</div>
+                    <div class="sig-label">{{ $lang->t('signature_issuer') }}</div>
                 </td>
                 <td>
                     <div class="sig-line"></div>
-                    <div class="sig-label">ПРИМИЛ</div>
+                    <div class="sig-label">{{ $lang->t('signature_receiver') }}</div>
                 </td>
             </tr>
         </table>
