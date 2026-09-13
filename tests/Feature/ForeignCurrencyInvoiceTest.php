@@ -624,4 +624,64 @@ class ForeignCurrencyInvoiceTest extends TestCase
 
         $this->assertSame(0, bccomp($receivableMovement, '0', 2), "Остаток на 120: {$receivableMovement}");
     }
+
+    public function test_a_foreign_currency_invoice_is_refused_by_the_ujp_send_endpoint(): void
+    {
+        // е-Фактура прима денари. Погрешно испратен износ е поскап од
+        // заклучено копче.
+        $company = Company::factory()->create([
+            'type' => 'individual',
+            'efaktura_credential_mode' => \App\Models\Company::EFAKTURA_MODE_OWN,
+            // Комплетна адреса — инаку `hasCompleteAddress()` фаќа 422 порано
+            // и тестот не би ја докажал валутната проверка воопшто.
+            'street_address' => 'Мајка Тереза', 'street_number' => '12',
+            'postal_code' => '1000', 'city' => 'Скопје',
+        ]);
+        $partner = Partner::factory()->for($company)->create([
+            'street_address' => 'Партизанска', 'street_number' => '5',
+            'postal_code' => '1000', 'city' => 'Скопје',
+        ]);
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'status' => 'confirmed',
+            'currency' => 'EUR',
+            'exchange_rate' => '61.500000',
+        ]);
+        $accountant = \App\Models\User::factory()->create();
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+
+        $this->actingAs($accountant)
+            ->postJson(route('sales-invoices.efaktura.signing-input', [$company, $invoice]), [
+                'certificateBase64' => 'x',
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_a_foreign_currency_invoice_cannot_be_sent_either(): void
+    {
+        $company = Company::factory()->create([
+            'type' => 'individual',
+            'efaktura_credential_mode' => \App\Models\Company::EFAKTURA_MODE_OWN,
+        ]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'status' => 'confirmed',
+            'currency' => 'USD',
+            'exchange_rate' => '56.200000',
+        ]);
+        $accountant = \App\Models\User::factory()->create();
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+
+        $this->actingAs($accountant)
+            ->postJson(route('sales-invoices.efaktura.send', [$company, $invoice]), [
+                'token' => 'whatever',
+                'signature' => 'whatever',
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame('not_sent', $invoice->fresh()->efaktura_status);
+    }
 }

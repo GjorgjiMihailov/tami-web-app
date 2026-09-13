@@ -83,6 +83,13 @@ class EfakturaSendController extends Controller
         abort_if($salesInvoice->company_id !== $company->id, 404);
         abort_unless(auth()->user()->hasAnyRole(['admin', 'accountant']), 403);
         abort_unless($salesInvoice->status === 'confirmed', 422, 'Само потврдени фактури можат да се потпишат и испратат.');
+        // УЈП прима денарски износи. Девизна фактура таму нема што да бара, а
+        // погрешно испратен износ е поскап од заклучено копче.
+        abort_if(
+            $salesInvoice->isForeignCurrency(),
+            422,
+            'Фактура во странска валута не може да се испрати до УЈП — е-Фактура прима само денарски износи.'
+        );
         abort_if($salesInvoice->efaktura_status === 'sent', 422, 'Оваа фактура е веќе испратена до УЈП.');
         abort_unless(
             $company->efaktura_credential_mode === Company::EFAKTURA_MODE_OWN,
