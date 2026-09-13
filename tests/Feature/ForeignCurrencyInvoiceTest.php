@@ -156,4 +156,49 @@ class ForeignCurrencyInvoiceTest extends TestCase
 
         $this->assertSame('Србија', $partner->fresh()->country);
     }
+
+    public function test_the_profile_stores_an_iban_and_a_swift_per_bank_account(): void
+    {
+        $company = Company::factory()->create(['type' => 'individual']);
+        $admin = \App\Models\User::factory()->create();
+        $admin->assignRole('admin');
+
+        \Livewire\Livewire::actingAs($admin)
+            ->test(\App\Livewire\CompanyProfile::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('bankAccounts', [[
+                'bank_name' => 'Komercijalna',
+                'account_number' => '300000000000123',
+                'iban' => 'MK07300701104789126',
+                'swift' => 'KOBSMK2X',
+            ]])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $account = $company->fresh()->bankAccounts->first();
+        $this->assertSame('MK07300701104789126', $account->iban);
+        $this->assertSame('KOBSMK2X', $account->swift);
+    }
+
+    public function test_a_row_with_only_an_iban_is_still_kept(): void
+    {
+        // Празен ред се фрла, но ред со внесен IBAN не е празен.
+        $company = Company::factory()->create(['type' => 'individual']);
+        $admin = \App\Models\User::factory()->create();
+        $admin->assignRole('admin');
+
+        \Livewire\Livewire::actingAs($admin)
+            ->test(\App\Livewire\CompanyProfile::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('bankAccounts', [[
+                'bank_name' => '',
+                'account_number' => '',
+                'iban' => 'DE89370400440532013000',
+                'swift' => '',
+            ]])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('DE89370400440532013000', $company->fresh()->bankAccounts->first()?->iban);
+    }
 }

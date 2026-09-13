@@ -164,7 +164,7 @@ class CompanyProfileTest extends TestCase
 
         Livewire::test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
-            ->assertSet('bankAccounts', [['bank_name' => '', 'account_number' => '']]);
+            ->assertSet('bankAccounts', [['bank_name' => '', 'account_number' => '', 'iban' => '', 'swift' => '']]);
     }
 
     public function test_filling_the_last_bank_account_row_reveals_a_new_blank_row(): void

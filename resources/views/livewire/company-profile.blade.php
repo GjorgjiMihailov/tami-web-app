@@ -216,6 +216,14 @@
                                         <x-input-label for="account_number_{{ $index }}" value="Сметка (IBAN)" />
                                         <x-text-input id="account_number_{{ $index }}" wire:model.live.blur="bankAccounts.{{ $index }}.account_number" class="w-64" />
                                     </div>
+                                    <div>
+                                        <x-input-label for="iban_{{ $index }}" value="IBAN (за странство)" />
+                                        <x-text-input id="iban_{{ $index }}" wire:model="bankAccounts.{{ $index }}.iban" class="w-64" />
+                                    </div>
+                                    <div>
+                                        <x-input-label for="swift_{{ $index }}" value="SWIFT/BIC" />
+                                        <x-text-input id="swift_{{ $index }}" wire:model="bankAccounts.{{ $index }}.swift" class="w-40" />
+                                    </div>
                                 </div>
                             @endforeach
                         </div>

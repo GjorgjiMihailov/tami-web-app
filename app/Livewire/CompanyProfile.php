@@ -105,10 +105,12 @@ class CompanyProfile extends Component
 
         $existing = $this->company->bankAccounts()->get();
         $this->bankAccounts = $existing->isEmpty()
-            ? [['bank_name' => '', 'account_number' => '']]
+            ? [['bank_name' => '', 'account_number' => '', 'iban' => '', 'swift' => '']]
             : $existing->map(fn ($row) => [
                 'bank_name' => (string) $row->bank_name,
                 'account_number' => (string) $row->account_number,
+                'iban' => (string) $row->iban,
+                'swift' => (string) $row->swift,
             ])->all();
 
         $this->editLogoPosition = $this->company->logo_position ?: 'left';
@@ -198,7 +200,7 @@ class CompanyProfile extends Component
         $currentIndex = (int) explode('.', $name)[1];
 
         if ($currentIndex === $lastIndex && trim((string) $value) !== '' && count($this->bankAccounts) < 5) {
-            $this->bankAccounts[] = ['bank_name' => '', 'account_number' => ''];
+            $this->bankAccounts[] = ['bank_name' => '', 'account_number' => '', 'iban' => '', 'swift' => ''];
         }
     }
 
@@ -232,6 +234,8 @@ class CompanyProfile extends Component
             'bankAccounts' => 'array|max:5',
             'bankAccounts.*.bank_name' => 'nullable|string|max:255',
             'bankAccounts.*.account_number' => 'nullable|string|max:255',
+            'bankAccounts.*.iban' => 'nullable|string|max:64',
+            'bankAccounts.*.swift' => 'nullable|string|max:20',
             'editLogoPosition' => ['required', Rule::in(['left', 'center', 'right'])],
             'editInvoiceFooterNote' => 'nullable|string|max:2000',
             'newLogo' => 'nullable|image|max:25600',
@@ -311,7 +315,10 @@ class CompanyProfile extends Component
             $this->company->update($companyData);
 
             $keptRows = collect($validated['bankAccounts'])
-                ->filter(fn ($row) => trim((string) ($row['bank_name'] ?? '')) !== '' || trim((string) ($row['account_number'] ?? '')) !== '')
+                ->filter(fn ($row) => trim((string) ($row['bank_name'] ?? '')) !== ''
+                    || trim((string) ($row['account_number'] ?? '')) !== ''
+                    || trim((string) ($row['iban'] ?? '')) !== ''
+                    || trim((string) ($row['swift'] ?? '')) !== '')
                 ->values()
                 ->take(5);
 
@@ -320,6 +327,8 @@ class CompanyProfile extends Component
                 $this->company->bankAccounts()->create([
                     'bank_name' => $row['bank_name'] ?: null,
                     'account_number' => $row['account_number'] ?: null,
+                    'iban' => $row['iban'] ?? null ?: null,
+                    'swift' => $row['swift'] ?? null ?: null,
                     'position' => $index,
                 ]);
             }
