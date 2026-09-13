@@ -167,5 +167,9 @@ return [
         'minBase' => 'најниска основица',
         'maxBase' => 'највисока основица',
         'minimumWage' => 'минимална плата',
+        'currency' => 'валута',
+        'exchangeRate' => 'курс',
+        'editInvoiceLanguage' => 'јазик на фактура',
+        'editCountry' => 'држава',
     ],
 ];

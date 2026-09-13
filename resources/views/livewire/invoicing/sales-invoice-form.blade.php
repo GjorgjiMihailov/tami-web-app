@@ -44,6 +44,29 @@
                 </select>
                 @error('paymentTypeCode') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
+            @if ($company->type->isIndividual())
+                <div>
+                    <x-input-label for="currency" value="Валута" />
+                    <select id="currency" wire:model.live="currency" class="w-full rounded-lg border-gray-300 text-sm">
+                        @foreach (\App\Models\SalesInvoice::CURRENCIES as $code)
+                            <option value="{{ $code }}">{{ $code }}</option>
+                        @endforeach
+                    </select>
+                    @error('currency') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                </div>
+                @if ($currency !== 'MKD')
+                    <div>
+                        <x-input-label for="exchangeRate" value="Курс (1 {{ $currency }} = ? ден)" />
+                        <div class="flex gap-2">
+                            <x-text-input id="exchangeRate" wire:model="exchangeRate" class="w-full" />
+                            <button type="button" wire:click="fetchRate" class="shrink-0 px-3 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
+                                НБРМ
+                            </button>
+                        </div>
+                        @error('exchangeRate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                    </div>
+                @endif
+            @endif
         </x-card>
 
         <x-card>

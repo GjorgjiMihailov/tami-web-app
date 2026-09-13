@@ -8,7 +8,10 @@ use App\Models\Partner;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceLine;
 use App\Models\Warehouse;
+use App\Services\ExchangeRateService;
+use App\Support\InvoiceLanguage;
 use App\Support\WorkingYear;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -33,6 +36,10 @@ class SalesInvoiceForm extends Component
     public string $notes = '';
 
     public string $paymentTypeCode = 'P12';
+
+    public string $currency = 'MKD';
+
+    public string $exchangeRate = '1';
 
     public array $lines = [];
 
@@ -66,6 +73,8 @@ class SalesInvoiceForm extends Component
             $this->dueDate = $salesInvoice->due_date->toDateString();
             $this->notes = (string) $salesInvoice->notes;
             $this->paymentTypeCode = $salesInvoice->payment_type_code;
+            $this->currency = $salesInvoice->currency;
+            $this->exchangeRate = (string) $salesInvoice->exchange_rate;
             $this->lines = $salesInvoice->lines->map(fn ($line) => [
                 'item_id' => $line->item_id === null ? '' : (string) $line->item_id,
                 'description' => (string) $line->description,
@@ -91,6 +100,56 @@ class SalesInvoiceForm extends Component
             'vat_rate' => $this->company->is_vat_registered ? '18.00' : '0.00',
             'vat_treatment' => 'standard',
         ];
+    }
+
+    /**
+     * Кога се менува валутата, се нуди последниот курс што фирмата го користела
+     * за неа. Курсот останува рачен — ова е само понуда, не автоматика.
+     */
+    public function updatedCurrency(string $value): void
+    {
+        if ($value === 'MKD') {
+            $this->exchangeRate = '1';
+
+            return;
+        }
+
+        $last = SalesInvoice::where('company_id', $this->company->id)
+            ->where('currency', $value)
+            ->orderByDesc('invoice_date')
+            ->orderByDesc('id')
+            ->value('exchange_rate');
+
+        $this->exchangeRate = $last === null ? '' : (string) $last;
+    }
+
+    /**
+     * Копчето „НБРМ“ — истиот сервис што го користи формата за рачно книжење.
+     *
+     * Полето останува рачно и по ова: паднат НБРМ не смее да блокира издавање
+     * фактура, па неуспехот се прикажува како грешка на полето, а корисникот
+     * впишува курс сам.
+     */
+    public function fetchRate(): void
+    {
+        if ($this->currency === 'MKD') {
+            $this->exchangeRate = '1';
+
+            return;
+        }
+
+        try {
+            $rate = app(ExchangeRateService::class)->getRate(
+                $this->currency,
+                Carbon::parse($this->invoiceDate)
+            );
+        } catch (\Throwable $e) {
+            $this->addError('exchangeRate', 'Курсот не се презеде од НБРМ — впиши го рачно.');
+
+            return;
+        }
+
+        $this->exchangeRate = (string) $rate;
     }
 
     public function addLine(): void
@@ -137,12 +196,25 @@ class SalesInvoiceForm extends Component
     {
         Gate::authorize($this->salesInvoice ? 'update' : 'create', $this->salesInvoice ?? SalesInvoice::class);
 
+        // Девизна фактура важи само за физичко лице. Скриено поле во Blade не е
+        // заклучување — тоа се прави овде, пред валидацијата.
+        if (! $this->company->type->isIndividual()) {
+            $this->currency = 'MKD';
+            $this->exchangeRate = '1';
+        }
+
         $this->validate([
             'partnerId' => ['required', Rule::exists('partners', 'id')->where('company_id', $this->company->id)],
             'warehouseId' => ['nullable', Rule::exists('warehouses', 'id')->where('company_id', $this->company->id)],
             'invoiceDate' => 'required|date',
             'dueDate' => 'required|date|after_or_equal:invoiceDate',
             'paymentTypeCode' => ['required', Rule::in(array_keys(SalesInvoice::PAYMENT_TYPES))],
+            'currency' => ['required', Rule::in(SalesInvoice::CURRENCIES)],
+            'exchangeRate' => [
+                $this->currency === 'MKD' ? 'nullable' : 'required',
+                'numeric',
+                'gt:0',
+            ],
             'lines' => 'required|array|min:1',
             'lines.*.item_id' => ['nullable', Rule::exists('items', 'id')->where('company_id', $this->company->id)],
             'lines.*.description' => 'nullable|string|max:255',
@@ -187,6 +259,16 @@ class SalesInvoiceForm extends Component
             $invoice->due_date = $this->dueDate;
             $invoice->notes = $this->notes ?: null;
             $invoice->payment_type_code = $this->paymentTypeCode;
+            $invoice->currency = $this->currency;
+            $invoice->exchange_rate = $this->currency === 'MKD' ? '1' : $this->exchangeRate;
+
+            // Јазикот се презема од кооперантот на секое зачувување на нацртот,
+            // па промена на купувачот го носи и неговиот јазик. По потврда
+            // фактурата повеќе не поминува одовде и текстот останува замрзнат.
+            $partner = Partner::where('company_id', $this->company->id)->find($this->partnerId);
+            $invoice->language = $this->company->type->isIndividual() && $partner
+                ? $partner->invoice_language
+                : InvoiceLanguage::MK;
 
             if (! $invoice->exists) {
                 $invoice->status = 'draft';
