@@ -26,7 +26,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
         // затоа стандардните вредности мора да стојат и во $attributes.
         $invoice = new SalesInvoice;
 
-        $this->assertSame('mk', $invoice->language);
+        $this->assertSame(\App\Support\InvoiceLanguage::MK, $invoice->language);
         $this->assertSame('MKD', $invoice->currency);
         $this->assertSame('1.000000', (string) $invoice->exchange_rate);
         $this->assertFalse($invoice->isForeignCurrency());
@@ -59,9 +59,9 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'country' => 'Germany',
         ]);
 
-        $this->assertSame('en', $partner->fresh()->invoice_language);
+        $this->assertSame(\App\Support\InvoiceLanguage::EN, $partner->fresh()->invoice_language);
         $this->assertSame('Germany', $partner->fresh()->country);
-        $this->assertSame('mk', (new Partner)->invoice_language);
+        $this->assertSame(\App\Support\InvoiceLanguage::MK, (new Partner)->invoice_language);
     }
 
     public function test_a_bank_account_can_store_an_iban_and_a_swift(): void
@@ -86,7 +86,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
         $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id]);
 
         $this->assertSame('MKD', $invoice->fresh()->currency);
-        $this->assertSame('mk', $invoice->fresh()->language);
+        $this->assertSame(\App\Support\InvoiceLanguage::MK, $invoice->fresh()->language);
         $this->assertFalse($invoice->fresh()->isForeignCurrency());
     }
 }

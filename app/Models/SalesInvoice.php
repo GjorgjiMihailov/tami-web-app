@@ -64,6 +64,7 @@ class SalesInvoice extends Model
             'sent_at' => 'datetime',
             'efaktura_sent_at' => 'datetime',
             'exchange_rate' => 'decimal:6',
+            'language' => \App\Support\InvoiceLanguage::class,
         ];
     }
 

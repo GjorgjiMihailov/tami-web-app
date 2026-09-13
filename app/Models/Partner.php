@@ -25,7 +25,10 @@ class Partner extends Model
 
     protected function casts(): array
     {
-        return ['is_vat_registered' => 'boolean'];
+        return [
+            'is_vat_registered' => 'boolean',
+            'invoice_language' => \App\Support\InvoiceLanguage::class,
+        ];
     }
 
     public function company(): BelongsTo
