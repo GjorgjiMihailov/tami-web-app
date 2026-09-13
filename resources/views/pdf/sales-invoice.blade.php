@@ -119,6 +119,9 @@
                         @if ($company->phone || $company->email)
                             <div class="small muted">{{ collect([$company->phone, $company->email])->filter()->implode(' · ') }}</div>
                         @endif
+                        @if ($lang === \App\Support\InvoiceLanguage::EN)
+                            <div class="small muted">{{ $lang->t('seller_country') }}</div>
+                        @endif
                     </div>
                 </td>
                 <td style="padding-left: 6px;">
@@ -126,6 +129,9 @@
                         <h4>{{ $lang->t('buyer') }}</h4>
                         <div><strong>{{ $invoice->partner->name }}</strong></div>
                         <div class="small muted">{{ $invoice->partner->address }}</div>
+                        @if ($lang === \App\Support\InvoiceLanguage::EN && $invoice->partner->country)
+                            <div class="small muted">{{ $invoice->partner->country }}</div>
+                        @endif
                         @if ($invoice->partner->tax_id)
                             <div class="small muted">{{ $lang->t('tax_id') }}: {{ $invoice->partner->tax_id }}</div>
                         @endif
@@ -192,6 +198,21 @@
                                     <td class="pay-label">{{ $lang->t('account') }}</td>
                                     <td>{{ $mainAccount->account_number }}</td>
                                 </tr>
+                            @endif
+                            @if ($lang === \App\Support\InvoiceLanguage::EN)
+                                @php $ibanValue = $mainAccount?->iban ?: $mainAccount?->account_number; @endphp
+                                @if ($ibanValue)
+                                    <tr>
+                                        <td class="pay-label">{{ $lang->t('iban') }}</td>
+                                        <td>{{ $ibanValue }}</td>
+                                    </tr>
+                                @endif
+                                @if ($mainAccount && $mainAccount->swift)
+                                    <tr>
+                                        <td class="pay-label">{{ $lang->t('swift') }}</td>
+                                        <td>{{ $mainAccount->swift }}</td>
+                                    </tr>
+                                @endif
                             @endif
                             <tr>
                                 <td class="pay-label">{{ $lang->t('amount') }}</td>

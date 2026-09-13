@@ -157,4 +157,66 @@ class SalesInvoiceEnglishPdfTest extends TestCase
         $this->assertStringContainsString('Total incl. VAT', $html);
         $this->assertStringNotContainsString('ДДВ %', $html);
     }
+
+    public function test_an_english_invoice_prints_the_iban_and_swift_when_they_are_filled(): void
+    {
+        $invoice = $this->invoice(['language' => 'en', 'currency' => 'EUR', 'exchange_rate' => '61.50']);
+        $invoice->company->bankAccounts()->first()->update([
+            'iban' => 'MK07300701104789126',
+            'swift' => 'KOBSMK2X',
+        ]);
+
+        $html = $this->render($invoice->fresh(['lines', 'partner', 'company.bankAccounts']));
+
+        $this->assertStringContainsString('IBAN', $html);
+        $this->assertStringContainsString('MK07300701104789126', $html);
+        $this->assertStringContainsString('SWIFT', $html);
+        $this->assertStringContainsString('KOBSMK2X', $html);
+    }
+
+    public function test_an_english_invoice_falls_back_to_the_account_number_when_no_iban_is_set(): void
+    {
+        // Кај дел од клиентите IBAN-от веќе стои во полето „Сметка (IBAN)“.
+        $invoice = $this->invoice(['language' => 'en', 'currency' => 'EUR', 'exchange_rate' => '61.50']);
+
+        $html = $this->render($invoice);
+
+        $this->assertStringContainsString('300000000000123', $html);
+    }
+
+    public function test_an_english_invoice_omits_the_swift_row_when_it_is_empty(): void
+    {
+        // Празен ред на испечатена фактура изгледа како грешка.
+        $invoice = $this->invoice(['language' => 'en', 'currency' => 'EUR', 'exchange_rate' => '61.50']);
+
+        $html = $this->render($invoice);
+
+        $this->assertStringNotContainsString('SWIFT', $html);
+    }
+
+    public function test_an_english_invoice_prints_both_countries(): void
+    {
+        $invoice = $this->invoice(['language' => 'en', 'currency' => 'EUR', 'exchange_rate' => '61.50']);
+        $invoice->partner->update(['country' => 'Germany']);
+
+        $html = $this->render($invoice->fresh(['lines', 'partner', 'company.bankAccounts']));
+
+        $this->assertStringContainsString('Germany', $html);
+        $this->assertStringContainsString('North Macedonia', $html);
+    }
+
+    public function test_a_denar_invoice_prints_neither_iban_swift_nor_country(): void
+    {
+        // Македонската фактура останува каква што беше.
+        $invoice = $this->invoice();
+        $invoice->company->bankAccounts()->first()->update(['iban' => 'MK07300701104789126', 'swift' => 'KOBSMK2X']);
+        $invoice->partner->update(['country' => 'Германија']);
+
+        $html = $this->render($invoice->fresh(['lines', 'partner', 'company.bankAccounts']));
+
+        $this->assertStringNotContainsString('SWIFT', $html);
+        $this->assertStringNotContainsString('KOBSMK2X', $html);
+        $this->assertStringNotContainsString('Германија', $html);
+        $this->assertStringNotContainsString('Северна Македонија', $html);
+    }
 }
