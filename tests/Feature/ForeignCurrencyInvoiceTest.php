@@ -89,4 +89,71 @@ class ForeignCurrencyInvoiceTest extends TestCase
         $this->assertSame(\App\Support\InvoiceLanguage::MK, $invoice->fresh()->language);
         $this->assertFalse($invoice->fresh()->isForeignCurrency());
     }
+
+    public function test_an_individual_profile_can_set_the_partner_invoice_language(): void
+    {
+        $company = Company::factory()->create(['type' => 'individual']);
+        $partner = Partner::factory()->for($company)->create(['name' => 'Acme Ltd']);
+        $admin = \App\Models\User::factory()->create();
+        $admin->assignRole('admin');
+
+        \Livewire\Livewire::actingAs($admin)
+            ->test(\App\Livewire\PartnerShow::class, ['company' => $company, 'partner' => $partner])
+            ->call('startEdit')
+            ->set('editInvoiceLanguage', 'en')
+            ->set('editCountry', 'Germany')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(\App\Support\InvoiceLanguage::EN, $partner->fresh()->invoice_language);
+        $this->assertSame('Germany', $partner->fresh()->country);
+    }
+
+    public function test_a_legal_entity_never_sees_the_invoice_language_field(): void
+    {
+        $company = Company::factory()->create(['type' => 'legal']);
+        $partner = Partner::factory()->for($company)->create();
+        $admin = \App\Models\User::factory()->create();
+        $admin->assignRole('admin');
+
+        \Livewire\Livewire::actingAs($admin)
+            ->test(\App\Livewire\PartnerShow::class, ['company' => $company, 'partner' => $partner])
+            ->call('startEdit')
+            ->assertDontSee('Јазик на фактура');
+    }
+
+    public function test_a_legal_entity_cannot_force_an_english_partner_through_the_wire(): void
+    {
+        // Скриено поле во Blade не е заклучување. Серверот мора да одбие.
+        $company = Company::factory()->create(['type' => 'legal']);
+        $partner = Partner::factory()->for($company)->create();
+        $admin = \App\Models\User::factory()->create();
+        $admin->assignRole('admin');
+
+        \Livewire\Livewire::actingAs($admin)
+            ->test(\App\Livewire\PartnerShow::class, ['company' => $company, 'partner' => $partner])
+            ->call('startEdit')
+            ->set('editInvoiceLanguage', 'en')
+            ->call('save');
+
+        $this->assertSame(\App\Support\InvoiceLanguage::MK, $partner->fresh()->invoice_language);
+    }
+
+    public function test_the_country_field_is_available_to_a_legal_entity_too(): void
+    {
+        // Државата е обична адресна податока, не дел од девизната гранка.
+        $company = Company::factory()->create(['type' => 'legal']);
+        $partner = Partner::factory()->for($company)->create();
+        $admin = \App\Models\User::factory()->create();
+        $admin->assignRole('admin');
+
+        \Livewire\Livewire::actingAs($admin)
+            ->test(\App\Livewire\PartnerShow::class, ['company' => $company, 'partner' => $partner])
+            ->call('startEdit')
+            ->set('editCountry', 'Србија')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('Србија', $partner->fresh()->country);
+    }
 }

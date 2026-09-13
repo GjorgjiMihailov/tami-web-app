@@ -47,6 +47,10 @@ class PartnerShow extends Component
 
     public string $editCity = '';
 
+    public string $editInvoiceLanguage = 'mk';
+
+    public string $editCountry = '';
+
     public array $bankAccounts = [];
 
     public function mount(Company $company, Partner $partner): void
@@ -79,6 +83,8 @@ class PartnerShow extends Component
         $this->editStreetNumber = (string) $this->partner->street_number;
         $this->editPostalCode = (string) $this->partner->postal_code;
         $this->editCity = (string) $this->partner->city;
+        $this->editInvoiceLanguage = $this->partner->invoice_language->value;
+        $this->editCountry = (string) $this->partner->country;
 
         $existing = $this->partner->bankAccounts()->get();
         $this->bankAccounts = $existing->isEmpty()
@@ -129,6 +135,8 @@ class PartnerShow extends Component
             'editStreetNumber' => 'nullable|string|max:50',
             'editPostalCode' => 'nullable|string|max:20',
             'editCity' => 'nullable|string|max:255',
+            'editInvoiceLanguage' => ['required', Rule::in(['mk', 'en'])],
+            'editCountry' => 'nullable|string|max:255',
             'bankAccounts' => 'array|max:5',
             'bankAccounts.*.bank_name' => 'nullable|string|max:255',
             'bankAccounts.*.account_number' => 'nullable|string|max:255',
@@ -137,7 +145,13 @@ class PartnerShow extends Component
         $isLegalEntity = $validated['editType'] === 'legal_entity';
         $isVatRegistered = $isLegalEntity && $validated['editIsVatRegistered'];
 
-        DB::transaction(function () use ($validated, $isLegalEntity, $isVatRegistered) {
+        // Англиска фактура важи само за физичко лице. Скриено поле во Blade не
+        // е заклучување — тоа се прави овде.
+        $invoiceLanguage = $this->partner->company->type->isIndividual()
+            ? $validated['editInvoiceLanguage']
+            : 'mk';
+
+        DB::transaction(function () use ($validated, $isLegalEntity, $isVatRegistered, $invoiceLanguage) {
             $this->partner->update([
                 'name' => $validated['editName'],
                 'type' => $validated['editType'],
@@ -153,6 +167,8 @@ class PartnerShow extends Component
                 'street_number' => $validated['editStreetNumber'] ?: null,
                 'postal_code' => $validated['editPostalCode'] ?: null,
                 'city' => $validated['editCity'] ?: null,
+                'invoice_language' => $invoiceLanguage,
+                'country' => $validated['editCountry'] ?: null,
             ]);
 
             $keptRows = collect($validated['bankAccounts'])

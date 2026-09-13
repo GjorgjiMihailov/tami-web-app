@@ -62,6 +62,22 @@
                             <x-input-label for="editCity" value="Град" />
                             <x-text-input id="editCity" wire:model="editCity" class="w-full" />
                         </div>
+                        <div>
+                            <x-input-label for="editCountry" value="Држава" />
+                            <x-text-input id="editCountry" wire:model="editCountry" class="w-full" />
+                            @error('editCountry') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                        </div>
+                        @if ($company->type->isIndividual())
+                            <div>
+                                <x-input-label for="editInvoiceLanguage" value="Јазик на фактура" />
+                                <select id="editInvoiceLanguage" wire:model="editInvoiceLanguage" class="w-full border-gray-300 rounded-md text-sm">
+                                    @foreach (\App\Support\InvoiceLanguage::cases() as $case)
+                                        <option value="{{ $case->value }}">{{ $case->label() }}</option>
+                                    @endforeach
+                                </select>
+                                @error('editInvoiceLanguage') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                            </div>
+                        @endif
 
                         @if ($editType === 'legal_entity')
                             <div>
