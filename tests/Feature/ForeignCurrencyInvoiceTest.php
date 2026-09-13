@@ -618,11 +618,91 @@ class ForeignCurrencyInvoiceTest extends TestCase
         $this->assertSame('0.00', $invoice->fresh(['lines', 'payments'])->balanceDue());
 
         // ...а во главната книга сметка 120 се затвора точно на нула.
-        $receivableMovement = \App\Models\JournalEntryLine::whereHas('account', fn ($q) => $q->where('code', '120'))
+        $receivableMovement = \App\Models\JournalEntryLine::whereHas(
+            'account',
+            fn ($q) => $q->where('code', '120')->where('company_id', $company->id)
+        )
             ->get()
             ->reduce(fn ($carry, $line) => bcsub(bcadd($carry, $line->debit, 2), $line->credit, 2), '0.00');
 
         $this->assertSame(0, bccomp($receivableMovement, '0', 2), "Остаток на 120: {$receivableMovement}");
+    }
+
+    public function test_three_partial_payments_on_a_euro_invoice_close_the_receivable_to_zero(): void
+    {
+        // 1000,00 EUR по 61,473300 не се дели чисто на три. Секое плаќање
+        // конвертирано и заокружено ПОСЕБНО остава остаток од -0,01 на 120
+        // (61473.30 наспроти 61473.31 книжени). Телескопирањето (разлика на
+        // кумулативно конвертирани суми) мора да го затвори остатокот точно.
+        [$company, $partner, $admin] = $this->individualCompanyWithPartner();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'status' => 'draft',
+            'currency' => 'EUR',
+            'exchange_rate' => '61.473300',
+        ]);
+        $invoice->lines()->create([
+            'description' => 'Consulting',
+            'quantity' => '1',
+            'unit_price' => '1000.00',
+            'vat_rate' => '0.00',
+            'vat_treatment' => 'standard',
+        ]);
+
+        $service = app(\App\Services\Invoicing\SalesInvoiceService::class);
+        $service->confirm($invoice->fresh(['lines', 'company']), $admin->id);
+        $service->recordPayment($invoice->fresh(['lines', 'payments', 'company']), '333.33', '2026-09-20', 'bank', $admin->id);
+        $service->recordPayment($invoice->fresh(['lines', 'payments', 'company']), '333.33', '2026-09-21', 'bank', $admin->id);
+        $service->recordPayment($invoice->fresh(['lines', 'payments', 'company']), '333.34', '2026-09-22', 'bank', $admin->id);
+
+        $receivableMovement = \App\Models\JournalEntryLine::whereHas(
+            'account',
+            fn ($q) => $q->where('code', '120')->where('company_id', $company->id)
+        )
+            ->get()
+            ->reduce(fn ($carry, $line) => bcsub(bcadd($carry, $line->debit, 2), $line->credit, 2), '0.00');
+
+        $this->assertSame('0.00', $receivableMovement, "Остаток на 120: {$receivableMovement}");
+    }
+
+    public function test_a_full_payment_on_a_vat_euro_invoice_closes_the_receivable_to_zero_and_balances(): void
+    {
+        // Субтотал 1499,00 + ДДВ 269,82 по 61,473300: одделно заокружени 120
+        // (108735,21) и еднократна наплата (108735,20) оставаат +0,01. Бруто
+        // мора да се конвертира еднаш, а нето да е плуг (бруто - ддв).
+        [$company, $partner, $admin] = $this->individualCompanyWithPartner();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'status' => 'draft',
+            'currency' => 'EUR',
+            'exchange_rate' => '61.473300',
+        ]);
+        $invoice->lines()->create([
+            'description' => 'Consulting',
+            'quantity' => '1',
+            'unit_price' => '1499.00',
+            'vat_rate' => '18.00',
+            'vat_treatment' => 'standard',
+        ]);
+
+        $service = app(\App\Services\Invoicing\SalesInvoiceService::class);
+        $service->confirm($invoice->fresh(['lines', 'company']), $admin->id);
+        $service->recordPayment($invoice->fresh(['lines', 'payments', 'company']), '1768.82', '2026-09-20', 'bank', $admin->id);
+
+        $receivableMovement = \App\Models\JournalEntryLine::whereHas(
+            'account',
+            fn ($q) => $q->where('code', '120')->where('company_id', $company->id)
+        )
+            ->get()
+            ->reduce(fn ($carry, $line) => bcsub(bcadd($carry, $line->debit, 2), $line->credit, 2), '0.00');
+
+        $this->assertSame('0.00', $receivableMovement, "Остаток на 120: {$receivableMovement}");
+
+        $confirmEntry = $invoice->fresh()->journalEntry->lines;
+        $debits = $confirmEntry->reduce(fn ($carry, $line) => bcadd($carry, $line->debit, 2), '0.00');
+        $credits = $confirmEntry->reduce(fn ($carry, $line) => bcadd($carry, $line->credit, 2), '0.00');
+
+        $this->assertSame(0, bccomp($debits, $credits, 2), "Дебит {$debits} наспроти кредит {$credits}");
     }
 
     public function test_a_foreign_currency_invoice_is_refused_by_the_ujp_send_endpoint(): void

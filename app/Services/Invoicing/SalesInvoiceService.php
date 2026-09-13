@@ -73,10 +73,16 @@ class SalesInvoiceService
                 $cogsTotal = bcadd($cogsTotal, Bcmath::roundHalfUp(bcmul((string) $line->quantity, (string) $movement->unit_cost, 10), 2), 2);
             }
 
+            // Бруто се конвертира ЕДНАШ (не збир од посебно заокружени нето+ддв) —
+            // инаку две одделни заокружувања можат да остават стотинка вишок или
+            // малку на 120 наспроти 740+230. Нето е плуг (бруто - ддв), а ддв се
+            // конвертира точно бидејќи е државна обврска. Со ова 120 = 740 + 230
+            // по конструкција, за секоја фактура и за секој курс.
             $vatRegistered = $invoice->company->is_vat_registered;
-            $net = $this->toMkd($invoice, $invoice->subtotal());
+            $grossForeign = bcadd($invoice->subtotal(), $vatRegistered ? $invoice->vatTotal() : '0.00', 2);
+            $gross = $this->toMkd($invoice, $grossForeign);
             $vat = $vatRegistered ? $this->toMkd($invoice, $invoice->vatTotal()) : '0.00';
-            $gross = bcadd($net, $vat, 2);
+            $net = bcsub($gross, $vat, 2);
             $label = 'Invoice '.InvoiceNumber::format($invoice->company, $fiscalYear, $invoiceNumber);
 
             $entry = JournalEntry::create([
@@ -94,7 +100,7 @@ class SalesInvoiceService
                 'line_date' => $invoice->invoice_date,
                 'debit' => $gross,
                 'credit' => '0',
-            ], $this->currencyColumns($invoice, bcadd($invoice->subtotal(), $vatRegistered ? $invoice->vatTotal() : '0.00', 2))));
+            ], $this->currencyColumns($invoice, $grossForeign)));
 
             $entry->lines()->create(array_merge([
                 'account_id' => $this->account($invoice->company, '740')->id,
@@ -212,6 +218,10 @@ class SalesInvoiceService
         }
 
         return DB::transaction(function () use ($invoice, $amount, $paymentDate, $paymentMethod, $userId) {
+            // Пресметано ПРЕД да се создаде овој запис за плаќање — ова е
+            // состојбата на платено пред уплатата што штотуку ја книжиме.
+            $paidBefore = $invoice->paidTotal();
+
             $payment = $invoice->payments()->create([
                 'amount' => $amount,
                 'payment_date' => $paymentDate,
@@ -222,7 +232,16 @@ class SalesInvoiceService
             // Записот за плаќање останува во валутата на фактурата — салдото,
             // статусот и „За доплата“ се сметаат таму. Во главната книга оди
             // денарскиот износ.
-            $amountMkd = $this->toMkd($invoice, $amount);
+            //
+            // Секое плаќање книжи РАЗЛИКА меѓу конвертираната кумулативна сума
+            // платена до сега и конвертираната сума платена претходно
+            // (телескопирање). Заокружувањето секогаш паѓа на последното
+            // плаќање, така што збирот на сите плаќања се затвора точно на
+            // конвертираниот вкупен износ на фактурата — без разлика колку
+            // пати е поделено плаќањето. Одделно заокружување на секое
+            // плаќање наместо ова остава стотинка вишок или малку на 120.
+            $paidAfter = bcadd($paidBefore, $amount, 2);
+            $amountMkd = bcsub($this->toMkd($invoice, $paidAfter), $this->toMkd($invoice, $paidBefore), 2);
 
             $cashOrBankCode = $paymentMethod === 'cash' ? '102' : '100';
             $label = "Payment for invoice {$invoice->formattedNumber()}";
