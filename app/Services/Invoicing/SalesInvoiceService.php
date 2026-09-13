@@ -74,8 +74,8 @@ class SalesInvoiceService
             }
 
             $vatRegistered = $invoice->company->is_vat_registered;
-            $net = $invoice->subtotal();
-            $vat = $vatRegistered ? $invoice->vatTotal() : '0.00';
+            $net = $this->toMkd($invoice, $invoice->subtotal());
+            $vat = $vatRegistered ? $this->toMkd($invoice, $invoice->vatTotal()) : '0.00';
             $gross = bcadd($net, $vat, 2);
             $label = 'Invoice '.InvoiceNumber::format($invoice->company, $fiscalYear, $invoiceNumber);
 
@@ -87,33 +87,33 @@ class SalesInvoiceService
                 'created_by' => $userId,
             ]);
 
-            $entry->lines()->create([
+            $entry->lines()->create(array_merge([
                 'account_id' => $this->account($invoice->company, '120')->id,
                 'partner_id' => $invoice->partner_id,
                 'description' => $label,
                 'line_date' => $invoice->invoice_date,
                 'debit' => $gross,
                 'credit' => '0',
-            ]);
+            ], $this->currencyColumns($invoice, bcadd($invoice->subtotal(), $vatRegistered ? $invoice->vatTotal() : '0.00', 2))));
 
-            $entry->lines()->create([
+            $entry->lines()->create(array_merge([
                 'account_id' => $this->account($invoice->company, '740')->id,
                 'partner_id' => $invoice->partner_id,
                 'description' => $label,
                 'line_date' => $invoice->invoice_date,
                 'debit' => '0',
                 'credit' => $net,
-            ]);
+            ], $this->currencyColumns($invoice, $invoice->subtotal())));
 
             if (bccomp($vat, '0', 2) > 0) {
-                $entry->lines()->create([
+                $entry->lines()->create(array_merge([
                     'account_id' => $this->account($invoice->company, '230')->id,
                     'partner_id' => $invoice->partner_id,
                     'description' => "VAT on {$label}",
                     'line_date' => $invoice->invoice_date,
                     'debit' => '0',
                     'credit' => $vat,
-                ]);
+                ], $this->currencyColumns($invoice, $invoice->vatTotal())));
             }
 
             if (bccomp($cogsTotal, '0', 2) > 0) {
@@ -219,6 +219,11 @@ class SalesInvoiceService
                 'created_by' => $userId,
             ]);
 
+            // Записот за плаќање останува во валутата на фактурата — салдото,
+            // статусот и „За доплата“ се сметаат таму. Во главната книга оди
+            // денарскиот износ.
+            $amountMkd = $this->toMkd($invoice, $amount);
+
             $cashOrBankCode = $paymentMethod === 'cash' ? '102' : '100';
             $label = "Payment for invoice {$invoice->formattedNumber()}";
 
@@ -230,26 +235,69 @@ class SalesInvoiceService
                 'created_by' => $userId,
             ]);
 
-            $entry->lines()->create([
+            $entry->lines()->create(array_merge([
                 'account_id' => $this->account($invoice->company, $cashOrBankCode)->id,
                 'partner_id' => $invoice->partner_id,
                 'description' => $label,
                 'line_date' => $paymentDate,
-                'debit' => $amount,
+                'debit' => $amountMkd,
                 'credit' => '0',
-            ]);
+            ], $this->currencyColumns($invoice, $amount)));
 
-            $entry->lines()->create([
+            $entry->lines()->create(array_merge([
                 'account_id' => $this->account($invoice->company, '120')->id,
                 'partner_id' => $invoice->partner_id,
                 'description' => $label,
                 'line_date' => $paymentDate,
                 'debit' => '0',
-                'credit' => $amount,
-            ]);
+                'credit' => $amountMkd,
+            ], $this->currencyColumns($invoice, $amount)));
 
             return $payment;
         });
+    }
+
+    /**
+     * Износ од валутата на фактурата во денари.
+     *
+     * Книгите во Македонија се во денари, па девизната фактура се книжи по
+     * курсот запишан на неа. Денарска фактура поминува недопрена — курсот е 1
+     * и множењето не смее да помести ниту една пара од веќе книжените записи.
+     *
+     * Курсни разлики не се пресметуваат: наплатата се книжи по истиот курс, за
+     * да се затвори побарувањето точно на нула.
+     */
+    private function toMkd(SalesInvoice $invoice, string $amount): string
+    {
+        if (! $invoice->isForeignCurrency()) {
+            return $amount;
+        }
+
+        return Bcmath::roundHalfUp(bcmul($amount, (string) $invoice->exchange_rate, 10), 2);
+    }
+
+    /**
+     * Девизните колони на една ставка од книжењето.
+     *
+     * `journal_entry_lines` веќе ги носи `currency_code`, `exchange_rate` и
+     * `foreign_amount`, и формата за рачно книжење веќе ги полни — фактурата го
+     * користи истиот образец, за да не се изгуби оригиналниот износ зад
+     * денарскиот.
+     *
+     * Кај денарска фактура враќа празна низа: трите колони остануваат на своите
+     * стандардни вредности и записот е буквално идентичен со досегашниот.
+     */
+    private function currencyColumns(SalesInvoice $invoice, string $foreignAmount): array
+    {
+        if (! $invoice->isForeignCurrency()) {
+            return [];
+        }
+
+        return [
+            'currency_code' => $invoice->currency,
+            'exchange_rate' => (string) $invoice->exchange_rate,
+            'foreign_amount' => $foreignAmount,
+        ];
     }
 
     private function account(Company $company, string $code): Account

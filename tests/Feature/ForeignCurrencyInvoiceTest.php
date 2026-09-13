@@ -450,4 +450,178 @@ class ForeignCurrencyInvoiceTest extends TestCase
             ->call('fetchRate')
             ->assertSet('exchangeRate', '1');
     }
+
+    public function test_a_euro_invoice_is_posted_to_the_ledger_in_denars(): void
+    {
+        [$company, $partner, $admin] = $this->individualCompanyWithPartner();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'status' => 'draft',
+            'currency' => 'EUR',
+            'exchange_rate' => '61.500000',
+            'invoice_date' => '2026-09-13',
+        ]);
+        $invoice->lines()->create([
+            'description' => 'Consulting',
+            'quantity' => '1',
+            'unit_price' => '500.00',
+            'vat_rate' => '0.00',
+            'vat_treatment' => 'standard',
+        ]);
+
+        app(\App\Services\Invoicing\SalesInvoiceService::class)
+            ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
+
+        $entry = $invoice->fresh()->journalEntry;
+        $receivable = $entry->lines->firstWhere(fn ($line) => $line->account->code === '120');
+        $revenue = $entry->lines->firstWhere(fn ($line) => $line->account->code === '740');
+
+        // 500 EUR × 61,50 = 30.750 денари
+        $this->assertSame(0, bccomp('30750.00', $receivable->debit, 2));
+        $this->assertSame(0, bccomp('30750.00', $revenue->credit, 2));
+    }
+
+    public function test_a_euro_invoice_keeps_the_original_amount_on_the_ledger_line(): void
+    {
+        // journal_entry_lines веќе носи currency_code/exchange_rate/foreign_amount
+        // и формата за рачно книжење веќе ги полни. Фактурата го користи истиот
+        // образец — денарскиот износ не смее да го проголта оригиналот.
+        [$company, $partner, $admin] = $this->individualCompanyWithPartner();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'status' => 'draft',
+            'currency' => 'EUR',
+            'exchange_rate' => '61.500000',
+        ]);
+        $invoice->lines()->create([
+            'description' => 'Consulting',
+            'quantity' => '1',
+            'unit_price' => '500.00',
+            'vat_rate' => '0.00',
+            'vat_treatment' => 'standard',
+        ]);
+
+        app(\App\Services\Invoicing\SalesInvoiceService::class)
+            ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
+
+        $receivable = $invoice->fresh()->journalEntry->lines
+            ->firstWhere(fn ($line) => $line->account->code === '120');
+
+        $this->assertSame('EUR', $receivable->currency_code);
+        $this->assertSame(0, bccomp('61.500000', $receivable->exchange_rate, 6));
+        $this->assertSame(0, bccomp('500.00', $receivable->foreign_amount, 2));
+    }
+
+    public function test_a_denar_invoice_leaves_the_currency_columns_at_their_defaults(): void
+    {
+        [$company, $partner, $admin] = $this->individualCompanyWithPartner('mk');
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'status' => 'draft',
+            'currency' => 'MKD',
+        ]);
+        $invoice->lines()->create([
+            'description' => 'Услуга',
+            'quantity' => '1',
+            'unit_price' => '100.00',
+            'vat_rate' => '0.00',
+            'vat_treatment' => 'standard',
+        ]);
+
+        app(\App\Services\Invoicing\SalesInvoiceService::class)
+            ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
+
+        $receivable = $invoice->fresh()->journalEntry->lines
+            ->firstWhere(fn ($line) => $line->account->code === '120');
+
+        $this->assertSame('MKD', $receivable->currency_code);
+        $this->assertNull($receivable->foreign_amount);
+    }
+
+    public function test_a_euro_invoice_ledger_entry_balances_to_the_last_denar(): void
+    {
+        [$company, $partner, $admin] = $this->individualCompanyWithPartner();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'status' => 'draft',
+            'currency' => 'EUR',
+            'exchange_rate' => '61.473300',
+        ]);
+        $invoice->lines()->create([
+            'description' => 'Odd amount',
+            'quantity' => '3',
+            'unit_price' => '33.33',
+            'vat_rate' => '0.00',
+            'vat_treatment' => 'standard',
+        ]);
+
+        app(\App\Services\Invoicing\SalesInvoiceService::class)
+            ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
+
+        $lines = $invoice->fresh()->journalEntry->lines;
+        $debits = $lines->reduce(fn ($carry, $line) => bcadd($carry, $line->debit, 2), '0.00');
+        $credits = $lines->reduce(fn ($carry, $line) => bcadd($carry, $line->credit, 2), '0.00');
+
+        $this->assertSame(0, bccomp($debits, $credits, 2), "Дебит {$debits} наспроти кредит {$credits}");
+    }
+
+    public function test_a_denar_invoice_posts_exactly_the_same_numbers_as_before(): void
+    {
+        // Курсот е 1 и множењето не смее да го помести ниту еден износ.
+        [$company, $partner, $admin] = $this->individualCompanyWithPartner('mk');
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'status' => 'draft',
+            'currency' => 'MKD',
+            'exchange_rate' => '1.000000',
+        ]);
+        $invoice->lines()->create([
+            'description' => 'Услуга',
+            'quantity' => '1',
+            'unit_price' => '1234.56',
+            'vat_rate' => '0.00',
+            'vat_treatment' => 'standard',
+        ]);
+
+        app(\App\Services\Invoicing\SalesInvoiceService::class)
+            ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
+
+        $receivable = $invoice->fresh()->journalEntry->lines
+            ->firstWhere(fn ($line) => $line->account->code === '120');
+
+        $this->assertSame(0, bccomp('1234.56', $receivable->debit, 2));
+    }
+
+    public function test_a_full_payment_on_a_euro_invoice_clears_the_receivable_to_zero(): void
+    {
+        [$company, $partner, $admin] = $this->individualCompanyWithPartner();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'status' => 'draft',
+            'currency' => 'EUR',
+            'exchange_rate' => '61.500000',
+        ]);
+        $invoice->lines()->create([
+            'description' => 'Consulting',
+            'quantity' => '1',
+            'unit_price' => '500.00',
+            'vat_rate' => '0.00',
+            'vat_treatment' => 'standard',
+        ]);
+
+        $service = app(\App\Services\Invoicing\SalesInvoiceService::class);
+        $service->confirm($invoice->fresh(['lines', 'company']), $admin->id);
+        $service->recordPayment($invoice->fresh(['lines', 'payments', 'company']), '500.00', '2026-09-20', 'bank', $admin->id);
+
+        // Плаќањето се чува во валутата на фактурата...
+        $this->assertSame('500.00', $invoice->fresh(['lines', 'payments'])->paidTotal());
+        $this->assertSame('0.00', $invoice->fresh(['lines', 'payments'])->balanceDue());
+
+        // ...а во главната книга сметка 120 се затвора точно на нула.
+        $receivableMovement = \App\Models\JournalEntryLine::whereHas('account', fn ($q) => $q->where('code', '120'))
+            ->get()
+            ->reduce(fn ($carry, $line) => bcsub(bcadd($carry, $line->debit, 2), $line->credit, 2), '0.00');
+
+        $this->assertSame(0, bccomp($receivableMovement, '0', 2), "Остаток на 120: {$receivableMovement}");
+    }
 }
