@@ -177,11 +177,35 @@ class SalesInvoiceEnglishPdfTest extends TestCase
     public function test_an_english_invoice_falls_back_to_the_account_number_when_no_iban_is_set(): void
     {
         // Кај дел од клиентите IBAN-от веќе стои во полето „Сметка (IBAN)“.
+        // Проверуваме дека бројот се појавува ВО IBAN-редот (не само во
+        // постоечкиот „Account“ ред) — инаку тестот би минал и без fallback.
         $invoice = $this->invoice(['language' => 'en', 'currency' => 'EUR', 'exchange_rate' => '61.50']);
 
         $html = $this->render($invoice);
 
-        $this->assertStringContainsString('300000000000123', $html);
+        $this->assertMatchesRegularExpression(
+            '/pay-label">IBAN<\/td>\s*<td>300000000000123<\/td>/',
+            $html
+        );
+    }
+
+    public function test_an_english_invoice_prints_the_iban_when_the_account_number_is_empty(): void
+    {
+        // Токму сценариото поради кое IBAN/SWIFT-блокот мора да стои НАДВОР
+        // од `@if ($mainAccount && $mainAccount->account_number)`: сметка со
+        // IBAN, но без стар „account_number“, сепак мора да го испечати IBAN-от.
+        $invoice = $this->invoice(['language' => 'en', 'currency' => 'EUR', 'exchange_rate' => '61.50']);
+        $invoice->company->bankAccounts()->first()->update([
+            'account_number' => null,
+            'iban' => 'MK07300701104789126',
+        ]);
+
+        $html = $this->render($invoice->fresh(['lines', 'partner', 'company.bankAccounts']));
+
+        $this->assertMatchesRegularExpression(
+            '/pay-label">IBAN<\/td>\s*<td>MK07300701104789126<\/td>/',
+            $html
+        );
     }
 
     public function test_an_english_invoice_omits_the_swift_row_when_it_is_empty(): void
