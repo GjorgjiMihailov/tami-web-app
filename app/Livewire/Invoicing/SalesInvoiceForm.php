@@ -108,6 +108,11 @@ class SalesInvoiceForm extends Component
      */
     public function updatedCurrency(string $value): void
     {
+        // Livewire ја памети грешката на exchangeRate меѓу барањата — стар
+        // неуспех од НБРМ не смее да остане прикажан откако валутата (или
+        // курсот што ѝ следи) е веќе сменета.
+        $this->resetErrorBag('exchangeRate');
+
         if ($value === 'MKD') {
             $this->exchangeRate = '1';
 
@@ -149,6 +154,9 @@ class SalesInvoiceForm extends Component
             return;
         }
 
+        // Успешен обид по претходен неуспех не смее да остави стара грешка
+        // под точниот курс.
+        $this->resetErrorBag('exchangeRate');
         $this->exchangeRate = (string) $rate;
     }
 

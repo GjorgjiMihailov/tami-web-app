@@ -408,6 +408,38 @@ class ForeignCurrencyInvoiceTest extends TestCase
             ->assertHasErrors('exchangeRate');
     }
 
+    public function test_a_successful_retry_after_a_failed_nbrm_call_clears_the_old_error(): void
+    {
+        // Livewire ја памети грешката на exchangeRate меѓу барањата. Стар
+        // неуспех од НБРМ не смее да остане прикажан откако следен обид
+        // го запишал точниот курс.
+        [$company, $partner, $admin] = $this->individualCompanyWithPartner();
+
+        \Illuminate\Support\Facades\Http::fake([
+            'www.nbrm.mk/*' => \Illuminate\Support\Facades\Http::response('', 500),
+        ]);
+
+        $test = \Livewire\Livewire::actingAs($admin)
+            ->test(\App\Livewire\Invoicing\SalesInvoiceForm::class, ['company' => $company])
+            ->set('invoiceDate', '2026-09-13')
+            ->set('currency', 'EUR')
+            ->call('fetchRate')
+            ->assertHasErrors('exchangeRate');
+
+        // НБРМ „закрепнува“ — во тестот тоа значи дека курсот е во кешот,
+        // истиот пат по кој ExchangeRateService го проверува пред мрежата,
+        // па тестот не оди на интернет ниту на вториот обид.
+        \App\Models\ExchangeRate::create([
+            'rate_date' => '2026-09-13',
+            'currency_code' => 'EUR',
+            'rate' => '61.4955',
+        ]);
+
+        $test->call('fetchRate')
+            ->assertHasNoErrors('exchangeRate')
+            ->assertSet('exchangeRate', '61.4955');
+    }
+
     public function test_the_nbrm_button_does_nothing_for_denars(): void
     {
         [$company, $partner, $admin] = $this->individualCompanyWithPartner();
