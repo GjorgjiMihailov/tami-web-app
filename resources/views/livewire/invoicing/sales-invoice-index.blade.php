@@ -70,7 +70,7 @@
                             <span class="text-gray-400">—</span>
                         @endif
                     </td>
-                    <td class="py-1 px-3">{{ \App\Support\Format::money($invoice->grandTotal()) }}</td>
+                    <td class="py-1 px-3">{{ \App\Support\Format::money($invoice->grandTotal(), $invoice->currency === 'MKD' ? 'ден' : $invoice->currency) }}</td>
                     <td class="py-1 px-3">
                         <a href="{{ route('sales-invoices.show', [$company, $invoice]) }}" class="text-brand hover:underline">Прегледај</a>
                     </td>

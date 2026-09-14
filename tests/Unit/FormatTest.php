@@ -43,6 +43,21 @@ class FormatTest extends TestCase
         $this->assertSame('0,00 ден', Format::money(0));
     }
 
+    public function test_rate_trims_trailing_zeros_but_keeps_at_least_two_decimals(): void
+    {
+        $this->assertSame('61,50', Format::rate('61.500000'));
+    }
+
+    public function test_rate_keeps_meaningful_decimals_beyond_two(): void
+    {
+        $this->assertSame('55,1234', Format::rate('55.123400'));
+    }
+
+    public function test_rate_pads_whole_numbers_to_two_decimals(): void
+    {
+        $this->assertSame('1,00', Format::rate('1.000000'));
+    }
+
     public function test_invoice_status_maps_known_values(): void
     {
         $this->assertSame('Нацрт', Format::invoiceStatus('draft'));

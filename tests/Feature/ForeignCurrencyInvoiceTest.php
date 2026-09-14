@@ -665,6 +665,57 @@ class ForeignCurrencyInvoiceTest extends TestCase
         $this->assertSame('0.00', $receivableMovement, "Остаток на 120: {$receivableMovement}");
     }
 
+    public function test_a_mistyped_three_decimal_installment_still_closes_the_receivable_to_zero(): void
+    {
+        // Финален преглед на гранката: корисник впишува прва рата 500,005 (три
+        // децимали) наместо 500,01/500,00. Записот за плаќање
+        // (decimal(15,2)) го заокружува на 500,01, но bcadd со scale 2 во
+        // recordPayment() отсекува — доколку сервисот не го нормализира
+        // влезот САМ, книжењето користи 500,00 додека складираниот износ е
+        // 500,01. Второто плаќање тргнува од погрешно салдо (499,99 наместо
+        // точната разлика) и на 120 останува остаток од 0,62 ден засекогаш,
+        // иако фактурата се прикажува како целосно платена. UI веќе го
+        // спречува ова со 'decimal:0,2', но овој тест го докажува сервисот
+        // самиот по себе — независно од валидацијата на повикувачот.
+        [$company, $partner, $admin] = $this->individualCompanyWithPartner();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'status' => 'draft',
+            'currency' => 'EUR',
+            'exchange_rate' => '61.500000',
+        ]);
+        $invoice->lines()->create([
+            'description' => 'Consulting',
+            'quantity' => '1',
+            'unit_price' => '1000.00',
+            'vat_rate' => '0.00',
+            'vat_treatment' => 'standard',
+        ]);
+
+        $service = app(\App\Services\Invoicing\SalesInvoiceService::class);
+        $service->confirm($invoice->fresh(['lines', 'company']), $admin->id);
+        $service->recordPayment($invoice->fresh(['lines', 'payments', 'company']), '500.005', '2026-09-20', 'bank', $admin->id);
+
+        // Записот за плаќање е заокружен на 500,01 (decimal(15,2) заокружува).
+        $this->assertSame('500.01', (string) $invoice->fresh()->payments()->first()->amount);
+
+        // Втората рата ја плаќа точната преостаната разлика, како што ја
+        // прикажува екранот „За доплата".
+        $balanceAfterFirst = $invoice->fresh(['lines', 'payments'])->balanceDue();
+        $service->recordPayment($invoice->fresh(['lines', 'payments', 'company']), $balanceAfterFirst, '2026-09-21', 'bank', $admin->id);
+
+        $this->assertSame('0.00', $invoice->fresh(['lines', 'payments'])->balanceDue());
+
+        $receivableMovement = \App\Models\JournalEntryLine::whereHas(
+            'account',
+            fn ($q) => $q->where('code', '120')->where('company_id', $company->id)
+        )
+            ->get()
+            ->reduce(fn ($carry, $line) => bcsub(bcadd($carry, $line->debit, 2), $line->credit, 2), '0.00');
+
+        $this->assertSame('0.00', $receivableMovement, "Остаток на 120: {$receivableMovement}");
+    }
+
     public function test_a_full_payment_on_a_vat_euro_invoice_closes_the_receivable_to_zero_and_balances(): void
     {
         // Субтотал 1499,00 + ДДВ 269,82 по 61,473300: одделно заокружени 120

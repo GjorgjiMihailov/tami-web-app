@@ -24,6 +24,7 @@ return [
     'date' => ':attribute не е валиден датум.',
     'date_equals' => ':attribute мора да биде датум еднаков на :date.',
     'date_format' => ':attribute не одговара на форматот :format.',
+    'decimal' => ':attribute мора да има :decimal децимални места.',
     'different' => ':attribute и :other мора да бидат различни.',
     'digits' => ':attribute мора да содржи :digits цифри.',
     'digits_between' => ':attribute мора да содржи помеѓу :min и :max цифри.',

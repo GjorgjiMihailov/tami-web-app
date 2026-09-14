@@ -78,6 +78,26 @@ class SalesInvoiceIndexTest extends TestCase
             ->assertSee('hover:bg-orange-50', false);
     }
 
+    public function test_a_euro_invoice_shows_eur_not_denari_in_the_list(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create(['name' => 'Acme']);
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'currency' => 'EUR',
+            'exchange_rate' => '61.500000',
+        ]);
+        $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '0']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $html = Livewire::test(SalesInvoiceIndex::class, ['company' => $company])->html();
+
+        $this->assertStringContainsString('1.000,00 EUR', $html);
+        $this->assertStringNotContainsString('1.000,00 ден', $html);
+    }
+
     public function test_it_only_lists_invoices_from_the_working_year(): void
     {
         $company = Company::factory()->create();

@@ -207,6 +207,15 @@ class SalesInvoiceService
 
     public function recordPayment(SalesInvoice $invoice, string $amount, string $paymentDate, string $paymentMethod, int $userId): SalesInvoicePayment
     {
+        // Нормализирано на 2 децимали пред каква било пресметка — записот за
+        // плаќање (decimal(15,2)) заокружува, а bcadd подолу отсекува; ако не
+        // се изедначат овде, книжењето и складираниот износ на плаќањето
+        // тргнуваат по различен пат и остава остаток на 120. Валидацијата на
+        // UI веќе го спречува ова, но сервисот мора да е точен без разлика на
+        // повикувачот. За денарска фактура влезот е веќе на 2 децимали, па
+        // ова не менува ништо.
+        $amount = Bcmath::roundHalfUp($amount, 2);
+
         if ($invoice->status !== 'confirmed') {
             throw new InvalidInvoiceStateException("Фактура #{$invoice->id} не е потврдена; плаќања можат да се внесуваат само за потврдени фактури.");
         }

@@ -76,7 +76,7 @@ class SalesInvoiceShow extends Component
         Gate::authorize('update', $this->salesInvoice);
 
         $this->validate([
-            'paymentAmount' => 'required|numeric|min:0.01',
+            'paymentAmount' => 'required|numeric|min:0.01|decimal:0,2',
             'paymentDate' => 'required|date',
             'paymentMethod' => 'required|in:bank,cash',
         ]);

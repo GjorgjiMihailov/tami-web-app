@@ -18,6 +18,21 @@ class Format
         return $currency === '' ? $number : "{$number} {$currency}";
     }
 
+    /**
+     * Девизен курс за приказ покрај вкупниот износ на девизна фактура.
+     *
+     * Курсот се чува со 6 децимали (`decimal:6`), но повеќето курсеви се
+     * „чисти" на 2-4 децимали (61,50; 55,1234). Ги отсекува вишокот нули
+     * наместо да печати „61,500000", но никогаш не оди под 2 децимали.
+     */
+    public static function rate(string|float $rate): string
+    {
+        $trimmed = rtrim(rtrim(number_format((float) $rate, 6, '.', ''), '0'), '.');
+        $decimalPlaces = str_contains($trimmed, '.') ? strlen(substr($trimmed, strpos($trimmed, '.') + 1)) : 0;
+
+        return number_format((float) $rate, max(2, $decimalPlaces), ',', '.');
+    }
+
     public static function invoiceStatus(string $status): string
     {
         return match ($status) {

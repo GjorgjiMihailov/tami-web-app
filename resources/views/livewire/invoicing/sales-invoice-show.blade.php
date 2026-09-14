@@ -1,3 +1,10 @@
+@php
+    // Валута на екранот со која се прикажуваат износите на оваа фактура —
+    // денари за денарска, кодот на валутата за девизна. Само сврзувачот се
+    // менува; бројниот формат (запирка/точка) си останува македонски и за
+    // девизна фактура — тоа е UI на канцеларијата, не самата фактура.
+    $currencySuffix = $invoice->currency === 'MKD' ? 'ден' : $invoice->currency;
+@endphp
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-1">
         {{ $invoice->status === 'confirmed' ? "Фактура бр. {$invoice->formattedNumber()}" : 'Нацрт фактура' }}
@@ -34,19 +41,22 @@
                     <tr class="hover:bg-orange-50">
                         <td class="py-1">{{ $line->description }}</td>
                         <td class="py-1">{{ $line->quantity }}</td>
-                        <td class="py-1">{{ \App\Support\Format::money($line->unit_price) }}</td>
+                        <td class="py-1">{{ \App\Support\Format::money($line->unit_price, $currencySuffix) }}</td>
                         <td class="py-1">{{ $line->vat_rate }}{{ $line->vat_treatment !== 'standard' ? ' ('.\App\Support\Format::vatTreatment($line->vat_treatment).')' : '' }}</td>
-                        <td class="py-1">{{ \App\Support\Format::money($line->lineTotal()) }}</td>
+                        <td class="py-1">{{ \App\Support\Format::money($line->lineTotal(), $currencySuffix) }}</td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
         <div class="text-right text-sm mt-3 space-y-1">
-            <div>Основа: {{ \App\Support\Format::money($invoice->subtotal()) }}</div>
-            <div>ДДВ: {{ \App\Support\Format::money($invoice->vatTotal()) }}</div>
-            <div class="font-semibold">Вкупно: {{ \App\Support\Format::money($invoice->grandTotal()) }}</div>
+            <div>Основа: {{ \App\Support\Format::money($invoice->subtotal(), $currencySuffix) }}</div>
+            <div>ДДВ: {{ \App\Support\Format::money($invoice->vatTotal(), $currencySuffix) }}</div>
+            <div class="font-semibold">Вкупно: {{ \App\Support\Format::money($invoice->grandTotal(), $currencySuffix) }}</div>
             @if ($invoice->status === 'confirmed')
-                <div>За доплата: {{ \App\Support\Format::money($invoice->balanceDue()) }}</div>
+                <div>За доплата: {{ \App\Support\Format::money($invoice->balanceDue(), $currencySuffix) }}</div>
+            @endif
+            @if ($invoice->isForeignCurrency())
+                <div class="text-xs text-gray-500">Курс: 1 {{ $invoice->currency }} = {{ \App\Support\Format::rate($invoice->exchange_rate) }} ден</div>
             @endif
         </div>
     </x-card>
@@ -71,6 +81,8 @@
         <div class="mt-4 border-t pt-4" x-data="efakturaSend()">
             @if ($invoice->efaktura_status === 'sent')
                 <x-badge status="active">Испратена до УЈП ({{ optional($invoice->efaktura_sent_at)->format('d.m.Y H:i') }})</x-badge>
+            @elseif ($invoice->isForeignCurrency())
+                <p class="text-xs text-gray-500">е-Фактура прима само фактури во денари. Оваа е во {{ $invoice->currency }}, па не може да се прати до УЈП.</p>
             @elseif (! $company->hasEfakturaAccess() || $company->efaktura_credential_mode !== \App\Models\Company::EFAKTURA_MODE_OWN)
                 <p class="text-xs text-gray-500">Регистрирај потпишувачки уред за оваа компанија (Профил на фирма) за да можеш да праќаш е-Фактура.</p>
             @else
@@ -176,7 +188,7 @@
                         <tr>
                             <td class="py-1">{{ \App\Support\Format::date($payment->payment_date) }}</td>
                             <td class="py-1">{{ \App\Support\Format::paymentMethod($payment->payment_method) }}</td>
-                            <td class="py-1">{{ \App\Support\Format::money($payment->amount) }}</td>
+                            <td class="py-1">{{ \App\Support\Format::money($payment->amount, $currencySuffix) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

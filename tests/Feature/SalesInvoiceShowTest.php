@@ -99,6 +99,35 @@ class SalesInvoiceShowTest extends TestCase
         $this->assertDatabaseHas('sales_invoice_payments', ['sales_invoice_id' => $invoice->id, 'amount' => '100.00']);
     }
 
+    public function test_a_payment_amount_with_three_decimals_is_rejected(): void
+    {
+        // Реценизијата на гранката foreign-currency-invoice најде дека
+        // 'numeric|min:0.01' не отфрла „500.005" — таквата вредност потоа
+        // тргнува низ SalesInvoiceService::recordPayment(), каде bcadd со
+        // scale 2 отсекува наместо заокружува, а decimal(15,2) колоната за
+        // плаќањето заокружува. Двете не се согласуваат и остава остаток на
+        // сметка 120 засекогаш. Валидацијата мора да ја запре вредноста тука.
+        $company = Company::factory()->create();
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01', 'status' => 'confirmed', 'fiscal_year' => 2026, 'invoice_number' => 1]);
+        $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+        $entry = JournalEntry::factory()->for($company)->create();
+        $invoice->update(['journal_entry_id' => $entry->id]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->set('paymentAmount', '50.005')
+            ->set('paymentDate', '2026-03-10')
+            ->set('paymentMethod', 'bank')
+            ->call('recordPayment')
+            ->assertHasErrors(['paymentAmount' => 'decimal']);
+
+        $this->assertDatabaseMissing('sales_invoice_payments', ['sales_invoice_id' => $invoice->id]);
+    }
+
     public function test_the_line_items_table_gets_the_hover_treatment_but_the_payments_table_does_not(): void
     {
         $company = Company::factory()->create();
@@ -167,6 +196,93 @@ class SalesInvoiceShowTest extends TestCase
 
         Livewire::test(SalesInvoiceShow::class, ['company' => $otherCompany, 'salesInvoice' => $invoice])
             ->assertForbidden();
+    }
+
+    public function test_a_euro_invoice_shows_eur_not_denari_on_its_own_screen(): void
+    {
+        // Ревизијата на гранката најде дека екранот секогаш печатеше „ден"
+        // дури и на девизна фактура (Format::money default) — сметководителот
+        // не може со ова да го порамни изводот од банка. Курсот исто така
+        // мора да е видлив тука, не само во нацрт-формата за уредување.
+        $company = Company::factory()->create();
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'invoice_date' => '2026-03-01',
+            'status' => 'confirmed',
+            'fiscal_year' => 2026,
+            'invoice_number' => 1,
+            'currency' => 'EUR',
+            'exchange_rate' => '61.500000',
+        ]);
+        $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '0']);
+        $entry = JournalEntry::factory()->for($company)->create();
+        $invoice->update(['journal_entry_id' => $entry->id]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $html = Livewire::test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])->html();
+
+        // „ден" сеуште легитимно се појавува во редот со курсот (61,50 ден за
+        // 1 EUR) — тоа е конверзија ВО денари и е точно. Она што не смее да
+        // се појави е вкупниот износ означен како денари.
+        $this->assertStringNotContainsString('1.000,00 ден', $html);
+        $this->assertStringContainsString('1.000,00 EUR', $html);
+        $this->assertStringContainsString('Курс: 1 EUR = 61,50 ден', $html);
+    }
+
+    public function test_a_denar_invoice_still_shows_denari_and_no_exchange_rate_line(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01', 'status' => 'confirmed', 'fiscal_year' => 2026, 'invoice_number' => 1]);
+        $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+        $entry = JournalEntry::factory()->for($company)->create();
+        $invoice->update(['journal_entry_id' => $entry->id]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $html = Livewire::test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])->html();
+
+        $this->assertStringContainsString('100,00 ден', $html);
+        $this->assertStringNotContainsString('Курс:', $html);
+    }
+
+    public function test_the_ujp_button_is_hidden_for_a_foreign_currency_invoice(): void
+    {
+        // Серверот и онака одбива со 422 (EfakturaSendController), но само
+        // откако корисникот веќе го приклучил токенот. Копчето треба воопшто
+        // да не се прикаже за девизна фактура.
+        $company = Company::factory()->create([
+            'efaktura_credential_mode' => \App\Models\Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'eujp-1',
+            'efaktura_token_serial_number' => 'serial-1',
+        ]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'invoice_date' => '2026-03-01',
+            'status' => 'confirmed',
+            'fiscal_year' => 2026,
+            'invoice_number' => 1,
+            'currency' => 'EUR',
+            'exchange_rate' => '61.500000',
+        ]);
+        $entry = JournalEntry::factory()->for($company)->create();
+        $invoice->update(['journal_entry_id' => $entry->id]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $html = Livewire::test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])->html();
+
+        $this->assertStringNotContainsString('Потпиши и испрати до УЈП', $html);
+        $this->assertStringContainsString('е-Фактура прима само фактури во денари', $html);
     }
 
     public function test_an_invoice_from_another_year_is_flagged_but_still_opens(): void
