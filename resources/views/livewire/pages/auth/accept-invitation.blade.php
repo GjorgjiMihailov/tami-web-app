@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\LandingUrl;
+use App\Support\PortalApp;
 use App\Support\UserInvitations;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -41,7 +43,10 @@ new #[Layout('layouts.guest')] class extends Component
         Auth::login($user);
         Session::regenerate();
 
-        $this->redirect(route('dashboard', absolute: false), navigate: true);
+        $this->redirect(
+            LandingUrl::for(auth()->user(), PortalApp::fromHost(request()->getHost())),
+            navigate: false,
+        );
     }
 }; ?>
 

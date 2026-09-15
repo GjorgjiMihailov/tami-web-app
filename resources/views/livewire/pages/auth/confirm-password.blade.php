@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\LandingUrl;
+use App\Support\PortalApp;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -29,7 +31,10 @@ new #[Layout('layouts.guest')] class extends Component
 
         session(['auth.password_confirmed_at' => time()]);
 
-        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+        $this->redirectIntended(
+            default: LandingUrl::for(auth()->user(), PortalApp::fromHost(request()->getHost())),
+            navigate: false,
+        );
     }
 }; ?>
 
