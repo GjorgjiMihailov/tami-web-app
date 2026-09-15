@@ -63,6 +63,20 @@ class LoginLandingTest extends TestCase
         $this->assertSame(route('dashboard'), LandingUrl::for($client, PortalApp::PLATA));
     }
 
+    /**
+     * Без правото за апликацијата, менито сепак има содржина (модулот е
+     * вклучен, улогата ја гледа ставката) — LandingUrl мора сам да го провери
+     * правото, инаку човекот е пратен право во 403 екранот наместо на порталот.
+     */
+    public function test_an_app_the_user_has_no_right_for_falls_back_to_the_portal(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id, 'app_plata' => false]);
+        $client->assignRole('client');
+
+        $this->assertSame(route('dashboard'), LandingUrl::for($client, PortalApp::PLATA));
+    }
+
     public function test_every_landing_url_carries_a_host(): void
     {
         $company = Company::factory()->create();

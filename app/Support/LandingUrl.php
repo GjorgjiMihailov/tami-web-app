@@ -20,6 +20,13 @@ class LandingUrl
             return route('dashboard');
         }
 
+        // Право на апликацијата се проверува пред менито. Без ова, човек без
+        // право за таа апликација би бил пратен право во 403 екранот наместо
+        // на порталот — менито не го знае правото, само содржината.
+        if (! $user->canAccessApp($app)) {
+            return route('dashboard');
+        }
+
         $companies = $user->visibleCompanies()->limit(2)->get();
 
         if ($companies->count() !== 1) {

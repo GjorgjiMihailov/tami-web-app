@@ -83,4 +83,21 @@ class AppDomainRoutingTest extends TestCase
             $this->get('http://'.$app->domain().'/login')->assertOk();
         }
     }
+
+    /**
+     * е-ПДД е реален „наскоро" запис во менито на ПЛАТА (Menu::individualTree
+     * и Menu::legalTree), но самата coming-soon рута порано седеше само во
+     * групата на ПРОДАЖБА. Кликот на таа ставка од ПЛАТА мени/AppSwitcher води
+     * на URL што мора да одговори токму на хостот на ПЛАТА — не само на
+     * ПРОДАЖБА каде рутата беше регистрирана.
+     */
+    public function test_the_plata_e_pdd_naskoro_entry_answers_on_the_plata_host(): void
+    {
+        $company = Company::factory()->create();
+
+        $response = $this->actingAs($this->admin())
+            ->get('http://'.PortalApp::PLATA->domain()."/companies/{$company->id}/naskoro/e-pdd");
+
+        $response->assertOk();
+    }
 }

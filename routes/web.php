@@ -68,6 +68,15 @@ use App\Livewire\Reports\ReportIndex;
 use App\Support\PortalApp;
 use Illuminate\Support\Facades\Route;
 
+// „Наскоро" рутата ја користи повеќе од една апликација (е-ПДД е во ПЛАТА,
+// Профактури и Попис се во ПРОДАЖБА), па намерно стои надвор од секоја
+// Route::domain() група — исто како рутите за најава подолу во auth.php —
+// за да одговара на секој хост, а не само на оној каде беше регистрирана
+// првата „наскоро" ставка.
+Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
+    Route::get('/naskoro/{feature}', [ComingSoon::class, '__invoke'])->name('coming-soon');
+});
+
 Route::domain(PortalApp::PORTAL->domain())->group(function () {
     // Јавната влезна страна. Отворена и за најавени корисници — за нив копчињата
     // пишуваат „Влези во порталот" наместо „Најави се", па нема причина да се
@@ -106,6 +115,21 @@ Route::domain(PortalApp::PORTAL->domain())->group(function () {
     // Работниот список е на канцеларијата и ги собира обрасците од сите клиенти,
     // па намерно стои надвор од `companies/{company}`.
     Route::middleware(['auth'])->get('/743-obrasci', [Form743Worklist::class, '__invoke'])->name('form743.worklist');
+
+    // form743.download е преземање датотека, не сметководствен екран — работниот
+    // список погоре го линкува од порталот, каде секој сметководител/админ смее
+    // да пристапи без разлика на правото за finansii. Истата брана (EnsureIndividual)
+    // патува со рутата.
+    Route::middleware(['auth', EnsureIndividual::class])->prefix('companies/{company}')->name('form743.')->group(function () {
+        Route::get('/743/{form743}/download', [Form743DocumentController::class, '__invoke'])->name('download');
+    });
+
+    // documents.download е исто така преземање датотека, не екран на Продажба —
+    // Банкарски документи (finansii) го линкува овој истиот URL. Истата брана
+    // (EnsureLegalEntity) патува со рутата.
+    Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('documents.')->group(function () {
+        Route::get('/documents/{document}', [DocumentController::class, '__invoke'])->name('download');
+    });
 });
 
 Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.':prodazba')->group(function () {
@@ -198,10 +222,6 @@ Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.
         Route::get('/pdf/download', [EfakturaIncomingPdfController::class, 'download'])->name('pdf.download');
     });
 
-    Route::middleware(['auth'])->prefix('companies/{company}')->group(function () {
-        Route::get('/naskoro/{feature}', [ComingSoon::class, '__invoke'])->name('coming-soon');
-    });
-
     // Документите тука се сметководствени прилози на фирма (влезни фактури, изводи,
     // договори), па групата намерно е затворена за профил на физичко лице.
     //
@@ -212,9 +232,10 @@ Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.
         Route::get('/drugi-trosoci', [OtherCostIndex::class, '__invoke'])->name('index');
     });
 
+    // documents.download е тргнат на порталот (види ја портал групата погоре) —
+    // само listата останува тука.
     Route::middleware(['auth', EnsureLegalEntity::class])->prefix('companies/{company}')->name('documents.')->group(function () {
         Route::get('/documents', [DocumentIndex::class, '__invoke'])->name('index');
-        Route::get('/documents/{document}', [DocumentController::class, '__invoke'])->name('download');
     });
 });
 
@@ -248,11 +269,14 @@ Route::domain(PortalApp::FINANSII->domain())->middleware(EnsureAppAccess::class.
     //
     // Групата некогаш вклучуваше и form743.worklist, но тој е работен список на
     // канцеларијата над сите клиенти (нема фирма во патеката, работи за сите
-    // фирми), па остана на порталот. Овде остануваат само рутите по фирма —
-    // form743.index и form743.download — кои затоа се на finansii.
+    // фирми), па остана на порталот. form743.download е исто така преместен на
+    // порталот (види ја портал групата на почетокот на фајлот) — преземање
+    // датотека е апликациски неутрално и работниот список на порталот го
+    // линкува директно, без разлика на правото за finansii. Овде останува само
+    // формата за прикачување (form743.index), која навистина е екран на
+    // Финансии.
     Route::middleware(['auth', EnsureIndividual::class])->prefix('companies/{company}')->name('form743.')->group(function () {
         Route::get('/743', [Form743Upload::class, '__invoke'])->name('index');
-        Route::get('/743/{form743}/download', [Form743DocumentController::class, '__invoke'])->name('download');
     });
 
     Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':finance'])->prefix('companies/{company}')->name('bank-statements.')->group(function () {

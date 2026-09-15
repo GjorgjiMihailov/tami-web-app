@@ -3,9 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Company;
+use App\Models\Document;
+use App\Models\Form743;
+use App\Models\PurchaseInvoice;
 use App\Models\User;
+use App\Support\CompanyType;
 use App\Support\PortalApp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -95,7 +100,7 @@ class AppAccessTest extends TestCase
         $response = $this->actingAs($user)->get(route('employees.index', $company));
 
         $response->assertStatus(403);
-        $response->assertSee('Овој модул не е вклучен за оваа фирма');
+        $response->assertSee('Оваа апликација нема ништо достапно за оваа фирма и за овој корисник');
     }
 
     public function test_a_ticked_app_opens_normally(): void
@@ -105,5 +110,51 @@ class AppAccessTest extends TestCase
         $user->assignRole('admin');
 
         $this->actingAs($user)->get(route('sales-invoices.index', $company))->assertOk();
+    }
+
+    /**
+     * form743.download е преземање датотека на порталот (743 обрасци работниот
+     * список е портална страна), не екран на Финансии — правото за finansii не
+     * смее да го затвора. Пред поправката рутата седеше кај finansii, па
+     * EnsureAppAccess:finansii ја одбиваше оваа истата задача.
+     */
+    public function test_an_accountant_without_finansii_right_can_still_download_a_743_file(): void
+    {
+        Storage::fake('google');
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+        $form = Form743::factory()->for($company)->create();
+        $document = Document::factory()->for($form, 'documentable')->create(['company_id' => $company->id, 'path' => 'documents/test/743.pdf']);
+        Storage::disk('google')->put($document->path, 'fake-pdf-content');
+
+        $accountant = User::factory()->create(['app_finansii' => false]);
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+
+        $this->actingAs($accountant)
+            ->get(route('form743.download', [$company, $form]))
+            ->assertOk();
+    }
+
+    /**
+     * documents.download е исто така преземање датотека на порталот, не екран
+     * на Продажба — Банкарски документи (finansii) го линкува истиот URL. Пред
+     * поправката рутата седеше кај prodazba, па EnsureAppAccess:prodazba ја
+     * одбиваше оваа истата задача.
+     */
+    public function test_an_accountant_without_prodazba_right_can_still_download_an_attached_document(): void
+    {
+        Storage::fake('google');
+        $company = Company::factory()->create();
+        $invoice = PurchaseInvoice::factory()->for($company)->create();
+        $document = Document::factory()->for($invoice, 'documentable')->create(['company_id' => $company->id, 'path' => 'documents/test/bill.pdf']);
+        Storage::disk('google')->put($document->path, 'fake-pdf-content');
+
+        $accountant = User::factory()->create(['app_finansii' => true, 'app_prodazba' => false]);
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+
+        $this->actingAs($accountant)
+            ->get(route('documents.download', [$company, $document]))
+            ->assertOk();
     }
 }
