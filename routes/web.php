@@ -132,9 +132,9 @@ Route::domain(PortalApp::PRODAZBA->domain())->group(function () {
     });
 
     // Array-callable form (not bare class-string) for the same reason as the
-    // accounting.*, inventory.*, and sales-invoices.* groups above: four of
-    // these five target classes don't exist until later Purchase Invoicing
-    // tasks, and a bare class-string would crash route registration immediately.
+    // accounting.* and inventory.* groups above: four of these five target
+    // classes don't exist until later Invoicing tasks, and a bare class-string
+    // would crash route registration immediately.
     Route::middleware(['auth', EnsureCompanyModule::class.':material'])->prefix('companies/{company}')->name('sales-invoices.')->group(function () {
         Route::get('/sales-invoices', [SalesInvoiceIndex::class, '__invoke'])->name('index');
         Route::get('/sales-invoices/create', [SalesInvoiceForm::class, '__invoke'])->name('create');
@@ -168,9 +168,9 @@ Route::domain(PortalApp::PRODAZBA->domain())->group(function () {
     });
 
     // Array-callable form (not bare class-string) for the same reason as the
-    // accounting.* group above: EmployeeIndex and EmployeeForm don't exist until
-    // Tasks 8 and 9, and a bare class-string would crash route registration
-    // immediately.
+    // accounting.*, inventory.*, and sales-invoices.* groups above: four of
+    // these five target classes don't exist until later Purchase Invoicing
+    // tasks, and a bare class-string would crash route registration immediately.
     Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':material'])->prefix('companies/{company}')->name('purchase-invoices.')->group(function () {
         Route::get('/purchase-invoices', [PurchaseInvoiceIndex::class, '__invoke'])->name('index');
         Route::get('/purchase-invoices/create', [PurchaseInvoiceForm::class, '__invoke'])->name('create');
