@@ -1,10 +1,26 @@
 <?php
 
 use App\Livewire\Actions\Logout;
+use App\Models\Company;
+use App\Support\AppSwitcher;
+use App\Support\PortalApp;
 use Livewire\Volt\Component;
 
 new class extends Component
 {
+    /** @var list<array{key: string, label: string, url: string, accent: string}> */
+    public array $apps = [];
+
+    public string $currentApp = 'portal';
+
+    public function mount(): void
+    {
+        $company = request()->route('company');
+
+        $this->currentApp = (PortalApp::fromHost(request()->getHost()) ?? PortalApp::PORTAL)->value;
+        $this->apps = AppSwitcher::for(auth()->user(), $company instanceof Company ? $company : null);
+    }
+
     /**
      * Log the current user out of the application.
      */
@@ -16,7 +32,7 @@ new class extends Component
     }
 }; ?>
 
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
+<nav x-data="{ open: false, appsOpen: false }" class="bg-white border-b border-gray-100">
     <div class="px-4 sm:px-6 lg:px-8">
         <div class="flex justify-end h-14 items-center">
             {{-- Opens the sidebar drawer. Hidden at lg and up, where the
@@ -30,6 +46,16 @@ new class extends Component
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
             </button>
+
+            @if ($apps !== [])
+                <button type="button" @click="appsOpen = true"
+                        class="inline-flex items-center gap-2 px-3 py-2 me-2 text-xs font-semibold tracking-wide text-gray-600 rounded-lg hover:bg-gray-100 transition">
+                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M3 3h4v4H3V3zm6 0h4v4H9V3zm6 0h2v4h-2V3zM3 9h4v4H3V9zm6 0h4v4H9V9zm6 0h2v4h-2V9zM3 15h4v2H3v-2zm6 0h4v2H9v-2zm6 0h2v2h-2v-2z" />
+                    </svg>
+                    АПЛИКАЦИИ
+                </button>
+            @endif
 
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center">
@@ -93,6 +119,48 @@ new class extends Component
                     </x-responsive-nav-link>
                 </button>
             </div>
+        </div>
+    </div>
+
+    {{-- Панелот влегува од десно. Истите правила како мобилната фиока: Esc,
+         клик надвор и копче го затвораат. --}}
+    <div x-show="appsOpen" x-cloak @keydown.escape.window="appsOpen = false">
+        <div x-transition.opacity @click="appsOpen = false" class="fixed inset-0 z-40 bg-gray-900/50"></div>
+
+        <div x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+             class="fixed inset-y-0 right-0 z-50 w-72 bg-white border-l border-gray-100 p-4 space-y-2">
+            <div class="flex items-center justify-between pb-2 border-b border-gray-100">
+                <span class="text-xs font-semibold tracking-wide text-gray-500">АПЛИКАЦИИ</span>
+                <button type="button" @click="appsOpen = false" aria-label="Затвори"
+                        class="p-2 -me-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
+                    <svg class="h-5 w-5" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            @foreach ($apps as $app)
+                <a href="{{ $app['url'] }}"
+                   class="flex items-center justify-between px-3 py-2 rounded-lg text-sm {{ $app['key'] === $currentApp ? 'bg-orange-50 font-semibold' : 'hover:bg-gray-50' }}">
+                    <span class="{{ $app['accent'] }}">{{ $app['label'] }}</span>
+                    @if ($app['key'] === $currentApp)
+                        <span class="text-[10px] uppercase tracking-wide text-gray-400">тука си</span>
+                    @endif
+                </a>
+            @endforeach
+
+            {{-- companies.index е admin-екран (App\Livewire\CompanyIndex::mount()
+                 враќа 403 за секој друг) — истото правило како копчето „Фирми“
+                 во sidebar.blade.php. --}}
+            @if (auth()->user()->hasRole('admin'))
+                <a href="{{ route('companies.index') }}"
+                   class="block px-3 py-2 mt-2 rounded-lg text-sm text-gray-600 border-t border-gray-100 hover:bg-gray-50">
+                    Портал — фирми и поставки
+                </a>
+            @endif
         </div>
     </div>
 </nav>

@@ -45,6 +45,25 @@ class SidebarTest extends TestCase
         return htmlspecialchars_decode($matches[1], ENT_QUOTES | ENT_SUBSTITUTE);
     }
 
+    /**
+     * Isolates the sidebar's own rendered HTML from the rest of the page.
+     *
+     * The Task 6 app-switcher panel (resources/views/livewire/layout/navigation.blade.php)
+     * legitimately links to every app's first screen from the page header, so
+     * a page-wide href search is no longer proof of what the sidebar itself
+     * expanded or highlighted — it might just be the switcher. Scoping to the
+     * sidebar's own markup, between its wrapper div and the mobile-drawer
+     * backdrop that immediately follows it in layouts/app.blade.php, restores
+     * that proof.
+     */
+    private function extractSidebarHtml(string $html): string
+    {
+        $start = strpos($html, 'class="w-60');
+        $end = strpos($html, 'x-show="sidebarOpen" x-cloak x-transition.opacity', $start);
+
+        return substr($html, $start, $end - $start);
+    }
+
     public function test_it_shows_no_groups_when_no_company_is_selected(): void
     {
         $this->actingAs($this->admin());
@@ -122,10 +141,12 @@ class SidebarTest extends TestCase
         // is no longer in this app's menu at all — it now belongs to portal —
         // so the item proving the RIGHT group expanded is the current page's
         // own link, not Компанија.
-        $this->get(route('accounting.accounts.index', $company))
-            ->assertOk()
-            ->assertSeeHtml(route('accounting.accounts.index', $company))
-            ->assertDontSeeHtml(route('accounting.journal-groups.index', $company));
+        $response = $this->get(route('accounting.accounts.index', $company));
+        $response->assertOk();
+
+        $sidebar = $this->extractSidebarHtml($response->getContent());
+        $this->assertStringContainsString(route('accounting.accounts.index', $company), $sidebar);
+        $this->assertStringNotContainsString(route('accounting.journal-groups.index', $company), $sidebar);
     }
 
     /**
@@ -142,10 +163,12 @@ class SidebarTest extends TestCase
         $company = Company::factory()->create();
         $this->actingAs($this->admin());
 
-        $this->get(route('invoice-settings.index', $company))
-            ->assertOk()
-            ->assertSeeHtml(route('invoice-settings.index', $company))
-            ->assertDontSeeHtml(route('sales-invoices.index', $company));
+        $response = $this->get(route('invoice-settings.index', $company));
+        $response->assertOk();
+
+        $sidebar = $this->extractSidebarHtml($response->getContent());
+        $this->assertStringContainsString(route('invoice-settings.index', $company), $sidebar);
+        $this->assertStringNotContainsString(route('sales-invoices.index', $company), $sidebar);
     }
 
     public function test_clicking_a_different_group_collapses_the_previous_one(): void
