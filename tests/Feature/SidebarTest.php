@@ -55,10 +55,17 @@ class SidebarTest extends TestCase
      * sidebar's own markup, between its wrapper div and the mobile-drawer
      * backdrop that immediately follows it in layouts/app.blade.php, restores
      * that proof.
+     *
+     * Task 9 added the same problem one level down: the sidebar's own brand
+     * link at the top now also points at the app's first screen
+     * (App\Livewire\Layout\Sidebar::$brandUrl), so it can legitimately carry
+     * a route that belongs to a group other than the one the current page
+     * auto-expanded. Starting the capture at <nav ...> instead of the
+     * wrapper div excludes that header link while keeping the whole menu.
      */
     private function extractSidebarHtml(string $html): string
     {
-        $start = strpos($html, 'class="w-60');
+        $start = strpos($html, '<nav class="flex-1');
         $end = strpos($html, 'x-show="sidebarOpen" x-cloak x-transition.opacity', $start);
 
         return substr($html, $start, $end - $start);

@@ -38,6 +38,8 @@ class Sidebar extends Component
     // toggled.
     public string $currentRoute = '';
 
+    public string $brandUrl = '';
+
     public function mount(?Company $company = null): void
     {
         $company ??= request()->route('company');
@@ -46,6 +48,10 @@ class Sidebar extends Component
 
         $app = PortalApp::fromHost(request()->getHost()) ?? PortalApp::PORTAL;
         $this->appKey = $app->value;
+
+        $this->brandUrl = $app === PortalApp::PORTAL || ! $this->company
+            ? route('dashboard')
+            : (Menu::firstUrl(auth()->user(), $this->company, $app) ?? route('dashboard'));
 
         if (! $this->company) {
             return;
@@ -62,6 +68,26 @@ class Sidebar extends Component
             ->get(['id', 'name'])
             ->map(fn (Company $c) => ['id' => $c->id, 'name' => $c->name])
             ->all();
+    }
+
+    public function app(): PortalApp
+    {
+        return PortalApp::from($this->appKey);
+    }
+
+    // One string, computed here rather than split across a Blade @if between
+    // two {{ }} echoes: Livewire wraps every @if block in
+    // <!--[if BLOCK]><![endif]--> HTML comments for its DOM-diffing, even on
+    // the very first render — so "{{ a }}@if(...) {{ b }}@endif" renders as
+    // "a<!--comment--> b<!--comment-->", not "a b", and assertSee('a b')
+    // never matches.
+    public function headerLabel(): string
+    {
+        $name = config('app.name', 'Laravel');
+
+        return $this->app() === PortalApp::PORTAL
+            ? $name
+            : $name.' '.$this->app()->label();
     }
 
     public function toggleGroup(string $group): void
