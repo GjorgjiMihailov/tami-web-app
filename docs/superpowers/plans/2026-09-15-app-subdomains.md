@@ -1320,6 +1320,7 @@ git commit -m "feat: плочки со апликации на таблата н
 ### Task 8: Квадратчиња за апликации кај Корисници и Канцеларија
 
 **Files:**
+- Create: `app/Livewire/Concerns/TogglesAppAccess.php`
 - Modify: `app/Livewire/CompanyUsers.php`
 - Modify: `resources/views/livewire/company-users.blade.php`
 - Modify: `app/Livewire/OfficeUsers.php`
@@ -1328,7 +1329,9 @@ git commit -m "feat: плочки со апликации на таблата н
 
 **Interfaces:**
 - Consumes: `PortalApp::workApps()`, `User::canAccessApp()`.
-- Produces: `CompanyUsers::toggleApp(int $userId, string $app): void` и `OfficeUsers::toggleApp(int $userId, string $app): void`.
+- Produces: `TogglesAppAccess` (trait) со јавен `toggleApp(int $userId, string $app): void` и апстрактен `appAccessTarget(int $userId): User`, што двете компоненти го исполнуваат со својот постоен опсег (`companyUser()` односно `officeUser()`).
+
+Двете компоненти го делат истото правило, па тоа живее во особина, како постојната `App\Livewire\Concerns\SendsInvitations`. Разликува само опсегот — кој корисник смее да се допре.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1447,34 +1450,68 @@ class UserAppAccessToggleTest extends TestCase
 Run: `php artisan test --filter=UserAppAccessToggleTest`
 Expected: FAIL — `Method toggleApp does not exist`.
 
-- [ ] **Step 3: Add `toggleApp` to `CompanyUsers`**
+- [ ] **Step 3: Write the shared concern**
+
+`app/Livewire/Concerns/TogglesAppAccess.php`:
 
 ```php
-    /**
-     * Правото се менува само за корисник од оваа фирма (`companyUser()` го држи
-     * опсегот) и само за трите работни апликации — порталот нема квадратче,
-     * бидејќи најавен човек мора да има каде да влезе.
-     */
+<?php
+
+namespace App\Livewire\Concerns;
+
+use App\Models\User;
+use App\Support\PortalApp;
+use Illuminate\Support\Facades\Gate;
+
+/**
+ * Штиклирањето „во која апликација влегува овој човек". Правилото е исто на
+ * двата екрана; разликува само опсегот — кој корисник смее да се допре — па него
+ * го дава компонентата преку appAccessTarget().
+ */
+trait TogglesAppAccess
+{
     public function toggleApp(int $userId, string $app): void
     {
         Gate::authorize('create', User::class);
 
         $portalApp = PortalApp::tryFrom($app);
 
+        // Порталот нема квадратче: најавен човек мора да има каде да влезе.
         abort_if($portalApp === null || $portalApp->userColumn() === null, 403);
 
-        $user = $this->companyUser($userId);
+        $user = $this->appAccessTarget($userId);
         $column = $portalApp->userColumn();
 
         $user->forceFill([$column => ! $user->{$column}])->save();
     }
+
+    /**
+     * Корисникот што овој екран смее да го менува. Мора да фрли (404/403) за
+     * секој што е надвор од неговиот опсег.
+     */
+    abstract protected function appAccessTarget(int $userId): User;
+}
 ```
 
-со увоз `use App\Support\PortalApp;`.
+- [ ] **Step 4: Wire the concern into both components**
 
-- [ ] **Step 4: Add the same method to `OfficeUsers`**
+Во `app/Livewire/CompanyUsers.php`: `use TogglesAppAccess;` покрај `SendsInvitations`, увоз `use App\Livewire\Concerns\TogglesAppAccess;`, и:
 
-Иста содржина, но со `$this->officeUser($userId)` наместо `companyUser()`, и увоз на `PortalApp`.
+```php
+    protected function appAccessTarget(int $userId): User
+    {
+        return $this->companyUser($userId);
+    }
+```
+
+Во `app/Livewire/OfficeUsers.php`: истото, но:
+
+```php
+    protected function appAccessTarget(int $userId): User
+    {
+        return $this->officeUser($userId);
+    }
+```
 
 - [ ] **Step 5: Add the checkboxes to both views**
 
