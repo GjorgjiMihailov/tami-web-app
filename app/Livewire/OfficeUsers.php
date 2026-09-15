@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\SendsInvitations;
+use App\Livewire\Concerns\TogglesAppAccess;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -18,6 +19,7 @@ use Livewire\Component;
 class OfficeUsers extends Component
 {
     use SendsInvitations;
+    use TogglesAppAccess;
 
     public const ROLES = ['accountant' => 'Сметководител', 'admin' => 'Админ'];
 
@@ -90,6 +92,11 @@ class OfficeUsers extends Component
     private function officeUser(int $userId): User
     {
         return User::role(array_keys(self::ROLES))->findOrFail($userId);
+    }
+
+    protected function appAccessTarget(int $userId): User
+    {
+        return $this->officeUser($userId);
     }
 
     public function render()

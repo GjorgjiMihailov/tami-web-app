@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\SendsInvitations;
+use App\Livewire\Concerns\TogglesAppAccess;
 use App\Models\Company;
 use App\Models\User;
 use App\Support\CompanyTabs;
@@ -15,6 +16,7 @@ use Livewire\Component;
 class CompanyUsers extends Component
 {
     use SendsInvitations;
+    use TogglesAppAccess;
 
     public Company $company;
 
@@ -144,6 +146,11 @@ class CompanyUsers extends Component
     private function companyUser(int $userId): User
     {
         return User::where('company_id', $this->company->id)->findOrFail($userId);
+    }
+
+    protected function appAccessTarget(int $userId): User
+    {
+        return $this->companyUser($userId);
     }
 
     public function render()
