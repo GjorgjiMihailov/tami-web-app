@@ -7,6 +7,7 @@ use App\Models\SalesInvoice;
 use App\Services\CompanyDashboardQuery;
 use App\Services\Inventory\StockLevelQuery;
 use App\Services\Reports\Ddv04Query;
+use App\Support\AppSwitcher;
 use App\Support\WorkingYear;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -38,6 +39,7 @@ class CompanyDashboard extends Component
                 'revenue' => CompanyDashboardQuery::revenue($this->company, $year),
                 'receivable' => CompanyDashboardQuery::receivable($this->company, $year),
                 'form743Counts' => CompanyDashboardQuery::form743Counts($this->company, $year),
+                'apps' => AppSwitcher::for(auth()->user(), $this->company),
             ]);
         }
 
@@ -65,6 +67,7 @@ class CompanyDashboard extends Component
             'stockValue' => (string) StockLevelQuery::stockOnHandTotals($this->company)->sum('total_value'),
             'efakturaSent' => $this->efakturaSent($year),
             'efakturaFailed' => CompanyDashboardQuery::efakturaFailed($this->company, $year),
+            'apps' => AppSwitcher::for(auth()->user(), $this->company),
         ]);
     }
 

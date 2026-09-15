@@ -1,0 +1,96 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Company;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+/**
+ * Панелот „АПЛИКАЦИИ" (resources/views/livewire/layout/navigation.blade.php)
+ * секогаш мора да нуди пат назад кон порталот:
+ * - администратор гледа „Портал — фирми и поставки" (route('companies.index'));
+ * - секој друг, кога има фирма во контекст, гледа „Портал — табла на фирмата"
+ *   (route('companies.dashboard', $company));
+ * - секој друг, без фирма во контекст, нема линк воопшто.
+ *
+ * Пред оваа задача, companies.index е admin-само рута, па клиент или
+ * сметководител внатре во апликација немаше воопшто пат назад до порталот.
+ */
+class NavigationPortalLinkTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Role::findOrCreate('admin');
+        Role::findOrCreate('accountant');
+        Role::findOrCreate('client');
+    }
+
+    public function test_a_non_admin_with_a_company_in_context_sees_the_dashboard_link_not_companies_index(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+
+        $response = $this->actingAs($client)->get(route('sales-invoices.index', $company));
+
+        $response->assertOk();
+        $response->assertSee('Портал — табла на фирмата');
+        $response->assertSeeHtml('href="'.route('companies.dashboard', $company).'"');
+
+        $response->assertDontSee('Портал — фирми и поставки');
+        // Совпаѓа со целата адреса, не со префикс — /companies е префикс на
+        // секоја адреса во контекст на фирма, па само зборот не докажува ништо.
+        $response->assertDontSeeHtml('href="'.route('companies.index').'"');
+    }
+
+    public function test_an_accountant_with_a_company_in_context_sees_the_dashboard_link_not_companies_index(): void
+    {
+        $company = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+
+        $response = $this->actingAs($accountant)->get(route('companies.dashboard', $company));
+
+        $response->assertOk();
+        $response->assertSee('Портал — табла на фирмата');
+        $response->assertDontSee('Портал — фирми и поставки');
+        $response->assertDontSeeHtml('href="'.route('companies.index').'"');
+    }
+
+    public function test_an_admin_still_sees_companies_index_not_the_dashboard_link(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $response = $this->actingAs($admin)->get(route('companies.dashboard', $company));
+
+        $response->assertOk();
+        $response->assertSee('Портал — фирми и поставки');
+        $response->assertSeeHtml('href="'.route('companies.index').'"');
+        $response->assertDontSee('Портал — табла на фирмата');
+    }
+
+    public function test_a_non_admin_with_no_company_in_context_sees_no_portal_link(): void
+    {
+        // Нула видливи фирми: App\Livewire\Dashboard::companyToOpen() не наоѓа
+        // цел, па паѓа на render() од чекот екран — рутата 'dashboard' нема
+        // {company} параметар, значи нема фирма во контекст на панелот.
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+
+        $response = $this->actingAs($accountant)->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertDontSee('Портал — фирми и поставки');
+        $response->assertDontSee('Портал — табла на фирмата');
+    }
+}

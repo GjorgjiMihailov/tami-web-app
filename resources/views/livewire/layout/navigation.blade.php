@@ -13,12 +13,15 @@ new class extends Component
 
     public string $currentApp = 'portal';
 
+    public ?Company $company = null;
+
     public function mount(): void
     {
         $company = request()->route('company');
+        $this->company = $company instanceof Company ? $company : null;
 
         $this->currentApp = (PortalApp::fromHost(request()->getHost()) ?? PortalApp::PORTAL)->value;
-        $this->apps = AppSwitcher::for(auth()->user(), $company instanceof Company ? $company : null);
+        $this->apps = AppSwitcher::for(auth()->user(), $this->company);
     }
 
     /**
@@ -154,11 +157,18 @@ new class extends Component
 
             {{-- companies.index е admin-екран (App\Livewire\CompanyIndex::mount()
                  враќа 403 за секој друг) — истото правило како копчето „Фирми“
-                 во sidebar.blade.php. --}}
+                 во sidebar.blade.php. За секој друг корисник, патот назад е
+                 таблата на фирмата во контекст — а ако нема фирма во контекст,
+                 нема каде смислено да се прати, па линкот отсуствува. --}}
             @if (auth()->user()->hasRole('admin'))
                 <a href="{{ route('companies.index') }}"
                    class="block px-3 py-2 mt-2 rounded-lg text-sm text-gray-600 border-t border-gray-100 hover:bg-gray-50">
                     Портал — фирми и поставки
+                </a>
+            @elseif ($company !== null)
+                <a href="{{ route('companies.dashboard', $company) }}"
+                   class="block px-3 py-2 mt-2 rounded-lg text-sm text-gray-600 border-t border-gray-100 hover:bg-gray-50">
+                    Портал — табла на фирмата
                 </a>
             @endif
         </div>

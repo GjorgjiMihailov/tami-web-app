@@ -1,4 +1,16 @@
 <div class="p-4">
+    @if ($apps !== [])
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            @foreach ($apps as $app)
+                <a href="{{ $app['url'] }}"
+                   class="block rounded-xl border border-gray-100 bg-white p-4 hover:border-gray-200 hover:shadow-sm transition">
+                    <div class="text-sm font-semibold {{ $app['accent'] }}">{{ $app['label'] }}</div>
+                    <div class="text-xs text-gray-500 mt-1">Отвори ја апликацијата</div>
+                </a>
+            @endforeach
+        </div>
+    @endif
+
     <h1 class="text-lg font-medium text-gray-900">{{ $company->name }}</h1>
     <p class="mt-1 text-sm text-gray-500">{{ $company->type->label() }}</p>
 
