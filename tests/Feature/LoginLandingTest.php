@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\LandingUrl;
 use App\Support\PortalApp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Volt\Volt;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -71,5 +72,38 @@ class LoginLandingTest extends TestCase
         foreach (PortalApp::cases() as $app) {
             $this->assertStringStartsWith('http://', LandingUrl::for($client, $app));
         }
+    }
+
+    /**
+     * Барана адреса мора да победи над стандардната — тоа е целата смисла на
+     * default-от во redirectIntended. Го наместуваме доменот на Продажба да
+     * се совпаѓа со хостот на кој навистина работи тестот (localhost), за да
+     * се симулира најава на тој субдомен: без ова, стандардната адреса и
+     * онака би била порталот и тестот не би докажал ништо.
+     */
+    public function test_redirect_intended_wins_over_the_default_landing(): void
+    {
+        config(['apps.domains.prodazba' => 'localhost']);
+
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+
+        $intended = route('companies.profile', $company);
+        $default = LandingUrl::for($client, PortalApp::PRODAZBA);
+
+        $this->assertNotSame(
+            $intended,
+            $default,
+            'Тестот бара навистина различни адреси, инаку не докажува ништо.'
+        );
+
+        session(['url.intended' => $intended]);
+
+        Volt::test('pages.auth.login')
+            ->set('form.email', $client->email)
+            ->set('form.password', 'password')
+            ->call('login')
+            ->assertRedirect($intended);
     }
 }
