@@ -18,6 +18,7 @@ use App\Http\Controllers\PayslipPdfController;
 use App\Http\Controllers\SalesInvoicePdfController;
 use App\Http\Controllers\StockOnHandPdfController;
 use App\Http\Middleware\EnsureAccountingAccess;
+use App\Http\Middleware\EnsureAppAccess;
 use App\Http\Middleware\EnsureCompanyModule;
 use App\Http\Middleware\EnsureIndividual;
 use App\Http\Middleware\EnsureLegalEntity;
@@ -107,7 +108,7 @@ Route::domain(PortalApp::PORTAL->domain())->group(function () {
     Route::middleware(['auth'])->get('/743-obrasci', [Form743Worklist::class, '__invoke'])->name('form743.worklist');
 });
 
-Route::domain(PortalApp::PRODAZBA->domain())->group(function () {
+Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.':prodazba')->group(function () {
     // Array-callable form (not bare class-string) for the same reason as the
     // accounting.* group above. (Historically some of these target classes
     // didn't exist yet during earlier Inventory tasks, which would have
@@ -217,7 +218,7 @@ Route::domain(PortalApp::PRODAZBA->domain())->group(function () {
     });
 });
 
-Route::domain(PortalApp::FINANSII->domain())->group(function () {
+Route::domain(PortalApp::FINANSII->domain())->middleware(EnsureAppAccess::class.':finansii')->group(function () {
     // NOTE: Route::get($uri, ClassString::class) (bare class-string) resolves
     // method_exists($action, '__invoke') eagerly at route *registration* time,
     // so registering a route against a Livewire class that doesn't exist yet
@@ -264,7 +265,7 @@ Route::domain(PortalApp::FINANSII->domain())->group(function () {
     });
 });
 
-Route::domain(PortalApp::PLATA->domain())->group(function () {
+Route::domain(PortalApp::PLATA->domain())->middleware(EnsureAppAccess::class.':plata')->group(function () {
     // Array-callable form (not bare class-string) for the same reason as the
     // accounting.* group above: EmployeeIndex and EmployeeForm don't exist until
     // Tasks 8 and 9, and a bare class-string would crash route registration
