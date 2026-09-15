@@ -49,7 +49,7 @@ class SidebarTest extends TestCase
     {
         $this->actingAs($this->admin());
 
-        $this->get('/dashboard')
+        $this->get(route('dashboard'))
             ->assertOk()
             ->assertDontSee('ФИНАНСИИ')
             ->assertDontSee('ЗАЛИХА');
@@ -295,7 +295,7 @@ class SidebarTest extends TestCase
     {
         $this->actingAs($this->admin());
 
-        $this->get('/dashboard')
+        $this->get(route('dashboard'))
             ->assertOk()
             ->assertDontSee('Година');
     }

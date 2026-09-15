@@ -72,7 +72,7 @@ class CompanyIndexTest extends TestCase
 
     public function test_the_route_requires_authentication(): void
     {
-        $this->get('/companies')->assertRedirect('/login');
+        $this->get(route('companies.index'))->assertRedirect(route('login'));
     }
 
     public function test_the_companies_page_renders_successfully_over_http(): void
@@ -81,7 +81,7 @@ class CompanyIndexTest extends TestCase
         $admin->assignRole('admin');
 
         $this->actingAs($admin)
-            ->get('/companies')
+            ->get(route('companies.index'))
             ->assertOk()
             ->assertSee('Фирми');
     }
