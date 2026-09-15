@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Company;
 use App\Models\User;
 use App\Support\Menu;
+use App\Support\PortalApp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -27,7 +28,7 @@ class EmployeeAccessTest extends TestCase
         $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('client');
 
-        $groups = collect(Menu::for($client, $company));
+        $groups = collect(Menu::for($client, $company, PortalApp::PLATA));
         $payroll = $groups->firstWhere('key', 'payroll');
 
         $this->assertNotNull($payroll, 'A client should now see the ПЛАТИ И ЧР group.');
@@ -40,7 +41,7 @@ class EmployeeAccessTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
 
-        $payroll = collect(Menu::for($admin, $company))->firstWhere('key', 'payroll');
+        $payroll = collect(Menu::for($admin, $company, PortalApp::PLATA))->firstWhere('key', 'payroll');
 
         $this->assertSame(
             ['Вработени', 'Плата (МПИН)', 'е-ПДД'],
@@ -54,7 +55,7 @@ class EmployeeAccessTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
 
-        $payroll = collect(Menu::for($admin, $company))->firstWhere('key', 'payroll');
+        $payroll = collect(Menu::for($admin, $company, PortalApp::PLATA))->firstWhere('key', 'payroll');
         $employees = collect($payroll['items'])->firstWhere('label', 'Вработени');
 
         $this->assertFalse($employees['soon'], 'Вработени is built — it must no longer be a "наскоро" item.');

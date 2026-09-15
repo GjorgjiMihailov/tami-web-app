@@ -5,6 +5,7 @@ namespace App\Livewire\Layout;
 use App\Models\Company;
 use App\Support\CurrentCompany;
 use App\Support\Menu;
+use App\Support\PortalApp;
 use App\Support\WorkingYear;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -14,6 +15,11 @@ class Sidebar extends Component
     public ?Company $company = null;
 
     public ?string $expandedGroup = null;
+
+    // Хостот е тој што ја одредува апликацијата, а /livewire/update доаѓа на
+    // истиот хост — значи важи и при освежување на компонентата. Сепак се
+    // запишува во својство при mount, за да не зависи render() од барањето.
+    public string $appKey = 'portal';
 
     public int $workingYear = 0;
 
@@ -38,13 +44,16 @@ class Sidebar extends Component
         $this->company = $company instanceof Company ? $company : null;
         $this->currentRoute = (string) request()->route()?->getName();
 
+        $app = PortalApp::fromHost(request()->getHost()) ?? PortalApp::PORTAL;
+        $this->appKey = $app->value;
+
         if (! $this->company) {
             return;
         }
 
         CurrentCompany::remember($this->company);
 
-        $this->menu = Menu::for(auth()->user(), $this->company);
+        $this->menu = Menu::for(auth()->user(), $this->company, $app);
         $this->expandedGroup = $this->groupMatchingCurrentRoute();
         $this->workingYear = WorkingYear::for($this->company);
         $this->availableYears = WorkingYear::availableYears($this->company);

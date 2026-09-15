@@ -8,6 +8,7 @@ use App\Models\PayrollMonthHours;
 use App\Models\PayrollParameter;
 use App\Models\User;
 use App\Support\Menu;
+use App\Support\PortalApp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -164,8 +165,10 @@ class PayrollParameterIndexTest extends TestCase
         $accountant = User::factory()->create();
         $accountant->assignRole('accountant');
 
-        $labels = fn (User $u) => collect(Menu::for($u, $company))
-            ->firstWhere('key', 'settings')['items'] ?? [];
+        // Параметри за плата moved out of the single ПОСТАВКИ group into its
+        // own payroll-settings group, alongside ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ.
+        $labels = fn (User $u) => collect(Menu::for($u, $company, PortalApp::PLATA))
+            ->firstWhere('key', 'payroll-settings')['items'] ?? [];
 
         $this->assertContains('Параметри за плата', array_column($labels($admin), 'label'));
         $this->assertNotContains('Параметри за плата', array_column($labels($accountant), 'label'));
