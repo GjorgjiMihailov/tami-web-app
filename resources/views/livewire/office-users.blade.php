@@ -43,7 +43,7 @@
                     <th class="py-1">Е-пошта</th>
                     <th class="py-1">Улога</th>
                     <th class="py-1">Состојба</th>
-                    <th class="px-3 py-2 text-left">Апликации</th>
+                    <th class="py-1">Апликации</th>
                     <th class="py-1"></th>
                 </tr>
             </thead>
@@ -75,10 +75,17 @@
                             <div class="flex items-center gap-3">
                                 @foreach (\App\Support\PortalApp::workApps() as $app)
                                     <label class="inline-flex items-center gap-1 text-xs text-gray-600">
-                                        <input type="checkbox"
-                                               wire:click="toggleApp({{ $user->id }}, '{{ $app->value }}')"
-                                               @checked($user->{$app->userColumn()})
-                                               class="rounded border-gray-300 text-brand focus:ring-brand">
+                                        @can('create', \App\Models\User::class)
+                                            <input type="checkbox"
+                                                   wire:click="toggleApp({{ $user->id }}, '{{ $app->value }}')"
+                                                   @checked($user->{$app->userColumn()})
+                                                   class="rounded border-gray-300 text-brand focus:ring-brand">
+                                        @else
+                                            <input type="checkbox"
+                                                   disabled
+                                                   @checked($user->{$app->userColumn()})
+                                                   class="rounded border-gray-300 text-brand focus:ring-brand">
+                                        @endcan
                                         {{ $app->label() }}
                                     </label>
                                 @endforeach
