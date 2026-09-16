@@ -93,9 +93,17 @@
                                 class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 text-rail-muted hover:bg-rail-soft transition-colors duration-150"
                                 style="width: calc(100% - 1.5rem);">
                             <span>{{ $group['label'] }}</span>
-                            <span x-text="open ? '−' : '+'"></span>
+                            {{-- Знакот го пишува Alpine, но почетната вредност
+                                 стои и во Blade: x-text го пребришува на секое
+                                 отворање, па не може да заглави, а дотогаш
+                                 копчето не е празно. --}}
+                            <span x-text="open ? '−' : '+'">{{ $expandedGroup === $group['key'] ? '−' : '+' }}</span>
                         </button>
-                        <div x-show="open" x-collapse class="pl-6">
+                        {{-- x-cloak само на затворените групи: без него, сè до
+                             вклучувањето на Alpine сите групи се исцртани
+                             отворени и менито трепка. Отворената група го нема,
+                             за да се види веднаш. --}}
+                        <div x-show="open" @unless ($expandedGroup === $group['key']) x-cloak @endunless x-collapse class="pl-6">
                             @foreach ($group['items'] as $item)
                                 <a href="{{ $item['url'] }}" wire:navigate
                                    class="flex items-center gap-2 px-4 py-1.5 text-sm {{ $this->isActive($item['pattern']) ? 'text-brand font-medium' : ($item['soon'] ? 'text-rail-muted hover:text-rail-text' : 'text-rail-text hover:text-white') }}">
