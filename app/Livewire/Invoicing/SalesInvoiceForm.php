@@ -291,6 +291,10 @@ class SalesInvoiceForm extends Component
         $this->validate([
             'suggestedPartner.name' => 'required|string|max:255',
             'suggestedPartner.tax_id' => 'required|string|max:255',
+            'suggestedPartner.street_address' => 'nullable|string|max:255',
+            'suggestedPartner.street_number' => 'nullable|string|max:255',
+            'suggestedPartner.postal_code' => 'nullable|string|max:255',
+            'suggestedPartner.city' => 'nullable|string|max:255',
         ]);
 
         $partner = Partner::create([

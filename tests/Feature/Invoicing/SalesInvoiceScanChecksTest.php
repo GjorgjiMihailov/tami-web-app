@@ -268,4 +268,28 @@ class SalesInvoiceScanChecksTest extends TestCase
             ->assertHasErrors('scanFile')
             ->assertSet('suggestedPartner', null);
     }
+
+    public function test_a_too_long_address_is_not_created(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            buyerName: 'Нов Купувач ДООЕЛ',
+            buyerTaxId: '4080055555555',
+            // 300 знаци — над max:255 за street_address колоната.
+            buyerStreetAddress: str_repeat('А', 300),
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $component = $this->read($company);
+
+        $component->call('createSuggestedPartner')
+            ->assertHasErrors(['suggestedPartner.street_address']);
+
+        $this->assertDatabaseMissing('partners', ['tax_id' => '4080055555555']);
+        $component->assertSet('partnerId', '')
+            ->assertSet('suggestedPartner.tax_id', '4080055555555');
+    }
 }
