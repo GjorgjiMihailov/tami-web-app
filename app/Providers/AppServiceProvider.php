@@ -24,7 +24,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Вистинскиот читач се пишува во задача 7. До тогаш врзувањето покажува
+        // на договорот, а тестовите го заменуваат со двојник.
+        $this->app->bind(
+            \App\Services\Invoicing\ScannedInvoiceReader::class,
+            \App\Services\Invoicing\NullScannedInvoiceReader::class,
+        );
     }
 
     /**

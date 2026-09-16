@@ -40,4 +40,8 @@ return [
         'connect_to' => env('EFAKTURA_CONNECT_TO'),
     ],
 
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+    ],
+
 ];
