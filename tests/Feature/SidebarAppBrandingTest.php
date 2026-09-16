@@ -29,7 +29,8 @@ class SidebarAppBrandingTest extends TestCase
         $response = $this->actingAs($admin)->get(route('payroll-runs.index', $company));
 
         $response->assertOk();
-        $response->assertSee(config('app.name').' Плата');
+        $response->assertSee('ПЛАТИ');
+        $response->assertSee('ТАМИ - FinanceBuddy App');
     }
 
     public function test_the_portal_keeps_the_plain_name(): void
@@ -41,7 +42,11 @@ class SidebarAppBrandingTest extends TestCase
         $response = $this->actingAs($admin)->get(route('companies.dashboard', $company));
 
         $response->assertOk();
-        $response->assertDontSee(config('app.name').' Плата');
+        $response->assertSee('ТАМИ');
+        $response->assertSee('FinanceBuddy App');
+        // Порталот не се претставува како некоја од трите апликации.
+        $response->assertDontSee('ПЛАТИ');
+        $response->assertDontSee('ПРОДАЖБА');
     }
 
     public function test_the_office_wide_links_show_only_on_the_portal(): void

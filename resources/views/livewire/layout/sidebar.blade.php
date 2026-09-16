@@ -1,8 +1,12 @@
 <div class="w-60 shrink-0 bg-white border-r border-gray-100 text-gray-700 flex flex-col min-h-screen app-sidebar"
      :class="{ 'is-open': sidebarOpen }">
     <div class="px-4 py-4 border-b border-gray-100 flex items-center justify-between gap-2">
-        <a href="{{ $brandUrl }}" wire:navigate class="font-bold text-sm {{ $this->app()->accent() }}">
-            {{ $this->headerLabel() }}
+        {{-- Двата реда се два одделни јазли намерно: Livewire му врзува
+             коментари-маркери на текст што е сечен со @if, па заедничка линија
+             со услов среде неа би се распаднала при освежување. --}}
+        <a href="{{ $brandUrl }}" wire:navigate class="block leading-tight">
+            <span class="block font-bold text-sm {{ $this->app()->accent() }}">{{ $this->app()->sidebarName() }}</span>
+            <span class="block italic text-[11px] text-gray-400">{{ $this->app()->sidebarTagline() }}</span>
         </a>
         <button type="button" @click="sidebarOpen = false"
                 aria-label="Затвори мени"

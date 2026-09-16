@@ -81,15 +81,6 @@ class Sidebar extends Component
     // the very first render — so "{{ a }}@if(...) {{ b }}@endif" renders as
     // "a<!--comment--> b<!--comment-->", not "a b", and assertSee('a b')
     // never matches.
-    public function headerLabel(): string
-    {
-        $name = config('app.name', 'Laravel');
-
-        return $this->app() === PortalApp::PORTAL
-            ? $name
-            : $name.' '.$this->app()->label();
-    }
-
     public function toggleGroup(string $group): void
     {
         $this->expandedGroup = $this->expandedGroup === $group ? null : $group;
