@@ -61,6 +61,17 @@ class SalesInvoiceForm extends Component
     /** @var string[] Предупредувања од проверките врз прочитаното. */
     public array $scanWarnings = [];
 
+    /**
+     * Купувач прочитан од скен што го нема во шифрарникот.
+     *
+     * Стои само во меморија додека човекот не кликне „Создај партнер“ — лошо
+     * прочитано име не смее тивко да се залепи во шифрарникот и да се чисти
+     * подоцна.
+     *
+     * @var array{name: string, tax_id: string, street_address: string, street_number: string, postal_code: string, city: string}|null
+     */
+    public ?array $suggestedPartner = null;
+
     public string $paymentTypeCode = 'P12';
 
     public string $currency = 'MKD';
@@ -262,12 +273,43 @@ class SalesInvoiceForm extends Component
         $this->scanRead = true;
     }
 
+    public function createSuggestedPartner(): void
+    {
+        abort_unless($this->canReadScans(), 403);
+
+        if ($this->suggestedPartner === null) {
+            return;
+        }
+
+        $partner = Partner::create([
+            'company_id' => $this->company->id,
+            'name' => $this->suggestedPartner['name'],
+            'tax_id' => $this->suggestedPartner['tax_id'],
+            'street_address' => $this->suggestedPartner['street_address'] ?: null,
+            'street_number' => $this->suggestedPartner['street_number'] ?: null,
+            'postal_code' => $this->suggestedPartner['postal_code'] ?: null,
+            'city' => $this->suggestedPartner['city'] ?: null,
+        ]);
+
+        $this->partnerId = (string) $partner->id;
+        $this->suggestedPartner = null;
+    }
+
     /**
      * Прочитаното се прелива во формата. Секое поле е незадолжително: ако Claude
      * не прочитал нешто, старата вредност останува и човекот ја дополнува.
      */
     private function applyScan(ScannedInvoice $scanned): void
     {
+        $this->suggestedPartner = null;
+
+        // Проверка 1: качен погрешен фајл. Ако продавачот на хартијата не е оваа
+        // фирма, најверојатно е влезна фактура во папката на излезните.
+        if (filled($scanned->sellerTaxId) && filled($this->company->tax_id)
+            && $this->digits($scanned->sellerTaxId) !== $this->digits($this->company->tax_id)) {
+            $this->scanWarnings[] = 'Изгледа дека ова е влезна, не излезна фактура — провери го фајлот.';
+        }
+
         if (filled($scanned->invoiceNumber)) {
             $this->paperNumber = substr($scanned->invoiceNumber, 0, 40);
         }
@@ -284,6 +326,8 @@ class SalesInvoiceForm extends Component
             $this->currency = $scanned->currency;
         }
 
+        // Проверка 2: партнер по ЕДБ. Точно совпаѓање, без погодување по име —
+        // две фирми со слично име се почеста грешка од непостоечки ЕДБ.
         if (filled($scanned->buyerTaxId)) {
             $partner = Partner::where('company_id', $this->company->id)
                 ->where('tax_id', $scanned->buyerTaxId)
@@ -291,6 +335,15 @@ class SalesInvoiceForm extends Component
 
             if ($partner) {
                 $this->partnerId = (string) $partner->id;
+            } else {
+                $this->suggestedPartner = [
+                    'name' => (string) $scanned->buyerName,
+                    'tax_id' => (string) $scanned->buyerTaxId,
+                    'street_address' => (string) $scanned->buyerStreetAddress,
+                    'street_number' => (string) $scanned->buyerStreetNumber,
+                    'postal_code' => (string) $scanned->buyerPostalCode,
+                    'city' => (string) $scanned->buyerCity,
+                ];
             }
         }
 
@@ -307,6 +360,26 @@ class SalesInvoiceForm extends Component
                 // Ослободувањата и преносот на обврска не ги погодува машина.
                 'vat_treatment' => 'standard',
             ], $scanned->lines);
+        }
+
+        // Проверка 3: сметката мора да се сложи. Пресметаното од ставките се
+        // спротивставува со вкупното испишано на хартијата — најсилната
+        // заштита од погрешно прочитана бројка.
+        if (filled($scanned->printedTotal)) {
+            $computed = '0.00';
+
+            foreach ($this->lines as $line) {
+                $net = bcmul((string) $line['unit_price'], (string) $line['quantity'], 4);
+                $vat = bcdiv(bcmul($net, (string) $line['vat_rate'], 4), '100', 4);
+                $computed = bcadd($computed, bcadd($net, $vat, 4), 4);
+            }
+
+            $computed = number_format((float) $computed, 2, '.', '');
+            $printed = number_format((float) $scanned->printedTotal, 2, '.', '');
+
+            if (abs((float) $computed - (float) $printed) > 1.0) {
+                $this->scanWarnings[] = "Пресметаното вкупно е {$computed}, а на скенот пишува {$printed} — провери ги ставките.";
+            }
         }
     }
 
@@ -440,5 +513,14 @@ class SalesInvoiceForm extends Component
             'warehouses' => Warehouse::where('company_id', $this->company->id)->where('is_active', true)->orderBy('name')->get(),
             'items' => Item::where('company_id', $this->company->id)->where('is_active', true)->orderBy('name')->get(),
         ]);
+    }
+
+    /**
+     * ЕДБ-то на хартија понекогаш носи префикс „МК“ или празни места. Се
+     * споредуваат само цифрите.
+     */
+    private function digits(string $value): string
+    {
+        return preg_replace('/\D+/', '', $value) ?? '';
     }
 }

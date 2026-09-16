@@ -27,6 +27,19 @@
         </div>
     @endif
 
+    @if ($suggestedPartner)
+        <div class="mb-4 rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm">
+            <p class="font-semibold text-blue-900">Купувачот од скенот го нема во шифрарникот.</p>
+            <p class="mt-1 text-blue-900">
+                {{ $suggestedPartner['name'] }} — ЕДБ {{ $suggestedPartner['tax_id'] }}
+                @if ($suggestedPartner['city'])
+                    , {{ $suggestedPartner['street_address'] }} {{ $suggestedPartner['street_number'] }}, {{ $suggestedPartner['postal_code'] }} {{ $suggestedPartner['city'] }}
+                @endif
+            </p>
+            <x-secondary-button type="button" wire:click="createSuggestedPartner" class="mt-2">Создај партнер</x-secondary-button>
+        </div>
+    @endif
+
     <form wire:submit="save" class="space-y-6">
         <x-card class="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
