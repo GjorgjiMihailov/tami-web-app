@@ -45,28 +45,70 @@ class SidebarTest extends TestCase
         return htmlspecialchars_decode($matches[1], ENT_QUOTES | ENT_SUBSTITUTE);
     }
 
+    /**
+     * Isolates the sidebar's own rendered HTML from the rest of the page.
+     *
+     * The Task 6 app-switcher panel (resources/views/livewire/layout/navigation.blade.php)
+     * legitimately links to every app's first screen from the page header, so
+     * a page-wide href search is no longer proof of what the sidebar itself
+     * expanded or highlighted — it might just be the switcher. Scoping to the
+     * sidebar's own markup, between its wrapper div and the mobile-drawer
+     * backdrop that immediately follows it in layouts/app.blade.php, restores
+     * that proof.
+     *
+     * Task 9 added the same problem one level down: the sidebar's own brand
+     * link at the top now also points at the app's first screen
+     * (App\Livewire\Layout\Sidebar::$brandUrl), so it can legitimately carry
+     * a route that belongs to a group other than the one the current page
+     * auto-expanded. Starting the capture at <nav ...> instead of the
+     * wrapper div excludes that header link while keeping the whole menu.
+     */
+    private function extractSidebarHtml(string $html): string
+    {
+        $start = strpos($html, '<nav class="flex-1');
+        $end = strpos($html, 'x-show="sidebarOpen" x-cloak x-transition.opacity', $start);
+
+        return substr($html, $start, $end - $start);
+    }
+
     public function test_it_shows_no_groups_when_no_company_is_selected(): void
     {
         $this->actingAs($this->admin());
 
-        $this->get('/dashboard')
+        $this->get(route('dashboard'))
             ->assertOk()
             ->assertDontSee('ФИНАНСИИ')
             ->assertDontSee('ЗАЛИХА');
     }
 
-    public function test_an_admin_sees_every_group_heading(): void
+    // Every app's menu now shows only its own groups — ФИНАНСИИ, ПРОДАЖБА,
+    // ЗАЛИХА and ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ each live on their own subdomain,
+    // so no single page shows all of them together any more.
+    public function test_an_admin_sees_every_group_heading_for_its_own_app(): void
     {
         $company = Company::factory()->create();
         $this->actingAs($this->admin());
 
+        $this->get(route('sales-invoices.index', $company))
+            ->assertOk()
+            ->assertSee('ПРОДАЖБА')
+            ->assertSee('ТРОШОЦИ')
+            ->assertSee('ЗАЛИХА')
+            ->assertDontSee('ФИНАНСИИ')
+            ->assertDontSee('ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ');
+
         $this->get(route('accounting.journal-entries.index', $company))
             ->assertOk()
             ->assertSee('ФИНАНСИИ')
-            ->assertSee('ПРОДАЖБА')
-            ->assertSee('ЗАЛИХА')
+            ->assertDontSee('ПРОДАЖБА')
+            ->assertDontSee('ЗАЛИХА')
+            ->assertDontSee('ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ');
+
+        $this->get(route('payroll-runs.index', $company))
+            ->assertOk()
             ->assertSee('ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ')
-            ->assertSee('ПОСТАВКИ');
+            ->assertDontSee('ФИНАНСИИ')
+            ->assertDontSee('ПРОДАЖБА');
     }
 
     public function test_a_client_sees_neither_finance_nor_the_admin_only_links(): void
@@ -80,16 +122,20 @@ class SidebarTest extends TestCase
             ->assertOk()
             ->assertSee('ПРОДАЖБА')
             ->assertDontSee('ФИНАНСИИ')
-            // Вработени is built, so a client now sees the ПЛАТИ И ЧР group —
-            // just not the two still-unbuilt entries inside it.
-            ->assertSee('ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ')
-            ->assertDontSee('Плата (МПИН)')
-            ->assertDontSee('е-ПДД')
             // Matched as a complete href: route('companies.index') is "/companies",
             // which is a prefix of every company-scoped URL on the page, so a bare
             // substring check can never pass.
             ->assertDontSeeHtml('href="'.route('companies.index').'"')
             ->assertDontSeeHtml(route('efaktura.access-requests'));
+
+        // ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ moved to the plata app. Вработени is built,
+        // so a client sees the group there, just not the two still-unbuilt
+        // entries inside it.
+        $this->get(route('employees.index', $company))
+            ->assertOk()
+            ->assertSee('ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ')
+            ->assertDontSee('Плата (МПИН)')
+            ->assertDontSee('е-ПДД');
     }
 
     public function test_the_group_matching_the_current_route_auto_expands(): void
@@ -97,10 +143,17 @@ class SidebarTest extends TestCase
         $company = Company::factory()->create();
         $this->actingAs($this->admin());
 
-        $this->get(route('accounting.accounts.index', $company))
-            ->assertOk()
-            ->assertSeeHtml(route('companies.profile', $company))
-            ->assertDontSeeHtml(route('inventory.warehouses.index', $company));
+        // Контен план moved out of the single ПОСТАВКИ group into its own
+        // finance-settings group, which lives alongside ФИНАНСИИ. Компанија
+        // is no longer in this app's menu at all — it now belongs to portal —
+        // so the item proving the RIGHT group expanded is the current page's
+        // own link, not Компанија.
+        $response = $this->get(route('accounting.accounts.index', $company));
+        $response->assertOk();
+
+        $sidebar = $this->extractSidebarHtml($response->getContent());
+        $this->assertStringContainsString(route('accounting.accounts.index', $company), $sidebar);
+        $this->assertStringNotContainsString(route('accounting.journal-groups.index', $company), $sidebar);
     }
 
     /**
@@ -117,10 +170,12 @@ class SidebarTest extends TestCase
         $company = Company::factory()->create();
         $this->actingAs($this->admin());
 
-        $this->get(route('invoice-settings.index', $company))
-            ->assertOk()
-            ->assertSeeHtml(route('companies.profile', $company))
-            ->assertDontSeeHtml(route('sales-invoices.index', $company));
+        $response = $this->get(route('invoice-settings.index', $company));
+        $response->assertOk();
+
+        $sidebar = $this->extractSidebarHtml($response->getContent());
+        $this->assertStringContainsString(route('invoice-settings.index', $company), $sidebar);
+        $this->assertStringNotContainsString(route('sales-invoices.index', $company), $sidebar);
     }
 
     public function test_clicking_a_different_group_collapses_the_previous_one(): void
@@ -270,7 +325,7 @@ class SidebarTest extends TestCase
     {
         $this->actingAs($this->admin());
 
-        $this->get('/dashboard')
+        $this->get(route('dashboard'))
             ->assertOk()
             ->assertDontSee('Година');
     }
@@ -304,7 +359,11 @@ class SidebarTest extends TestCase
 
         // First request: a real full page load, exactly like a user visiting a company page.
         // The Sidebar component mounts here with a real 'company' route parameter bound.
-        $html = $this->get(route('accounting.accounts.index', $company))->getContent();
+        // Uses a prodazba-app page: the 'stock' group toggled below now belongs to that
+        // app only, and the /livewire/update POST below must land on the same host.
+        // sales-invoices.index auto-expands the 'sales' group, not 'stock', so the
+        // toggleGroup('stock') call below actually opens it rather than closing it.
+        $html = $this->get(route('sales-invoices.index', $company))->getContent();
         $snapshot = $this->extractSidebarSnapshot($html);
 
         // Second request: the real /livewire/update AJAX call the browser sends when a

@@ -15,7 +15,7 @@ class ErrorPagesTest extends TestCase
 
     public function test_403_page_renders_in_macedonian(): void
     {
-        $response = $this->withoutExceptionHandling()->get('/');
+        $response = $this->withoutExceptionHandling()->get(route('home'));
         // 403 is exercised indirectly by policy tests elsewhere; here we
         // confirm the view itself renders correctly when invoked directly.
         $view = view('errors.403');

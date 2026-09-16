@@ -40,15 +40,21 @@ class Menu
     ];
 
     /**
-     * The filtered menu tree for this user and company.
+     * The filtered menu tree for this user, company and app.
      *
      * @return list<array{key: string, label: string, items: list<array{label: string, url: string, pattern: string, soon: bool}>}>
      */
-    public static function for(User $user, Company $company): array
+    public static function for(User $user, Company $company, PortalApp $app): array
     {
         $groups = [];
 
         foreach (self::tree($company) as $group) {
+            // Групите на туѓа апликација не се ни филтрираат — во оваа
+            // апликација тие не постојат.
+            if ($group['app'] !== $app) {
+                continue;
+            }
+
             $items = array_values(array_filter(
                 $group['items'],
                 fn (array $item) => self::itemVisible($user, $company, $item)
@@ -77,6 +83,24 @@ class Menu
         }
 
         return $groups;
+    }
+
+    /**
+     * Почетниот екран на апликацијата за овој човек: првата ставка што ја гледа.
+     * „Наскоро" ставка се прескокнува — таа е мапа на преостаната работа, лош
+     * прв екран.
+     */
+    public static function firstUrl(User $user, Company $company, PortalApp $app): ?string
+    {
+        $items = array_merge(...array_column(self::for($user, $company, $app), 'items')) ?: [];
+
+        foreach ($items as $item) {
+            if (! $item['soon']) {
+                return $item['url'];
+            }
+        }
+
+        return $items[0]['url'] ?? null;
     }
 
     private static function itemVisible(User $user, Company $company, array $item): bool
@@ -140,6 +164,7 @@ class Menu
         return [
             [
                 'key' => 'finance',
+                'app' => PortalApp::FINANSII,
                 'label' => 'ФИНАНСИИ',
                 'items' => [
                     ['label' => 'Главна книга', 'url' => route('accounting.journal-groups.index', $company), 'pattern' => 'accounting.journal-groups.*', 'roles' => ['admin', 'accountant'], 'module' => CompanyModule::FINANCE],
@@ -149,6 +174,7 @@ class Menu
             ],
             [
                 'key' => 'sales',
+                'app' => PortalApp::PRODAZBA,
                 'label' => 'ПРОДАЖБА',
                 'items' => [
                     ['label' => 'Излезни фактури', 'url' => route('sales-invoices.index', $company), 'pattern' => 'sales-invoices.*', 'roles' => null, 'module' => CompanyModule::MATERIAL],
@@ -161,6 +187,7 @@ class Menu
             ],
             [
                 'key' => 'costs',
+                'app' => PortalApp::PRODAZBA,
                 'label' => 'ТРОШОЦИ',
                 'items' => [
                     ['label' => 'Влезни фактури', 'url' => route('purchase-invoices.index', $company), 'pattern' => 'purchase-invoices.*', 'roles' => null, 'module' => CompanyModule::MATERIAL],
@@ -169,6 +196,7 @@ class Menu
             ],
             [
                 'key' => 'stock',
+                'app' => PortalApp::PRODAZBA,
                 'label' => 'ЗАЛИХА',
                 'items' => [
                     ['label' => 'Магацини', 'url' => route('inventory.warehouses.index', $company), 'pattern' => 'inventory.warehouses.*', 'roles' => null, 'module' => CompanyModule::STOCK],
@@ -182,6 +210,7 @@ class Menu
             ],
             [
                 'key' => 'payroll',
+                'app' => PortalApp::PLATA,
                 'label' => 'ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ',
                 'items' => [
                     ['label' => 'Вработени', 'url' => route('employees.index', $company), 'pattern' => 'employees.*', 'roles' => null, 'module' => CompanyModule::PAYROLL],
@@ -190,16 +219,36 @@ class Menu
                 ],
             ],
             [
+                'key' => 'sales-settings',
+                'app' => PortalApp::PRODAZBA,
+                'label' => 'ПОСТАВКИ',
+                'items' => [
+                    ['label' => 'Фактурирање', 'url' => route('invoice-settings.index', $company), 'pattern' => 'invoice-settings.*', 'roles' => null, 'module' => CompanyModule::MATERIAL],
+                ],
+            ],
+            [
+                'key' => 'finance-settings',
+                'app' => PortalApp::FINANSII,
+                'label' => 'ПОСТАВКИ',
+                'items' => [
+                    ['label' => 'Контен план', 'url' => route('accounting.accounts.index', $company), 'pattern' => 'accounting.accounts.*', 'roles' => ['admin', 'accountant'], 'module' => CompanyModule::FINANCE],
+                ],
+            ],
+            [
+                'key' => 'payroll-settings',
+                'app' => PortalApp::PLATA,
+                'label' => 'ПОСТАВКИ',
+                'items' => [
+                    ['label' => 'Параметри за плата', 'url' => route('payroll-parameters.index', $company), 'pattern' => 'payroll-parameters.*', 'roles' => ['admin'], 'module' => CompanyModule::PAYROLL],
+                ],
+            ],
+            [
                 'key' => 'settings',
+                'app' => PortalApp::PORTAL,
                 'label' => 'ПОСТАВКИ',
                 'items' => [
                     ['label' => 'Компанија', 'url' => route('companies.profile', $company), 'pattern' => 'companies.profile', 'roles' => null],
-                    ['label' => 'Фактурирање', 'url' => route('invoice-settings.index', $company), 'pattern' => 'invoice-settings.*', 'roles' => null, 'module' => CompanyModule::MATERIAL],
-                    // Контниот план и параметрите за плата седат во Поставки, но
-                    // припаѓаат на својот модул и заминуваат заедно со него.
-                    ['label' => 'Контен план', 'url' => route('accounting.accounts.index', $company), 'pattern' => 'accounting.accounts.*', 'roles' => ['admin', 'accountant'], 'module' => CompanyModule::FINANCE],
                     ['label' => 'е-Фактура барања', 'url' => route('efaktura.access-requests'), 'pattern' => 'efaktura.access-requests', 'roles' => ['admin']],
-                    ['label' => 'Параметри за плата', 'url' => route('payroll-parameters.index', $company), 'pattern' => 'payroll-parameters.*', 'roles' => ['admin'], 'module' => CompanyModule::PAYROLL],
                 ],
             ],
         ];
@@ -214,6 +263,7 @@ class Menu
         return [
             [
                 'key' => 'sales',
+                'app' => PortalApp::PRODAZBA,
                 'label' => 'ПРОДАЖБА',
                 'items' => [
                     ['label' => 'Излезни фактури', 'url' => route('sales-invoices.index', $company), 'pattern' => 'sales-invoices.*', 'roles' => null],
@@ -221,7 +271,16 @@ class Menu
                 ],
             ],
             [
+                'key' => 'sales-settings',
+                'app' => PortalApp::PRODAZBA,
+                'label' => 'ПОСТАВКИ',
+                'items' => [
+                    ['label' => 'Фактурирање', 'url' => route('invoice-settings.index', $company), 'pattern' => 'invoice-settings.*', 'roles' => null],
+                ],
+            ],
+            [
                 'key' => 'bank',
+                'app' => PortalApp::FINANSII,
                 'label' => 'БАНКАРСКИ ДОКУМЕНТИ',
                 'items' => [
                     ['label' => '743 обрасци', 'url' => route('form743.index', $company), 'pattern' => 'form743.*', 'roles' => null],
@@ -229,6 +288,7 @@ class Menu
             ],
             [
                 'key' => 'filings',
+                'app' => PortalApp::PLATA,
                 'label' => 'ПРИЈАВИ',
                 'items' => [
                     self::soon($company, 'e-pdd') + ['roles' => ['admin', 'accountant']],
@@ -236,10 +296,10 @@ class Menu
             ],
             [
                 'key' => 'settings',
+                'app' => PortalApp::PORTAL,
                 'label' => 'ПОСТАВКИ',
                 'items' => [
                     ['label' => 'Профил', 'url' => route('companies.profile', $company), 'pattern' => 'companies.profile', 'roles' => null],
-                    ['label' => 'Фактурирање', 'url' => route('invoice-settings.index', $company), 'pattern' => 'invoice-settings.*', 'roles' => null],
                 ],
             ],
         ];

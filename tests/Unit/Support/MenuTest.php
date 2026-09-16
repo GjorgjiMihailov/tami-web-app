@@ -4,7 +4,9 @@ namespace Tests\Unit\Support;
 
 use App\Models\Company;
 use App\Models\User;
+use App\Support\CompanyType;
 use App\Support\Menu;
+use App\Support\PortalApp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -50,35 +52,43 @@ class MenuTest extends TestCase
     public function test_an_admin_sees_every_group(): void
     {
         $company = Company::factory()->create();
+        $admin = $this->userWithRole('admin');
 
-        $this->assertSame(
-            ['ФИНАНСИИ', 'ПРОДАЖБА', 'ТРОШОЦИ', 'ЗАЛИХА', 'ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ', 'ПОСТАВКИ'],
-            $this->groupLabels(Menu::for($this->userWithRole('admin'), $company))
-        );
+        $this->assertSame(['ФИНАНСИИ', 'ПОСТАВКИ'], $this->groupLabels(Menu::for($admin, $company, PortalApp::FINANSII)));
+        $this->assertSame(['ПРОДАЖБА', 'ТРОШОЦИ', 'ЗАЛИХА', 'ПОСТАВКИ'], $this->groupLabels(Menu::for($admin, $company, PortalApp::PRODAZBA)));
+        $this->assertSame(['ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ', 'ПОСТАВКИ'], $this->groupLabels(Menu::for($admin, $company, PortalApp::PLATA)));
+        $this->assertSame(['ПОСТАВКИ'], $this->groupLabels(Menu::for($admin, $company, PortalApp::PORTAL)));
     }
 
     public function test_an_admin_sees_the_full_finance_and_settings_items(): void
     {
         $company = Company::factory()->create();
-        $menu = Menu::for($this->userWithRole('admin'), $company);
+        $admin = $this->userWithRole('admin');
 
-        $this->assertSame(['Главна книга', 'Извештаи и обрасци', 'Банкарски документи'], $this->itemLabels($menu, 'finance'));
-        $this->assertSame(['Компанија', 'Фактурирање', 'Контен план', 'е-Фактура барања', 'Параметри за плата'], $this->itemLabels($menu, 'settings'));
+        $financeMenu = Menu::for($admin, $company, PortalApp::FINANSII);
+        $this->assertSame(['Главна книга', 'Извештаи и обрасци', 'Банкарски документи'], $this->itemLabels($financeMenu, 'finance'));
+        $this->assertSame(['Контен план'], $this->itemLabels($financeMenu, 'finance-settings'));
+
+        $this->assertSame(['Компанија', 'е-Фактура барања'], $this->itemLabels(Menu::for($admin, $company, PortalApp::PORTAL), 'settings'));
+        $this->assertSame(['Фактурирање'], $this->itemLabels(Menu::for($admin, $company, PortalApp::PRODAZBA), 'sales-settings'));
+        $this->assertSame(['Параметри за плата'], $this->itemLabels(Menu::for($admin, $company, PortalApp::PLATA), 'payroll-settings'));
     }
 
     public function test_an_accountant_sees_finance_but_no_efaktura_requests(): void
     {
         $company = Company::factory()->create();
-        $menu = Menu::for($this->userWithRole('accountant'), $company);
+        $accountant = $this->userWithRole('accountant');
 
-        $this->assertContains('ФИНАНСИИ', $this->groupLabels($menu));
-        $this->assertSame(['Компанија', 'Фактурирање', 'Контен план'], $this->itemLabels($menu, 'settings'));
+        $this->assertContains('ФИНАНСИИ', $this->groupLabels(Menu::for($accountant, $company, PortalApp::FINANSII)));
+        $this->assertSame(['Компанија'], $this->itemLabels(Menu::for($accountant, $company, PortalApp::PORTAL), 'settings'));
+        $this->assertSame(['Фактурирање'], $this->itemLabels(Menu::for($accountant, $company, PortalApp::PRODAZBA), 'sales-settings'));
+        $this->assertSame(['Контен план'], $this->itemLabels(Menu::for($accountant, $company, PortalApp::FINANSII), 'finance-settings'));
     }
 
     public function test_a_client_sees_no_finance_group_at_all(): void
     {
         $company = Company::factory()->create();
-        $menu = Menu::for($this->userWithRole('client', $company), $company);
+        $menu = Menu::for($this->userWithRole('client', $company), $company, PortalApp::FINANSII);
 
         $this->assertNotContains('ФИНАНСИИ', $this->groupLabels($menu));
     }
@@ -86,19 +96,22 @@ class MenuTest extends TestCase
     public function test_a_client_sees_only_the_company_item_under_settings(): void
     {
         $company = Company::factory()->create();
-        $menu = Menu::for($this->userWithRole('client', $company), $company);
+        $client = $this->userWithRole('client', $company);
 
-        $this->assertSame(['Компанија', 'Фактурирање'], $this->itemLabels($menu, 'settings'));
+        $this->assertSame(['Компанија'], $this->itemLabels(Menu::for($client, $company, PortalApp::PORTAL), 'settings'));
+        $this->assertSame(['Фактурирање'], $this->itemLabels(Menu::for($client, $company, PortalApp::PRODAZBA), 'sales-settings'));
     }
 
     public function test_a_client_never_sees_a_naskoro_item(): void
     {
         $company = Company::factory()->create();
-        $menu = Menu::for($this->userWithRole('client', $company), $company);
+        $client = $this->userWithRole('client', $company);
 
-        foreach ($menu as $group) {
-            foreach ($group['items'] as $item) {
-                $this->assertFalse($item['soon'], "Client must not see the наскоро item {$item['label']}.");
+        foreach (PortalApp::cases() as $app) {
+            foreach (Menu::for($client, $company, $app) as $group) {
+                foreach ($group['items'] as $item) {
+                    $this->assertFalse($item['soon'], "Client must not see the наскоро item {$item['label']}.");
+                }
             }
         }
     }
@@ -114,11 +127,11 @@ class MenuTest extends TestCase
 
         $this->assertSame(
             ['Вработени'],
-            $this->itemLabels(Menu::for($this->userWithRole('client', $company), $company), 'payroll')
+            $this->itemLabels(Menu::for($this->userWithRole('client', $company), $company, PortalApp::PLATA), 'payroll')
         );
         $this->assertSame(
             ['Вработени', 'Плата (МПИН)', 'е-ПДД'],
-            $this->itemLabels(Menu::for($this->userWithRole('admin'), $company), 'payroll')
+            $this->itemLabels(Menu::for($this->userWithRole('admin'), $company, PortalApp::PLATA), 'payroll')
         );
     }
 
@@ -131,7 +144,7 @@ class MenuTest extends TestCase
     public function test_the_payroll_run_menu_item_is_a_real_route_not_a_soon_stub(): void
     {
         $company = Company::factory()->create();
-        $payroll = collect(Menu::for($this->userWithRole('admin'), $company))->firstWhere('key', 'payroll');
+        $payroll = collect(Menu::for($this->userWithRole('admin'), $company, PortalApp::PLATA))->firstWhere('key', 'payroll');
         $item = collect($payroll['items'])->firstWhere('label', 'Плата (МПИН)');
 
         $this->assertSame('payroll-runs.*', $item['pattern']);
@@ -141,7 +154,7 @@ class MenuTest extends TestCase
     public function test_a_client_still_gets_the_full_sales_costs_and_stock_groups(): void
     {
         $company = Company::factory()->create();
-        $menu = Menu::for($this->userWithRole('client', $company), $company);
+        $menu = Menu::for($this->userWithRole('client', $company), $company, PortalApp::PRODAZBA);
 
         // Влезни фактури moved out of ПРОДАЖБА into its own ТРОШОЦИ group.
         $this->assertSame(['Излезни фактури', 'Кооперанти'], $this->itemLabels($menu, 'sales'));
@@ -157,11 +170,14 @@ class MenuTest extends TestCase
     public function test_every_item_carries_a_resolved_url_and_a_route_pattern(): void
     {
         $company = Company::factory()->create();
+        $admin = $this->userWithRole('admin');
 
-        foreach (Menu::for($this->userWithRole('admin'), $company) as $group) {
-            foreach ($group['items'] as $item) {
-                $this->assertStringStartsWith('http', $item['url'], "{$item['label']} has no resolved URL.");
-                $this->assertNotSame('', $item['pattern'], "{$item['label']} has no route pattern.");
+        foreach (PortalApp::cases() as $app) {
+            foreach (Menu::for($admin, $company, $app) as $group) {
+                foreach ($group['items'] as $item) {
+                    $this->assertStringStartsWith('http', $item['url'], "{$item['label']} has no resolved URL.");
+                    $this->assertNotSame('', $item['pattern'], "{$item['label']} has no route pattern.");
+                }
             }
         }
     }
@@ -169,9 +185,12 @@ class MenuTest extends TestCase
     public function test_korekcija_is_not_in_the_menu(): void
     {
         $company = Company::factory()->create();
+        $admin = $this->userWithRole('admin');
 
-        foreach (Menu::for($this->userWithRole('admin'), $company) as $group) {
-            $this->assertNotContains('Корекција', array_column($group['items'], 'label'));
+        foreach (PortalApp::cases() as $app) {
+            foreach (Menu::for($admin, $company, $app) as $group) {
+                $this->assertNotContains('Корекција', array_column($group['items'], 'label'));
+            }
         }
     }
 
@@ -181,19 +200,21 @@ class MenuTest extends TestCase
 
         $this->assertNotContains(
             'ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ',
-            $this->groupLabels(Menu::for($this->userWithRole('admin'), $company))
+            $this->groupLabels(Menu::for($this->userWithRole('admin'), $company, PortalApp::PLATA))
         );
     }
 
     public function test_switching_off_finance_takes_the_chart_of_accounts_out_of_settings(): void
     {
         $company = Company::factory()->create(['uses_finance' => false]);
-        $menu = Menu::for($this->userWithRole('admin'), $company);
+        $admin = $this->userWithRole('admin');
 
-        $this->assertNotContains('ФИНАНСИИ', $this->groupLabels($menu));
-        $this->assertNotContains('Контен план', $this->itemLabels($menu, 'settings'));
+        $financeMenu = Menu::for($admin, $company, PortalApp::FINANSII);
+        $this->assertNotContains('ФИНАНСИИ', $this->groupLabels($financeMenu));
+        $this->assertNotContains('Контен план', $this->itemLabels($financeMenu, 'finance-settings'));
+
         // Останатите поставки остануваат — тие немаат модул.
-        $this->assertContains('Компанија', $this->itemLabels($menu, 'settings'));
+        $this->assertContains('Компанија', $this->itemLabels(Menu::for($admin, $company, PortalApp::PORTAL), 'settings'));
     }
 
     public function test_partners_survive_when_material_is_switched_off(): void
@@ -201,7 +222,7 @@ class MenuTest extends TestCase
         // Партнерите ги бара и книжењето, не само фактурирањето, па намерно
         // немаат модул. Групата ПРОДАЖБА останува со неа единствена внатре.
         $company = Company::factory()->create(['uses_material' => false]);
-        $menu = Menu::for($this->userWithRole('admin'), $company);
+        $menu = Menu::for($this->userWithRole('admin'), $company, PortalApp::PRODAZBA);
 
         $this->assertSame(['Кооперанти'], $this->itemLabels($menu, 'sales'));
         $this->assertNotContains('ТРОШОЦИ', $this->groupLabels($menu));
@@ -216,14 +237,14 @@ class MenuTest extends TestCase
 
         $this->assertNotContains(
             'ЗАЛИХА',
-            $this->groupLabels(Menu::for($this->userWithRole('admin'), $company))
+            $this->groupLabels(Menu::for($this->userWithRole('admin'), $company, PortalApp::PRODAZBA))
         );
     }
 
     public function test_stock_can_be_switched_off_on_its_own(): void
     {
         $company = Company::factory()->create(['uses_stock' => false]);
-        $menu = Menu::for($this->userWithRole('admin'), $company);
+        $menu = Menu::for($this->userWithRole('admin'), $company, PortalApp::PRODAZBA);
 
         $this->assertNotContains('ЗАЛИХА', $this->groupLabels($menu));
         $this->assertContains('ПРОДАЖБА', $this->groupLabels($menu));
@@ -233,14 +254,63 @@ class MenuTest extends TestCase
     public function test_an_individual_profile_ignores_the_module_flags(): void
     {
         $company = Company::factory()->create([
-            'type' => \App\Support\CompanyType::INDIVIDUAL,
+            'type' => CompanyType::INDIVIDUAL,
             'uses_material' => false,
             'uses_finance' => false,
         ]);
+        $admin = $this->userWithRole('admin');
+
+        $this->assertSame(['ПРОДАЖБА', 'ПОСТАВКИ'], $this->groupLabels(Menu::for($admin, $company, PortalApp::PRODAZBA)));
+        $this->assertSame(['БАНКАРСКИ ДОКУМЕНТИ'], $this->groupLabels(Menu::for($admin, $company, PortalApp::FINANSII)));
+        $this->assertSame(['ПРИЈАВИ'], $this->groupLabels(Menu::for($admin, $company, PortalApp::PLATA)));
+        $this->assertSame(['ПОСТАВКИ'], $this->groupLabels(Menu::for($admin, $company, PortalApp::PORTAL)));
+    }
+
+    public function test_each_app_shows_only_its_own_groups(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $keys = fn (PortalApp $app) => array_column(Menu::for($admin, $company, $app), 'key');
+
+        $this->assertSame(['sales', 'costs', 'stock', 'sales-settings'], $keys(PortalApp::PRODAZBA));
+        $this->assertSame(['finance', 'finance-settings'], $keys(PortalApp::FINANSII));
+        $this->assertSame(['payroll', 'payroll-settings'], $keys(PortalApp::PLATA));
+        $this->assertSame(['settings'], $keys(PortalApp::PORTAL));
+    }
+
+    public function test_an_individual_sees_its_own_split(): void
+    {
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $keys = fn (PortalApp $app) => array_column(Menu::for($admin, $company, $app), 'key');
+
+        $this->assertSame(['sales', 'sales-settings'], $keys(PortalApp::PRODAZBA));
+        $this->assertSame(['bank'], $keys(PortalApp::FINANSII));
+        $this->assertSame(['filings'], $keys(PortalApp::PLATA));
+    }
+
+    public function test_first_url_skips_a_coming_soon_entry(): void
+    {
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
 
         $this->assertSame(
-            ['ПРОДАЖБА', 'БАНКАРСКИ ДОКУМЕНТИ', 'ПРИЈАВИ', 'ПОСТАВКИ'],
-            $this->groupLabels(Menu::for($this->userWithRole('admin'), $company))
+            route('sales-invoices.index', $company),
+            Menu::firstUrl($admin, $company, PortalApp::PRODAZBA)
         );
+    }
+
+    public function test_first_url_is_null_when_the_app_has_nothing_for_this_company(): void
+    {
+        $company = Company::factory()->create(['uses_payroll' => false]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->assertNull(Menu::firstUrl($admin, $company, PortalApp::PLATA));
     }
 }

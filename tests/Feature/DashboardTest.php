@@ -105,7 +105,7 @@ class DashboardTest extends TestCase
         Company::factory()->create(['name' => 'Beta Ltd']);
         $this->actingAs($admin);
 
-        $this->get('/dashboard')
+        $this->get(route('dashboard'))
             ->assertOk()
             ->assertSee('Alpha Ltd')
             ->assertSee('Beta Ltd');
@@ -121,7 +121,7 @@ class DashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        $this->get('/dashboard')
+        $this->get(route('dashboard'))
             ->assertOk()
             ->assertSee('Solo Ltd')
             ->assertSee('Изберете фирма');
@@ -134,7 +134,7 @@ class DashboardTest extends TestCase
         $company = Company::factory()->create(['name' => 'Alpha Ltd']);
         $this->actingAs($admin);
 
-        $this->get('/dashboard')
+        $this->get(route('dashboard'))
             ->assertOk()
             ->assertSeeHtml(route('companies.dashboard', $company));
     }
@@ -152,7 +152,7 @@ class DashboardTest extends TestCase
         $second->accountants()->attach($accountant);
         $this->actingAs($accountant);
 
-        $this->get('/dashboard')
+        $this->get(route('dashboard'))
             ->assertOk()
             ->assertSee('Alpha Ltd')
             ->assertDontSee('Beta Ltd');
@@ -165,7 +165,7 @@ class DashboardTest extends TestCase
         Company::factory()->create(['name' => 'Alpha Ltd']);
         $this->actingAs($admin);
 
-        $this->get('/dashboard')
+        $this->get(route('dashboard'))
             ->assertOk()
             ->assertDontSee('×')
             ->assertDontSeeHtml('close-modal');
@@ -173,7 +173,7 @@ class DashboardTest extends TestCase
 
     public function test_the_route_requires_authentication(): void
     {
-        $this->get('/dashboard')->assertRedirect('/login');
+        $this->get(route('dashboard'))->assertRedirect(route('login'));
     }
 
     public function test_zero_company_user_can_escape_to_companies_index(): void
@@ -182,7 +182,7 @@ class DashboardTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        $this->get('/dashboard')
+        $this->get(route('dashboard'))
             ->assertOk()
             ->assertSeeHtml(route('companies.index'));
     }

@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\User;
 use App\Support\CompanyType;
 use App\Support\Menu;
+use App\Support\PortalApp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -20,13 +21,21 @@ class MenuByTypeTest extends TestCase
         Role::findOrCreate('admin');
     }
 
+    // Group labels across every app, combined — these tests care whether a
+    // group exists ANYWHERE for this company type, not which single app it
+    // now lives in (that split is covered by MenuTest and SidebarTest).
     private function groupsFor(CompanyType $type): array
     {
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $company = Company::factory()->create(['type' => $type]);
 
-        return array_column(Menu::for($admin, $company), 'label');
+        $labels = [];
+        foreach (PortalApp::cases() as $app) {
+            $labels = array_merge($labels, array_column(Menu::for($admin, $company, $app), 'label'));
+        }
+
+        return $labels;
     }
 
     public function test_a_legal_entity_sees_the_full_menu(): void
@@ -70,7 +79,7 @@ class MenuByTypeTest extends TestCase
         $admin->assignRole('admin');
         $company = Company::factory()->create(['type' => CompanyType::LEGAL]);
 
-        $tree = collect(Menu::for($admin, $company))->keyBy('label');
+        $tree = collect(Menu::for($admin, $company, PortalApp::PRODAZBA))->keyBy('label');
 
         $sales = array_column($tree['ПРОДАЖБА']['items'], 'label');
         $costs = array_column($tree['ТРОШОЦИ']['items'], 'label');

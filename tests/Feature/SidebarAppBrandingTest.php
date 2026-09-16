@@ -1,0 +1,56 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Company;
+use App\Models\User;
+use App\Support\PortalApp;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+class SidebarAppBrandingTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Role::findOrCreate('admin');
+    }
+
+    public function test_the_sidebar_names_the_app_it_is_in(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $response = $this->actingAs($admin)->get(route('payroll-runs.index', $company));
+
+        $response->assertOk();
+        $response->assertSee(config('app.name').' Плата');
+    }
+
+    public function test_the_portal_keeps_the_plain_name(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $response = $this->actingAs($admin)->get(route('companies.dashboard', $company));
+
+        $response->assertOk();
+        $response->assertDontSee(config('app.name').' Плата');
+    }
+
+    public function test_the_office_wide_links_show_only_on_the_portal(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin)->get(route('sales-invoices.index', $company))->assertDontSee('743 обрасци');
+        $this->actingAs($admin)->get(route('companies.dashboard', $company))->assertSee('743 обрасци');
+    }
+}

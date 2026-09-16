@@ -32,6 +32,7 @@
                     <th class="py-1">Име</th>
                     <th class="py-1">Е-пошта</th>
                     <th class="py-1">Состојба</th>
+                    <th class="py-1">Апликации</th>
                     <th class="py-1"></th>
                 </tr>
             </thead>
@@ -56,6 +57,26 @@
                                     <x-badge status="active">Активен</x-badge>
                             @endswitch
                         </td>
+                        <td class="px-3 py-2">
+                            <div class="flex items-center gap-3">
+                                @foreach (\App\Support\PortalApp::workApps() as $app)
+                                    <label class="inline-flex items-center gap-1 text-xs text-gray-600">
+                                        @can('create', \App\Models\User::class)
+                                            <input type="checkbox"
+                                                   wire:click="toggleApp({{ $user->id }}, '{{ $app->value }}')"
+                                                   @checked($user->{$app->userColumn()})
+                                                   class="rounded border-gray-300 text-brand focus:ring-brand">
+                                        @else
+                                            <input type="checkbox"
+                                                   disabled
+                                                   @checked($user->{$app->userColumn()})
+                                                   class="rounded border-gray-300 text-brand focus:ring-brand">
+                                        @endcan
+                                        {{ $app->label() }}
+                                    </label>
+                                @endforeach
+                            </div>
+                        </td>
                         <td class="py-1 text-right">
                             @can('disable', $user)
                                 <div class="flex gap-2 justify-end">
@@ -73,7 +94,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="4" class="py-2 text-gray-500">Нема отворени сметки за оваа фирма.</td></tr>
+                    <tr><td colspan="5" class="py-2 text-gray-500">Нема отворени сметки за оваа фирма.</td></tr>
                 @endforelse
             </tbody>
         </table>

@@ -12,7 +12,7 @@ class MarketingHomeTest extends TestCase
 
     public function test_the_root_shows_the_public_landing_page_to_a_guest(): void
     {
-        $response = $this->get('/');
+        $response = $this->get(route('home'));
 
         $response->assertOk();
         $response->assertSee('ТАМИ', false);
@@ -21,7 +21,7 @@ class MarketingHomeTest extends TestCase
 
     public function test_a_guest_is_offered_the_login_link(): void
     {
-        $response = $this->get('/');
+        $response = $this->get(route('home'));
 
         $response->assertSee('Најави се', false);
         $response->assertSee(route('login'), false);
@@ -34,7 +34,7 @@ class MarketingHomeTest extends TestCase
      */
     public function test_a_signed_in_user_is_pointed_at_the_portal_instead(): void
     {
-        $response = $this->actingAs(User::factory()->create())->get('/');
+        $response = $this->actingAs(User::factory()->create())->get(route('home'));
 
         $response->assertOk();
         $response->assertSee('Влези во порталот', false);
@@ -48,7 +48,7 @@ class MarketingHomeTest extends TestCase
      */
     public function test_the_screenshots_it_points_at_actually_exist(): void
     {
-        $this->get('/')->assertOk();
+        $this->get(route('home'))->assertOk();
 
         foreach (['dashboard', 'sales-invoices', 'payroll'] as $screen) {
             $this->assertFileExists(

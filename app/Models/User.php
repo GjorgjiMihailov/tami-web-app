@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\PortalApp;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -23,6 +24,16 @@ class User extends Authenticatable
     use HasFactory, Notifiable, HasRoles;
 
     /**
+     * Стандардната вредност на колоната важи за базата, не за свежосоздаден
+     * модел во меморија — без ова `new User` чита `null` и правото паѓа.
+     */
+    protected $attributes = [
+        'app_prodazba' => true,
+        'app_finansii' => true,
+        'app_plata' => true,
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -33,6 +44,9 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'disabled_at' => 'datetime',
             'password' => 'hashed',
+            'app_prodazba' => 'boolean',
+            'app_finansii' => 'boolean',
+            'app_plata' => 'boolean',
         ];
     }
 
@@ -84,5 +98,21 @@ class User extends Authenticatable
         }
 
         return $invitation->expires_at->isFuture() ? 'invited' : 'invitation_expired';
+    }
+
+    /**
+     * Смее ли овој човек да влезе во оваа апликација. Порталот е отворен за секој
+     * најавен корисник, а админот ги прескокнува штиклирањата — не смее да се
+     * заклучи сам од себе.
+     */
+    public function canAccessApp(PortalApp $app): bool
+    {
+        $column = $app->userColumn();
+
+        if ($column === null || $this->hasRole('admin')) {
+            return true;
+        }
+
+        return (bool) $this->{$column};
     }
 }

@@ -14,7 +14,7 @@ class AppShellTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get('/dashboard');
+        $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
         $response->assertSee('min-h-screen flex bg-canvas', false);
@@ -24,7 +24,7 @@ class AppShellTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get('/dashboard');
+        $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
         $response->assertSee('bg-white border-r border-gray-100', false);
@@ -34,7 +34,7 @@ class AppShellTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get('/dashboard');
+        $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
         // The drawer behaviour itself lives in resources/css/app.css under a
@@ -49,7 +49,7 @@ class AppShellTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get('/dashboard');
+        $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
         $response->assertSee('Отвори мени', false);
@@ -62,7 +62,7 @@ class AppShellTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get('/dashboard');
+        $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
         // The backdrop is mobile-only; on a desktop the sidebar is a permanent

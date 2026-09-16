@@ -38,7 +38,7 @@ class AcceptInvitationScreenTest extends TestCase
             ->set('password_confirmation', 'nova-lozinka-123')
             ->call('acceptInvitation')
             ->assertHasNoErrors()
-            ->assertRedirect(route('dashboard', absolute: false));
+            ->assertRedirect(route('dashboard'));
 
         $this->assertAuthenticatedAs($user->fresh());
     }

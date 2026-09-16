@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\CompanyType;
 use App\Support\Form743Status;
 use App\Support\Menu;
+use App\Support\PortalApp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -123,7 +124,7 @@ class Form743UploadTest extends TestCase
         $company = $this->individual();
         $user = $this->clientOf($company);
 
-        $items = collect(Menu::for($user, $company))
+        $items = collect(Menu::for($user, $company, PortalApp::FINANSII))
             ->firstWhere('key', 'bank')['items'];
 
         $item = collect($items)->firstWhere('label', '743 обрасци');

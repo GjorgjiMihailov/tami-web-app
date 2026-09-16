@@ -1,8 +1,8 @@
 <div class="w-60 shrink-0 bg-white border-r border-gray-100 text-gray-700 flex flex-col min-h-screen app-sidebar"
      :class="{ 'is-open': sidebarOpen }">
     <div class="px-4 py-4 border-b border-gray-100 flex items-center justify-between gap-2">
-        <a href="{{ route('dashboard') }}" wire:navigate class="font-bold text-brand text-sm">
-            {{ config('app.name', 'Laravel') }}
+        <a href="{{ $brandUrl }}" wire:navigate class="font-bold text-sm {{ $this->app()->accent() }}">
+            {{ $this->headerLabel() }}
         </a>
         <button type="button" @click="sidebarOpen = false"
                 aria-label="Затвори мени"
@@ -14,24 +14,28 @@
     </div>
 
     <nav class="flex-1 py-3 space-y-1">
-        @if (auth()->check() && auth()->user()->hasRole('admin'))
-            <a href="{{ route('dashboard') }}" wire:navigate
-               class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'dashboard' ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
-                Почетна
-            </a>
-            <a href="{{ route('companies.index') }}" wire:navigate
-               class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'companies.index' ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
-                Фирми
-            </a>
-        @endif
+        {{-- Трите врски долу водат на портални рути кои не постојат на
+             апликациски субдомен — таму би биле врски кон никаде. --}}
+        @if ($this->app() === \App\Support\PortalApp::PORTAL)
+            @if (auth()->check() && auth()->user()->hasRole('admin'))
+                <a href="{{ route('dashboard') }}" wire:navigate
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'dashboard' ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
+                    Почетна
+                </a>
+                <a href="{{ route('companies.index') }}" wire:navigate
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'companies.index' ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
+                    Фирми
+                </a>
+            @endif
 
-        {{-- Работниот список ги собира обрасците од сите клиенти, па стои тука
-             горе со глобалните врски, а не во менито на една фирма. --}}
-        @if (auth()->check() && auth()->user()->hasAnyRole(['admin', 'accountant']))
-            <a href="{{ route('form743.worklist') }}" wire:navigate
-               class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'form743.worklist' ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
-                743 обрасци
-            </a>
+            {{-- Работниот список ги собира обрасците од сите клиенти, па стои тука
+                 горе со глобалните врски, а не во менито на една фирма. --}}
+            @if (auth()->check() && auth()->user()->hasAnyRole(['admin', 'accountant']))
+                <a href="{{ route('form743.worklist') }}" wire:navigate
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'form743.worklist' ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
+                    743 обрасци
+                </a>
+            @endif
         @endif
 
         @if ($company)
@@ -45,6 +49,11 @@
                 <div class="px-4 pb-3 space-y-2">
                     <label class="block text-xs text-gray-500">
                         <span class="block mb-1">Фирма</span>
+                        {{-- Менувањето фирма секогаш се враќа на порталната табла.
+                             Новата фирма може да ги нема истите модули, па почетниот
+                             екран на тековната апликација за неа може и да не
+                             постои — таблата е единствената адреса што сигурно
+                             постои за секоја фирма. --}}
                         <select onchange="if (this.value) window.location.href = this.value"
                                 class="block w-full min-w-0 truncate rounded-lg border-gray-200 text-sm py-1 text-gray-700 focus:border-brand focus:ring-brand">
                             @foreach ($companyOptions as $option)
@@ -86,7 +95,7 @@
                     @endif
                 @endforeach
 
-                @if (! $company->type->isIndividual())
+                @if (! $company->type->isIndividual() && $this->app() === \App\Support\PortalApp::PRODAZBA)
                     <a href="{{ route('documents.index', $company) }}" wire:navigate
                        class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 mt-1 {{ str_starts_with($currentRoute, 'documents.') ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
                         Документи
