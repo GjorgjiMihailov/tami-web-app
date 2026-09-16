@@ -291,5 +291,11 @@ class SalesInvoiceScanChecksTest extends TestCase
         $this->assertDatabaseMissing('partners', ['tax_id' => '4080055555555']);
         $component->assertSet('partnerId', '')
             ->assertSet('suggestedPartner.tax_id', '4080055555555');
+
+        // Не е доволно грешката да стои само во error bag-от — мора да се
+        // прикаже и на екранот, инаку кликот изгледа скршен, а не одбиен.
+        $message = $component->instance()->getErrorBag()->first('suggestedPartner.street_address');
+        $this->assertNotEmpty($message);
+        $component->assertSee($message);
     }
 }
