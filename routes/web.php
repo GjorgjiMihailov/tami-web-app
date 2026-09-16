@@ -65,6 +65,7 @@ use App\Livewire\Payroll\PayrollRunShow;
 use App\Livewire\PayrollParameterIndex;
 use App\Livewire\Reports\Ddv04Report;
 use App\Livewire\Reports\ReportIndex;
+use App\Support\LandingUrl;
 use App\Support\PortalApp;
 use Illuminate\Support\Facades\Route;
 
@@ -133,6 +134,12 @@ Route::domain(PortalApp::PORTAL->domain())->group(function () {
 });
 
 Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.':prodazba')->group(function () {
+    // Коренот на апликацијата. Јавната влезна страна живее само на порталот, па
+    // без ова човек што ќе ја напише голата адреса добива 404. `auth` ги носи
+    // ненајавените на формата за најава на ИСТИОТ хост, а најавените одат на
+    // својот почетен екран.
+    Route::get('/', fn () => redirect(LandingUrl::for(auth()->user(), PortalApp::PRODAZBA)))->middleware('auth');
+
     // Array-callable form (not bare class-string) for the same reason as the
     // accounting.* group above. (Historically some of these target classes
     // didn't exist yet during earlier Inventory tasks, which would have
@@ -240,6 +247,9 @@ Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.
 });
 
 Route::domain(PortalApp::FINANSII->domain())->middleware(EnsureAppAccess::class.':finansii')->group(function () {
+    // Истата причина како кај Продажба: голата адреса мора да води некаде.
+    Route::get('/', fn () => redirect(LandingUrl::for(auth()->user(), PortalApp::FINANSII)))->middleware('auth');
+
     // NOTE: Route::get($uri, ClassString::class) (bare class-string) resolves
     // method_exists($action, '__invoke') eagerly at route *registration* time,
     // so registering a route against a Livewire class that doesn't exist yet
@@ -290,6 +300,9 @@ Route::domain(PortalApp::FINANSII->domain())->middleware(EnsureAppAccess::class.
 });
 
 Route::domain(PortalApp::PLATA->domain())->middleware(EnsureAppAccess::class.':plata')->group(function () {
+    // Истата причина како кај Продажба: голата адреса мора да води некаде.
+    Route::get('/', fn () => redirect(LandingUrl::for(auth()->user(), PortalApp::PLATA)))->middleware('auth');
+
     // Array-callable form (not bare class-string) for the same reason as the
     // accounting.* group above: EmployeeIndex and EmployeeForm don't exist until
     // Tasks 8 and 9, and a bare class-string would crash route registration
