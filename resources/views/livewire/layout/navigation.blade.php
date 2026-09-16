@@ -35,7 +35,7 @@ new class extends Component
     }
 }; ?>
 
-<nav x-data="{ open: false, appsOpen: false }" class="bg-white border-b border-gray-100">
+<nav x-data="{ open: false, appsOpen: false }" class="bg-white border-b border-sand">
     <div class="px-4 sm:px-6 lg:px-8">
         <div class="flex justify-end h-14 items-center">
             {{-- Opens the sidebar drawer. Hidden at lg and up, where the
@@ -104,7 +104,7 @@ new class extends Component
 
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
-        <div class="pt-4 pb-1 border-t border-gray-200">
+        <div class="pt-4 pb-1 border-t border-sand">
             <div class="px-4">
                 <div class="font-medium text-base text-gray-800" x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></div>
                 <div class="font-medium text-sm text-gray-500">{{ auth()->user()->email }}</div>
@@ -134,8 +134,8 @@ new class extends Component
              x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
              x-transition:leave="transition ease-in duration-150"
              x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
-             class="fixed inset-y-0 right-0 z-50 w-72 bg-white border-l border-gray-100 p-4 space-y-2">
-            <div class="flex items-center justify-between pb-2 border-b border-gray-100">
+             class="fixed inset-y-0 right-0 z-50 w-72 bg-white border-l border-sand p-4 space-y-2">
+            <div class="flex items-center justify-between pb-2 border-b border-sand">
                 <span class="text-xs font-semibold tracking-wide text-gray-500">АПЛИКАЦИИ</span>
                 <button type="button" @click="appsOpen = false" aria-label="Затвори"
                         class="p-2 -me-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
@@ -162,12 +162,12 @@ new class extends Component
                  нема каде смислено да се прати, па линкот отсуствува. --}}
             @if (auth()->user()->hasRole('admin'))
                 <a href="{{ route('companies.index') }}"
-                   class="block px-3 py-2 mt-2 rounded-lg text-sm text-gray-600 border-t border-gray-100 hover:bg-gray-50">
+                   class="block px-3 py-2 mt-2 rounded-lg text-sm text-gray-600 border-t border-sand hover:bg-gray-50">
                     Портал — фирми и поставки
                 </a>
             @elseif ($company !== null)
                 <a href="{{ route('companies.dashboard', $company) }}"
-                   class="block px-3 py-2 mt-2 rounded-lg text-sm text-gray-600 border-t border-gray-100 hover:bg-gray-50">
+                   class="block px-3 py-2 mt-2 rounded-lg text-sm text-gray-600 border-t border-sand hover:bg-gray-50">
                     Портал — табла на фирмата
                 </a>
             @endif

@@ -65,7 +65,7 @@
             </tbody>
             @if ($costs->isNotEmpty())
                 <tfoot>
-                    <tr class="border-t border-gray-200 font-semibold text-gray-800">
+                    <tr class="border-t border-sand font-semibold text-gray-800">
                         <td class="py-1" colspan="2">Вкупно {{ $workingYear }}</td>
                         <td class="py-1 text-right">{{ \App\Support\Format::money($total) }}</td>
                         <td class="py-1" colspan="2"></td>

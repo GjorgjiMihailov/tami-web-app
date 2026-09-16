@@ -25,7 +25,17 @@ export default {
                     dark: '#cc5200',
                 },
                 canvas: {
-                    DEFAULT: '#FFF8F3',
+                    DEFAULT: '#F5F1EA',
+                },
+                // Тоновите на темната странична лента. Именувани затоа што се
+                // користат на десетина места во sidebar.blade.php, а Tailwind JIT
+                // бара цела низа — `bg-rail` е читливо, `bg-[#1C1A17]` не е.
+                rail: {
+                    DEFAULT: '#1C1A17',
+                    soft: '#2A2724',
+                    line: '#3A352E',
+                    text: '#C9C2B8',
+                    muted: '#8A8177',
                 },
                 // Преземено збор за збор од tailwind.config.js на financebuddy.mk,
                 // за да бидат јавната страница и порталот едно семејство. Таму

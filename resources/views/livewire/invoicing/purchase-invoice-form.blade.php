@@ -45,7 +45,7 @@
         <x-card>
             <h2 class="font-semibold text-gray-700 mb-3">Ставки</h2>
             @foreach ($lines as $index => $line)
-                <div class="flex flex-wrap gap-3 items-end mb-3 pb-3 border-b border-gray-100">
+                <div class="flex flex-wrap gap-3 items-end mb-3 pb-3 border-b border-sand">
                     @if (! empty($line['needs_review']))
                         <div class="w-full">
                             <x-badge status="pending" title="ДДВ стапката не можеше автоматски да се утврди — проверете рачно">⚠ Проверете ДДВ</x-badge>

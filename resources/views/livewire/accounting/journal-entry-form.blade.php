@@ -107,7 +107,7 @@
                         <td class="py-1 pr-2 relative" x-data="journalEntryPicker(jepAccounts, 'lines.{{ $index }}.account_id', @js($accountLabel))" @click.outside="open = false">
                             <input type="text" x-model="query" @focus="open = true" @input="onInput()"
                                    placeholder="Код или име..." class="border-gray-300 rounded-md text-sm w-40" @disabled(! $canEdit) />
-                            <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-gray-200 rounded-md shadow-md mt-1 max-h-48 overflow-y-auto w-64">
+                            <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-sand rounded-md shadow-md mt-1 max-h-48 overflow-y-auto w-64">
                                 <template x-for="item in filtered" :key="item.id">
                                     <div @click="select(item)" class="px-2 py-1 text-sm hover:bg-gray-100 cursor-pointer" x-text="item.label"></div>
                                 </template>
@@ -120,7 +120,7 @@
                         <td class="py-1 pr-2 relative" x-data="journalEntryPicker(jepPartners, 'lines.{{ $index }}.partner_id', @js($partnerLabel))" @click.outside="open = false">
                             <input type="text" x-model="query" @focus="open = true" @input="onInput()"
                                    placeholder="Партнер..." class="border-gray-300 rounded-md text-sm w-40" @disabled(! $canEdit) />
-                            <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-gray-200 rounded-md shadow-md mt-1 max-h-48 overflow-y-auto w-64">
+                            <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-sand rounded-md shadow-md mt-1 max-h-48 overflow-y-auto w-64">
                                 <template x-for="item in filtered" :key="item.id">
                                     <div @click="select(item)" class="px-2 py-1 text-sm hover:bg-gray-100 cursor-pointer" x-text="item.label"></div>
                                 </template>
@@ -166,7 +166,7 @@
         <div class="md:hidden space-y-3 mb-4">
             @foreach ($lines as $index => $line)
                 @php $isLate = $line['line_date'] > $entryDate; @endphp
-                <div wire:key="m-line-{{ $line['_key'] }}" class="border border-gray-200 rounded-xl p-3 text-sm {{ $isLate ? 'bg-red-50' : '' }}">
+                <div wire:key="m-line-{{ $line['_key'] }}" class="border border-sand rounded-xl p-3 text-sm {{ $isLate ? 'bg-red-50' : '' }}">
                     <div class="flex justify-between items-start mb-2">
                         <span class="font-medium text-gray-500">Ставка {{ $index + 1 }}</span>
                         @if ($canEdit)
@@ -182,7 +182,7 @@
                             @endphp
                             <div x-data="journalEntryPicker(jepAccounts, 'lines.{{ $index }}.account_id', @js($mobileAccountLabel))" @click.outside="open = false" class="relative">
                                 <input type="text" x-model="query" @focus="open = true" @input="onInput()" class="border-gray-300 rounded-md text-sm w-full" @disabled(! $canEdit) />
-                                <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-gray-200 rounded-md shadow-md mt-1 max-h-40 overflow-y-auto w-full">
+                                <div x-show="open && filtered.length" x-cloak class="absolute z-10 bg-white border border-sand rounded-md shadow-md mt-1 max-h-40 overflow-y-auto w-full">
                                     <template x-for="item in filtered" :key="item.id">
                                         <div @click="select(item)" class="px-2 py-1 text-sm hover:bg-gray-100 cursor-pointer" x-text="item.label"></div>
                                     </template>
@@ -219,7 +219,7 @@
         @endif
 
         @php $isBalanced = bccomp((string) $totalDebit, (string) $totalCredit, 2) === 0; @endphp
-        <div class="sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 flex flex-wrap justify-end gap-6 text-sm font-semibold {{ $isBalanced ? 'text-gray-800' : 'text-red-600' }}">
+        <div class="sticky bottom-0 bg-white border-t border-sand px-4 py-3 flex flex-wrap justify-end gap-6 text-sm font-semibold {{ $isBalanced ? 'text-gray-800' : 'text-red-600' }}">
             <span>Вкупно должи: {{ \App\Support\Format::money($totalDebit) }}</span>
             <span>Вкупно побарува: {{ \App\Support\Format::money($totalCredit) }}</span>
             <span>Салдо: {{ \App\Support\Format::money($totalDebit - $totalCredit) }}</span>

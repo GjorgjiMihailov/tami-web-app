@@ -60,7 +60,7 @@
                                     </div>
                                     <div x-data="incomingEfakturaReject({{ $document->id }})" class="inline-block align-top">
                                         <button type="button" @click="open = !open" class="text-red-600 hover:underline">Одбиј</button>
-                                        <div x-show="open" class="mt-2 p-2 border border-gray-200 rounded-md bg-gray-50 w-64">
+                                        <div x-show="open" class="mt-2 p-2 border border-sand rounded-md bg-gray-50 w-64">
                                             <select x-model="reasonCode" class="border-gray-300 rounded-md text-sm w-full mb-1">
                                                 <option value="">Избери причина...</option>
                                                 @foreach (\App\Models\IncomingEfakturaDocument::REJECT_REASONS as $code => $label)
