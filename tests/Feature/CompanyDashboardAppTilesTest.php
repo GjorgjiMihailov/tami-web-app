@@ -35,7 +35,7 @@ class CompanyDashboardAppTilesTest extends TestCase
         $response->assertOk();
         $response->assertSee('Продажба');
         $response->assertSee('Финансии');
-        $response->assertSee('Плата');
+        $response->assertSee('Плати');
     }
 
     public function test_a_switched_off_module_has_no_tile(): void

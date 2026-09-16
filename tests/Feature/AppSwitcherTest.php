@@ -84,7 +84,7 @@ class AppSwitcherTest extends TestCase
             ->assertSee('АПЛИКАЦИИ')
             ->assertSee('Продажба')
             ->assertSee('Финансии')
-            ->assertSee('Плата');
+            ->assertSee('Плати');
     }
 
     public function test_the_panel_omits_an_app_the_client_may_not_open_on_a_real_page(): void
@@ -99,6 +99,6 @@ class AppSwitcherTest extends TestCase
             ->assertSee('АПЛИКАЦИИ')
             ->assertSee('Продажба')
             ->assertDontSee('Финансии')
-            ->assertDontSee('Плата');
+            ->assertDontSee('Плати');
     }
 }

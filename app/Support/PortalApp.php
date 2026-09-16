@@ -24,7 +24,7 @@ enum PortalApp: string
             self::PORTAL => 'Портал',
             self::PRODAZBA => 'Продажба',
             self::FINANSII => 'Финансии',
-            self::PLATA => 'Плата',
+            self::PLATA => 'Плати',
         };
     }
 

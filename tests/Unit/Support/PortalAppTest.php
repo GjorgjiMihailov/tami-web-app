@@ -44,7 +44,7 @@ class PortalAppTest extends TestCase
     {
         $this->assertSame('Продажба', PortalApp::PRODAZBA->label());
         $this->assertSame('Финансии', PortalApp::FINANSII->label());
-        $this->assertSame('Плата', PortalApp::PLATA->label());
+        $this->assertSame('Плати', PortalApp::PLATA->label());
         $this->assertSame('Портал', PortalApp::PORTAL->label());
     }
 }
