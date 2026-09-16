@@ -985,7 +985,7 @@ Expected: FAIL — `Property [$paperNumber] not found on component`
 Во `resources/views/livewire/invoicing/sales-invoice-form.blade.php`, внатре во првата `<x-card class="grid ...">`, веднаш по блокот за `dueDate`:
 
 ```blade
-                @if ($paperNumber !== '' || $scanRead ?? false)
+                @if ($paperNumber !== '' || ($scanRead ?? false))
                     <div>
                         <x-input-label for="paperNumber" value="Број од фактурата" />
                         <x-text-input id="paperNumber" type="text" wire:model="paperNumber" class="w-full" />
@@ -995,7 +995,10 @@ Expected: FAIL — `Property [$paperNumber] not found on component`
                 @endif
 ```
 
-`$scanRead` доаѓа во задача 4; `?? false` го држи екранот исправен дотогаш.
+`$scanRead` доаѓа во задача 4; `($scanRead ?? false)` го држи екранот исправен
+дотогаш. Заградите се задолжителни: во PHP `||` врзува посилно од `??`, па без
+нив условот се чита како `($paperNumber !== '' || $scanRead) ?? false` и
+непостоечката променлива сепак се пресметува.
 
 - [ ] **Step 6: Пушти ги тестовите**
 
