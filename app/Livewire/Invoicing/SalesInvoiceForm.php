@@ -8,6 +8,7 @@ use App\Models\Partner;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceLine;
 use App\Models\Warehouse;
+use App\Services\DocumentStorage;
 use App\Services\ExchangeRateService;
 use App\Services\Invoicing\ScannedInvoice;
 use App\Services\Invoicing\ScannedInvoiceLine;
@@ -545,6 +546,21 @@ class SalesInvoiceForm extends Component
 
             $this->salesInvoice = $invoice;
         });
+
+        // Качувањето оди по трансакцијата намерно: складот е Google Drive, а
+        // мрежен повик внатре во отворена трансакција ја држи базата заклучена
+        // додека трае. Ако качувањето падне, фактурата е веќе зачувана и
+        // прилогот може да се додаде рачно од екранот на фактурата.
+        if ($this->scanFile !== null && $this->scanRead) {
+            try {
+                DocumentStorage::store($this->salesInvoice, $this->scanFile, 'Invoice', 'Скенирана фактура');
+            } catch (\Throwable $e) {
+                report($e);
+                session()->flash('warning', 'Фактурата е зачувана, но скенот не се прикачи — додај го рачно од екранот на фактурата.');
+            }
+
+            $this->scanFile = null;
+        }
 
         $this->redirect(route('sales-invoices.show', [$this->company, $this->salesInvoice]));
     }
