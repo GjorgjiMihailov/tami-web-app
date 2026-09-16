@@ -54,6 +54,7 @@ class SalesInvoice extends Model
         'language' => 'mk',
         'currency' => 'MKD',
         'exchange_rate' => '1.000000',
+        'payment_type_code' => 'P12',
     ];
 
     protected function casts(): array
