@@ -527,7 +527,26 @@ Expected: FAIL — `test_a_paper_number_survives_confirmation` добива `202
             }
 ```
 
-- [ ] **Step 4: Смени го запишувањето**
+- [ ] **Step 4: Поправи го описот на налогот**
+
+Понатаму во истата метода, `$label` го склопува бројот повторно преку
+`InvoiceNumber::format()`. За фактура со хартиен број `$invoiceNumber` е `null`
+и тоа би фрлило `TypeError` токму во случајот што оваа задача го воведува.
+Замени:
+
+```php
+            $label = 'Invoice '.InvoiceNumber::format($invoice->company, $fiscalYear, $invoiceNumber);
+```
+
+со:
+
+```php
+            $label = 'Invoice '.$formattedNumber;
+```
+
+На обичните фактури тоа е иста вредност, па однесувањето таму не се менува.
+
+- [ ] **Step 5: Смени го запишувањето**
 
 Во истата метода, во `$invoice->update([...])` (околу линија 143), замени ги двете линии:
 
@@ -543,17 +562,17 @@ Expected: FAIL — `test_a_paper_number_survives_confirmation` добива `202
                 'invoice_number_formatted' => $formattedNumber,
 ```
 
-- [ ] **Step 5: Пушти ги тестовите**
+- [ ] **Step 6: Пушти ги тестовите**
 
 Run: `php artisan test tests/Feature/Invoicing/SalesInvoicePaperNumberTest.php`
 Expected: PASS — 5 тестa
 
-- [ ] **Step 6: Пушти ги постоечките тестови за фактури да не е скршено нешто**
+- [ ] **Step 7: Пушти ги постоечките тестови за фактури да не е скршено нешто**
 
 Run: `php artisan test --filter=SalesInvoice`
 Expected: PASS
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add app/Services/Invoicing/SalesInvoiceService.php tests/Feature/Invoicing/SalesInvoicePaperNumberTest.php
