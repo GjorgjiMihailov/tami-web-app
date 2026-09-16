@@ -1072,6 +1072,14 @@ class SalesInvoiceScanReadTest extends TestCase
     {
         $user = User::factory()->create(['company_id' => $company->id]);
         $user->assignRole($role);
+
+        // Сметководителот ја гледа фирмата само преку врската accountants —
+        // на клиентот му е доволно company_id. Без ова mount() враќа 403 и
+        // тестот паѓа од погрешна причина.
+        if ($role === 'accountant') {
+            $company->accountants()->attach($user->id);
+        }
+
         $this->actingAs($user);
 
         return $user;
