@@ -36,6 +36,8 @@
                     , {{ $suggestedPartner['street_address'] }} {{ $suggestedPartner['street_number'] }}, {{ $suggestedPartner['postal_code'] }} {{ $suggestedPartner['city'] }}
                 @endif
             </p>
+            @error('suggestedPartner.name') <p class="mt-1 text-red-600">{{ $message }}</p> @enderror
+            @error('suggestedPartner.tax_id') <p class="mt-1 text-red-600">{{ $message }}</p> @enderror
             <x-secondary-button type="button" wire:click="createSuggestedPartner" class="mt-2">Создај партнер</x-secondary-button>
         </div>
     @endif

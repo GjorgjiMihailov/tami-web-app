@@ -255,6 +255,10 @@ class SalesInvoiceForm extends Component
 
         $this->resetErrorBag('scanFile');
         $this->scanWarnings = [];
+        // Неуспешно читање излегува пред `applyScan()` да стигне да го исчисти —
+        // понудениот партнер од претходен, успешен скен не смее да преживее
+        // на екранот и да се создаде со клик на застарени податоци.
+        $this->suggestedPartner = null;
 
         $this->validate([
             'scanFile' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
@@ -280,6 +284,14 @@ class SalesInvoiceForm extends Component
         if ($this->suggestedPartner === null) {
             return;
         }
+
+        // Истите правила што важат за рачно внесување партнер (PartnerIndex) —
+        // непрочитано или предолго име од АИ не смее да заобиколи проверка
+        // што важи насекаде во шифрарникот, ниту да падне со грешка на база.
+        $this->validate([
+            'suggestedPartner.name' => 'required|string|max:255',
+            'suggestedPartner.tax_id' => 'required|string|max:255',
+        ]);
 
         $partner = Partner::create([
             'company_id' => $this->company->id,
@@ -364,20 +376,47 @@ class SalesInvoiceForm extends Component
 
         // Проверка 3: сметката мора да се сложи. Пресметаното од ставките се
         // спротивставува со вкупното испишано на хартијата — најсилната
-        // заштита од погрешно прочитана бројка.
+        // заштита од погрешно прочитана бројка. Секоја бројка од скенот е
+        // непроверен текст од АИ-модел — bcmath и decimal-кастот фрлаат
+        // исклучок на нешто како „1.180,00", а тивко превртено во float би
+        // ѝ покажало на сметководителката измислена бројка. Прво се проверува
+        // дека секоја бројка е читлива; ако не е, се предупредува без да се
+        // пресметува или прикажува ништо.
         if (filled($scanned->printedTotal)) {
+            $printed = $this->usableAmount($scanned->printedTotal);
+            $unreadable = $printed === null;
             $computed = '0.00';
 
             foreach ($this->lines as $line) {
-                $net = bcmul((string) $line['unit_price'], (string) $line['quantity'], 4);
-                $vat = bcdiv(bcmul($net, (string) $line['vat_rate'], 4), '100', 4);
-                $computed = bcadd($computed, bcadd($net, $vat, 4), 4);
+                if ($unreadable) {
+                    break;
+                }
+
+                $unitPrice = $this->usableAmount((string) $line['unit_price']);
+                $quantity = $this->usableAmount((string) $line['quantity']);
+                $vatRate = $this->usableAmount((string) $line['vat_rate']);
+
+                if ($unitPrice === null || $quantity === null || $vatRate === null) {
+                    $unreadable = true;
+
+                    break;
+                }
+
+                // Иста аритметика (scale 10, заокружување half-up на 2) со која
+                // веќе смета `SalesInvoiceLine` — вкупното мора да се совпадне
+                // со она што ќе го носи потврдената фактура, не приближно.
+                $lineModel = new SalesInvoiceLine([
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'vat_rate' => $vatRate,
+                ]);
+
+                $computed = bcadd($computed, bcadd($lineModel->lineTotal(), $lineModel->vatAmount(), 2), 2);
             }
 
-            $computed = number_format((float) $computed, 2, '.', '');
-            $printed = number_format((float) $scanned->printedTotal, 2, '.', '');
-
-            if (abs((float) $computed - (float) $printed) > 1.0) {
+            if ($unreadable) {
+                $this->scanWarnings[] = 'Некои бројки од скенот не можеа да се прочитаат — провери ги ставките и вкупниот износ рачно.';
+            } elseif (abs((float) $computed - (float) $printed) > 1.0) {
                 $this->scanWarnings[] = "Пресметаното вкупно е {$computed}, а на скенот пишува {$printed} — провери ги ставките.";
             }
         }
@@ -522,5 +561,23 @@ class SalesInvoiceForm extends Component
     private function digits(string $value): string
     {
         return preg_replace('/\D+/', '', $value) ?? '';
+    }
+
+    /**
+     * Бројка прочитана од скен е непроверен текст од АИ-модел — може да носи
+     * илјадници одвоени со точка, запирка наместо точка, или воопшто да не
+     * личи на број. bcmath и decimal-кастот на моделите фрлаат исклучок на
+     * таква низа, па се проверува овде, пред да стигне до нив. Враќа
+     * нормализирана бројка или null ако низата не личи на број.
+     */
+    private function usableAmount(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '' || ! preg_match('/^-?\d+(\.\d+)?$/', $value)) {
+            return null;
+        }
+
+        return $value;
     }
 }

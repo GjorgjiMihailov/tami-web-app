@@ -6,6 +6,7 @@ use App\Livewire\Invoicing\SalesInvoiceForm;
 use App\Models\Company;
 use App\Models\Partner;
 use App\Models\User;
+use App\Models\SalesInvoiceLine;
 use App\Services\Invoicing\ScannedInvoice;
 use App\Services\Invoicing\ScannedInvoiceLine;
 use App\Services\Invoicing\ScannedInvoiceReader;
@@ -160,5 +161,111 @@ class SalesInvoiceScanChecksTest extends TestCase
         );
 
         $this->assertSame([], $this->read($company)->get('scanWarnings'));
+    }
+
+    public function test_a_malformed_line_amount_warns_instead_of_crashing(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            printedTotal: '1180.00',
+            // Илјадници одвоени со точка, запирка наместо децимална точка —
+            // токму она што bcmath и decimal-кастот на моделите го фрлаат со
+            // исклучок наместо да го прочитаат.
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1.180,00', '18')],
+        );
+
+        $warnings = implode(' ', $this->read($company)->get('scanWarnings'));
+
+        $this->assertStringContainsString('не можеа да се прочитаат', $warnings);
+        // Не смее да се прикаже измислена бројка добиена од погрешно
+        // парсирана низа (пр. „1.180,00" превртено во float дава 1.18).
+        $this->assertStringNotContainsString('1.18', $warnings);
+    }
+
+    public function test_an_unusable_printed_total_warns_instead_of_crashing(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            printedTotal: 'N/A',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $warnings = implode(' ', $this->read($company)->get('scanWarnings'));
+
+        $this->assertStringContainsString('не можеа да се прочитаат', $warnings);
+    }
+
+    public function test_the_computed_total_matches_the_saved_invoice_rounding(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            // Намерно погрешно вкупно, за проверката да предупреди и да ја
+            // покаже точната пресметана бројка во пораката.
+            printedTotal: '90.00',
+            lines: [new ScannedInvoiceLine('Услуга', '3', '33.335', '0')],
+        );
+
+        // Истата аритметика што ја користи и зачувана фактура — decimal-кастот
+        // прво го заокружува единечната цена (33.335 → 33.34), па дури тогаш
+        // множи со количината. Наивно bcmul пред заокружување би дало 100.01.
+        $expectedLine = new SalesInvoiceLine(['quantity' => '3', 'unit_price' => '33.335', 'vat_rate' => '0']);
+        $expected = bcadd($expectedLine->lineTotal(), $expectedLine->vatAmount(), 2);
+        $this->assertSame('100.02', $expected);
+
+        $warnings = implode(' ', $this->read($company)->get('scanWarnings'));
+
+        $this->assertStringContainsString($expected, $warnings);
+    }
+
+    public function test_an_unnamed_buyer_is_not_created(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            buyerName: null,
+            buyerTaxId: '4080055555555',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $component = $this->read($company);
+
+        $component->call('createSuggestedPartner')
+            ->assertHasErrors(['suggestedPartner.name']);
+
+        $this->assertDatabaseMissing('partners', ['tax_id' => '4080055555555']);
+        $component->assertSet('partnerId', '')
+            ->assertSet('suggestedPartner.tax_id', '4080055555555');
+    }
+
+    public function test_a_failed_read_after_a_successful_one_clears_the_suggested_partner(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            buyerName: 'Нов Купувач ДООЕЛ',
+            buyerTaxId: '4080055555555',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $component = $this->read($company);
+        $component->assertSet('suggestedPartner.name', 'Нов Купувач ДООЕЛ');
+
+        FakeScannedInvoiceReader::$next = null;
+        FakeScannedInvoiceReader::$throws = new \RuntimeException('симулиран пад на читањето');
+
+        $component->set('scanFile', UploadedFile::fake()->create('faktura2.pdf', 200, 'application/pdf'))
+            ->call('readScan')
+            ->assertHasErrors('scanFile')
+            ->assertSet('suggestedPartner', null);
     }
 }
