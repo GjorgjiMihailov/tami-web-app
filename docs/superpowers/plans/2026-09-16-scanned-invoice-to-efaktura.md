@@ -45,7 +45,7 @@
 - Produces:
   - `App\Services\Invoicing\ScannedInvoiceLine` — readonly: `?string $description`, `?string $quantity`, `?string $unitPrice`, `?string $vatRate`
   - `App\Services\Invoicing\ScannedInvoice` — readonly: `?string $sellerTaxId`, `?string $buyerName`, `?string $buyerTaxId`, `?string $buyerStreetAddress`, `?string $buyerStreetNumber`, `?string $buyerPostalCode`, `?string $buyerCity`, `?string $invoiceNumber`, `?string $invoiceDate` (`Y-m-d`), `?string $dueDate` (`Y-m-d`), `?string $currency`, `?string $printedTotal`, `array $lines` (`ScannedInvoiceLine[]`)
-  - `App\Services\Invoicing\ScannedInvoiceReader` — `read(TemporaryUploadedFile $file, Company $company): ScannedInvoice`
+  - `App\Services\Invoicing\ScannedInvoiceReader` — `read(UploadedFile $file, Company $company): ScannedInvoice`
   - `App\Services\Invoicing\ScannedInvoiceReadException extends \RuntimeException`
   - `Tests\Support\FakeScannedInvoiceReader` — `public static ?ScannedInvoice $next = null;` и `public static ?\Throwable $throws = null;`
   - `config('services.anthropic.key')`
@@ -198,7 +198,7 @@ final readonly class ScannedInvoice
 namespace App\Services\Invoicing;
 
 use App\Models\Company;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Единствениот влез кон читањето на скен.
@@ -211,7 +211,7 @@ interface ScannedInvoiceReader
     /**
      * @throws ScannedInvoiceReadException кога фајлот не може да се прочита
      */
-    public function read(TemporaryUploadedFile $file, Company $company): ScannedInvoice;
+    public function read(UploadedFile $file, Company $company): ScannedInvoice;
 }
 ```
 
@@ -239,7 +239,7 @@ namespace Tests\Support;
 use App\Models\Company;
 use App\Services\Invoicing\ScannedInvoice;
 use App\Services\Invoicing\ScannedInvoiceReader;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Читач за тестови. Статичките полиња се чистат во `setUp()` на секој тест што
@@ -257,7 +257,7 @@ class FakeScannedInvoiceReader implements ScannedInvoiceReader
         self::$throws = null;
     }
 
-    public function read(TemporaryUploadedFile $file, Company $company): ScannedInvoice
+    public function read(UploadedFile $file, Company $company): ScannedInvoice
     {
         if (self::$throws !== null) {
             throw self::$throws;
@@ -307,7 +307,7 @@ ANTHROPIC_API_KEY=
 namespace App\Services\Invoicing;
 
 use App\Models\Company;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Читачот што не чита ништо.
@@ -318,7 +318,7 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
  */
 class NullScannedInvoiceReader implements ScannedInvoiceReader
 {
-    public function read(TemporaryUploadedFile $file, Company $company): ScannedInvoice
+    public function read(UploadedFile $file, Company $company): ScannedInvoice
     {
         throw new ScannedInvoiceReadException('Читањето скен не е подесено на овој сервер.');
     }
@@ -1773,7 +1773,7 @@ namespace App\Services\Invoicing;
 use Anthropic\Client;
 use App\Models\Company;
 use Illuminate\Support\Facades\Log;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Го чита скенот преку Claude и го враќа прочитаното како обичен објект.
@@ -1791,7 +1791,7 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
 
     private const OUTPUT_PRICE = 5.0;
 
-    public function read(TemporaryUploadedFile $file, Company $company): ScannedInvoice
+    public function read(UploadedFile $file, Company $company): ScannedInvoice
     {
         $key = config('services.anthropic.key');
 
