@@ -23,11 +23,11 @@
         @if ($this->app() === \App\Support\PortalApp::PORTAL)
             @if (auth()->check() && auth()->user()->hasRole('admin'))
                 <a href="{{ route('dashboard') }}" wire:navigate
-                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'dashboard' ? 'bg-brand text-white' : 'text-rail-text hover:bg-rail-soft' }}">
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'dashboard' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
                     Почетна
                 </a>
                 <a href="{{ route('companies.index') }}" wire:navigate
-                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'companies.index' ? 'bg-brand text-white' : 'text-rail-text hover:bg-rail-soft' }}">
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'companies.index' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
                     Фирми
                 </a>
             @endif
@@ -36,7 +36,7 @@
                  горе со глобалните врски, а не во менито на една фирма. --}}
             @if (auth()->check() && auth()->user()->hasAnyRole(['admin', 'accountant']))
                 <a href="{{ route('form743.worklist') }}" wire:navigate
-                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'form743.worklist' ? 'bg-brand text-white' : 'text-rail-text hover:bg-rail-soft' }}">
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'form743.worklist' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
                     743 обрасци
                 </a>
             @endif
@@ -111,7 +111,7 @@
 
                 @if (! $company->type->isIndividual() && $this->app() === \App\Support\PortalApp::PRODAZBA)
                     <a href="{{ route('documents.index', $company) }}" wire:navigate
-                       class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 mt-1 {{ str_starts_with($currentRoute, 'documents.') ? 'bg-brand text-white' : 'text-rail-text hover:bg-rail-soft' }}">
+                       class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 mt-1 {{ str_starts_with($currentRoute, 'documents.') ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
                         Документи
                     </a>
                 @endif

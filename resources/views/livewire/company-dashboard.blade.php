@@ -3,7 +3,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
             @foreach ($apps as $app)
                 <a href="{{ $app['url'] }}"
-                   class="block rounded-xl border border-sand bg-white p-4 hover:border-stone hover:shadow-sm transition">
+                   class="block rounded-xl border border-sand bg-white p-4 hover:border-stone hover:shadow-sm press">
                     <div class="text-sm font-semibold {{ $app['accent'] }}">{{ $app['label'] }}</div>
                     <div class="text-xs text-gray-500 mt-1">Отвори ја апликацијата</div>
                 </a>

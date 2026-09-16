@@ -52,7 +52,7 @@ new class extends Component
 
             @if ($apps !== [])
                 <button type="button" @click="appsOpen = true"
-                        class="inline-flex items-center gap-2 px-3 py-2 me-2 text-xs font-semibold tracking-wide text-gray-600 rounded-lg hover:bg-gray-100 transition">
+                        class="inline-flex items-center gap-2 px-3 py-2 me-2 text-xs font-semibold tracking-wide text-gray-600 rounded-lg hover:bg-gray-100 press">
                     <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M3 3h4v4H3V3zm6 0h4v4H9V3zm6 0h2v4h-2V3zM3 9h4v4H3V9zm6 0h4v4H9V9zm6 0h2v4h-2V9zM3 15h4v2H3v-2zm6 0h4v2H9v-2zm6 0h2v2h-2v-2z" />
                     </svg>
@@ -147,7 +147,7 @@ new class extends Component
 
             @foreach ($apps as $app)
                 <a href="{{ $app['url'] }}"
-                   class="flex items-center justify-between px-3 py-2 rounded-lg text-sm {{ $app['key'] === $currentApp ? 'bg-orange-50 font-semibold' : 'hover:bg-gray-50' }}">
+                   class="flex items-center justify-between px-3 py-2 rounded-lg text-sm {{ $app['key'] === $currentApp ? 'bg-orange-50 font-semibold press' : 'hover:bg-gray-50 press' }}">
                     <span class="{{ $app['accent'] }}">{{ $app['label'] }}</span>
                     @if ($app['key'] === $currentApp)
                         <span class="text-[10px] uppercase tracking-wide text-gray-400">тука си</span>
@@ -162,12 +162,12 @@ new class extends Component
                  нема каде смислено да се прати, па линкот отсуствува. --}}
             @if (auth()->user()->hasRole('admin'))
                 <a href="{{ route('companies.index') }}"
-                   class="block px-3 py-2 mt-2 rounded-lg text-sm text-gray-600 border-t border-sand hover:bg-gray-50">
+                   class="block px-3 py-2 mt-2 rounded-lg text-sm text-gray-600 border-t border-sand hover:bg-gray-50 press">
                     Портал — фирми и поставки
                 </a>
             @elseif ($company !== null)
                 <a href="{{ route('companies.dashboard', $company) }}"
-                   class="block px-3 py-2 mt-2 rounded-lg text-sm text-gray-600 border-t border-sand hover:bg-gray-50">
+                   class="block px-3 py-2 mt-2 rounded-lg text-sm text-gray-600 border-t border-sand hover:bg-gray-50 press">
                     Портал — табла на фирмата
                 </a>
             @endif

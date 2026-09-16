@@ -58,4 +58,12 @@ class SidebarLookTest extends TestCase
         $this->assertStringNotContainsString('wire:click="toggleGroup', $html, 'Отворањето е во прелистувачот.');
         $this->assertStringContainsString('x-collapse', $html, 'Групата се отвора со лизгање.');
     }
+
+    public function test_the_app_tiles_react_to_the_pointer(): void
+    {
+        $html = $this->dashboard();
+
+        // Класата, не голиот збор „press" — тој се појавува и во друг текст.
+        $this->assertStringContainsString('hover:shadow-sm press', $html, 'Плочките реагираат на клик.');
+    }
 }

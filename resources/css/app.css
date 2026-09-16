@@ -87,3 +87,30 @@
         animation: none;
     }
 }
+
+/*
+ * Лесно стискање при клик. Пишано како обична класа, а не како Tailwind
+ * помошни класи, за да стои на едно место и да се гаси со едно правило подолу.
+ */
+.press {
+    transition: transform 120ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out;
+}
+
+.press:active {
+    transform: scale(0.98);
+}
+
+/*
+ * Кој исклучил анимации во системот, ги добива екраните без нив. Ова важи и за
+ * фиоката и за лизгањето на групите во менито.
+ */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
