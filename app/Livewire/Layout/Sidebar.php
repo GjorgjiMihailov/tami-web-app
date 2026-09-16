@@ -75,17 +75,6 @@ class Sidebar extends Component
         return PortalApp::from($this->appKey);
     }
 
-    // One string, computed here rather than split across a Blade @if between
-    // two {{ }} echoes: Livewire wraps every @if block in
-    // <!--[if BLOCK]><![endif]--> HTML comments for its DOM-diffing, even on
-    // the very first render — so "{{ a }}@if(...) {{ b }}@endif" renders as
-    // "a<!--comment--> b<!--comment-->", not "a b", and assertSee('a b')
-    // never matches.
-    public function toggleGroup(string $group): void
-    {
-        $this->expandedGroup = $this->expandedGroup === $group ? null : $group;
-    }
-
     public function isActive(string $pattern): bool
     {
         return $pattern !== '' && Str::is($pattern, $this->currentRoute);

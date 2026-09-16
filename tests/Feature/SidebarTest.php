@@ -151,9 +151,13 @@ class SidebarTest extends TestCase
         $response = $this->get(route('accounting.accounts.index', $company));
         $response->assertOk();
 
+        // Откако лизгањето е во прелистувачот, ставките на СИТЕ групи се во
+        // HTML (скриени со x-show), па отворената група се чита од почетната
+        // состојба на Alpine, не од отсуството на врските на другите групи.
         $sidebar = $this->extractSidebarHtml($response->getContent());
         $this->assertStringContainsString(route('accounting.accounts.index', $company), $sidebar);
-        $this->assertStringNotContainsString(route('accounting.journal-groups.index', $company), $sidebar);
+        $this->assertStringContainsString('data-group="finance-settings" x-data="{ open: true }"', $sidebar);
+        $this->assertStringContainsString('data-group="finance" x-data="{ open: false }"', $sidebar);
     }
 
     /**
@@ -175,21 +179,25 @@ class SidebarTest extends TestCase
 
         $sidebar = $this->extractSidebarHtml($response->getContent());
         $this->assertStringContainsString(route('invoice-settings.index', $company), $sidebar);
-        $this->assertStringNotContainsString(route('sales-invoices.index', $company), $sidebar);
+        $this->assertStringContainsString('data-group="sales-settings" x-data="{ open: true }"', $sidebar);
+        $this->assertStringContainsString('data-group="sales" x-data="{ open: false }"', $sidebar);
     }
 
-    public function test_clicking_a_different_group_collapses_the_previous_one(): void
+    /**
+     * Отворањето и затворањето на групите е во прелистувачот (Alpine) од
+     * 2026-09-16, па серверот повеќе не го менува. Она што серверот сè уште
+     * го прави е да ја одреди групата што е отворена при влегување.
+     */
+    public function test_the_group_of_the_current_screen_starts_open(): void
     {
         $company = Company::factory()->create();
         $this->actingAs($this->admin());
 
         Livewire::test(Sidebar::class, ['company' => $company])
-            ->call('toggleGroup', 'finance')
-            ->assertSet('expandedGroup', 'finance')
-            ->call('toggleGroup', 'stock')
-            ->assertSet('expandedGroup', 'stock')
-            ->call('toggleGroup', 'stock')
             ->assertSet('expandedGroup', null);
+
+        $this->get(route('inventory.items.index', $company))
+            ->assertSee('data-group="stock" x-data="{ open: true }"', false);
     }
 
     public function test_the_stock_group_is_flat_with_no_third_level(): void
@@ -352,30 +360,31 @@ class SidebarTest extends TestCase
         );
     }
 
-    public function test_toggling_a_group_via_livewire_still_shows_the_company_after_the_request(): void
+    public function test_choosing_a_working_year_via_livewire_still_shows_the_company_after_the_request(): void
     {
         $company = Company::factory()->create();
         $this->actingAs($this->admin());
 
         // First request: a real full page load, exactly like a user visiting a company page.
         // The Sidebar component mounts here with a real 'company' route parameter bound.
-        // Uses a prodazba-app page: the 'stock' group toggled below now belongs to that
-        // app only, and the /livewire/update POST below must land on the same host.
-        // sales-invoices.index auto-expands the 'sales' group, not 'stock', so the
-        // toggleGroup('stock') call below actually opens it rather than closing it.
+        // Uses a prodazba-app page so that the /livewire/update POST below lands on the
+        // same host — the sidebar's menu depends on which app it is rendered for.
         $html = $this->get(route('sales-invoices.index', $company))->getContent();
         $snapshot = $this->extractSidebarSnapshot($html);
 
-        // Second request: the real /livewire/update AJAX call the browser sends when a
-        // sidebar toggle button is clicked, replaying the Sidebar component's own snapshot.
-        // This exercises the actual request boundary a click crosses in production —
-        // unlike Livewire::test(), which only ever mounts against a synthetic dummy route.
+        // Second request: the real /livewire/update AJAX call the browser sends when the
+        // working year is chosen, replaying the Sidebar component's own snapshot. This
+        // exercises the actual request boundary a click crosses in production — unlike
+        // Livewire::test(), which only ever mounts against a synthetic dummy route.
+        // The defect this guards: the company was lost across that boundary, so every
+        // link in the sidebar came back broken. Group toggling used to cross it too;
+        // since that moved into the browser, the working year is what remains.
         $response = $this->withHeaders(['X-Livewire' => 'true'])
             ->postJson(app('livewire')->getUpdateUri(), [
                 'components' => [[
                     'snapshot' => $snapshot,
-                    'calls' => [['path' => '', 'method' => 'toggleGroup', 'params' => ['stock']]],
-                    'updates' => [],
+                    'updates' => ['workingYear' => (string) now()->year],
+                    'calls' => [],
                 ]],
             ]);
 

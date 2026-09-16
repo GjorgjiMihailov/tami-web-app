@@ -50,4 +50,12 @@ class SidebarLookTest extends TestCase
         $this->assertStringContainsString('bg-rail', $html, 'Страничната лента е темна.');
         $this->assertStringContainsString('text-rail-text', $html);
     }
+
+    public function test_a_group_opens_without_going_to_the_server(): void
+    {
+        $html = $this->dashboard();
+
+        $this->assertStringNotContainsString('wire:click="toggleGroup', $html, 'Отворањето е во прелистувачот.');
+        $this->assertStringContainsString('x-collapse', $html, 'Групата се отвора со лизгање.');
+    }
 }

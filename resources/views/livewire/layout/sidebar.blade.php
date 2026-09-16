@@ -77,15 +77,25 @@
                     </label>
                 </div>
 
+                {{-- Отворањето живее во прелистувачот: секој клик на „+" порано
+                     беше цело барање до серверот, па каква и да е анимацијата
+                     врз тоа, се гледаше како трепкање. Серверот и понатаму
+                     одредува која група е отворена при влегување
+                     ($expandedGroup), а знакот „−/+" го пишува Alpine — во
+                     Blade би останал заглавен на почетната вредност. --}}
                 @foreach ($menu as $group)
-                    <button type="button" wire:click="toggleGroup('{{ $group['key'] }}')"
-                            class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 text-rail-muted hover:bg-rail-soft"
-                            style="width: calc(100% - 1.5rem);">
-                        <span>{{ $group['label'] }}</span>
-                        <span>{{ $expandedGroup === $group['key'] ? '−' : '+' }}</span>
-                    </button>
-                    @if ($expandedGroup === $group['key'])
-                        <div class="pl-6">
+                    {{-- data-group е тука за да може да се провери КОЈА група
+                         е отворена: откако лизгањето е во прелистувачот, сите
+                         групи се во HTML (скриени), па отсуството на врска
+                         повеќе не значи затворена група. --}}
+                    <div data-group="{{ $group['key'] }}" x-data="{ open: @js($expandedGroup === $group['key']) }">
+                        <button type="button" @click="open = ! open"
+                                class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 text-rail-muted hover:bg-rail-soft transition-colors duration-150"
+                                style="width: calc(100% - 1.5rem);">
+                            <span>{{ $group['label'] }}</span>
+                            <span x-text="open ? '−' : '+'"></span>
+                        </button>
+                        <div x-show="open" x-collapse class="pl-6">
                             @foreach ($group['items'] as $item)
                                 <a href="{{ $item['url'] }}" wire:navigate
                                    class="flex items-center gap-2 px-4 py-1.5 text-sm {{ $this->isActive($item['pattern']) ? 'text-brand font-medium' : ($item['soon'] ? 'text-rail-muted hover:text-rail-text' : 'text-rail-text hover:text-white') }}">
@@ -96,7 +106,7 @@
                                 </a>
                             @endforeach
                         </div>
-                    @endif
+                    </div>
                 @endforeach
 
                 @if (! $company->type->isIndividual() && $this->app() === \App\Support\PortalApp::PRODAZBA)
