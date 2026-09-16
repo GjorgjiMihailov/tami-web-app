@@ -2,7 +2,7 @@
 <html lang="mk">
 <head>
     <meta charset="utf-8">
-    <title>{{ $title }} — Тами</title>
+    <title>{{ $title }} — ТАМИ</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center">
