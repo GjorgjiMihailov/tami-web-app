@@ -20,14 +20,21 @@ class AppShellTest extends TestCase
         $response->assertSee('min-h-screen flex bg-canvas', false);
     }
 
-    public function test_sidebar_is_light_not_dark(): void
+    /**
+     * Лентата е темна од 2026-09-16, но темата НЕ е цела темна: содржината и
+     * горната лента остануваат светли. Тестот порано го чуваше обратното
+     * („сајдбарот е светол"); пренасочен е на границата што сè уште важи.
+     */
+    public function test_the_rail_is_dark_but_the_content_stays_light(): void
     {
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee('bg-white border-r border-gray-100', false);
+        $response->assertSee('bg-rail border-r border-rail-line', false);
+        $response->assertSee('min-h-screen flex bg-canvas', false);
+        $response->assertSee('bg-white border-b border-sand', false);
     }
 
     public function test_the_sidebar_is_an_off_canvas_drawer_driven_by_one_alpine_flag(): void
