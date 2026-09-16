@@ -9,6 +9,9 @@ use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceLine;
 use App\Models\Warehouse;
 use App\Services\ExchangeRateService;
+use App\Services\Invoicing\ScannedInvoice;
+use App\Services\Invoicing\ScannedInvoiceLine;
+use App\Services\Invoicing\ScannedInvoiceReader;
 use App\Support\InvoiceLanguage;
 use App\Support\WorkingYear;
 use Illuminate\Support\Carbon;
@@ -17,10 +20,13 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('layouts.app')]
 class SalesInvoiceForm extends Component
 {
+    use WithFileUploads;
+
     public Company $company;
 
     public ?SalesInvoice $salesInvoice = null;
@@ -43,6 +49,17 @@ class SalesInvoiceForm extends Component
      * печатената фактура и кон УЈП.
      */
     public string $paperNumber = '';
+
+    public $scanFile = null;
+
+    /**
+     * Дали формата е пополнета од скен. Го отклучува полето за хартиениот број
+     * и жолтата лента „провери пред потврда“.
+     */
+    public bool $scanRead = false;
+
+    /** @var string[] Предупредувања од проверките врз прочитаното. */
+    public array $scanWarnings = [];
 
     public string $paymentTypeCode = 'P12';
 
@@ -207,6 +224,89 @@ class SalesInvoiceForm extends Component
 
         if ($treatment !== 'standard') {
             $this->lines[$index]['vat_rate'] = '0.00';
+        }
+    }
+
+    /**
+     * Читањето чини пари од буџетот на канцеларијата, па клиентите остануваат
+     * надвор иако смеат да создаваат фактури. Без клуч функцијата воопшто ја
+     * нема — сервер без клуч работи како досега.
+     */
+    public function canReadScans(): bool
+    {
+        return filled(config('services.anthropic.key'))
+            && auth()->user()?->hasAnyRole(['admin', 'accountant']);
+    }
+
+    public function readScan(): void
+    {
+        abort_unless($this->canReadScans(), 403);
+
+        $this->resetErrorBag('scanFile');
+        $this->scanWarnings = [];
+
+        $this->validate([
+            'scanFile' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+        ]);
+
+        try {
+            $scanned = app(ScannedInvoiceReader::class)->read($this->scanFile, $this->company);
+        } catch (\Throwable $e) {
+            report($e);
+            $this->addError('scanFile', 'Не можев да ја прочитам фактурата — внеси ја рачно.');
+
+            return;
+        }
+
+        $this->applyScan($scanned);
+        $this->scanRead = true;
+    }
+
+    /**
+     * Прочитаното се прелива во формата. Секое поле е незадолжително: ако Claude
+     * не прочитал нешто, старата вредност останува и човекот ја дополнува.
+     */
+    private function applyScan(ScannedInvoice $scanned): void
+    {
+        if (filled($scanned->invoiceNumber)) {
+            $this->paperNumber = substr($scanned->invoiceNumber, 0, 40);
+        }
+
+        if (filled($scanned->invoiceDate)) {
+            $this->invoiceDate = $scanned->invoiceDate;
+        }
+
+        if (filled($scanned->dueDate)) {
+            $this->dueDate = $scanned->dueDate;
+        }
+
+        if (filled($scanned->currency) && in_array($scanned->currency, SalesInvoice::CURRENCIES, true)) {
+            $this->currency = $scanned->currency;
+        }
+
+        if (filled($scanned->buyerTaxId)) {
+            $partner = Partner::where('company_id', $this->company->id)
+                ->where('tax_id', $scanned->buyerTaxId)
+                ->first();
+
+            if ($partner) {
+                $this->partnerId = (string) $partner->id;
+            }
+        }
+
+        if ($scanned->lines !== []) {
+            $this->lines = array_map(fn (ScannedInvoiceLine $line) => [
+                // Ставките од скен се секогаш слободен текст. Врзувањето за
+                // артикл од шифрарникот би повлекло и поместување залиха за
+                // стока што веќе е издадена надвор од Тами.
+                'item_id' => '',
+                'description' => (string) $line->description,
+                'quantity' => filled($line->quantity) ? $line->quantity : '1',
+                'unit_price' => filled($line->unitPrice) ? $line->unitPrice : '0',
+                'vat_rate' => filled($line->vatRate) ? $line->vatRate : '0.00',
+                // Ослободувањата и преносот на обврска не ги погодува машина.
+                'vat_treatment' => 'standard',
+            ], $scanned->lines);
         }
     }
 

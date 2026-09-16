@@ -3,6 +3,30 @@
         {{ $salesInvoice ? 'Измени нацрт фактура' : 'Нова излезна фактура' }} — {{ $company->name }}
     </h1>
 
+    @if ($this->canReadScans() && ! $salesInvoice)
+        <x-card class="mb-4">
+            <x-input-label for="scanFile" value="Прикачи скенирана фактура" />
+            <p class="text-xs text-gray-500 mt-1 mb-2">PDF, JPG или PNG, до 10 МБ. Тами ќе ја прочита и ќе ги пополни полињата подолу.</p>
+            <div class="flex items-center gap-3">
+                <input id="scanFile" type="file" wire:model="scanFile" accept=".pdf,.jpg,.jpeg,.png" class="text-sm" />
+                <x-secondary-button type="button" wire:click="readScan" wire:loading.attr="disabled" wire:target="readScan,scanFile">
+                    <span wire:loading.remove wire:target="readScan">Прочитај ја фактурата</span>
+                    <span wire:loading wire:target="readScan">Читам…</span>
+                </x-secondary-button>
+            </div>
+            @error('scanFile') <p class="text-red-600 text-sm mt-2">{{ $message }}</p> @enderror
+        </x-card>
+    @endif
+
+    @if ($scanRead)
+        <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Податоците се прочитани од скен — провери ги пред потврда.
+            @foreach ($scanWarnings as $warning)
+                <p class="mt-1 font-semibold">{{ $warning }}</p>
+            @endforeach
+        </div>
+    @endif
+
     <form wire:submit="save" class="space-y-6">
         <x-card class="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
