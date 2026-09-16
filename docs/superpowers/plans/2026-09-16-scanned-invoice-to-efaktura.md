@@ -21,7 +21,7 @@
 - Границата на фајлот е 10 МБ; дозволени видови: `pdf`, `jpg`, `jpeg`, `png`.
 - Прагот за неслагање на збирот е **1 денар**.
 - `invoice_number` останува `null` за фактура со хартиен број. Никогаш не се троши број од серијата.
-- Нема нова миграција: `invoice_number` и `invoice_number_formatted` веќе постојат и се nullable.
+- `invoice_number` и `invoice_number_formatted` веќе постојат и се nullable — не се додаваат нови колони. Единствената миграција во оваа фаза е единствениот индекс во задача 2б (додаден по наод од прегледот на задача 2, одобрен од сопственикот 2026-09-16).
 - Секоја задача завршува со зелена серија за нејзините тест-фајлови и еден commit.
 
 ---
@@ -577,6 +577,189 @@ Expected: PASS
 ```bash
 git add app/Services/Invoicing/SalesInvoiceService.php tests/Feature/Invoicing/SalesInvoicePaperNumberTest.php
 git commit -m "feat: хартиениот број на фактурата преживува потврда
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 2б: Единствен индекс врз испишаниот број
+
+Додадена по наод од прегледот на задача 2. Проверката во `confirm()` користи
+`lockForUpdate()` врз барање што за нов број не наоѓа ниту еден ред — а ред што
+сè уште не постои не може да се заклучи. Две истовремени потврди на ист хартиен
+број можат и двете да поминат, па кон УЈП би заминале две фактури со ист
+`docNumber`. Вистинската брава е во базата.
+
+**Files:**
+- Create: `database/migrations/2026_09_16_100100_add_unique_formatted_number_to_sales_invoices_table.php`
+- Test: `tests/Feature/Invoicing/SalesInvoiceFormattedNumberUniqueIndexTest.php`
+
+**Interfaces:**
+- Consumes: однесувањето на `confirm()` од задача 2.
+- Produces: единствен индекс `sales_invoices_company_year_formatted_unique` врз
+  `(company_id, fiscal_year, invoice_number_formatted)`. Проверката во кодот
+  останува — таа дава читлива порака, индексот е последната брава.
+
+**Зошто индексот не ги погодува нацртите:** `fiscal_year` се полни дури при
+потврда, па секој нацрт има `NULL` таму. И MySQL и SQLite третираат `NULL` како
+различно во единствен индекс, така што два нацрта со ист хартиен број мирно
+постојат. Бравата се затвора точно во мигот кога `confirm()` ги запишува
+`fiscal_year` и `invoice_number_formatted` заедно.
+
+- [ ] **Step 1: Напиши го тестот што паѓа**
+
+`tests/Feature/Invoicing/SalesInvoiceFormattedNumberUniqueIndexTest.php`:
+
+```php
+<?php
+
+namespace Tests\Feature\Invoicing;
+
+use App\Models\Company;
+use App\Models\Partner;
+use App\Models\SalesInvoice;
+use Illuminate\Database\QueryException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class SalesInvoiceFormattedNumberUniqueIndexTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function confirmed(Company $company, array $attributes = []): SalesInvoice
+    {
+        $partner = Partner::factory()->for($company)->create();
+
+        return SalesInvoice::factory()->for($company)->create(array_merge([
+            'partner_id' => $partner->id,
+            'status' => 'confirmed',
+            'fiscal_year' => 2026,
+            'invoice_date' => '2026-03-01',
+            'due_date' => '2026-03-15',
+            'invoice_number' => null,
+        ], $attributes));
+    }
+
+    public function test_the_database_refuses_a_duplicate_formatted_number(): void
+    {
+        $company = Company::factory()->create();
+        $this->confirmed($company, ['invoice_number_formatted' => '2026/45']);
+
+        $this->expectException(QueryException::class);
+
+        $this->confirmed($company, ['invoice_number_formatted' => '2026/45']);
+    }
+
+    public function test_another_company_may_use_the_same_formatted_number(): void
+    {
+        $this->confirmed(Company::factory()->create(), ['invoice_number_formatted' => '2026/45']);
+        $second = $this->confirmed(Company::factory()->create(), ['invoice_number_formatted' => '2026/45']);
+
+        $this->assertSame('2026/45', $second->invoice_number_formatted);
+    }
+
+    public function test_another_year_may_use_the_same_formatted_number(): void
+    {
+        $company = Company::factory()->create();
+        $this->confirmed($company, ['fiscal_year' => 2025, 'invoice_number_formatted' => '001']);
+        $second = $this->confirmed($company, ['fiscal_year' => 2026, 'invoice_number_formatted' => '001']);
+
+        $this->assertSame('001', $second->invoice_number_formatted);
+    }
+
+    public function test_drafts_with_the_same_paper_number_do_not_collide(): void
+    {
+        $company = Company::factory()->create();
+
+        // Нацрт нема fiscal_year, па индексот не се однесува на него. Двата
+        // нацрта мораат да поминат — читливата порака ја дава проверката во
+        // формата и во confirm(), не базата.
+        $first = $this->confirmed($company, ['status' => 'draft', 'fiscal_year' => null, 'invoice_number_formatted' => '2026/45']);
+        $second = $this->confirmed($company, ['status' => 'draft', 'fiscal_year' => null, 'invoice_number_formatted' => '2026/45']);
+
+        $this->assertNotSame($first->id, $second->id);
+    }
+}
+```
+
+- [ ] **Step 2: Пушти го и потврди дека паѓа**
+
+Run: `php artisan test tests/Feature/Invoicing/SalesInvoiceFormattedNumberUniqueIndexTest.php`
+Expected: FAIL — `test_the_database_refuses_a_duplicate_formatted_number` не фрла `QueryException`, бидејќи индексот сè уште го нема.
+
+- [ ] **Step 3: Напиши ја миграцијата**
+
+```php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        // Проверката оди прва и со јасна порака. Ако некоја фирма веќе носи два
+        // исти испишани броја во иста година (можно ако форматот се менувал во
+        // текот на годината), додавањето индекс би паднало со сурова SQL
+        // грешка среде распоредување. Подобро е да падне тука, со список што
+        // кажува што точно да се поправи.
+        $duplicates = DB::table('sales_invoices')
+            ->select('company_id', 'fiscal_year', 'invoice_number_formatted')
+            ->whereNotNull('fiscal_year')
+            ->whereNotNull('invoice_number_formatted')
+            ->groupBy('company_id', 'fiscal_year', 'invoice_number_formatted')
+            ->havingRaw('COUNT(*) > 1')
+            ->get();
+
+        if ($duplicates->isNotEmpty()) {
+            $list = $duplicates
+                ->map(fn ($row) => "фирма {$row->company_id}, {$row->fiscal_year}, број {$row->invoice_number_formatted}")
+                ->implode('; ');
+
+            throw new \RuntimeException("Постојат фактури со ист испишан број — поправи ги пред миграцијата: {$list}");
+        }
+
+        Schema::table('sales_invoices', function (Blueprint $table) {
+            // Кратко име намерно: MySQL не прима име на индекс подолго од 64
+            // знаци, а самосоздаденото од трите колони го надминува тоа.
+            $table->unique(
+                ['company_id', 'fiscal_year', 'invoice_number_formatted'],
+                'sales_invoices_company_year_formatted_unique',
+            );
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('sales_invoices', function (Blueprint $table) {
+            $table->dropUnique('sales_invoices_company_year_formatted_unique');
+        });
+    }
+};
+```
+
+- [ ] **Step 4: Пушти ги тестовите**
+
+Run: `php artisan test tests/Feature/Invoicing/SalesInvoiceFormattedNumberUniqueIndexTest.php`
+Expected: PASS — 4 тестa
+
+- [ ] **Step 5: Пушти ги тестовите на задача 2 и целиот филтер за фактури**
+
+Run: `php artisan test --filter=SalesInvoice`
+Expected: PASS — индексот не смее да скрши ниту еден постоечки тест
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add database/migrations tests/Feature/Invoicing/SalesInvoiceFormattedNumberUniqueIndexTest.php
+git commit -m "feat: базата не дозволува два исти испишани броја
+
+Проверката во confirm() заклучува барање што за нов број не наоѓа ред, па
+две истовремени потврди можеа да поминат. Индексот е вистинската брава.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
