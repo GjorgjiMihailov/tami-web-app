@@ -35,6 +35,14 @@
                 <x-text-input id="dueDate" type="date" wire:model="dueDate" class="w-full" />
                 @error('dueDate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
+                @if ($paperNumber !== '' || ($scanRead ?? false))
+                    <div>
+                        <x-input-label for="paperNumber" value="Број од фактурата" />
+                        <x-text-input id="paperNumber" type="text" wire:model="paperNumber" class="w-full" />
+                        <p class="text-xs text-gray-500 mt-1">Бројот како што стои на хартијата. Празно значи дека Тами ќе издаде свој број.</p>
+                        @error('paperNumber') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                    </div>
+                @endif
             <div>
                 <x-input-label for="paymentTypeCode" value="Начин на плаќање" />
                 <select id="paymentTypeCode" wire:model="paymentTypeCode" class="w-full rounded-lg border-gray-300 text-sm">

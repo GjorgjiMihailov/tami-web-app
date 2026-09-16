@@ -35,6 +35,15 @@ class SalesInvoiceForm extends Component
 
     public string $notes = '';
 
+    /**
+     * Бројот што фактурата веќе го носи на хартија.
+     *
+     * Празно значи обична фактура — бројот го дава серијата на фирмата при
+     * потврда. Пополнето значи фактура внесена од скен и тој број оди и на
+     * печатената фактура и кон УЈП.
+     */
+    public string $paperNumber = '';
+
     public string $paymentTypeCode = 'P12';
 
     public string $currency = 'MKD';
@@ -72,6 +81,7 @@ class SalesInvoiceForm extends Component
             $this->invoiceDate = $salesInvoice->invoice_date->toDateString();
             $this->dueDate = $salesInvoice->due_date->toDateString();
             $this->notes = (string) $salesInvoice->notes;
+            $this->paperNumber = (string) $salesInvoice->invoice_number_formatted;
             $this->paymentTypeCode = $salesInvoice->payment_type_code;
             $this->currency = $salesInvoice->currency;
             $this->exchangeRate = (string) $salesInvoice->exchange_rate;
@@ -216,6 +226,7 @@ class SalesInvoiceForm extends Component
             'warehouseId' => ['nullable', Rule::exists('warehouses', 'id')->where('company_id', $this->company->id)],
             'invoiceDate' => 'required|date',
             'dueDate' => 'required|date|after_or_equal:invoiceDate',
+            'paperNumber' => 'nullable|string|max:40',
             'paymentTypeCode' => ['required', Rule::in(array_keys(SalesInvoice::PAYMENT_TYPES))],
             'currency' => ['required', Rule::in(SalesInvoice::CURRENCIES)],
             'exchangeRate' => [
@@ -231,6 +242,24 @@ class SalesInvoiceForm extends Component
             'lines.*.vat_rate' => 'required|numeric|min:0|max:100',
             'lines.*.vat_treatment' => ['required', Rule::in(SalesInvoiceLine::TREATMENTS)],
         ]);
+
+        // Двоен испишан број во иста фирма и иста година е вистински проблем —
+        // кон УЈП би заминале две фактури со ист `docNumber`. Годината се зема
+        // од датумот на фактурата, бидејќи `fiscal_year` се полни дури при
+        // потврда, а проверката мора да важи и на нацрт.
+        if ($this->paperNumber !== '') {
+            $clash = SalesInvoice::where('company_id', $this->company->id)
+                ->where('invoice_number_formatted', $this->paperNumber)
+                ->whereYear('invoice_date', Carbon::parse($this->invoiceDate)->year)
+                ->when($this->salesInvoice, fn ($query) => $query->whereKeyNot($this->salesInvoice->id))
+                ->exists();
+
+            if ($clash) {
+                $this->addError('paperNumber', "Веќе постои фактура со број {$this->paperNumber} во таа година.");
+
+                return;
+            }
+        }
 
         foreach ($this->lines as $index => $line) {
             if (($line['vat_treatment'] ?? 'standard') !== 'standard') {
@@ -266,6 +295,7 @@ class SalesInvoiceForm extends Component
             $invoice->invoice_date = $this->invoiceDate;
             $invoice->due_date = $this->dueDate;
             $invoice->notes = $this->notes ?: null;
+            $invoice->invoice_number_formatted = $this->paperNumber ?: null;
             $invoice->payment_type_code = $this->paymentTypeCode;
             $invoice->currency = $this->currency;
             $invoice->exchange_rate = $this->currency === 'MKD' ? '1' : $this->exchangeRate;
