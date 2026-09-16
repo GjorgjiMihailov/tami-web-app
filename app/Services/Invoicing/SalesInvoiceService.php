@@ -41,18 +41,41 @@ class SalesInvoiceService
         return DB::transaction(function () use ($invoice, $userId) {
             $fiscalYear = $invoice->invoice_date->year;
 
-            // Опсегот на бројачот го диктира форматот. Со година во бројот,
-            // сериите се одвојуваат по година како досега. Без година, серијата
-            // мора да тече непрекинато — инаку 2027 би почнала пак од 1 и две
-            // фактури би носеле ист број.
-            $numberQuery = SalesInvoice::where('company_id', $invoice->company_id);
+            // Фактура внесена од скен си го носи бројот од хартијата. Бројачот
+            // на фирмата не смее да го потроши: ако земеше број од серијата, во
+            // сопствената нумерација ќе останеше дупка за фактура што никогаш не
+            // била издадена на тој број.
+            $paperNumber = $invoice->invoice_number_formatted;
 
-            if ($invoice->company->invoice_number_include_year) {
-                $numberQuery->where('fiscal_year', $fiscalYear);
+            if (filled($paperNumber)) {
+                $clash = SalesInvoice::where('company_id', $invoice->company_id)
+                    ->whereKeyNot($invoice->id)
+                    ->where('invoice_number_formatted', $paperNumber)
+                    ->whereYear('invoice_date', $fiscalYear)
+                    ->lockForUpdate()
+                    ->exists();
+
+                if ($clash) {
+                    throw new InvalidInvoiceStateException("Во {$fiscalYear} веќе постои фактура со број {$paperNumber}.");
+                }
+
+                $invoiceNumber = null;
+                $formattedNumber = $paperNumber;
+            } else {
+                // Опсегот на бројачот го диктира форматот. Со година во бројот,
+                // сериите се одвојуваат по година како досега. Без година, серијата
+                // мора да тече непрекинато — инаку 2027 би почнала пак од 1 и две
+                // фактури би носеле ист број.
+                $numberQuery = SalesInvoice::where('company_id', $invoice->company_id);
+
+                if ($invoice->company->invoice_number_include_year) {
+                    $numberQuery->where('fiscal_year', $fiscalYear);
+                }
+
+                $maxNumber = $numberQuery->lockForUpdate()->max('invoice_number');
+                $invoiceNumber = ($maxNumber ?? 0) + 1;
+                $formattedNumber = InvoiceNumber::format($invoice->company, $fiscalYear, $invoiceNumber);
             }
-
-            $maxNumber = $numberQuery->lockForUpdate()->max('invoice_number');
-            $invoiceNumber = ($maxNumber ?? 0) + 1;
 
             $cogsTotal = '0.00';
 
@@ -83,7 +106,7 @@ class SalesInvoiceService
             $gross = $this->toMkd($invoice, $grossForeign);
             $vat = $vatRegistered ? $this->toMkd($invoice, $invoice->vatTotal()) : '0.00';
             $net = bcsub($gross, $vat, 2);
-            $label = 'Invoice '.InvoiceNumber::format($invoice->company, $fiscalYear, $invoiceNumber);
+            $label = 'Invoice '.$formattedNumber;
 
             $entry = JournalEntry::create([
                 'company_id' => $invoice->company_id,
@@ -143,7 +166,7 @@ class SalesInvoiceService
             $invoice->update([
                 'fiscal_year' => $fiscalYear,
                 'invoice_number' => $invoiceNumber,
-                'invoice_number_formatted' => InvoiceNumber::format($invoice->company, $fiscalYear, $invoiceNumber),
+                'invoice_number_formatted' => $formattedNumber,
                 'journal_entry_id' => $entry->id,
                 'status' => 'confirmed',
             ]);
