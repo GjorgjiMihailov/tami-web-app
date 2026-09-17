@@ -57,4 +57,15 @@ class ScannedInvoiceReaderContractTest extends TestCase
 
         $this->assertSame('test-key', config('services.anthropic.key'));
     }
+
+    public function test_the_test_suite_never_carries_a_real_anthropic_key(): void
+    {
+        // Гаранцијата „ниту еден тест не бара кон Anthropic" мора да важи
+        // поради конфигурација (phpunit.xml), не поради тоа што случајно
+        // клучот во .env е празен — инаку развивач со вистински клуч во
+        // .env (точно она што рачната проверка пред спојување го бара)
+        // тивко почнува да троши пари штом ги пушти тестовите.
+        $this->assertSame('', (string) env('ANTHROPIC_API_KEY'));
+        $this->assertTrue(blank(config('services.anthropic.key')));
+    }
 }

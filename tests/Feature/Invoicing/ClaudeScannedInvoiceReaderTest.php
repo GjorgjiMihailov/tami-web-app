@@ -63,4 +63,39 @@ class ClaudeScannedInvoiceReaderTest extends TestCase
         $this->assertSame('500', $result->lines[0]->unitPrice);
         $this->assertSame('18', $result->lines[0]->vatRate);
     }
+
+    public function test_a_payload_with_no_usable_fields_is_recognised_as_blank(): void
+    {
+        $blank = ClaudeScannedInvoiceReader::toScannedInvoice([]);
+
+        $this->assertTrue(ClaudeScannedInvoiceReader::isBlank($blank));
+    }
+
+    public function test_a_payload_where_every_field_is_an_empty_string_is_recognised_as_blank(): void
+    {
+        $blank = ClaudeScannedInvoiceReader::toScannedInvoice([
+            'seller_tax_id' => '', 'buyer_name' => '', 'buyer_tax_id' => '',
+            'buyer_street_address' => '', 'buyer_street_number' => '', 'buyer_postal_code' => '',
+            'buyer_city' => '', 'invoice_number' => '', 'invoice_date' => '', 'due_date' => '',
+            'currency' => '', 'printed_total' => '', 'lines' => [],
+        ]);
+
+        $this->assertTrue(ClaudeScannedInvoiceReader::isBlank($blank));
+    }
+
+    public function test_a_payload_with_any_usable_field_is_not_blank(): void
+    {
+        $result = ClaudeScannedInvoiceReader::toScannedInvoice(['invoice_number' => '7']);
+
+        $this->assertFalse(ClaudeScannedInvoiceReader::isBlank($result));
+    }
+
+    public function test_the_transport_is_bounded_by_a_timeout_and_a_retry_cap(): void
+    {
+        $options = ClaudeScannedInvoiceReader::transportOptions();
+
+        $this->assertSame(1, $options['maxRetries']);
+        $this->assertInstanceOf(\GuzzleHttp\Client::class, $options['transporter']);
+        $this->assertSame(30.0, $options['transporter']->getConfig('timeout'));
+    }
 }

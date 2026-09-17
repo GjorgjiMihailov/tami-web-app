@@ -23,6 +23,19 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
 
     private const OUTPUT_PRICE = 5.0;
 
+    /**
+     * `RequestOptions::$timeout` од SDK-то е само советодавен — никаде во
+     * vendor/ не се чита (види `RequestOptions.php`), границата ја наметнува
+     * транспортот. 30 секунди се доволни со голем резерв за скен од 1-2
+     * страници со ограничен JSON излез; со maxRetries=1 (наместо
+     * стандардните 2) најлошиот случај е 2 обиди × 30с = 60с, наместо
+     * неограничено чекање што ќе го убие php-fpm работникот пред catch-от
+     * воопшто да стигне до него.
+     */
+    private const TIMEOUT_SECONDS = 30.0;
+
+    private const MAX_RETRIES = 1;
+
     public function read(UploadedFile $file, Company $company): ScannedInvoice
     {
         $key = config('services.anthropic.key');
@@ -31,15 +44,15 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
             throw new ScannedInvoiceReadException('Нема клуч за Anthropic.');
         }
 
-        $data = base64_encode($file->get());
-        $mime = $file->getMimeType();
-
-        $block = $mime === 'application/pdf'
-            ? ['type' => 'document', 'source' => ['type' => 'base64', 'media_type' => 'application/pdf', 'data' => $data]]
-            : ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $mime, 'data' => $data]];
-
         try {
-            $message = (new Client(apiKey: $key))->messages->create(
+            $data = base64_encode($file->get());
+            $mime = $file->getMimeType();
+
+            $block = $mime === 'application/pdf'
+                ? ['type' => 'document', 'source' => ['type' => 'base64', 'media_type' => 'application/pdf', 'data' => $data]]
+                : ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $mime, 'data' => $data]];
+
+            $message = (new Client(apiKey: $key, requestOptions: self::transportOptions()))->messages->create(
                 model: self::MODEL,
                 maxTokens: 4096,
                 messages: [[
@@ -62,11 +75,56 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
                     throw new ScannedInvoiceReadException('Одговорот не е употреблив.');
                 }
 
-                return self::toScannedInvoice($payload);
+                $scanned = self::toScannedInvoice($payload);
+
+                // Промптот изрично бара празен стринг кога моделот не е
+                // сигурен — сите полиња празни значи скенот не можел
+                // воопшто да се прочита, не дека фактурата навистина е
+                // празна. Формата веќе знае да го прикаже рачниот пат кога
+                // читањето фрла исклучок.
+                if (self::isBlank($scanned)) {
+                    throw new ScannedInvoiceReadException('Од скенот не можеше да се прочита ништо.');
+                }
+
+                return $scanned;
             }
         }
 
         throw new ScannedInvoiceReadException('Одговорот не содржи текст.');
+    }
+
+    /**
+     * Транспортот е одвоен за да може да се тестира без мрежа — тестот
+     * проверува дека клучот и лимитот се вистински зададени, не дека
+     * барањето навистина трае онолку.
+     *
+     * @return array{transporter: \GuzzleHttp\Client, maxRetries: int}
+     */
+    public static function transportOptions(): array
+    {
+        return [
+            'transporter' => new \GuzzleHttp\Client(['timeout' => self::TIMEOUT_SECONDS]),
+            'maxRetries' => self::MAX_RETRIES,
+        ];
+    }
+
+    /**
+     * Јавна и статична од истата причина како `toScannedInvoice()` —
+     * проверката дали резултатот е празен мора да се тестира без мрежа.
+     */
+    public static function isBlank(ScannedInvoice $invoice): bool
+    {
+        if ($invoice->lines !== []) {
+            return false;
+        }
+
+        foreach (get_object_vars($invoice) as $property => $value) {
+            if ($property !== 'lines' && $value !== null) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
