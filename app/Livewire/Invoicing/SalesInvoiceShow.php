@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\SalesInvoice;
 use App\Services\Invoicing\SalesInvoiceService;
 use App\Support\WorkingYear;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -49,6 +50,15 @@ class SalesInvoiceShow extends Component
             $service->confirm($this->salesInvoice, auth()->id());
         } catch (InsufficientStockException|InvalidInvoiceStateException $e) {
             $this->addError('confirm', $e->getMessage());
+
+            return;
+        } catch (QueryException $e) {
+            // Сигурносна мрежа, не решение: судир на броеви порано излегуваше
+            // како празна страница. Бројачот веќе прескокнува зафатен број, но
+            // ниту една грешка од базата не смее повторно да стигне до
+            // корисникот како 500.
+            report($e);
+            $this->addError('confirm', 'Фактурата не се потврди поради грешка во базата — најверојатно судир во броевите на фактурите. Провери ги броевите и обиди се повторно.');
 
             return;
         }

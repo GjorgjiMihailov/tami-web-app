@@ -16,6 +16,14 @@ use Illuminate\Support\Facades\DB;
 
 class SalesInvoiceService
 {
+    /**
+     * Горен праг на чекорите при барање слободен број од серијата. Постои само
+     * за да не се врти бесконечно ако нешто во податоците е наопаку —
+     * нормалниот случај поминува од прв обид, а фирма со илјада скенирани
+     * фактури по ред во иста година не постои.
+     */
+    private const MAX_NUMBER_ATTEMPTS = 1000;
+
     public function __construct(private StockMovementService $stockMovementService)
     {
     }
@@ -75,6 +83,25 @@ class SalesInvoiceService
                 $maxNumber = $numberQuery->lockForUpdate()->max('invoice_number');
                 $invoiceNumber = ($maxNumber ?? 0) + 1;
                 $formattedNumber = InvoiceNumber::format($invoice->company, $fiscalYear, $invoiceNumber);
+
+                // Скенирана фактура носи `invoice_number = null`, па бројачот
+                // погоре воопшто не ја гледа. Фирма што прво ги внела своите
+                // хартиени фактури „2026/1".."2026/6" преку скен, а потоа
+                // издава прва фактура низ Тами, добива токму „2026/1" — број
+                // што веќе постои. Единствениот индекс тогаш пука, а секој нов
+                // обид го дава истиот број. Затоа зафатениот испишан број се
+                // прескокнува, а `invoice_number` останува на бројката што
+                // навистина е употребена, за серијата да продолжи оттаму.
+                $attempts = 0;
+
+                while ($this->formattedNumberTaken($invoice, $fiscalYear, $formattedNumber)) {
+                    if (++$attempts > self::MAX_NUMBER_ATTEMPTS) {
+                        throw new InvalidInvoiceStateException("Не најдов слободен број за {$fiscalYear} — провери ги испишаните броеви на фактурите.");
+                    }
+
+                    $invoiceNumber++;
+                    $formattedNumber = InvoiceNumber::format($invoice->company, $fiscalYear, $invoiceNumber);
+                }
             }
 
             $cogsTotal = '0.00';
@@ -349,6 +376,21 @@ class SalesInvoiceService
             'exchange_rate' => (string) $invoice->exchange_rate,
             'foreign_amount' => $foreignAmount,
         ];
+    }
+
+    /**
+     * Дали испишаниот број е веќе зафатен во истата фирма и иста фискална
+     * година. Опсегот е буквално оној на единствениот индекс
+     * `sales_invoices_company_year_formatted_unique` — проверката има смисла
+     * само ако гледа точно она што базата го брани.
+     */
+    private function formattedNumberTaken(SalesInvoice $invoice, int $fiscalYear, string $formattedNumber): bool
+    {
+        return SalesInvoice::where('company_id', $invoice->company_id)
+            ->whereKeyNot($invoice->id)
+            ->where('fiscal_year', $fiscalYear)
+            ->where('invoice_number_formatted', $formattedNumber)
+            ->exists();
     }
 
     private function account(Company $company, string $code): Account
