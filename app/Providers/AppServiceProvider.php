@@ -24,11 +24,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Вистинскиот читач се пишува во задача 7. До тогаш врзувањето покажува
-        // на договорот, а тестовите го заменуваат со двојник.
+        // Без клуч се врзува читачот што не чита — апликацијата мора да се
+        // подигне и на сервер каде клучот не е поставен.
         $this->app->bind(
             \App\Services\Invoicing\ScannedInvoiceReader::class,
-            \App\Services\Invoicing\NullScannedInvoiceReader::class,
+            fn () => filled(config('services.anthropic.key'))
+                ? new \App\Services\Invoicing\ClaudeScannedInvoiceReader
+                : new \App\Services\Invoicing\NullScannedInvoiceReader,
         );
     }
 
