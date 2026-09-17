@@ -2220,7 +2220,7 @@ npm run build
 - [ ] **Step 9: Commit**
 
 ```bash
-git add composer.json composer.lock app/Services/Invoicing/ClaudeScannedInvoiceReader.php app/Providers/AppServiceProvider.php tests/Feature/Invoicing/ClaudeScannedInvoiceReaderTest.php public/build
+git add composer.json composer.lock app/Services/Invoicing/ClaudeScannedInvoiceReader.php app/Providers/AppServiceProvider.php tests/Feature/Invoicing/ClaudeScannedInvoiceReaderTest.php
 git commit -m "feat: читање скенирана фактура преку Claude
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
