@@ -93,6 +93,74 @@ class SalesInvoiceScanReadTest extends TestCase
             ->assertSet('warehouseId', '');
     }
 
+    public function test_a_long_cyrillic_invoice_number_is_cut_by_characters(): void
+    {
+        $company = Company::factory()->create(['tax_id' => '4080012345678']);
+        $this->actAs($company, 'admin');
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            // Кирилица е по два бајта: сечење по бајти ја крши буквата на
+            // граница и базата одбива таков текст.
+            invoiceNumber: '2026/'.str_repeat('Ф', 50),
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $paperNumber = Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->set('scanFile', $this->scan())
+            ->call('readScan')
+            ->get('paperNumber');
+
+        $this->assertTrue(mb_check_encoding($paperNumber, 'UTF-8'));
+        $this->assertSame(40, mb_strlen($paperNumber));
+    }
+
+    public function test_an_image_over_the_api_limit_is_refused_with_a_clear_message(): void
+    {
+        $company = Company::factory()->create(['tax_id' => '4080012345678']);
+        $this->actAs($company, 'admin');
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        // 8 МБ сурово стануваат ~10,7 МБ во base64 — над границата по слика.
+        $component = Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->set('scanFile', UploadedFile::fake()->create('slika.jpg', 8000, 'image/jpeg'))
+            ->call('readScan')
+            ->assertHasErrors('scanFile')
+            ->assertSet('scanRead', false);
+
+        // Генеричката порака „не можев да ја прочитам" не му кажува на човекот
+        // што да направи.
+        $this->assertStringContainsString(
+            'преголема',
+            $component->instance()->getErrorBag()->first('scanFile')
+        );
+    }
+
+    public function test_a_large_pdf_is_still_accepted(): void
+    {
+        $company = Company::factory()->create(['tax_id' => '4080012345678']);
+        $this->actAs($company, 'admin');
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        // Границата по слика не важи за документи — PDF останува како досега.
+        Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->set('scanFile', UploadedFile::fake()->create('faktura.pdf', 8000, 'application/pdf'))
+            ->call('readScan')
+            ->assertHasNoErrors('scanFile')
+            ->assertSet('scanRead', true);
+    }
+
     public function test_a_failed_read_leaves_the_form_empty_and_reports_it(): void
     {
         $company = Company::factory()->create();

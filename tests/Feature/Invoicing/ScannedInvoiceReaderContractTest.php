@@ -68,4 +68,18 @@ class ScannedInvoiceReaderContractTest extends TestCase
         $this->assertSame('', (string) env('ANTHROPIC_API_KEY'));
         $this->assertTrue(blank(config('services.anthropic.key')));
     }
+
+    public function test_the_key_override_is_forced_over_the_os_environment(): void
+    {
+        // Без force="true" клуч извезен во ОС-околината победува над <env> од
+        // phpunit.xml и гаранцијата погоре важи само за .env. Сопственикот
+        // токму сега извезува вистински клуч за рачна проверка, па ова се
+        // проверува врз самата поставка, не врз околината што е затекната.
+        $override = simplexml_load_file(base_path('phpunit.xml'))
+            ->xpath('//php/env[@name="ANTHROPIC_API_KEY"]')[0] ?? null;
+
+        $this->assertNotNull($override);
+        $this->assertSame('', (string) $override['value']);
+        $this->assertSame('true', (string) $override['force']);
+    }
 }

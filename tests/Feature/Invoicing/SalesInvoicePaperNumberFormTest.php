@@ -20,6 +20,16 @@ class SalesInvoicePaperNumberFormTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
+        Role::findOrCreate('client');
+    }
+
+    private function client(Company $company): User
+    {
+        $user = User::factory()->create(['company_id' => $company->id]);
+        $user->assignRole('client');
+        $this->actingAs($user);
+
+        return $user;
     }
 
     private function admin(Company $company): User
@@ -112,6 +122,74 @@ class SalesInvoicePaperNumberFormTest extends TestCase
             ->set('paperNumber', '001')
             ->call('save')
             ->assertHasNoErrors();
+    }
+
+    public function test_a_client_cannot_set_the_paper_number(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $this->client($company);
+
+        // Полето е скриено во Blade, но `paperNumber` е јавно својство —
+        // клиент може да го постави преку Livewire, а тој број потоа оди кон
+        // УЈП како `docNumber`.
+        $this->fill(Livewire::test(SalesInvoiceForm::class, ['company' => $company]), $company, $partner)
+            ->set('paperNumber', '2026/45')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertNull(SalesInvoice::where('company_id', $company->id)->first()->invoice_number_formatted);
+    }
+
+    public function test_a_client_does_not_erase_an_existing_paper_number(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $this->client($company);
+
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'status' => 'draft',
+            'invoice_date' => '2026-03-01',
+            'due_date' => '2026-03-15',
+            'invoice_number_formatted' => '2026/45',
+        ]);
+
+        // Да не смее да го постави не значи да го брише: нацртот што
+        // сметководителот го внел од скен мора да го задржи својот број.
+        $component = Livewire::test(SalesInvoiceForm::class, [
+            'company' => $company,
+            'salesInvoice' => $invoice,
+        ]);
+
+        $this->fill($component, $company, $partner)
+            ->set('paperNumber', '')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('2026/45', $invoice->fresh()->invoice_number_formatted);
+    }
+
+    public function test_an_admin_keeps_the_paper_number_without_an_anthropic_key(): void
+    {
+        config(['services.anthropic.key' => null]);
+
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $this->admin($company);
+
+        // Заклучувањето оди по ролја, не по „смее да чита скенови" — тоа бара
+        // и клуч, па на сервер без клуч администратор што менува нацрт би му
+        // го избришал бројот.
+        $this->fill(Livewire::test(SalesInvoiceForm::class, ['company' => $company]), $company, $partner)
+            ->set('paperNumber', '2026/45')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(
+            '2026/45',
+            SalesInvoice::where('company_id', $company->id)->first()->invoice_number_formatted
+        );
     }
 
     public function test_editing_a_draft_keeps_its_paper_number_in_the_field(): void

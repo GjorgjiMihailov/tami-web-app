@@ -133,6 +133,61 @@ class SalesInvoiceScanChecksTest extends TestCase
             ->assertSet('suggestedPartner', null);
     }
 
+    public function test_a_buyer_tax_id_with_a_prefix_finds_the_existing_partner(): void
+    {
+        $company = $this->company();
+        $partner = Partner::factory()->for($company)->create(['tax_id' => '4080055555555']);
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            // Токму она што скенот го враќа кога на хартијата пишува „МК".
+            buyerTaxId: 'МК 4080055555555',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        // Ненајден партнер значи понуден дупликат, а неговото неканонско ЕДБ
+        // потоа заминува кон УЈП како купувач.
+        $this->read($company)
+            ->assertSet('partnerId', (string) $partner->id)
+            ->assertSet('suggestedPartner', null);
+    }
+
+    public function test_a_partner_stored_with_a_prefix_is_found_by_plain_digits(): void
+    {
+        $company = $this->company();
+        $partner = Partner::factory()->for($company)->create(['tax_id' => 'МК4080055555555']);
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            buyerTaxId: '4080055555555',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        // Шифрарникот не е чист по претпоставка — се споредува нормализирано
+        // спрема нормализирано, на двете страни.
+        $this->read($company)
+            ->assertSet('partnerId', (string) $partner->id)
+            ->assertSet('suggestedPartner', null);
+    }
+
+    public function test_an_unreadable_printed_total_warns_that_nothing_was_compared(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            printedTotal: null,
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $warnings = implode(' ', $this->read($company)->get('scanWarnings'));
+
+        // Најсилната проверка воопшто не се случила — тоа мора да се види.
+        $this->assertStringContainsString('Вкупниот износ не се прочита', $warnings);
+    }
+
     public function test_a_total_that_does_not_add_up_warns(): void
     {
         $company = $this->company();

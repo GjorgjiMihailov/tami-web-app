@@ -19,7 +19,7 @@
     </source>
     <php>
         <ini name="memory_limit" value="512M"/>
-        <env name="ANTHROPIC_API_KEY" value=""/>
+        <env name="ANTHROPIC_API_KEY" value="" force="true"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_DOMAIN_PORTAL" value="portal.test"/>
         <env name="APP_DOMAIN_PRODAZBA" value="prodazba.test"/>

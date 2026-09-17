@@ -83,6 +83,20 @@ class SalesInvoiceForm extends Component
 
     public int $workingYear = 0;
 
+    /**
+     * Горна граница за СЛИКА, во килобајти.
+     *
+     * Anthropic дозволува 10 МБ по слика, но мерено врз base64 записот, не врз
+     * фајлот. Base64 го дува фајлот за околу една третина, па слика од 10 МБ
+     * (колку што пушта `max:10240`) станува ~13,3 МБ и барањето се одбива со
+     * сурова грешка што кај нас се гледа само како „Не можев да ја прочитам
+     * фактурата". 6 МБ сурово даваат точно 8 МБ по кодирањето — под границата
+     * и кога МБ се брои како 1.000.000 и кога се брои како 1.048.576 бајти, со
+     * простор за остатокот од барањето. PDF не поминува низ оваа граница:
+     * документите ги ограничува само големината на целото барање (32 МБ).
+     */
+    private const MAX_IMAGE_KILOBYTES = 6144;
+
     public function mount(Company $company, ?SalesInvoice $salesInvoice = null): void
     {
         Gate::authorize('view', $company);
@@ -278,6 +292,17 @@ class SalesInvoiceForm extends Component
             'scanFile' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ]);
 
+        // Слика преку границата на API-то паѓа дури во читачот, а таму сè
+        // изгледа исто — генеричката порака не му кажува на човекот што да
+        // направи. Фотографија од телефон редовно е над границата, па пораката
+        // мора да е конкретна.
+        if ($this->scanFile->getMimeType() !== 'application/pdf'
+            && $this->scanFile->getSize() > self::MAX_IMAGE_KILOBYTES * 1024) {
+            $this->addError('scanFile', 'Сликата е преголема — прати помала слика (до 6 МБ) или PDF.');
+
+            return;
+        }
+
         try {
             $scanned = app(ScannedInvoiceReader::class)->read($this->scanFile, $this->company);
         } catch (\Throwable $e) {
@@ -341,7 +366,10 @@ class SalesInvoiceForm extends Component
         }
 
         if (filled($scanned->invoiceNumber)) {
-            $this->paperNumber = substr($scanned->invoiceNumber, 0, 40);
+            // По знаци, не по бајти: кирилична буква зазема два бајта, па
+            // сечење по бајти ја крши последната буква на половина и базата го
+            // одбива таквиот текст.
+            $this->paperNumber = mb_substr($scanned->invoiceNumber, 0, 40);
         }
 
         if (filled($scanned->invoiceDate)) {
@@ -358,10 +386,18 @@ class SalesInvoiceForm extends Component
 
         // Проверка 2: партнер по ЕДБ. Точно совпаѓање, без погодување по име —
         // две фирми со слично име се почеста грешка од непостоечки ЕДБ.
+        // Се споредуваат само цифрите, на двете страни: скен што прочитал
+        // „МК4080…" мора да го најде истиот партнер, а и запишаното во
+        // шифрарникот може да носи префикс или празни места. Ако не се
+        // нормализира, се нуди дупликат партнер и неговото неканонско ЕДБ
+        // заминува кон УЈП како купувач.
         if (filled($scanned->buyerTaxId)) {
-            $partner = Partner::where('company_id', $this->company->id)
-                ->where('tax_id', $scanned->buyerTaxId)
-                ->first();
+            $buyerDigits = $this->digits($scanned->buyerTaxId);
+
+            $partner = $buyerDigits === '' ? null : Partner::where('company_id', $this->company->id)
+                ->whereNotNull('tax_id')
+                ->get()
+                ->first(fn (Partner $candidate) => $this->digits((string) $candidate->tax_id) === $buyerDigits);
 
             if ($partner) {
                 $this->partnerId = (string) $partner->id;
@@ -437,6 +473,11 @@ class SalesInvoiceForm extends Component
             } elseif (abs((float) $computed - (float) $printed) > 1.0) {
                 $this->scanWarnings[] = "Пресметаното вкупно е {$computed}, а на скенот пишува {$printed} — провери ги ставките.";
             }
+        } else {
+            // Без испишано вкупно најсилната проверка воопшто не се случува.
+            // Тоа мора да се каже: инаку сметководителот гледа само жолта лента
+            // и мисли дека износите се проверени спрема нешто.
+            $this->scanWarnings[] = 'Вкупниот износ не се прочита од скенот, па ништо не е споредено со него — провери ги ставките и износите рачно.';
         }
     }
 
@@ -449,6 +490,18 @@ class SalesInvoiceForm extends Component
         if (! $this->company->type->isIndividual()) {
             $this->currency = 'MKD';
             $this->exchangeRate = '1';
+        }
+
+        // Истото важи и за хартиениот број: тој оди кон УЈП како `docNumber`,
+        // а политиката пушта и `client` да создава и менува нацрти. Скриено
+        // поле во Blade не го спречува да го постави преку Livewire, па се
+        // заклучува овде. Условот е РОЛЈА, не `canReadScans()` — таа бара и
+        // клуч, па на сервер без клуч администратор што менува нацрт би му го
+        // избришал бројот. Клиентот што зачувува туѓ нацрт со веќе впишан
+        // број не смее ни да го смени, ни да го избрише: се враќа она што е
+        // веќе запишано.
+        if (! auth()->user()?->hasAnyRole(['admin', 'accountant'])) {
+            $this->paperNumber = (string) ($this->salesInvoice?->invoice_number_formatted ?? '');
         }
 
         $this->validate([
