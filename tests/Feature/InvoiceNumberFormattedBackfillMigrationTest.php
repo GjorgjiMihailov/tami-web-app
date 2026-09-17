@@ -26,7 +26,15 @@ class InvoiceNumberFormattedBackfillMigrationTest extends TestCase
     {
         // Оваа миграција веќе се извршила еднаш при RefreshDatabase, па прво
         // ја враќаме шемата назад — истата постапка како
-        // JournalGroupBackfillMigrationTest.
+        // JournalGroupBackfillMigrationTest. По неа дојде уникатниот индекс
+        // sales_invoices_company_year_formatted_unique (над оваа колона), па
+        // тој мора прв да падне — колоната не смее да се тргне додека индекс
+        // сè уште виси над неа. Двете оди во ОДВОЕНИ Schema::table повици:
+        // SQLite паѓа со истата грешка ("no such column ... after drop
+        // column") ако обете се во иста измена.
+        Schema::table('sales_invoices', function (Blueprint $table) {
+            $table->dropUnique('sales_invoices_company_year_formatted_unique');
+        });
         Schema::table('sales_invoices', function (Blueprint $table) {
             $table->dropColumn('invoice_number_formatted');
         });
