@@ -41,6 +41,12 @@
 
                 <!-- Page Content -->
                 <main class="flex-1 p-4 sm:p-6">
+                    @if (session('warning'))
+                        <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                            {{ session('warning') }}
+                        </div>
+                    @endif
+
                     {{ $slot }}
                 </main>
             </div>
