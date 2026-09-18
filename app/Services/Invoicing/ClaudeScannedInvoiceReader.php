@@ -57,7 +57,7 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
                 maxTokens: 4096,
                 messages: [[
                     'role' => 'user',
-                    'content' => [$block, ['type' => 'text', 'text' => $this->prompt($company)]],
+                    'content' => [$block, ['type' => 'text', 'text' => self::prompt($company)]],
                 ]],
                 outputConfig: ['format' => ['type' => 'json_schema', 'schema' => $this->schema()]],
             );
@@ -151,9 +151,12 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
 
                 $lines[] = new ScannedInvoiceLine(
                     description: $lineText('description'),
-                    quantity: $lineText('quantity'),
-                    unitPrice: $lineText('unit_price'),
-                    vatRate: $lineText('vat_rate'),
+                    // Кај количината точката е речиси секогаш децимала — „1.500“
+                    // значи еден и пол парчиња, не илјада и пол. Кај парите е
+                    // обратно. Затоа двете не поминуваат низ исто правило.
+                    quantity: self::normalizeAmount($lineText('quantity'), thousands: false),
+                    unitPrice: self::normalizeAmount($lineText('unit_price'), thousands: true),
+                    vatRate: self::normalizeAmount($lineText('vat_rate'), thousands: false),
                 );
             }
         }
@@ -170,27 +173,104 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
             invoiceDate: $text('invoice_date'),
             dueDate: $text('due_date'),
             currency: $text('currency'),
-            printedTotal: $text('printed_total'),
+            printedTotal: self::normalizeAmount($text('printed_total'), thousands: true),
             lines: $lines,
         );
     }
 
-    private function prompt(Company $company): string
+    /**
+     * Го сведува бројот од скенот на обликот што формата може да го смета.
+     *
+     * Промптот бара точка за децимала и без разделник за илјади, но моделот не
+     * е доследен: истата фактура еднаш врати „3540.00“, другпат „3,540.00“.
+     * Врз вистинска фактура тоа значеше дека најсилната проверка — збирот од
+     * ставките наспроти испишаното вкупно — воопшто не се извршуваше. Затоа
+     * упатството бара убаво, а кодот гарантира.
+     *
+     * Кога обликот останува двосмислен, се враќа ИЗВОРНИОТ стринг непроменет.
+     * Формата тогаш предупредува дека износите не се читливи — подобро отколку
+     * овде да се измисли бројка во која никој не се посомневал.
+     */
+    public static function normalizeAmount(?string $value, bool $thousands): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        // Секаков размак, вклучително тврдиот и тесниот што ги носат PDF-овите.
+        $s = preg_replace('/[\s\x{00A0}\x{202F}]+/u', '', trim($value)) ?? '';
+
+        if ($s === '') {
+            return $value;
+        }
+
+        $sign = '';
+
+        if ($s[0] === '+' || $s[0] === '-') {
+            $sign = $s[0] === '-' ? '-' : '';
+            $s = substr($s, 1);
+        }
+
+        $hasComma = str_contains($s, ',');
+        $hasDot = str_contains($s, '.');
+
+        if ($hasComma && $hasDot) {
+            // Двата знака заедно се недвосмислени: десниот е децималниот.
+            $decimal = strrpos($s, ',') > strrpos($s, '.') ? ',' : '.';
+            $s = str_replace($decimal === ',' ? '.' : ',', '', $s);
+            $s = str_replace($decimal, '.', $s);
+        } elseif ($hasComma) {
+            // Кај нас запирката е децимала. Како разделник за илјади се
+            // препознава само јасниот облик 1,234 или 1,234,567.
+            $s = ($thousands && preg_match('/^\d{1,3}(,\d{3})+$/', $s) === 1)
+                ? str_replace(',', '', $s)
+                : str_replace(',', '.', $s);
+        } elseif ($hasDot) {
+            if ($thousands && preg_match('/^\d{1,3}(\.\d{3})+$/', $s) === 1) {
+                $s = str_replace('.', '', $s);
+            }
+        }
+
+        // Ако по сето ова не е чист број, ништо не се тврди — се враќа изворното.
+        return preg_match('/^\d+(\.\d+)?$/', $s) === 1 ? $sign.$s : $value;
+    }
+
+    /**
+     * Јавна и статична за да може да се тестира без мрежа.
+     *
+     * ЕДБ-то на фирмата НАМЕРНО не се спомнува тука. Кога му го даваше, моделот
+     * го враќаше назад како `seller_tax_id` на документи каде такво ЕДБ нема
+     * воопшто — па проверката „ова изгледа како влезна фактура" секогаш велеше
+     * дека се совпаѓа, токму кога требаше да предупреди. Сега бројот се чита од
+     * документот, па споредбата во формата навистина значи нешто.
+     */
+    public static function prompt(Company $company): string
     {
         return <<<TEXT
-        Ова е фактура издадена од фирмата "{$company->name}" со ЕДБ {$company->tax_id}.
-        Таа фирма е ПРОДАВАЧОТ. Извади ја ДРУГАТА страна како купувач.
+        Ова е фактура издадена од фирмата "{$company->name}" — таа е ПРОДАВАЧОТ.
+        Извади ја ДРУГАТА страна како купувач.
 
         Извади го само она што навистина е испишано на документот. Ако нешто го
         нема или не можеш да го прочиташ со сигурност, врати празен стринг за тоа
-        поле — не погодувај.
+        поле — не погодувај и не земај броеви од ова упатство.
+
+        За "seller_tax_id" и "buyer_tax_id" врати го ДАНОЧНИОТ број. На
+        македонските фактури тој е означен со „Е.Д.Б." или „ЕДБ" и има 13 цифри.
+        НЕ го враќај матичниот број („М.број", „Мат. бр."), кој често стои веднаш
+        до него и е пократок. Ако таков број го нема на документот, врати празен
+        стринг.
 
         Датумите врати ги во формат ГГГГ-ММ-ДД.
-        Износите врати ги како броеви со точка за децимала, без ознака за валута
-        и без разделник за илјади.
+
+        СИТЕ износи врати ги како чисти броеви: точка за децимала, БЕЗ разделник
+        за илјади и без ознака за валута. Ова важи и кога на документот се
+        испишани поинаку:
+          на документот 3,540.00  →  врати 3540.00
+          на документот 3.540,00  →  врати 3540.00
+          на документот 3 540,00  →  врати 3540.00
         ДДВ стапката врати ја како број без знакот за процент (на пример: 18).
-        Во "printed_total" врати го ВКУПНИОТ износ за плаќање како што е испишан
-        на документот, со ДДВ.
+        Во "printed_total" врати го ВКУПНИОТ износ за плаќање со ДДВ, во истиот
+        облик како другите износи.
         TEXT;
     }
 

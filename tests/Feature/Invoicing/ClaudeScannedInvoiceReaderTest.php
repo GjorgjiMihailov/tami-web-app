@@ -98,4 +98,103 @@ class ClaudeScannedInvoiceReaderTest extends TestCase
         $this->assertInstanceOf(\GuzzleHttp\Client::class, $options['transporter']);
         $this->assertSame(30.0, $options['transporter']->getConfig('timeout'));
     }
+
+    /**
+     * Врз вистинска фактура истиот модел еднаш врати „3540.00“, а другпат
+     * „3,540.00“ за истиот износ. Со запирка проверката на збирот воопшто не се
+     * извршуваше. Затоа обликот се сведува тука, не се бара од моделот.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('amountShapes')]
+    public function test_money_amounts_are_reduced_to_a_computable_shape(string $given, ?string $expected): void
+    {
+        $this->assertSame($expected, ClaudeScannedInvoiceReader::normalizeAmount($given, thousands: true));
+    }
+
+    public static function amountShapes(): array
+    {
+        return [
+            'веќе чист' => ['3540.00', '3540.00'],
+            'запирка за илјади' => ['3,540.00', '3540.00'],
+            'точка за илјади' => ['3.540,00', '3540.00'],
+            'размак за илјади' => ['3 540,00', '3540.00'],
+            'тврд размак' => ["3\u{00A0}540,00", '3540.00'],
+            'милион со точки' => ['1.234.567,89', '1234567.89'],
+            'милион со запирки' => ['1,234,567.89', '1234567.89'],
+            'само запирка како децимала' => ['3540,50', '3540.50'],
+            'запирка со три цифри е илјада' => ['3,540', '3540'],
+            'цел број' => ['3540', '3540'],
+            'нула' => ['0', '0'],
+            'негативен' => ['-1,200.50', '-1200.50'],
+            'со размаци околу' => ['  3,540.00  ', '3540.00'],
+            // Нечитливото се враќа непроменето — формата тогаш предупредува,
+            // наместо тука да се измисли бројка.
+            'текст' => ['нема', 'нема'],
+            'со валута' => ['3540.00 ден', '3540.00 ден'],
+            'празно' => ['', ''],
+        ];
+    }
+
+    public function test_quantities_keep_a_dot_as_a_decimal_not_a_thousands_mark(): void
+    {
+        // „1.500“ како количина значи еден и пол, не илјада и пол.
+        $this->assertSame('1.500', ClaudeScannedInvoiceReader::normalizeAmount('1.500', thousands: false));
+        $this->assertSame('1.5', ClaudeScannedInvoiceReader::normalizeAmount('1,5', thousands: false));
+        $this->assertSame('2', ClaudeScannedInvoiceReader::normalizeAmount('2', thousands: false));
+    }
+
+    public function test_a_missing_amount_stays_missing(): void
+    {
+        $this->assertNull(ClaudeScannedInvoiceReader::normalizeAmount(null, thousands: true));
+    }
+
+    public function test_a_payload_with_separators_becomes_computable(): void
+    {
+        $result = ClaudeScannedInvoiceReader::toScannedInvoice([
+            'printed_total' => '3,540.00',
+            'lines' => [
+                ['description' => 'Консултантски услуги', 'quantity' => '1.00', 'unit_price' => '3,000.00', 'vat_rate' => '18'],
+            ],
+        ]);
+
+        $this->assertSame('3540.00', $result->printedTotal);
+        $this->assertSame('1.00', $result->lines[0]->quantity);
+        $this->assertSame('3000.00', $result->lines[0]->unitPrice);
+        $this->assertSame('18', $result->lines[0]->vatRate);
+    }
+
+    /**
+     * Врз вистинска МПИН декларација моделот го враќаше ЕДБ-то на фирмата што му
+     * го давашe упатството, како да го прочитал од документот. Проверката „ова
+     * изгледа како влезна фактура" тогаш секогаш велеше дека се совпаѓа — токму
+     * на погрешно качен фајл, случајот поради кој постои.
+     */
+    public function test_the_prompt_never_hands_the_model_the_companys_tax_id(): void
+    {
+        $company = new \App\Models\Company([
+            'name' => 'ФАЈНЕНС БАДИ ДООЕЛ Скопје',
+            'tax_id' => '4032021550357',
+        ]);
+
+        $prompt = ClaudeScannedInvoiceReader::prompt($company);
+
+        $this->assertStringNotContainsString('4032021550357', $prompt);
+        $this->assertStringContainsString('ФАЈНЕНС БАДИ ДООЕЛ Скопје', $prompt);
+    }
+
+    /**
+     * Врз вистинска фактура моделот го врати матичниот број (7518439) наместо
+     * ЕДБ-то (4032021550357) — двата стојат еден до друг во заглавието. Тоа
+     * ќе даваше лажно предупредување врз секоја исправна фактура од тој изглед.
+     */
+    public function test_the_prompt_tells_the_model_which_number_is_the_tax_id(): void
+    {
+        $prompt = ClaudeScannedInvoiceReader::prompt(new \App\Models\Company([
+            'name' => 'Фирма',
+            'tax_id' => '4080012345678',
+        ]));
+
+        $this->assertStringContainsString('Е.Д.Б.', $prompt);
+        $this->assertStringContainsString('М.број', $prompt);
+        $this->assertStringContainsString('13 цифри', $prompt);
+    }
 }
