@@ -358,11 +358,51 @@ class SalesInvoiceForm extends Component
     {
         $this->suggestedPartner = null;
 
-        // Проверка 1: качен погрешен фајл. Ако продавачот на хартијата не е оваа
-        // фирма, најверојатно е влезна фактура во папката на излезните.
-        if (filled($scanned->sellerTaxId) && filled($this->company->tax_id)
-            && $this->digits($scanned->sellerTaxId) !== $this->digits($this->company->tax_id)) {
-            $this->scanWarnings[] = 'Изгледа дека ова е влезна, не излезна фактура — провери го фајлот.';
+        // Колку фактури има во фајлот. Врз вистински PDF со четири фактури беше
+        // прочитана само првата, а другите три исчезнаа без збор — издадени, а
+        // никогаш внесени.
+        if ($scanned->invoiceCount === 0) {
+            $this->scanWarnings[] = 'Документот не изгледа како фактура — провери дали е качен вистинскиот фајл.';
+        } elseif ($scanned->invoiceCount !== null && $scanned->invoiceCount > 1) {
+            $this->scanWarnings[] = "Фајлот содржи {$scanned->invoiceCount} фактури, а прочитана е само првата. "
+                .'Качи ја секоја фактура како посебен фајл, инаку останатите нема да бидат внесени.';
+        }
+
+        // Проверка 1: чија е фактурата. Врз вистински фактури се покажа дека
+        // ЕДБ-то на продавачот е најнесигурното поле — на две од четири го
+        // врати купувачовото. Името на продавачот и одговорот каде е оваа
+        // фирма беа сигурни. Затоа одлуката се носи од повеќе сигнали:
+        //
+        // 1. ЕДБ на купувачот еднакво на нашето е доказ за влезна фактура — и
+        //    победува над одговорот за улогата. Врз вистински СТП документ
+        //    моделот рече „продавач", а во истиот одговор правилно го извади
+        //    нашето ЕДБ кај купувачот.
+        // 2. Освен ако моделот го препишал ИСТИОТ број во двете страни — тогаш
+        //    бројките не докажуваат ништо и се паѓа на одговорот за улогата.
+        //
+        // ЕДБ што не е цели 13 цифри се смета за непрочитано: на лош скен
+        // моделот враќаше половина број.
+        $ours = $this->taxIdDigits($this->company->tax_id);
+        $sellerDigits = $this->taxIdDigits($scanned->sellerTaxId);
+        $buyerDigits = $this->taxIdDigits($scanned->buyerTaxId);
+        $numbersAreDistinct = $sellerDigits === null || $buyerDigits === null || $sellerDigits !== $buyerDigits;
+        $buyerIsUs = ($ours !== null && $numbersAreDistinct && $buyerDigits === $ours)
+            || $scanned->ourCompanyRole === 'buyer';
+
+        if ($buyerIsUs) {
+            $this->scanWarnings[] = 'Оваа фирма е КУПУВАЧ на фактурата — ова е влезна, не излезна фактура. Провери го фајлот.';
+        } elseif ($scanned->ourCompanyRole === 'absent') {
+            $this->scanWarnings[] = 'Оваа фирма не се спомнува на документот — провери дали е качен вистинскиот фајл.';
+        } elseif ($scanned->ourCompanyRole === null && $ours !== null) {
+            // Без одговор за улогата останува само ЕДБ-то, со сета негова
+            // несигурност — затоа „не знам" се вели благо, „друга фирма"
+            // само кога бројот е цел и јасно различен.
+            if ($sellerDigits === null) {
+                $this->scanWarnings[] = 'ЕДБ-то на издавачот не можеше да се прочита од документот — провери дека фактурата е издадена од оваа фирма.';
+            } elseif ($sellerDigits !== $ours) {
+                $issuer = filled($scanned->sellerName) ? " ({$scanned->sellerName})" : '';
+                $this->scanWarnings[] = "Фактурата ја издала друга фирма{$issuer}, не оваа — можеби е влезна фактура или е качен погрешен фајл.";
+            }
         }
 
         if (filled($scanned->invoiceNumber)) {
@@ -391,7 +431,10 @@ class SalesInvoiceForm extends Component
         // шифрарникот може да носи префикс или празни места. Ако не се
         // нормализира, се нуди дупликат партнер и неговото неканонско ЕДБ
         // заминува кон УЈП како купувач.
-        if (filled($scanned->buyerTaxId)) {
+        //
+        // Кога самата фирма е купувачот, нема барање партнер: инаку формата
+        // би ѝ понудила на фирмата да се внесе самата себе во шифрарникот.
+        if (filled($scanned->buyerTaxId) && ! $buyerIsUs) {
             $buyerDigits = $this->digits($scanned->buyerTaxId);
 
             $partner = $buyerDigits === '' ? null : Partner::where('company_id', $this->company->id)
@@ -647,6 +690,23 @@ class SalesInvoiceForm extends Component
     private function digits(string $value): string
     {
         return preg_replace('/\D+/', '', $value) ?? '';
+    }
+
+    /**
+     * Македонското ЕДБ има точно 13 цифри. Сè друго — празно, пресечено од
+     * лош скен, или матичен број — се смета за непрочитано, а не за друго ЕДБ.
+     * Разликата е важна: „не знам" дава благо предупредување, „друга фирма"
+     * тврди нешто што можеби не е точно.
+     */
+    private function taxIdDigits(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $digits = $this->digits($value);
+
+        return strlen($digits) === 13 ? $digits : null;
     }
 
     /**

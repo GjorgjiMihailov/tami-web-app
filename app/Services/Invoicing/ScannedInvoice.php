@@ -28,5 +28,15 @@ final readonly class ScannedInvoice
         public ?string $currency = null,
         public ?string $printedTotal = null,
         public array $lines = [],
+        // Името на издавачот се чита за да може човекот да види чија е
+        // фактурата кога ЕДБ-то не се совпаѓа — само број не кажува ништо.
+        public ?string $sellerName = null,
+        // Колку одделни фактури има во фајлот. Врз вистински PDF со четири
+        // фактури беше прочитана само првата, а другите три исчезнаа без збор.
+        public ?int $invoiceCount = null,
+        // Каде моделот ја најде оваа фирма на хартијата: 'seller', 'buyer' или
+        // 'absent'. Врз вистински фактури името на издавачот беше точно секаде,
+        // а ЕДБ-то мешано — па одлуката чија е фактурата се потпира на ова.
+        public ?string $ourCompanyRole = null,
     ) {}
 }

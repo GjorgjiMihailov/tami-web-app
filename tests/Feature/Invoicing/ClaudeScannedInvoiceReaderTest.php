@@ -125,6 +125,9 @@ class ClaudeScannedInvoiceReaderTest extends TestCase
             'цел број' => ['3540', '3540'],
             'нула' => ['0', '0'],
             'негативен' => ['-1,200.50', '-1200.50'],
+            // Врз вистински СТП скен: истиот знак и за илјади и за децимала.
+            'точки насекаде' => ['210.831.00', '210831.00'],
+            'запирки насекаде' => ['210,831,00', '210831.00'],
             'со размаци околу' => ['  3,540.00  ', '3540.00'],
             // Нечитливото се враќа непроменето — формата тогаш предупредува,
             // наместо тука да се измисли бројка.
@@ -163,22 +166,70 @@ class ClaudeScannedInvoiceReaderTest extends TestCase
     }
 
     /**
-     * Врз вистинска МПИН декларација моделот го враќаше ЕДБ-то на фирмата што му
-     * го давашe упатството, како да го прочитал од документот. Проверката „ова
-     * изгледа како влезна фактура" тогаш секогаш велеше дека се совпаѓа — токму
-     * на погрешно качен фајл, случајот поради кој постои.
+     * Со ЕДБ-то во упатството моделот го препишуваше назад таму каде такво
+     * нема. Упатството затоа прима само ИМЕ — потписот не дозволува ЕДБ воопшто
+     * да стигне до него.
      */
-    public function test_the_prompt_never_hands_the_model_the_companys_tax_id(): void
+    public function test_the_prompt_can_only_ever_receive_a_name_never_a_tax_id(): void
     {
-        $company = new \App\Models\Company([
-            'name' => 'ФАЈНЕНС БАДИ ДООЕЛ Скопје',
-            'tax_id' => '4032021550357',
+        $parameters = (new \ReflectionMethod(ClaudeScannedInvoiceReader::class, 'prompt'))->getParameters();
+
+        $this->assertCount(1, $parameters);
+        $this->assertSame('companyName', $parameters[0]->getName());
+        $this->assertSame('string', (string) $parameters[0]->getType());
+    }
+
+    /**
+     * Со „таа е продавачот" моделот на влезна фактура го свиткуваше документот
+     * за да се согласи. Улогата сега се ПРАШУВА, со три можни одговори.
+     */
+    public function test_the_prompt_asks_where_the_company_appears_instead_of_asserting_it(): void
+    {
+        $prompt = ClaudeScannedInvoiceReader::prompt('ФАЈНЕНС БАДИ ДООЕЛ');
+
+        $this->assertStringContainsString('ФАЈНЕНС БАДИ ДООЕЛ', $prompt);
+        $this->assertStringContainsString('our_company_role', $prompt);
+        $this->assertStringContainsString('"absent"', $prompt);
+        $this->assertStringNotContainsString('таа е ПРОДАВАЧОТ', $prompt);
+    }
+
+    public function test_the_role_answer_reaches_the_scanned_invoice(): void
+    {
+        foreach (['seller', 'buyer', 'absent'] as $role) {
+            $result = ClaudeScannedInvoiceReader::toScannedInvoice([
+                'our_company_role' => $role,
+                'buyer_name' => 'Купувач',
+            ]);
+
+            $this->assertSame($role, $result->ourCompanyRole);
+        }
+    }
+
+    public function test_an_unknown_role_answer_becomes_null(): void
+    {
+        $result = ClaudeScannedInvoiceReader::toScannedInvoice([
+            'our_company_role' => 'можеби',
+            'buyer_name' => 'Купувач',
         ]);
 
-        $prompt = ClaudeScannedInvoiceReader::prompt($company);
+        $this->assertNull($result->ourCompanyRole);
+    }
 
-        $this->assertStringNotContainsString('4032021550357', $prompt);
-        $this->assertStringContainsString('ФАЈНЕНС БАДИ ДООЕЛ Скопје', $prompt);
+    public function test_a_role_answer_alone_is_still_a_blank_read(): void
+    {
+        $this->assertTrue(ClaudeScannedInvoiceReader::isBlank(
+            ClaudeScannedInvoiceReader::toScannedInvoice(['our_company_role' => 'absent', 'invoice_count' => 0])
+        ));
+    }
+
+    public function test_the_prompt_asks_for_both_parties_as_labelled_on_the_page(): void
+    {
+        $prompt = ClaudeScannedInvoiceReader::prompt('Фирма');
+
+        $this->assertStringContainsString('ПРОДАВАЧ', $prompt);
+        $this->assertStringContainsString('КУПУВАЧ', $prompt);
+        $this->assertStringContainsString('„Партнер"', $prompt);
+        $this->assertStringNotContainsString('таа е ПРОДАВАЧОТ', $prompt);
     }
 
     /**
@@ -188,13 +239,102 @@ class ClaudeScannedInvoiceReaderTest extends TestCase
      */
     public function test_the_prompt_tells_the_model_which_number_is_the_tax_id(): void
     {
-        $prompt = ClaudeScannedInvoiceReader::prompt(new \App\Models\Company([
-            'name' => 'Фирма',
-            'tax_id' => '4080012345678',
-        ]));
+        $prompt = ClaudeScannedInvoiceReader::prompt('Фирма');
 
         $this->assertStringContainsString('Е.Д.Б.', $prompt);
         $this->assertStringContainsString('М.број', $prompt);
         $this->assertStringContainsString('13 цифри', $prompt);
+    }
+
+    /**
+     * Вистински PDF од СТП содржеше четири фактури — бр.25, 21, 140 и 85 — а
+     * беше прочитана само првата. Бројот на фактури мора да стигне до формата.
+     */
+    public function test_the_invoice_count_and_seller_name_reach_the_scanned_invoice(): void
+    {
+        $result = ClaudeScannedInvoiceReader::toScannedInvoice([
+            'invoice_count' => 4,
+            'seller_name' => 'Т.Д.П.Т.У.У. СТП дооел',
+            'buyer_name' => 'СОЛИД ГРАУНД дооел',
+        ]);
+
+        $this->assertSame(4, $result->invoiceCount);
+        $this->assertSame('Т.Д.П.Т.У.У. СТП дооел', $result->sellerName);
+    }
+
+    public function test_an_unusable_invoice_count_becomes_null(): void
+    {
+        $result = ClaudeScannedInvoiceReader::toScannedInvoice([
+            'invoice_count' => 'многу',
+            'buyer_name' => 'Купувач',
+        ]);
+
+        $this->assertNull($result->invoiceCount);
+    }
+
+    public function test_an_invoice_count_alone_is_still_a_blank_read(): void
+    {
+        $this->assertTrue(ClaudeScannedInvoiceReader::isBlank(
+            ClaudeScannedInvoiceReader::toScannedInvoice(['invoice_count' => 1])
+        ));
+    }
+
+    /**
+     * Бројот заминува кон УЈП како `docNumber`. Врз вистинска фактура моделот
+     * врати „бр.25“ иако упатството бара само бројот.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('invoiceNumbers')]
+    public function test_the_word_for_number_is_stripped_from_the_invoice_number(string $given, string $expected): void
+    {
+        $this->assertSame($expected, ClaudeScannedInvoiceReader::normalizeInvoiceNumber($given));
+    }
+
+    public static function invoiceNumbers(): array
+    {
+        return [
+            'бр. залепено' => ['бр.25', '25'],
+            // Врз вистински СТП скен „б“ беше прочитано како шестка.
+            'бр. прочитано како 6р.' => ['6р.25', '25'],
+            'вистински број што почнува на 6 останува' => ['625', '625'],
+            'бр. со размак' => ['бр. 25', '25'],
+            'голема буква' => ['Бр.140', '140'],
+            'цел наслов' => ['Фактура - Испратница бр.85', '85'],
+            'број' => ['број 19', '19'],
+            'знак за број' => ['№ 12', '12'],
+            'латиница' => ['No. 7', '7'],
+            'веќе чист со цртичка' => ['00098-26', '00098-26'],
+            'веќе чист со коса црта' => ['019/2025', '019/2025'],
+            'само зборот останува изворно' => ['бр.', 'бр.'],
+        ];
+    }
+
+    public function test_a_missing_invoice_number_stays_missing(): void
+    {
+        $this->assertNull(ClaudeScannedInvoiceReader::normalizeInvoiceNumber(null));
+    }
+
+    /**
+     * Формата прифаќа само кодови. „денари“ беше тивко игнорирано и остануваше
+     * MKD — безопасно случајно; „евра“ истиот пат би дало ПОГРЕШНА валута.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('currencies')]
+    public function test_currency_names_become_codes(string $given, string $expected): void
+    {
+        $this->assertSame($expected, ClaudeScannedInvoiceReader::normalizeCurrency($given));
+    }
+
+    public static function currencies(): array
+    {
+        return [
+            'денари' => ['денари', 'MKD'],
+            'ден.' => ['ден.', 'MKD'],
+            'МКД кирилица' => ['МКД', 'MKD'],
+            'MKD' => ['MKD', 'MKD'],
+            'евра' => ['евра', 'EUR'],
+            'евро' => ['Евро', 'EUR'],
+            'симбол евро' => ['€', 'EUR'],
+            'долари' => ['долари', 'USD'],
+            'непознато останува' => ['јени', 'јени'],
+        ];
     }
 }

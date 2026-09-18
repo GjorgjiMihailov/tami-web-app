@@ -353,4 +353,235 @@ class SalesInvoiceScanChecksTest extends TestCase
         $this->assertNotEmpty($message);
         $component->assertSee($message);
     }
+
+    /**
+     * Вистински СТП документ, качен кај фирмата-купувач: моделот го врати
+     * нејзиното ЕДБ меѓу страните. Тоа мора да се препознае како влезна
+     * фактура — и формата не смее да ѝ понуди на фирмата да се внесе самата
+     * себе како партнер.
+     */
+    public function test_when_this_company_is_the_buyer_it_warns_and_offers_no_partner(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4028003136007',
+            sellerName: 'СТП дооел',
+            buyerName: 'Фирмата самата',
+            buyerTaxId: 'МК4080012345678',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $component = $this->read($company);
+        $warnings = implode(' ', $component->get('scanWarnings'));
+
+        $this->assertStringContainsString('КУПУВАЧ', $warnings);
+        $this->assertStringContainsString('влезна', $warnings);
+        $component->assertSet('suggestedPartner', null);
+    }
+
+    /**
+     * Врз вистински скен ЕДБ-то на издавачот се врати пресечено — „MK4028003“.
+     * Тоа е „не знам", не „друга фирма". Лажна тревога врз исправна фактура
+     * учи луѓе да не ги читаат предупредувањата.
+     */
+    public function test_a_truncated_seller_tax_id_is_treated_as_unread_not_as_another_firm(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: 'MK4080012',
+            buyerTaxId: '4080055555555',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $warnings = implode(' ', $this->read($company)->get('scanWarnings'));
+
+        $this->assertStringContainsString('не можеше да се прочита', $warnings);
+        $this->assertStringNotContainsString('друга фирма', $warnings);
+    }
+
+    /**
+     * МПИН декларација нема ЕДБ на продавач воопшто. Порано упатството го
+     * „пополнуваше" со ЕДБ-то на фирмата и проверката молчеше.
+     */
+    public function test_a_missing_seller_tax_id_warns_instead_of_passing_silently(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            buyerName: 'Некое лице',
+            buyerTaxId: '5080022511086',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $warnings = implode(' ', $this->read($company)->get('scanWarnings'));
+
+        $this->assertStringContainsString('не можеше да се прочита', $warnings);
+    }
+
+    public function test_another_issuer_is_named_in_the_warning(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4020012521206',
+            sellerName: 'ВЕБВИЛ-СТУДИО ДООЕЛ',
+            buyerTaxId: '4080055555555',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $warnings = implode(' ', $this->read($company)->get('scanWarnings'));
+
+        $this->assertStringContainsString('друга фирма', $warnings);
+        $this->assertStringContainsString('ВЕБВИЛ-СТУДИО ДООЕЛ', $warnings);
+    }
+
+    /**
+     * Вистински PDF со четири фактури: прочитана беше само првата, а другите
+     * три исчезнаа без збор — издадени, а никогаш внесени.
+     */
+    public function test_a_file_with_several_invoices_warns_that_only_the_first_was_read(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            invoiceCount: 4,
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $warnings = implode(' ', $this->read($company)->get('scanWarnings'));
+
+        $this->assertStringContainsString('4 фактури', $warnings);
+        $this->assertStringContainsString('само првата', $warnings);
+    }
+
+    public function test_a_single_invoice_file_raises_no_count_warning(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            invoiceCount: 1,
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $this->assertSame([], $this->read($company)->get('scanWarnings'));
+    }
+
+    /**
+     * Вистински СТП документ гледан од Солид Граунд: моделот одговори „продавач",
+     * а во истиот одговор правилно го стави нашето ЕДБ кај купувачот. ЕДБ-то на
+     * купувачот мора да победи над погрешниот одговор за улогата.
+     */
+    public function test_our_tax_id_on_the_buyer_side_beats_a_wrong_role_answer(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            ourCompanyRole: 'seller',
+            sellerName: 'СТП',
+            buyerName: 'Фирмата самата',
+            buyerTaxId: 'МК4080012345678',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $component = $this->read($company);
+
+        $this->assertStringContainsString('КУПУВАЧ', implode(' ', $component->get('scanWarnings')));
+        $component->assertSet('suggestedPartner', null);
+    }
+
+    /**
+     * Вистинска MyGPM фактура: моделот го стави ИСТИОТ број во двете страни.
+     * Тогаш бројките не докажуваат ништо — инаку, ако случајно е нашиот, секоја
+     * исправна излезна фактура би била прогласена за влезна.
+     */
+    public function test_the_same_number_on_both_sides_is_not_proof_of_anything(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            ourCompanyRole: 'seller',
+            sellerTaxId: '4080012345678',
+            buyerTaxId: '4080012345678',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $this->assertSame([], $this->read($company)->get('scanWarnings'));
+    }
+
+    /**
+     * Вистинска MyGPM фактура: улогата точна („продавач"), ЕДБ-то на продавачот
+     * погрешно (купувачовото). Со потпирање на ЕДБ-то ова беше лажна тревога.
+     */
+    public function test_a_correct_role_answer_ignores_a_misread_seller_tax_id(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            ourCompanyRole: 'seller',
+            sellerTaxId: '4080055555555',
+            buyerTaxId: '4080066666666',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $this->assertSame([], $this->read($company)->get('scanWarnings'));
+    }
+
+    public function test_a_buyer_role_answer_warns_that_the_invoice_is_incoming(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            ourCompanyRole: 'buyer',
+            buyerTaxId: '4080055555555',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $component = $this->read($company);
+
+        $this->assertStringContainsString('влезна', implode(' ', $component->get('scanWarnings')));
+        $component->assertSet('suggestedPartner', null);
+    }
+
+    public function test_an_absent_company_warns_that_the_file_may_be_wrong(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            ourCompanyRole: 'absent',
+            buyerTaxId: '4080055555555',
+            printedTotal: '1180.00',
+            lines: [new ScannedInvoiceLine('Услуга', '1', '1000.00', '18')],
+        );
+
+        $this->assertStringContainsString('не се спомнува', implode(' ', $this->read($company)->get('scanWarnings')));
+    }
+
+    public function test_a_document_that_is_not_an_invoice_says_so(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '4080012345678',
+            invoiceCount: 0,
+            buyerName: 'АНА МАРИЈА МИХАИЛОВА',
+        );
+
+        $warnings = implode(' ', $this->read($company)->get('scanWarnings'));
+
+        $this->assertStringContainsString('не изгледа како фактура', $warnings);
+    }
 }

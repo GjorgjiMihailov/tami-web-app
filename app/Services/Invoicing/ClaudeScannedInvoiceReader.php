@@ -57,7 +57,7 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
                 maxTokens: 4096,
                 messages: [[
                     'role' => 'user',
-                    'content' => [$block, ['type' => 'text', 'text' => self::prompt($company)]],
+                    'content' => [$block, ['type' => 'text', 'text' => self::prompt((string) $company->name)]],
                 ]],
                 outputConfig: ['format' => ['type' => 'json_schema', 'schema' => $this->schema()]],
             );
@@ -119,7 +119,9 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
         }
 
         foreach (get_object_vars($invoice) as $property => $value) {
-            if ($property !== 'lines' && $value !== null) {
+            // Бројот на фактури е податок ЗА документот, не прочитана содржина
+            // — „1“ без ништо друго сепак е празно читање.
+            if (! in_array($property, ['lines', 'invoiceCount', 'ourCompanyRole'], true) && $value !== null) {
                 return false;
             }
         }
@@ -169,13 +171,70 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
             buyerStreetNumber: $text('buyer_street_number'),
             buyerPostalCode: $text('buyer_postal_code'),
             buyerCity: $text('buyer_city'),
-            invoiceNumber: $text('invoice_number'),
+            invoiceNumber: self::normalizeInvoiceNumber($text('invoice_number')),
             invoiceDate: $text('invoice_date'),
             dueDate: $text('due_date'),
-            currency: $text('currency'),
+            currency: self::normalizeCurrency($text('currency')),
             printedTotal: self::normalizeAmount($text('printed_total'), thousands: true),
             lines: $lines,
+            sellerName: $text('seller_name'),
+            invoiceCount: isset($payload['invoice_count']) && is_numeric($payload['invoice_count'])
+                ? (int) $payload['invoice_count']
+                : null,
+            ourCompanyRole: in_array($payload['our_company_role'] ?? null, ['seller', 'buyer', 'absent'], true)
+                ? $payload['our_company_role']
+                : null,
         );
+    }
+
+    /**
+     * Бројот на фактурата заминува кон УЈП како `docNumber`, па „бр.25“ не
+     * смее да помине таму наместо „25“. Врз вистинска фактура моделот го
+     * врати зборот заедно со бројот, иако упатството го бара без него.
+     */
+    public static function normalizeInvoiceNumber(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $number = preg_replace(
+            // „број“ пред „бр“ — инаку „бр“ се совпаѓа прв и остава „ој 19“.
+            // „6р.“ е „бр.“ прочитано погрешно: во фонтот на вистински СТП скен
+            // „б“ изгледа како шестка. Никогаш не е дел од вистински број.
+            '/^\s*(?:фактура[\s\-–]*)?(?:испратница[\s\-–]*)?(?:број|бр\.?|6р\.|№|no\.?)[\s:.]*/iu',
+            '',
+            $value
+        ) ?? $value;
+
+        $number = trim($number);
+
+        // Ако ништо не остане, подобро е изворното отколку празен број.
+        return $number === '' ? $value : $number;
+    }
+
+    /**
+     * Формата прифаќа само кодови од `SalesInvoice::CURRENCIES`. Непознат запис
+     * тивко се игнорира и останува MKD — што за „евра“ би значело погрешна
+     * валута без никаков знак. Затоа македонските и симболичките записи се
+     * сведуваат на код тука; сè друго се враќа непроменето.
+     */
+    public static function normalizeCurrency(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $code = rtrim(mb_strtoupper(trim($value)), '.');
+
+        return match (true) {
+            in_array($code, ['MKD', 'МКД', 'ДЕН', 'ДЕНАР', 'ДЕНАРИ'], true) => 'MKD',
+            in_array($code, ['EUR', 'ЕУР', 'ЕВРО', 'ЕВРА', '€'], true) => 'EUR',
+            in_array($code, ['USD', 'УСД', 'ДОЛАР', 'ДОЛАРИ', '$'], true) => 'USD',
+            in_array($code, ['GBP', '£'], true) => 'GBP',
+            in_array($code, ['CHF'], true) => 'CHF',
+            default => $value,
+        };
     }
 
     /**
@@ -222,11 +281,23 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
         } elseif ($hasComma) {
             // Кај нас запирката е децимала. Како разделник за илјади се
             // препознава само јасниот облик 1,234 или 1,234,567.
-            $s = ($thousands && preg_match('/^\d{1,3}(,\d{3})+$/', $s) === 1)
-                ? str_replace(',', '', $s)
-                : str_replace(',', '.', $s);
+            if ($thousands && preg_match('/^\d{1,3}(,\d{3})+,\d{1,2}$/', $s) === 1) {
+                // „210,831,00“ — истиот знак и за илјади и за децимала.
+                $last = strrpos($s, ',');
+                $s = str_replace(',', '', substr($s, 0, $last)).'.'.substr($s, $last + 1);
+            } else {
+                $s = ($thousands && preg_match('/^\d{1,3}(,\d{3})+$/', $s) === 1)
+                    ? str_replace(',', '', $s)
+                    : str_replace(',', '.', $s);
+            }
         } elseif ($hasDot) {
-            if ($thousands && preg_match('/^\d{1,3}(\.\d{3})+$/', $s) === 1) {
+            if ($thousands && preg_match('/^\d{1,3}(\.\d{3})+\.\d{1,2}$/', $s) === 1) {
+                // „210.831.00“ — врз вистински СТП скен моделот ја врати
+                // точката и за илјади и за децимала. Последната група од една
+                // или две цифри е децимала, сите други точки се илјади.
+                $last = strrpos($s, '.');
+                $s = str_replace('.', '', substr($s, 0, $last)).'.'.substr($s, $last + 1);
+            } elseif ($thousands && preg_match('/^\d{1,3}(\.\d{3})+$/', $s) === 1) {
                 $s = str_replace('.', '', $s);
             }
         }
@@ -238,21 +309,62 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
     /**
      * Јавна и статична за да може да се тестира без мрежа.
      *
-     * ЕДБ-то на фирмата НАМЕРНО не се спомнува тука. Кога му го даваше, моделот
-     * го враќаше назад како `seller_tax_id` на документи каде такво ЕДБ нема
-     * воопшто — па проверката „ова изгледа како влезна фактура" секогаш велеше
-     * дека се совпаѓа, токму кога требаше да предупреди. Сега бројот се чита од
-     * документот, па споредбата во формата навистина значи нешто.
+     * Упатството го носи ИМЕТО на фирмата, но никогаш ЕДБ-то и никогаш тврдење
+     * која страна е таа. Секоја од трите претходни верзии научи по нешто:
+     *
+     * - со ЕДБ-то во упатството, моделот го препишуваше назад таму каде такво
+     *   нема;
+     * - со „таа е продавачот", на влезна фактура го свиткуваше документот за
+     *   да се согласи;
+     * - без ништо за фирмата, името на продавачот го читаше точно на сите
+     *   четири вистински фактури, но ЕДБ-то го мешаше со купувачовото на две.
+     *
+     * Затоа улогата на фирмата се прашува директно, како прашање со три
+     * одговори, а формата се потпира на тој одговор — не на ЕДБ-то, кое е
+     * најнесигурното поле.
      */
-    public static function prompt(Company $company): string
+    public static function prompt(string $companyName): string
     {
         return <<<TEXT
-        Ова е фактура издадена од фирмата "{$company->name}" — таа е ПРОДАВАЧОТ.
-        Извади ја ДРУГАТА страна како купувач.
+        ПРВО одговори на ова прашање, во "our_company_role", гледајќи ја само
+        хартијата: каде на документот се спомнува фирмата „{$companyName}"?
+          - "seller" — таа ја ИЗДАЛА фактурата (нејзиното име е во заглавието,
+            покрај жиро сметката, контактот или потписот на издавачот);
+          - "buyer" — фактурата е издадена НА неа (купувач, примач, „Партнер",
+            „До");
+          - "absent" — ја нема на документот.
+        Не претпоставувај. Името може да е напишано поинаку — скратено, со
+        или без „ДООЕЛ", со друг град — но мора навистина да стои таму.
+
+        Потоа извади ги податоците од фактурата. Двете страни извади ги ТОЧНО онака
+        како што се означени на документот — не претпоставувај која е која по
+        местото на страницата:
+
+        - ПРОДАВАЧ: фирмата што ја ИЗДАЛА фактурата (издавач, добавувач).
+          Ако ознаката ја нема, тоа е фирмата чија жиро сметка, контакт или
+          потпис стојат на фактурата, најчесто во заглавието покрај логото.
+        - КУПУВАЧ: фирмата или лицето на кое е ИЗДАДЕНА (купувач, примач,
+          „Партнер", „До").
+
+        За "buyer_name" и "seller_name" врати го НАЗИВОТ на фирмата или името на
+        лицето (на пример „... ДООЕЛ Скопје"), НИКОГАШ улица. Улицата оди во
+        "buyer_street_address", бројот во "buyer_street_number".
+
+        Ако документот содржи ПОВЕЌЕ одделни фактури — на пример по една на
+        секоја страница, секоја со свој број — во "invoice_count" врати колку
+        се, а сите други полиња пополни ги САМО од првата. За една фактура врати
+        1. Ако документот воопшто не е фактура, врати 0.
 
         Извади го само она што навистина е испишано на документот. Ако нешто го
         нема или не можеш да го прочиташ со сигурност, врати празен стринг за тоа
-        поле — не погодувај и не земај броеви од ова упатство.
+        поле — не погодувај. Ако некој број го гледаш само делумно, врати празен
+        стринг, не половина број.
+
+        За "invoice_number" врати го само бројот, без зборови како „Фактура",
+        „бр.", „број" или „№".
+
+        За "currency" врати ознака од три латински букви: MKD, EUR, USD, GBP или
+        CHF. Ако износите се во денари, врати MKD.
 
         За "seller_tax_id" и "buyer_tax_id" врати го ДАНОЧНИОТ број. На
         македонските фактури тој е означен со „Е.Д.Б." или „ЕДБ" и има 13 цифри.
@@ -281,6 +393,11 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
         return [
             'type' => 'object',
             'properties' => [
+                // Прво по ред намерно: одговорот се дава од хартијата, пред
+                // моделот да ги пополни страните и да се врзе за нив.
+                'our_company_role' => ['type' => 'string', 'enum' => ['seller', 'buyer', 'absent']],
+                'invoice_count' => ['type' => 'integer'],
+                'seller_name' => $string,
                 'seller_tax_id' => $string,
                 'buyer_name' => $string,
                 'buyer_tax_id' => $string,
@@ -309,6 +426,7 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
                 ],
             ],
             'required' => [
+                'our_company_role', 'invoice_count', 'seller_name',
                 'seller_tax_id', 'buyer_name', 'buyer_tax_id', 'buyer_street_address',
                 'buyer_street_number', 'buyer_postal_code', 'buyer_city', 'invoice_number',
                 'invoice_date', 'due_date', 'currency', 'printed_total', 'lines',
