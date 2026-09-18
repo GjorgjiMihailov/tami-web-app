@@ -80,10 +80,13 @@ jobs:
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.5
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: ANTHROPIC_API_KEY
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -92,8 +95,23 @@ jobs:
             php artisan migrate --force
             npm ci
             npm run build
+            # Клучот за читање скенирани фактури живее како GitHub тајна, не во
+            # складиштето — до серверот нема рачен пристап. Се запишува во .env
+            # при секое пуштање, па GitHub е единственото место каде се менува:
+            # избришана тајна значи празен клуч, а празен клуч значи дека
+            # функцијата е скриена. Мора пред config:cache — по кеширањето
+            # Laravel повеќе не го чита .env. Се пишува преку `cat >`, не `mv`,
+            # за .env да ги задржи своите дозволи.
+            tmp_env="$(mktemp)"
+            grep -v '^ANTHROPIC_API_KEY=' .env > "$tmp_env" || true
+            printf 'ANTHROPIC_API_KEY=%s\n' "${ANTHROPIC_API_KEY:-}" >> "$tmp_env"
+            cat "$tmp_env" > .env
+            rm -f "$tmp_env"
             php artisan config:clear
             php artisan config:cache
+            # Потврда во дневникот на распоредувањето без да се открие клучот:
+            # се печати само дали е поставен.
+            php artisan tinker --execute="echo 'Читање скенови: ' . (filled(config('services.anthropic.key')) ? 'КЛУЧОТ Е ПОСТАВЕН' : 'нема клуч, функцијата е скриена') . PHP_EOL;"
             php artisan route:cache
             php artisan view:cache
             chown -R www-data:www-data .
