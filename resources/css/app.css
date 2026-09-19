@@ -101,6 +101,162 @@
 }
 
 /*
+ * Плочките за апликациите на таблата на фирмата. Секоја има своја боја
+ * (--tone), икона во обоен квадрат, мек сјај во аголот што расте при
+ * лебдење, и стрелка што лизга надесно. Влегуваат една по една (--i).
+ */
+.app-tile {
+    --tone: #ff6600;
+    --tone-2: #ff9a4d;
+    --tone-soft: rgba(255, 102, 0, 0.14);
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    border: 1px solid #E5DDD0;
+    background: #fff;
+    padding: 1.25rem;
+    box-shadow: 0 1px 2px rgba(28, 26, 23, 0.04);
+    transition: transform 220ms cubic-bezier(.2, .8, .2, 1), box-shadow 220ms ease-out, border-color 220ms ease-out;
+    animation: tile-in 480ms cubic-bezier(.2, .8, .2, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 80ms);
+}
+
+.app-tile--orange { --tone: #ff6600; --tone-2: #ffa25c; --tone-soft: rgba(255, 102, 0, 0.16); }
+.app-tile--green  { --tone: #059669; --tone-2: #34d399; --tone-soft: rgba(5, 150, 105, 0.16); }
+.app-tile--indigo { --tone: #4f46e5; --tone-2: #818cf8; --tone-soft: rgba(79, 70, 229, 0.16); }
+
+.app-tile:hover {
+    transform: translateY(-3px);
+    border-color: var(--tone-soft);
+    box-shadow: 0 14px 30px -12px var(--tone-soft), 0 2px 6px rgba(28, 26, 23, 0.05);
+}
+
+.app-tile:active {
+    transform: translateY(-1px) scale(0.985);
+}
+
+.app-tile__glow {
+    position: absolute;
+    top: -3.5rem;
+    right: -3.5rem;
+    width: 9rem;
+    height: 9rem;
+    border-radius: 9999px;
+    background: radial-gradient(circle, var(--tone-soft) 0%, transparent 70%);
+    transition: transform 400ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.app-tile:hover .app-tile__glow {
+    transform: scale(1.6);
+}
+
+.app-tile__icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.875rem;
+    color: #fff;
+    background: linear-gradient(135deg, var(--tone-2), var(--tone));
+    box-shadow: 0 8px 16px -6px var(--tone), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    transition: transform 300ms cubic-bezier(.34, 1.56, .64, 1);
+}
+
+.app-tile:hover .app-tile__icon {
+    transform: rotate(-6deg) scale(1.06);
+}
+
+.app-tile__cta {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--tone);
+}
+
+.app-tile__arrow {
+    transition: transform 220ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.app-tile:hover .app-tile__arrow {
+    transform: translateX(4px);
+}
+
+@keyframes tile-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/*
+ * Групите во страничното мени. Стрелката се врти кога групата е отворена,
+ * а ставките влегуваат една по една со благо лизгање од лево. Самото
+ * отворање (висината) го прави Alpine x-collapse.
+ */
+.menu-group__head {
+    transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+
+.menu-group.is-open .menu-group__head {
+    color: #F5F1EA;
+}
+
+.menu-group__chevron {
+    transition: transform 280ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.menu-group.is-open .menu-group__chevron {
+    transform: rotate(90deg);
+}
+
+.menu-item {
+    position: relative;
+    transition: color 150ms ease-out, transform 180ms ease-out;
+}
+
+.menu-item:hover {
+    transform: translateX(3px);
+}
+
+/* Тенка портокалова линија што ја означува отворената ставка. */
+.menu-item.is-active::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: 20%;
+    bottom: 20%;
+    width: 2px;
+    border-radius: 2px;
+    background: #ff6600;
+}
+
+.menu-group.is-open .menu-item {
+    animation: menu-item-in 300ms cubic-bezier(.2, .8, .2, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 35ms + 40ms);
+}
+
+@keyframes menu-item-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/*
+ * Застанувањето (delay) не го гаси општото правило подолу, а со `backwards` би
+ * оставило ставки невидливи додека чекаат — затоа тука изрично без анимација.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .app-tile,
+    .menu-group.is-open .menu-item {
+        animation: none;
+    }
+}
+
+/*
  * Кој исклучил анимации во системот, ги добива екраните без нив. Ова важи и за
  * фиоката и за лизгањето на групите во менито.
  */
