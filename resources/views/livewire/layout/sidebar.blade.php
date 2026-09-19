@@ -88,25 +88,27 @@
                          е отворена: откако лизгањето е во прелистувачот, сите
                          групи се во HTML (скриени), па отсуството на врска
                          повеќе не значи затворена група. --}}
-                    <div data-group="{{ $group['key'] }}" x-data="{ open: @js($expandedGroup === $group['key']) }">
-                        <button type="button" @click="open = ! open"
-                                class="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 text-rail-muted hover:bg-rail-soft transition-colors duration-150"
+                    {{-- Класата is-open ја става Alpine (и Blade за првото
+                         исцртување) — CSS-от во app.css по неа ја врти стрелката
+                         и ги внесува ставките една по една. --}}
+                    <div data-group="{{ $group['key'] }}" x-data="{ open: @js($expandedGroup === $group['key']) }"
+                         class="menu-group {{ $expandedGroup === $group['key'] ? 'is-open' : '' }}" :class="{ 'is-open': open }">
+                        <button type="button" @click="open = ! open" :aria-expanded="open"
+                                class="menu-group__head w-full text-left flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg mx-3 text-rail-muted hover:bg-rail-soft hover:text-rail-text"
                                 style="width: calc(100% - 1.5rem);">
                             <span>{{ $group['label'] }}</span>
-                            {{-- Знакот го пишува Alpine, но почетната вредност
-                                 стои и во Blade: x-text го пребришува на секое
-                                 отворање, па не може да заглави, а дотогаш
-                                 копчето не е празно. --}}
-                            <span x-text="open ? '−' : '+'">{{ $expandedGroup === $group['key'] ? '−' : '+' }}</span>
+                            <svg class="menu-group__chevron h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
                         </button>
                         {{-- x-cloak само на затворените групи: без него, сè до
                              вклучувањето на Alpine сите групи се исцртани
                              отворени и менито трепка. Отворената група го нема,
                              за да се види веднаш. --}}
-                        <div x-show="open" @unless ($expandedGroup === $group['key']) x-cloak @endunless x-collapse class="pl-6">
+                        <div x-show="open" @unless ($expandedGroup === $group['key']) x-cloak @endunless x-collapse.duration.320ms class="menu-group__items ml-7 border-l border-rail-line">
                             @foreach ($group['items'] as $item)
-                                <a href="{{ $item['url'] }}" wire:navigate
-                                   class="flex items-center gap-2 px-4 py-1.5 text-sm {{ $this->isActive($item['pattern']) ? 'text-brand font-medium' : ($item['soon'] ? 'text-rail-muted hover:text-rail-text' : 'text-rail-text hover:text-white') }}">
+                                <a href="{{ $item['url'] }}" wire:navigate style="--i: {{ $loop->index }}"
+                                   class="menu-item flex items-center gap-2 px-4 py-1.5 text-sm {{ $this->isActive($item['pattern']) ? 'is-active text-brand font-medium' : ($item['soon'] ? 'text-rail-muted hover:text-rail-text' : 'text-rail-text hover:text-white') }}">
                                     <span>{{ $item['label'] }}</span>
                                     @if ($item['soon'])
                                         <span class="text-[10px] uppercase tracking-wide text-rail-muted">наскоро</span>

@@ -1,11 +1,49 @@
 <div class="p-4">
     @if ($apps !== [])
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        {{-- Изгледот на секоја плочка (боја, икона, опис) е само украс, па
+             живее тука, а не во AppSwitcher — таму е правилото КОЈ што гледа. --}}
+        {{-- Описот зависи од видот на фирмата: физичко лице нема ни ДДВ ни
+             книжење, па плочката не смее да ги ветува. --}}
+        @php
+            $individual = $company->type->isIndividual();
+            $tileLook = [
+                'prodazba' => [
+                    'tone' => 'app-tile--orange',
+                    'text' => $individual ? 'Фактури и наплата' : 'Фактури, кооперанти, магацин и залиха',
+                    'icon' => 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 2.3c-.6.6-.2 1.7.7 1.7H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
+                ],
+                'finansii' => [
+                    'tone' => 'app-tile--green',
+                    'text' => $individual ? '743 обрасци и пријави' : 'Книжење, извештаи, ДДВ и изводи',
+                    'icon' => 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+                ],
+                'plata' => [
+                    'tone' => 'app-tile--indigo',
+                    'text' => $individual ? 'Пријави за е-ПДД' : 'Вработени, пресметка на плата и МПИН',
+                    'icon' => 'M17 20h5v-2a3 3 0 00-5.4-1.9M17 20H7m10 0v-2c0-.7-.1-1.3-.4-1.9M7 20H2v-2a3 3 0 015.4-1.9M7 20v-2c0-.7.1-1.3.4-1.9m0 0a5 5 0 019.2 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z',
+                ],
+            ];
+        @endphp
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             @foreach ($apps as $app)
+                @php $look = $tileLook[$app['key']] ?? $tileLook['prodazba']; @endphp
                 <a href="{{ $app['url'] }}"
-                   class="block rounded-xl border border-sand bg-white p-4 hover:border-stone hover:shadow-sm press">
-                    <div class="text-sm font-semibold {{ $app['accent'] }}">{{ $app['label'] }}</div>
-                    <div class="text-xs text-gray-500 mt-1">Отвори ја апликацијата</div>
+                   class="app-tile {{ $look['tone'] }} press"
+                   style="--i: {{ $loop->index }}">
+                    <span class="app-tile__glow" aria-hidden="true"></span>
+                    <span class="app-tile__icon" aria-hidden="true">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="{{ $look['icon'] }}" />
+                        </svg>
+                    </span>
+                    <span class="relative block mt-4 text-base font-bold text-ink">{{ $app['label'] }}</span>
+                    <span class="relative block mt-1 text-xs text-stone">{{ $look['text'] }}</span>
+                    <span class="app-tile__cta">
+                        Отвори ја апликацијата
+                        <svg class="app-tile__arrow h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5-5 5M6 12h12" />
+                        </svg>
+                    </span>
                 </a>
             @endforeach
         </div>

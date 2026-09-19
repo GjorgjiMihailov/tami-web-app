@@ -64,6 +64,6 @@ class SidebarLookTest extends TestCase
         $html = $this->dashboard();
 
         // Класата, не голиот збор „press" — тој се појавува и во друг текст.
-        $this->assertStringContainsString('hover:shadow-sm press', $html, 'Плочките реагираат на клик.');
+        $this->assertStringContainsString('app-tile app-tile--orange press', $html, 'Плочките реагираат на лебдење и клик.');
     }
 }
