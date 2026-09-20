@@ -6,10 +6,14 @@ use App\Exceptions\InvalidInvoiceStateException;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\Item;
+use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\PurchaseInvoice;
+use App\Models\StockLevel;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\Inventory\StockMovementService;
 use App\Services\Invoicing\PurchaseInvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -20,7 +24,7 @@ class PurchaseInvoiceServiceTest extends TestCase
 
     private PurchaseInvoiceService $service;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         $this->service = app(PurchaseInvoiceService::class);
@@ -46,6 +50,11 @@ class PurchaseInvoiceServiceTest extends TestCase
                 $account
             );
         }
+    }
+
+    private function accountId(Company $company, string $code): int
+    {
+        return Account::where('company_id', $company->id)->where('code', $code)->value('id');
     }
 
     public function test_confirming_an_expense_only_bill_posts_expense_account_and_ap(): void
@@ -93,14 +102,14 @@ class PurchaseInvoiceServiceTest extends TestCase
 
         $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
 
-        $this->assertSame('10.000', (string) \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->quantity_on_hand);
-        $this->assertSame('50.0000', (string) \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->average_cost);
+        $this->assertSame('10.000', (string) StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->quantity_on_hand);
+        $this->assertSame('50.0000', (string) StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->average_cost);
 
         $entry = $confirmed->journalEntry()->with('lines.account')->first();
         $inventoryAsset = $entry->lines->firstWhere('account.code', '660');
         $this->assertSame('500.00', (string) $inventoryAsset->debit);
 
-        $this->assertSame($line->fresh()->stock_movement_id, \App\Models\StockMovement::where('item_id', $item->id)->where('type', 'receipt')->first()->id);
+        $this->assertSame($line->fresh()->stock_movement_id, StockMovement::where('item_id', $item->id)->where('type', 'receipt')->first()->id);
     }
 
     public function test_non_deductible_vat_is_folded_into_the_line_debit_instead_of_split_to_130(): void
@@ -196,13 +205,121 @@ class PurchaseInvoiceServiceTest extends TestCase
         $this->service->confirm($invoice->fresh(), $user->id);
     }
 
-    public function test_confirming_is_rejected_when_a_lines_item_has_become_a_service(): void
+    public function test_confirming_a_service_item_line_books_the_expense_account_without_touching_stock(): void
     {
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $item = Item::factory()->for($company)->create(['type' => 'service']);
+        $user = User::factory()->create();
+
+        $invoice = PurchaseInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'warehouse_id' => null,
+            'invoice_date' => '2026-03-01',
+        ]);
+        $invoice->lines()->create([
+            'item_id' => $item->id,
+            'account_id' => $expenseAccount->id,
+            'description' => $item->name,
+            'quantity' => '5',
+            'unit_price' => '20.00',
+            'vat_rate' => '18.00',
+        ]);
+
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+
+        $this->assertSame('confirmed', $confirmed->status);
+        $this->assertSame(0, StockMovement::where('company_id', $company->id)->count());
+        $this->assertNull($confirmed->lines->first()->stock_movement_id);
+
+        $lines = $confirmed->journalEntry->lines;
+        $this->assertSame('100.00', $lines->firstWhere('account_id', $expenseAccount->id)->debit);
+        $this->assertSame('18.00', $lines->firstWhere('account_id', $this->accountId($company, '130'))->debit);
+        $this->assertSame('118.00', $lines->firstWhere('account_id', $this->accountId($company, '220'))->credit);
+        $this->assertNull($lines->firstWhere('account_id', $this->accountId($company, '660')));
+    }
+
+    public function test_confirming_a_service_item_line_without_an_expense_account_throws(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $item = Item::factory()->for($company)->create(['type' => 'service']);
+        $user = User::factory()->create();
+
+        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['item_id' => $item->id, 'description' => $item->name, 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+
+        $this->expectException(InvalidInvoiceStateException::class);
+
+        $this->service->confirm($invoice->fresh(), $user->id);
+    }
+
+    public function test_a_service_item_line_does_not_make_a_warehouse_mandatory(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $item = Item::factory()->for($company)->create(['type' => 'service']);
+        $user = User::factory()->create();
+
+        $invoice = PurchaseInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'warehouse_id' => null,
+            'invoice_date' => '2026-03-01',
+        ]);
+        $invoice->lines()->create([
+            'item_id' => $item->id,
+            'account_id' => $expenseAccount->id,
+            'description' => $item->name,
+            'quantity' => '1',
+            'unit_price' => '100.00',
+            'vat_rate' => '0',
+        ]);
+
+        $this->assertSame('confirmed', $this->service->confirm($invoice->fresh(), $user->id)->status);
+    }
+
+    public function test_a_service_item_line_may_carry_non_deductible_vat(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $item = Item::factory()->for($company)->create(['type' => 'service']);
+        $user = User::factory()->create();
+
+        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create([
+            'item_id' => $item->id,
+            'account_id' => $expenseAccount->id,
+            'description' => $item->name,
+            'quantity' => '1',
+            'unit_price' => '100.00',
+            'vat_rate' => '18.00',
+            'vat_deductible' => false,
+        ]);
+
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+        $lines = $confirmed->journalEntry->lines;
+
+        // Non-deductible VAT lands in the expense, not in input VAT.
+        $this->assertSame('118.00', $lines->firstWhere('account_id', $expenseAccount->id)->debit);
+        $this->assertNull($lines->firstWhere('account_id', $this->accountId($company, '130')));
+    }
+
+    public function test_cancelling_issues_stock_only_for_product_lines(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
         $warehouse = Warehouse::factory()->for($company)->create();
-        $item = Item::factory()->for($company)->create();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $product = Item::factory()->for($company)->create(['type' => 'product']);
+        $service = Item::factory()->for($company)->create(['type' => 'service']);
         $user = User::factory()->create();
 
         $invoice = PurchaseInvoice::factory()->for($company)->create([
@@ -210,13 +327,14 @@ class PurchaseInvoiceServiceTest extends TestCase
             'warehouse_id' => $warehouse->id,
             'invoice_date' => '2026-03-01',
         ]);
-        $invoice->lines()->create(['item_id' => $item->id, 'description' => $item->name, 'quantity' => '5', 'unit_price' => '20.00', 'vat_rate' => '18.00']);
-
-        $item->update(['type' => 'service']);
-
-        $this->expectException(InvalidInvoiceStateException::class);
+        $invoice->lines()->create(['item_id' => $product->id, 'description' => $product->name, 'quantity' => '4', 'unit_price' => '25.00', 'vat_rate' => '0']);
+        $invoice->lines()->create(['item_id' => $service->id, 'account_id' => $expenseAccount->id, 'description' => $service->name, 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
 
         $this->service->confirm($invoice->fresh(), $user->id);
+        $this->service->cancel($invoice->fresh(), $user->id);
+
+        $this->assertSame(0, StockMovement::where('item_id', $service->id)->count());
+        $this->assertSame(2, StockMovement::where('item_id', $product->id)->count());
     }
 
     public function test_confirming_a_non_item_line_without_an_account_throws(): void
@@ -249,9 +367,9 @@ class PurchaseInvoiceServiceTest extends TestCase
         $cancelled = $this->service->cancel($confirmed, $user->id);
 
         $this->assertSame('cancelled', $cancelled->status);
-        $this->assertSame('0.000', (string) \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->quantity_on_hand);
+        $this->assertSame('0.000', (string) StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->quantity_on_hand);
 
-        $reversal = \App\Models\JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines')->first();
+        $reversal = JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines')->first();
         $this->assertNotNull($reversal);
 
         $originalTotalDebit = $confirmed->journalEntry->lines->sum('debit');
@@ -309,7 +427,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
 
         // Sell off 6 of the 10 received units via a plain issue, leaving only 4 on hand.
-        app(\App\Services\Inventory\StockMovementService::class)->issue($item, $warehouse, '6', '2026-03-02', $user->id);
+        app(StockMovementService::class)->issue($item, $warehouse, '6', '2026-03-02', $user->id);
 
         $this->expectException(InvalidInvoiceStateException::class);
 
@@ -332,7 +450,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $this->assertSame('60.00', (string) $payment->amount);
         $this->assertSame('partially_paid', $confirmed->fresh(['lines', 'payments'])->paymentStatus());
 
-        $entry = \App\Models\JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
+        $entry = JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
         $bank = $entry->lines->firstWhere('account.code', '100');
         $ap = $entry->lines->firstWhere('account.code', '220');
 
@@ -353,7 +471,7 @@ class PurchaseInvoiceServiceTest extends TestCase
 
         $this->service->recordPayment($confirmed, '100.00', '2026-03-10', 'cash', $user->id);
 
-        $entry = \App\Models\JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
+        $entry = JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
         $cash = $entry->lines->firstWhere('account.code', '102');
         $this->assertSame('100.00', (string) $cash->credit);
     }
@@ -479,7 +597,7 @@ class PurchaseInvoiceServiceTest extends TestCase
 
         $this->service->recordPayment($confirmed, (string) $confirmed->fresh()->balanceDue(), '2026-04-15', 'bank', $user->id);
 
-        $paymentEntry = \App\Models\JournalEntry::where('description', 'like', 'Payment for purchase bill%')->with('lines')->firstOrFail();
+        $paymentEntry = JournalEntry::where('description', 'like', 'Payment for purchase bill%')->with('lines')->firstOrFail();
         $this->assertGreaterThan(0, $paymentEntry->lines->count());
         $paymentEntry->lines->each(function ($line) {
             $this->assertNotNull($line->line_date);
