@@ -231,7 +231,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
 
         $this->assertSame('confirmed', $confirmed->status);
-        $this->assertSame(0, StockMovement::where('company_id', $company->id)->count());
+        $this->assertSame(0, StockMovement::where('item_id', $item->id)->count());
         $this->assertNull($confirmed->lines->first()->stock_movement_id);
 
         $lines = $confirmed->journalEntry->lines;
