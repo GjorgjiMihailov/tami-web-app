@@ -191,6 +191,111 @@ class SalesInvoiceFormTest extends TestCase
         ]);
     }
 
+    public function test_a_service_item_line_saves_without_a_warehouse(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $service = Item::factory()->for($company)->service()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->set('partnerId', (string) $partner->id)
+            ->set('invoiceDate', '2026-03-01')
+            ->set('dueDate', '2026-03-15')
+            ->set('lines.0.item_id', (string) $service->id)
+            ->set('lines.0.description', $service->name)
+            ->set('lines.0.quantity', '1')
+            ->set('lines.0.unit_price', '1000.00')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('sales_invoices', [
+            'company_id' => $company->id,
+            'warehouse_id' => null,
+        ]);
+    }
+
+    public function test_a_product_item_line_still_demands_a_warehouse(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $product = Item::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->set('partnerId', (string) $partner->id)
+            ->set('invoiceDate', '2026-03-01')
+            ->set('dueDate', '2026-03-15')
+            ->set('lines.0.item_id', (string) $product->id)
+            ->set('lines.0.description', $product->name)
+            ->set('lines.0.quantity', '1')
+            ->set('lines.0.unit_price', '1000.00')
+            ->call('save')
+            ->assertHasErrors(['warehouseId']);
+    }
+
+    public function test_typing_a_gross_price_fills_in_the_net_price_and_shows_what_it_rounds_to(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->set('lines.0.vat_rate', '18.00')
+            ->set('lines.0.unit_price_gross', '100.00')
+            ->assertSet('lines.0.unit_price', '84.75')
+            ->assertSet('lines.0.unit_price_gross', '100.01');
+    }
+
+    public function test_typing_a_net_price_fills_in_the_gross_price(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->set('lines.0.vat_rate', '18.00')
+            ->set('lines.0.unit_price', '100.00')
+            ->assertSet('lines.0.unit_price_gross', '118.00');
+    }
+
+    public function test_a_non_standard_vat_treatment_drops_the_gross_price_to_the_net_price(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->set('lines.0.unit_price', '100.00')
+            ->assertSet('lines.0.unit_price_gross', '118.00')
+            ->call('setVatTreatment', 0, 'export')
+            ->assertSet('lines.0.vat_rate', '0.00')
+            ->assertSet('lines.0.unit_price_gross', '100.00');
+    }
+
+    public function test_the_line_totals_and_the_footer_add_up(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->set('lines.0.quantity', '3')
+            ->set('lines.0.unit_price', '100.00')
+            ->set('lines.0.vat_rate', '18.00')
+            ->assertSee('300,00')
+            ->assertSee('54,00')
+            ->assertSee('354,00');
+    }
+
     public function test_a_new_invoice_opens_dated_inside_the_working_year(): void
     {
         $company = Company::factory()->create();

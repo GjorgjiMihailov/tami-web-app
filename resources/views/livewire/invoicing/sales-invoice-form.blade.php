@@ -1,3 +1,11 @@
+@php
+    // Едно место за ширините на колоните: го делат заглавието и секој ред,
+    // за да не се разидат кога ќе се менува некоја колона.
+    $grid = 'md:grid md:grid-cols-[minmax(10rem,1.5fr)_minmax(9rem,2fr)_4.5rem_7rem_7rem_5rem_7rem_7rem_7rem_10rem_2rem] md:gap-x-2 md:items-start';
+    $cell = 'text-right tabular-nums';
+    $label = 'block text-[11px] font-medium text-stone md:hidden';
+@endphp
+
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-4">
         {{ $salesInvoice ? 'Измени нацрт фактура' : 'Нова излезна фактура' }} — {{ $company->name }}
@@ -56,13 +64,19 @@
                 @error('partnerId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
             <div>
-                <x-input-label for="warehouseId" value="Магацин (доколку некоја ставка содржи артикл)" />
-                <select id="warehouseId" wire:model="warehouseId" class="w-full border-gray-300 rounded-md text-sm">
+                <x-input-label for="warehouseId" value="Магацин" />
+                <select id="warehouseId" wire:model="warehouseId" @disabled(! $requiresWarehouse)
+                    class="w-full border-gray-300 focus:border-brand focus:ring-brand rounded-lg text-sm disabled:bg-gray-50 disabled:text-gray-400">
                     <option value="">—</option>
                     @foreach ($warehouses as $warehouse)
                         <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
                     @endforeach
                 </select>
+                <p class="mt-1 text-[11px] text-stone">
+                    {{ $requiresWarehouse
+                        ? 'Потребен е затоа што некоја ставка е артикл од залиха.'
+                        : 'Се бара само ако некоја ставка е артикл од залиха. Услугите не поместуваат залиха.' }}
+                </p>
                 @error('warehouseId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
             <div>
@@ -117,50 +131,136 @@
             @endif
         </x-card>
 
-        <x-card>
-            <h2 class="font-semibold text-gray-700 mb-3">Ставки</h2>
-            @foreach ($lines as $index => $line)
-                <div class="flex flex-wrap gap-3 items-end mb-3 pb-3 border-b border-sand">
-                    <div class="w-48">
-                        <x-input-label value="Артикл (опционално)" />
-                        <select wire:change="selectItem({{ $index }}, $event.target.value)" class="w-full border-gray-300 rounded-md text-sm">
-                            <option value="">— слободен текст —</option>
-                            @foreach ($items as $item)
-                                <option value="{{ $item->id }}" @selected($line['item_id'] === (string) $item->id)>{{ $item->code }} — {{ $item->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="flex-1 min-w-[12rem]">
-                        <x-input-label value="Опис" />
-                        <x-text-input wire:model="lines.{{ $index }}.description" class="w-full" />
-                        @error("lines.{$index}.description") <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                    </div>
-                    <div class="w-24">
-                        <x-input-label value="Кол." />
-                        <x-text-input wire:model="lines.{{ $index }}.quantity" class="w-full" />
-                    </div>
-                    <div class="w-32">
-                        <x-input-label value="Ед. цена" />
-                        <x-text-input wire:model="lines.{{ $index }}.unit_price" class="w-full" />
-                    </div>
-                    <div class="w-24">
-                        <x-input-label value="ДДВ %" />
-                        <x-text-input wire:model="lines.{{ $index }}.vat_rate" class="w-full" @disabled($line['vat_treatment'] !== 'standard') />
-                    </div>
-                    <div class="w-40">
-                        <x-input-label value="Третман на ДДВ" />
-                        <select wire:change="setVatTreatment({{ $index }}, $event.target.value)" class="w-full border-gray-300 rounded-md text-sm">
-                            <option value="standard" @selected($line['vat_treatment'] === 'standard')>Стандарден</option>
-                            <option value="export" @selected($line['vat_treatment'] === 'export')>Извоз</option>
-                            <option value="exempt_with_credit" @selected($line['vat_treatment'] === 'exempt_with_credit')>Ослободено (со право на одбивка)</option>
-                            <option value="exempt_without_credit" @selected($line['vat_treatment'] === 'exempt_without_credit')>Ослободено (без право на одбивка)</option>
-                        </select>
-                    </div>
-                    <button type="button" wire:click="removeLine({{ $index }})" class="text-red-600 text-sm">Отстрани</button>
-                </div>
-            @endforeach
+        <x-card padding="p-0" class="overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-sand">
+                <h2 class="font-semibold text-gray-700">Ставки</h2>
+                <button type="button" wire:click="addLine" class="text-brand text-sm font-medium hover:underline">+ Додади ставка</button>
+            </div>
 
-            <button type="button" wire:click="addLine" class="text-brand text-sm hover:underline">+ Додади ставка</button>
+            <div class="overflow-x-auto">
+                <div class="md:min-w-[76rem]">
+                    <div class="{{ $grid }} hidden px-4 py-2 bg-paper-warm text-[11px] font-semibold uppercase tracking-wide text-stone border-b border-sand">
+                        <div>Артикл</div>
+                        <div>Опис</div>
+                        <div class="text-right">Кол.</div>
+                        <div class="text-right">Цена без ДДВ</div>
+                        <div class="text-right">{{ $vatRegistered ? 'Цена со ДДВ' : '—' }}</div>
+                        <div class="text-right">ДДВ %</div>
+                        <div class="text-right">Износ ДДВ</div>
+                        <div class="text-right">Вкупно без ДДВ</div>
+                        <div class="text-right">Вкупно со ДДВ</div>
+                        <div>Третман на ДДВ</div>
+                        <div></div>
+                    </div>
+
+                    @foreach ($lines as $index => $line)
+                        <div wire:key="line-{{ $index }}"
+                            class="{{ $grid }} px-4 py-2 border-b border-sand/70 space-y-2 md:space-y-0 odd:bg-white even:bg-paper/60 hover:bg-orange-50/40">
+
+                            <div>
+                                <span class="{{ $label }}">Артикл</span>
+                                <select wire:change="selectItem({{ $index }}, $event.target.value)"
+                                    class="w-full border-gray-300 focus:border-brand focus:ring-brand rounded-lg text-sm py-1">
+                                    <option value="">— слободен текст —</option>
+                                    @foreach ($items as $item)
+                                        <option value="{{ $item->id }}" @selected($line['item_id'] === (string) $item->id)>
+                                            {{ $item->code }} — {{ $item->name }}@if ($item->isService()) (услуга) @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div>
+                                <span class="{{ $label }}">Опис</span>
+                                <x-text-input wire:model="lines.{{ $index }}.description" class="w-full text-sm py-1" />
+                                @error("lines.{$index}.description") <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <span class="{{ $label }}">Количина</span>
+                                <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.quantity" class="w-full text-sm py-1 {{ $cell }}" />
+                                @error("lines.{$index}.quantity") <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <span class="{{ $label }}">Цена без ДДВ</span>
+                                <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.unit_price" class="w-full text-sm py-1 {{ $cell }}" />
+                                @error("lines.{$index}.unit_price") <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                @if ($vatRegistered)
+                                    <span class="{{ $label }}">Цена со ДДВ</span>
+                                    <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.unit_price_gross"
+                                        class="w-full text-sm py-1 {{ $cell }}"
+                                        @disabled($line['vat_treatment'] !== 'standard') />
+                                @endif
+                            </div>
+
+                            <div>
+                                <span class="{{ $label }}">ДДВ %</span>
+                                <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.vat_rate"
+                                    class="w-full text-sm py-1 {{ $cell }}"
+                                    @disabled($line['vat_treatment'] !== 'standard') />
+                            </div>
+
+                            <div class="flex justify-between md:block md:pt-2">
+                                <span class="{{ $label }}">Износ ДДВ</span>
+                                <span class="block text-sm text-stone {{ $cell }}">{{ \App\Support\Format::money($rows[$index]['vat'], '') }}</span>
+                            </div>
+
+                            <div class="flex justify-between md:block md:pt-2">
+                                <span class="{{ $label }}">Вкупно без ДДВ</span>
+                                <span class="block text-sm text-stone {{ $cell }}">{{ \App\Support\Format::money($rows[$index]['net'], '') }}</span>
+                            </div>
+
+                            <div class="flex justify-between md:block md:pt-2">
+                                <span class="{{ $label }}">Вкупно со ДДВ</span>
+                                <span class="block text-sm font-semibold text-gray-800 {{ $cell }}">{{ \App\Support\Format::money($rows[$index]['gross'], '') }}</span>
+                            </div>
+
+                            <div>
+                                <span class="{{ $label }}">Третман на ДДВ</span>
+                                <select wire:change="setVatTreatment({{ $index }}, $event.target.value)"
+                                    class="w-full border-gray-300 focus:border-brand focus:ring-brand rounded-lg text-sm py-1">
+                                    <option value="standard" @selected($line['vat_treatment'] === 'standard')>Стандарден</option>
+                                    <option value="export" @selected($line['vat_treatment'] === 'export')>Извоз</option>
+                                    <option value="exempt_with_credit" @selected($line['vat_treatment'] === 'exempt_with_credit')>Ослободено (со право на одбивка)</option>
+                                    <option value="exempt_without_credit" @selected($line['vat_treatment'] === 'exempt_without_credit')>Ослободено (без право на одбивка)</option>
+                                </select>
+                            </div>
+
+                            <div class="md:pt-1 md:text-right">
+                                <button type="button" wire:click="removeLine({{ $index }})"
+                                    title="Отстрани ја ставката"
+                                    class="text-sm text-stone hover:text-red-600">
+                                    <span class="md:hidden">Отстрани ја ставката</span>
+                                    <span class="hidden md:inline" aria-hidden="true">✕</span>
+                                </button>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="flex justify-end px-4 py-3 bg-paper-warm">
+                <dl class="w-full sm:w-72 text-sm space-y-1">
+                    <div class="flex justify-between">
+                        <dt class="text-stone">Основица</dt>
+                        <dd class="tabular-nums">{{ \App\Support\Format::money($totals['net'], $moneyLabel) }}</dd>
+                    </div>
+                    @if ($vatRegistered)
+                        <div class="flex justify-between">
+                            <dt class="text-stone">ДДВ</dt>
+                            <dd class="tabular-nums">{{ \App\Support\Format::money($totals['vat'], $moneyLabel) }}</dd>
+                        </div>
+                    @endif
+                    <div class="flex justify-between border-t border-sand pt-1 font-semibold text-gray-800">
+                        <dt>Вкупно</dt>
+                        <dd class="tabular-nums">{{ \App\Support\Format::money($totals['gross'], $moneyLabel) }}</dd>
+                    </div>
+                </dl>
+            </div>
         </x-card>
 
         <x-card>

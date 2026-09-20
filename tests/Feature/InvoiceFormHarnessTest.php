@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Invoicing\PurchaseInvoiceForm;
+use App\Livewire\Invoicing\SalesInvoiceForm;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\Item;
@@ -20,11 +21,11 @@ use Tests\TestCase;
  * dumps the HTML next to the built stylesheet. Runs only when HARNESS_OUT is
  * set, so the normal suite never touches it.
  */
-class PurchaseInvoiceFormHarnessTest extends TestCase
+class InvoiceFormHarnessTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_dump_the_rendered_form(): void
+    public function test_dump_the_rendered_purchase_form(): void
     {
         $out = env('HARNESS_OUT');
 
@@ -70,6 +71,54 @@ class PurchaseInvoiceFormHarnessTest extends TestCase
             ->set('lines.2.vat_deductible', false)
             ->html();
 
+        $this->writePage($out, $html);
+    }
+
+    public function test_dump_the_rendered_sales_form(): void
+    {
+        $out = env('HARNESS_OUT_SALES');
+
+        if (! $out) {
+            $this->markTestSkipped('HARNESS_OUT_SALES not set.');
+        }
+
+        Role::findOrCreate('admin');
+
+        $company = Company::factory()->create(['name' => 'Тами ДООЕЛ', 'is_vat_registered' => true]);
+        $partner = Partner::factory()->for($company)->create(['name' => 'Алкалоид АД']);
+        Warehouse::factory()->for($company)->create(['name' => 'Главен магацин']);
+        $product = Item::factory()->for($company)->create(['code' => 'A-100', 'name' => 'Хартија А4', 'vat_rate' => '18.00']);
+        $service = Item::factory()->for($company)->service()->create(['code' => 'U-010', 'name' => 'Сметководствени услуги', 'vat_rate' => '18.00']);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $html = Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->set('partnerId', (string) $partner->id)
+            ->set('lines.0.item_id', (string) $product->id)
+            ->set('lines.0.description', 'Хартија А4, 500 листа')
+            ->set('lines.0.quantity', '10')
+            ->set('lines.0.unit_price', '300.00')
+            ->set('lines.0.vat_rate', '18.00')
+            ->call('addLine')
+            ->set('lines.1.item_id', (string) $service->id)
+            ->set('lines.1.description', 'Водење на книги за септември')
+            ->set('lines.1.quantity', '1')
+            ->set('lines.1.vat_rate', '18.00')
+            ->set('lines.1.unit_price_gross', '100.00')
+            ->call('addLine')
+            ->set('lines.2.description', 'Испорака во странство')
+            ->set('lines.2.quantity', '1')
+            ->set('lines.2.unit_price', '2000.00')
+            ->call('setVatTreatment', 2, 'export')
+            ->html();
+
+        $this->writePage($out, $html);
+    }
+
+    private function writePage(string $out, string $html): void
+    {
         $css = basename(collect(glob(public_path('build/assets/*.css')))->first());
 
         file_put_contents($out, <<<HTML
