@@ -183,10 +183,10 @@ class PurchaseInvoiceFormTest extends TestCase
         $this->assertDatabaseHas('purchase_invoices', ['company_id' => $company->id, 'supplier_invoice_number' => 'SUP-2026-048']);
     }
 
-    public function test_a_service_type_item_does_not_appear_in_the_item_picker(): void
+    public function test_both_products_and_services_appear_in_the_item_picker(): void
     {
         $company = Company::factory()->create();
-        $product = Item::factory()->for($company)->create(['name' => 'Physical Widget']);
+        Item::factory()->for($company)->create(['name' => 'Physical Widget']);
         Item::factory()->for($company)->service()->create(['name' => 'Consulting Hour']);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
@@ -194,13 +194,15 @@ class PurchaseInvoiceFormTest extends TestCase
 
         Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
             ->assertSee('Physical Widget')
-            ->assertDontSee('Consulting Hour');
+            ->assertSee('Consulting Hour');
     }
 
-    public function test_a_service_type_item_id_is_rejected_on_a_purchase_invoice_line(): void
+    public function test_a_service_item_line_saves_without_a_warehouse(): void
     {
+        Storage::fake('google');
         $company = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
+        $account = Account::where('company_id', $company->id)->where('code', '462')->first();
         $service = Item::factory()->for($company)->service()->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
@@ -212,11 +214,122 @@ class PurchaseInvoiceFormTest extends TestCase
             ->set('invoiceDate', '2026-03-01')
             ->set('dueDate', '2026-03-15')
             ->set('lines.0.item_id', (string) $service->id)
+            ->set('lines.0.account_id', (string) $account->id)
             ->set('lines.0.quantity', '1')
             ->set('lines.0.unit_price', '10.00')
             ->set('lines.0.vat_rate', '18.00')
             ->call('save')
-            ->assertHasErrors(['lines.0.item_id']);
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('purchase_invoices', [
+            'supplier_invoice_number' => 'SUP-2026-050',
+            'warehouse_id' => null,
+        ]);
+        $this->assertDatabaseHas('purchase_invoice_lines', [
+            'item_id' => $service->id,
+            'account_id' => $account->id,
+        ]);
+    }
+
+    public function test_a_service_item_line_still_needs_an_expense_account(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $service = Item::factory()->for($company)->service()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('partnerId', (string) $partner->id)
+            ->set('supplierInvoiceNumber', 'SUP-2026-051')
+            ->set('invoiceDate', '2026-03-01')
+            ->set('dueDate', '2026-03-15')
+            ->set('lines.0.item_id', (string) $service->id)
+            ->set('lines.0.quantity', '1')
+            ->set('lines.0.unit_price', '10.00')
+            ->set('lines.0.vat_rate', '18.00')
+            ->call('save')
+            ->assertHasErrors(['lines.0.account_id']);
+    }
+
+    public function test_a_product_item_line_still_demands_a_warehouse(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $product = Item::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('partnerId', (string) $partner->id)
+            ->set('supplierInvoiceNumber', 'SUP-2026-052')
+            ->set('invoiceDate', '2026-03-01')
+            ->set('dueDate', '2026-03-15')
+            ->set('lines.0.item_id', (string) $product->id)
+            ->set('lines.0.quantity', '1')
+            ->set('lines.0.unit_price', '10.00')
+            ->set('lines.0.vat_rate', '18.00')
+            ->call('save')
+            ->assertHasErrors(['warehouseId']);
+    }
+
+    public function test_typing_a_net_price_fills_in_the_gross_price(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('lines.0.vat_rate', '18.00')
+            ->set('lines.0.unit_price', '100.00')
+            ->assertSet('lines.0.unit_price_gross', '118.00');
+    }
+
+    public function test_typing_a_gross_price_fills_in_the_net_price_and_shows_what_it_rounds_to(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('lines.0.vat_rate', '18.00')
+            ->set('lines.0.unit_price_gross', '100.00')
+            ->assertSet('lines.0.unit_price', '84.75')
+            // The gross field corrects itself so the денар of rounding is visible.
+            ->assertSet('lines.0.unit_price_gross', '100.01');
+    }
+
+    public function test_changing_the_vat_rate_refreshes_the_gross_price(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('lines.0.unit_price', '200.00')
+            ->set('lines.0.vat_rate', '5.00')
+            ->assertSet('lines.0.unit_price_gross', '210.00');
+    }
+
+    public function test_the_line_totals_and_the_footer_add_up(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('lines.0.quantity', '3')
+            ->set('lines.0.unit_price', '100.00')
+            ->set('lines.0.vat_rate', '18.00')
+            ->assertSee('300,00')   // вкупно без ДДВ
+            ->assertSee('54,00')    // износ на ДДВ
+            ->assertSee('354,00');  // вкупно со ДДВ
     }
 
     public function test_a_needs_review_line_keeps_its_flag_after_an_unrelated_save(): void

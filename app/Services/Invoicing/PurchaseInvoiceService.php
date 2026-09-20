@@ -9,15 +9,14 @@ use App\Models\Company;
 use App\Models\JournalEntry;
 use App\Models\JournalGroup;
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseInvoiceLine;
 use App\Models\PurchaseInvoicePayment;
 use App\Services\Inventory\StockMovementService;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseInvoiceService
 {
-    public function __construct(private StockMovementService $stockMovementService)
-    {
-    }
+    public function __construct(private StockMovementService $stockMovementService) {}
 
     public function confirm(PurchaseInvoice $invoice, int $userId): PurchaseInvoice
     {
@@ -31,25 +30,21 @@ class PurchaseInvoiceService
             throw new InvalidInvoiceStateException('Влезната фактура мора да содржи барем една ставка пред да се потврди.');
         }
 
-        $hasItemLines = $invoice->lines->contains(fn ($line) => $line->item_id !== null);
+        $hasStockLines = $invoice->lines->contains(fn ($line) => $this->movesStock($line));
 
-        if ($hasItemLines && $invoice->warehouse_id === null) {
+        if ($hasStockLines && $invoice->warehouse_id === null) {
             throw new InvalidInvoiceStateException('Потребен е магацин за потврдување влезна фактура со ставки со артикли.');
         }
 
         foreach ($invoice->lines as $index => $line) {
             $position = $index + 1;
 
-            if ($line->item_id !== null && $line->item->isService()) {
-                throw new InvalidInvoiceStateException("Артиклот на ставка {$position} е услуга и не може да прими залиха — потврдувањето не е можно (ставка на позиција {$position}).");
-            }
-
-            if ($line->item_id !== null && $line->vat_deductible === false) {
+            if ($this->movesStock($line) && $line->vat_deductible === false) {
                 throw new InvalidInvoiceStateException("ДДВ без право на одбивка не е поддржано за ставки со артикл од залиха (ставка на позиција {$position}).");
             }
 
-            if ($line->item_id === null && $line->account_id === null) {
-                throw new InvalidInvoiceStateException("Ставка без артикл мора да содржи сметка за трошок (ставка на позиција {$position}).");
+            if (! $this->movesStock($line) && $line->account_id === null) {
+                throw new InvalidInvoiceStateException("Ставка што не е артикл од залиха мора да содржи сметка за трошок (ставка на позиција {$position}).");
             }
         }
 
@@ -65,7 +60,7 @@ class PurchaseInvoiceService
                 $lineVat = $vatRegistered ? $line->vatAmount() : '0.00';
                 $deductible = $vatRegistered && $line->vat_deductible;
 
-                if ($line->item_id !== null) {
+                if ($this->movesStock($line)) {
                     $movement = $this->stockMovementService->receipt(
                         $line->item,
                         $invoice->warehouse,
@@ -158,7 +153,7 @@ class PurchaseInvoiceService
 
         return DB::transaction(function () use ($invoice, $userId) {
             foreach ($invoice->lines as $line) {
-                if ($line->item_id === null) {
+                if (! $this->movesStock($line)) {
                     continue;
                 }
 
@@ -253,6 +248,16 @@ class PurchaseInvoiceService
 
             return $payment;
         });
+    }
+
+    /**
+     * Only a stocked product moves inventory. A service item is a cost like any
+     * other — it carries an item for the record, but it books to the expense
+     * account the user picked on the line and never touches a warehouse.
+     */
+    private function movesStock(PurchaseInvoiceLine $line): bool
+    {
+        return $line->item_id !== null && ! $line->item->isService();
     }
 
     private function account(Company $company, string $code): Account
