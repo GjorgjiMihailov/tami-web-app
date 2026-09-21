@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Document;
 use App\Models\PurchaseInvoice;
 use App\Models\User;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -18,7 +19,7 @@ class DocumentManagerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -81,7 +82,7 @@ class DocumentManagerTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        $failingDisk = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
+        $failingDisk = \Mockery::mock(Filesystem::class);
         $failingDisk->shouldReceive('put')
             ->andThrow(new \RuntimeException('simulated storage failure'));
         Storage::partialMock()->shouldReceive('disk')->with('google')->andReturn($failingDisk);

@@ -209,7 +209,7 @@ class StockMovementService
         $guardScale = $scale + 10;
         $quotient = bcdiv($dividend, $divisor, $guardScale);
 
-        $half = '0.' . str_repeat('0', $scale) . '5';
+        $half = '0.'.str_repeat('0', $scale).'5';
 
         if (bccomp($quotient, '0', $guardScale) < 0) {
             return bcsub($quotient, $half, $scale);

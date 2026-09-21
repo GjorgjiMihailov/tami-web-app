@@ -24,9 +24,7 @@ class SalesInvoiceService
      */
     private const MAX_NUMBER_ATTEMPTS = 1000;
 
-    public function __construct(private StockMovementService $stockMovementService)
-    {
-    }
+    public function __construct(private StockMovementService $stockMovementService) {}
 
     public function confirm(SalesInvoice $invoice, int $userId): SalesInvoice
     {

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasInvoiceTotals;
+use App\Support\InvoiceLanguage;
 use App\Support\InvoiceNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -65,7 +66,7 @@ class SalesInvoice extends Model
             'sent_at' => 'datetime',
             'efaktura_sent_at' => 'datetime',
             'exchange_rate' => 'decimal:6',
-            'language' => \App\Support\InvoiceLanguage::class,
+            'language' => InvoiceLanguage::class,
         ];
     }
 

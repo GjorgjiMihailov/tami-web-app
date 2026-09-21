@@ -165,7 +165,7 @@
                             @endif
                         </td>
                         <td>{{ $line->quantity }}</td>
-                        <td>{{ $lang->money($line->unit_price, $currency) }}</td>
+                        <td>{{ $lang->money($line->effectiveUnitPrice(), $currency, $line->isGrossEntered() ? 4 : 2) }}</td>
                         @if ($vatRegistered)
                             <td>{{ $line->vat_rate }}</td>
                             <td>{{ $lang->money($line->vatAmount(), $currency) }}</td>

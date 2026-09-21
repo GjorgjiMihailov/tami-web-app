@@ -6,6 +6,7 @@ use App\Livewire\CompanyUsers;
 use App\Livewire\OfficeUsers;
 use App\Models\Company;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -71,7 +72,7 @@ class UserAppAccessToggleTest extends TestCase
             ->test(CompanyUsers::class, ['company' => $company])
             ->call('toggleApp', $stranger->id, 'plata'));
 
-        $this->assertSame(\Illuminate\Database\Eloquent\ModelNotFoundException::class, $outcome, 'Туѓ корисник треба да дава 404 (ModelNotFoundException), не 403.');
+        $this->assertSame(ModelNotFoundException::class, $outcome, 'Туѓ корисник треба да дава 404 (ModelNotFoundException), не 403.');
         $this->assertTrue($stranger->fresh()->app_plata);
     }
 

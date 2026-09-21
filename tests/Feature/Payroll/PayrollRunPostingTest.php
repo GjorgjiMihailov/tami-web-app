@@ -6,8 +6,8 @@ use App\Models\Account;
 use App\Models\Company;
 use App\Models\Employee;
 use App\Models\EmployeeSalary;
+use App\Models\JournalEntry;
 use App\Models\PayrollMonthHours;
-use App\Models\PayrollParameter;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunLine;
 use App\Models\User;
@@ -300,7 +300,7 @@ class PayrollRunPostingTest extends TestCase
 
         $this->assertCount(2, $entry421Lines);
 
-        $grossLine = $entry421Lines->firstWhere('description', "Плата 7/2026");
+        $grossLine = $entry421Lines->firstWhere('description', 'Плата 7/2026');
         $topUpLine = $entry421Lines->firstWhere('description', 'Доплата до најниска основица');
 
         $this->assertNotNull($grossLine);
@@ -397,8 +397,8 @@ class PayrollRunPostingTest extends TestCase
         $this->assertNull($run->confirmed_at);
 
         // The original entry stays; a mirror of it now cancels it out.
-        $original = \App\Models\JournalEntry::find($originalEntryId);
-        $reversal = \App\Models\JournalEntry::where('company_id', $company->id)
+        $original = JournalEntry::find($originalEntryId);
+        $reversal = JournalEntry::where('company_id', $company->id)
             ->where('id', '!=', $originalEntryId)
             ->latest('id')
             ->first();

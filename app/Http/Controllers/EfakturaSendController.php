@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\Partner;
 use App\Models\SalesInvoice;
 use App\Services\Efaktura\EfakturaJwsService;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
@@ -52,7 +53,7 @@ class EfakturaSendController extends Controller
 
         try {
             $response = $jwsService->send($company, $cached['signing_input'], $validated['signature']);
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+        } catch (ConnectionException $e) {
             $salesInvoice->update(['efaktura_status' => 'failed', 'efaktura_error' => $e->getMessage()]);
 
             return response()->json([

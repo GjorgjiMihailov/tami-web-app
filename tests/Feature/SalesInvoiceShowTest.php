@@ -258,7 +258,7 @@ class SalesInvoiceShowTest extends TestCase
         // откако корисникот веќе го приклучил токенот. Копчето треба воопшто
         // да не се прикаже за девизна фактура.
         $company = Company::factory()->create([
-            'efaktura_credential_mode' => \App\Models\Company::EFAKTURA_MODE_OWN,
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
             'efaktura_eujp_id' => 'eujp-1',
             'efaktura_token_serial_number' => 'serial-1',
         ]);

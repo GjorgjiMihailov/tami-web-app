@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Company;
 use App\Models\Item;
 use App\Models\Partner;
+use App\Models\PurchaseInvoice;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,7 +16,7 @@ class InvoicingRoutesTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -48,7 +49,7 @@ class InvoicingRoutesTest extends TestCase
     {
         $company = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
-        $invoice = \App\Models\PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id]);
+        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id]);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $this->actingAs($admin);

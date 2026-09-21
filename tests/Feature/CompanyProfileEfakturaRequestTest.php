@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\CompanyProfile;
 use App\Models\Company;
 use App\Models\User;
+use App\Support\CompanyType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -72,7 +73,7 @@ class CompanyProfileEfakturaRequestTest extends TestCase
     public function test_an_individual_profile_cannot_request_firm_efaktura_access(): void
     {
         $company = Company::factory()->create([
-            'type' => \App\Support\CompanyType::INDIVIDUAL,
+            'type' => CompanyType::INDIVIDUAL,
             'efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM,
         ]);
         $admin = User::factory()->create();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Models\IncomingEfakturaDocument;
 use App\Services\Efaktura\EfakturaJwsService;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
@@ -24,7 +25,7 @@ class EfakturaIncomingRejectController extends Controller
 
         // Validate reasonCode is a known rejection reason
         $reasonCodes = array_keys(IncomingEfakturaDocument::REJECT_REASONS);
-        if (!in_array($validated['reasonCode'], $reasonCodes)) {
+        if (! in_array($validated['reasonCode'], $reasonCodes)) {
             return response()->json([
                 'message' => 'Комбинираната е-фактура за одбивање не е валидна.',
                 'errors' => ['reasonCode' => ['Избраниот код на причина за одбивање не е валиден.']],
@@ -32,7 +33,7 @@ class EfakturaIncomingRejectController extends Controller
         }
 
         // Validate comment is required when reasonCode is REJECT_REASON_OTHER
-        if ($validated['reasonCode'] === IncomingEfakturaDocument::REJECT_REASON_OTHER && !($validated['comment'] ?? null)) {
+        if ($validated['reasonCode'] === IncomingEfakturaDocument::REJECT_REASON_OTHER && ! ($validated['comment'] ?? null)) {
             return response()->json([
                 'message' => 'Комбинираната е-фактура за одбивање не е валидна.',
                 'errors' => ['comment' => ['Коментар е задолжителен за оваа причина за одбивање.']],
@@ -73,7 +74,7 @@ class EfakturaIncomingRejectController extends Controller
 
         try {
             $response = $jwsService->sendPurchaseInvoiceAcceptReject($company, $cached['signing_input'], $validated['signature']);
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+        } catch (ConnectionException $e) {
             return response()->json(['error' => 'ujp_unreachable', 'message' => 'Не можам да се поврзам со серверот на УЈП — провери ја интернет-врската или обиди се подоцна.'], 503);
         }
 

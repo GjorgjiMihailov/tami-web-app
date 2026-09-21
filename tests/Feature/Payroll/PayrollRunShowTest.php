@@ -7,7 +7,6 @@ use App\Models\Company;
 use App\Models\Employee;
 use App\Models\EmployeeSalary;
 use App\Models\PayrollMonthHours;
-use App\Models\PayrollParameter;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunLine;
 use App\Models\User;
@@ -21,8 +20,8 @@ use Tests\TestCase;
 
 class PayrollRunShowTest extends TestCase
 {
-    use RefreshDatabase;
     use BuildsMpinRuns;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -272,25 +271,25 @@ class PayrollRunShowTest extends TestCase
 
     public function test_it_shows_days_of_service_and_the_dates_behind_a_short_month(): void
     {
-        \Spatie\Permission\Models\Role::findOrCreate('admin');
+        Role::findOrCreate('admin');
 
-        $company = \App\Models\Company::factory()->create();
-        \App\Models\PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
+        $company = Company::factory()->create();
+        PayrollMonthHours::create(['year' => 2026, 'month' => 8, 'hours' => 168]);
 
-        $employee = \App\Models\Employee::factory()->for($company)->create([
+        $employee = Employee::factory()->for($company)->create([
             'first_name' => 'Ана', 'last_name' => 'Стоева',
             'employed_on' => '2026-08-16',
         ]);
-        \App\Models\EmployeeSalary::create([
+        EmployeeSalary::create([
             'employee_id' => $employee->id,
             'effective_from' => '2026-01-01',
             'amount' => 38507,
             'basis' => 'gross',
         ]);
 
-        $run = app(\App\Services\Payroll\PayrollRunService::class)->open($company, 2026, 8);
+        $run = app(PayrollRunService::class)->open($company, 2026, 8);
 
-        $admin = \App\Models\User::factory()->create();
+        $admin = User::factory()->create();
         $admin->assignRole('admin');
 
         $html = $this->actingAs($admin)

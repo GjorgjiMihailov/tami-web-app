@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\CompanyProfile;
 use App\Models\Company;
 use App\Models\User;
+use App\Support\CompanyType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -91,7 +92,7 @@ class CompanyProfileSigningDeviceTest extends TestCase
     {
         $admin = User::factory()->create();
         $admin->assignRole('admin');
-        $company = Company::factory()->create(['type' => \App\Support\CompanyType::INDIVIDUAL]);
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
 
         Livewire::actingAs($admin)
             ->test(CompanyProfile::class, ['company' => $company])

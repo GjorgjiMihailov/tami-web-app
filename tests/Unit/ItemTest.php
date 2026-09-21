@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\Company;
 use App\Models\Item;
 use App\Models\Partner;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -34,7 +35,7 @@ class ItemTest extends TestCase
         $company = Company::factory()->create();
         Item::factory()->for($company)->create(['code' => 'SKU-1']);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         Item::factory()->for($company)->create(['code' => 'SKU-1']);
     }
@@ -71,7 +72,7 @@ class ItemTest extends TestCase
         $company = Company::factory()->create();
         Item::factory()->for($company)->create(['barcode' => '3800000000017']);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         Item::factory()->for($company)->create(['barcode' => '3800000000017']);
     }

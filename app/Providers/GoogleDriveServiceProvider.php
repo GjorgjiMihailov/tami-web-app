@@ -15,7 +15,7 @@ class GoogleDriveServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Storage::extend('google', function ($app, array $config) {
-            $client = new Client();
+            $client = new Client;
             $client->setClientId($config['client_id']);
             $client->setClientSecret($config['client_secret']);
             // Stub access_token + a real refresh_token: satisfies

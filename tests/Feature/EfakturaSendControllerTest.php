@@ -7,7 +7,7 @@ use App\Models\Partner;
 use App\Models\SalesInvoice;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -160,7 +160,7 @@ class EfakturaSendControllerTest extends TestCase
     public function test_send_when_ujp_is_unreachable_records_failure_instead_of_500(): void
     {
         Http::fake(function () {
-            throw new \Illuminate\Http\Client\ConnectionException(
+            throw new ConnectionException(
                 'cURL error 28: Connection timeout after 10001 ms for https://efakturatest.ujp.gov.mk/JSONReceiver/api/v1/sales-invoices/send'
             );
         });

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Company;
 use App\Models\Partner;
 use App\Models\SalesInvoice;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -13,7 +14,7 @@ class SalesInvoiceEnglishPdfTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -131,7 +132,7 @@ class SalesInvoiceEnglishPdfTest extends TestCase
     {
         // dompdf 3.1.6 нема flex — „HTML-от изгледа добро“ не докажува ништо.
         $invoice = $this->invoice(['language' => 'en', 'currency' => 'EUR', 'exchange_rate' => '61.50']);
-        $admin = \App\Models\User::factory()->create();
+        $admin = User::factory()->create();
         $admin->assignRole('admin');
 
         $response = $this->actingAs($admin)->get(route('sales-invoices.pdf', [$invoice->company, $invoice]));

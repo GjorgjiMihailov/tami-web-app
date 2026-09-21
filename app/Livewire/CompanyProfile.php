@@ -3,9 +3,13 @@
 namespace App\Livewire;
 
 use App\Models\Company;
+use App\Rules\ValidEmbg;
 use App\Support\CompanyTabs;
+use App\Support\Payroll\MpinObvrznik;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -173,8 +177,8 @@ class CompanyProfile extends Component
         }
 
         try {
-            $notBeforeParsed = \Illuminate\Support\Carbon::parse($notBefore);
-            $notAfterParsed = \Illuminate\Support\Carbon::parse($notAfter);
+            $notBeforeParsed = Carbon::parse($notBefore);
+            $notAfterParsed = Carbon::parse($notAfter);
         } catch (\Exception) {
             $this->addError('signingDevice', 'Датумите од сертификатот не можат да се прочитаат.');
 
@@ -183,7 +187,7 @@ class CompanyProfile extends Component
 
         $this->company->update([
             'efaktura_token_serial_number' => $serialNumber,
-            'efaktura_token_subject_name' => \Illuminate\Support\Str::limit($subjectName, 250, ''),
+            'efaktura_token_subject_name' => Str::limit($subjectName, 250, ''),
             'efaktura_token_not_before' => $notBeforeParsed,
             'efaktura_token_not_after' => $notAfterParsed,
             'efaktura_token_registered_at' => now(),
@@ -213,9 +217,9 @@ class CompanyProfile extends Component
             'editShortName' => 'nullable|string|max:255',
             'editTaxId' => 'nullable|string|max:255',
             'editEmbg' => $this->company->type->isIndividual() && $this->editEmbg !== ''
-                ? ['nullable', 'max:13', new \App\Rules\ValidEmbg]
+                ? ['nullable', 'max:13', new ValidEmbg]
                 : ['nullable', 'max:13'],
-            'editMpinObvrznikCode' => ['nullable', Rule::enum(\App\Support\Payroll\MpinObvrznik::class)],
+            'editMpinObvrznikCode' => ['nullable', Rule::enum(MpinObvrznik::class)],
             'editRegistrationNumber' => 'nullable|string|max:255',
             'editNkdCode' => 'nullable|string|max:255',
             'editNkdName' => 'nullable|string|max:255',

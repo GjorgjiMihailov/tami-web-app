@@ -4,6 +4,7 @@ namespace Tests\Feature\Invoicing;
 
 use App\Livewire\Invoicing\InvoiceSettings;
 use App\Models\Company;
+use App\Models\SalesInvoice;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -112,7 +113,7 @@ class InvoiceSettingsTest extends TestCase
     public function test_saving_does_not_touch_already_confirmed_invoices(): void
     {
         $company = Company::factory()->create();
-        $invoice = \App\Models\SalesInvoice::factory()->for($company)->create([
+        $invoice = SalesInvoice::factory()->for($company)->create([
             'status' => 'confirmed',
             'fiscal_year' => 2026,
             'invoice_number' => 3,

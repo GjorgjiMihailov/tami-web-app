@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Payroll\MpinObvrznik;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -29,7 +30,7 @@ class PayrollRun extends Model
             'month' => 'integer',
             'month_hours' => 'integer',
             'confirmed_at' => 'datetime',
-            'mpin_obvrznik_code' => \App\Support\Payroll\MpinObvrznik::class,
+            'mpin_obvrznik_code' => MpinObvrznik::class,
             'mpin_exported_at' => 'datetime',
         ];
     }

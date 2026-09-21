@@ -2,10 +2,20 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\CompanyProfile;
+use App\Livewire\Invoicing\SalesInvoiceForm;
+use App\Livewire\PartnerShow;
 use App\Models\Company;
+use App\Models\ExchangeRate;
+use App\Models\JournalEntryLine;
 use App\Models\Partner;
 use App\Models\SalesInvoice;
+use App\Models\User;
+use App\Services\Invoicing\SalesInvoiceService;
+use App\Support\InvoiceLanguage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -13,7 +23,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -26,7 +36,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
         // затоа стандардните вредности мора да стојат и во $attributes.
         $invoice = new SalesInvoice;
 
-        $this->assertSame(\App\Support\InvoiceLanguage::MK, $invoice->language);
+        $this->assertSame(InvoiceLanguage::MK, $invoice->language);
         $this->assertSame('MKD', $invoice->currency);
         $this->assertSame('1.000000', (string) $invoice->exchange_rate);
         $this->assertFalse($invoice->isForeignCurrency());
@@ -59,9 +69,9 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'country' => 'Germany',
         ]);
 
-        $this->assertSame(\App\Support\InvoiceLanguage::EN, $partner->fresh()->invoice_language);
+        $this->assertSame(InvoiceLanguage::EN, $partner->fresh()->invoice_language);
         $this->assertSame('Germany', $partner->fresh()->country);
-        $this->assertSame(\App\Support\InvoiceLanguage::MK, (new Partner)->invoice_language);
+        $this->assertSame(InvoiceLanguage::MK, (new Partner)->invoice_language);
     }
 
     public function test_a_bank_account_can_store_an_iban_and_a_swift(): void
@@ -86,7 +96,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
         $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id]);
 
         $this->assertSame('MKD', $invoice->fresh()->currency);
-        $this->assertSame(\App\Support\InvoiceLanguage::MK, $invoice->fresh()->language);
+        $this->assertSame(InvoiceLanguage::MK, $invoice->fresh()->language);
         $this->assertFalse($invoice->fresh()->isForeignCurrency());
     }
 
@@ -94,18 +104,18 @@ class ForeignCurrencyInvoiceTest extends TestCase
     {
         $company = Company::factory()->create(['type' => 'individual']);
         $partner = Partner::factory()->for($company)->create(['name' => 'Acme Ltd']);
-        $admin = \App\Models\User::factory()->create();
+        $admin = User::factory()->create();
         $admin->assignRole('admin');
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\PartnerShow::class, ['company' => $company, 'partner' => $partner])
+        Livewire::actingAs($admin)
+            ->test(PartnerShow::class, ['company' => $company, 'partner' => $partner])
             ->call('startEdit')
             ->set('editInvoiceLanguage', 'en')
             ->set('editCountry', 'Germany')
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertSame(\App\Support\InvoiceLanguage::EN, $partner->fresh()->invoice_language);
+        $this->assertSame(InvoiceLanguage::EN, $partner->fresh()->invoice_language);
         $this->assertSame('Germany', $partner->fresh()->country);
     }
 
@@ -113,11 +123,11 @@ class ForeignCurrencyInvoiceTest extends TestCase
     {
         $company = Company::factory()->create(['type' => 'legal']);
         $partner = Partner::factory()->for($company)->create();
-        $admin = \App\Models\User::factory()->create();
+        $admin = User::factory()->create();
         $admin->assignRole('admin');
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\PartnerShow::class, ['company' => $company, 'partner' => $partner])
+        Livewire::actingAs($admin)
+            ->test(PartnerShow::class, ['company' => $company, 'partner' => $partner])
             ->call('startEdit')
             ->assertDontSee('Јазик на фактура');
     }
@@ -127,16 +137,16 @@ class ForeignCurrencyInvoiceTest extends TestCase
         // Скриено поле во Blade не е заклучување. Серверот мора да одбие.
         $company = Company::factory()->create(['type' => 'legal']);
         $partner = Partner::factory()->for($company)->create();
-        $admin = \App\Models\User::factory()->create();
+        $admin = User::factory()->create();
         $admin->assignRole('admin');
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\PartnerShow::class, ['company' => $company, 'partner' => $partner])
+        Livewire::actingAs($admin)
+            ->test(PartnerShow::class, ['company' => $company, 'partner' => $partner])
             ->call('startEdit')
             ->set('editInvoiceLanguage', 'en')
             ->call('save');
 
-        $this->assertSame(\App\Support\InvoiceLanguage::MK, $partner->fresh()->invoice_language);
+        $this->assertSame(InvoiceLanguage::MK, $partner->fresh()->invoice_language);
     }
 
     public function test_the_country_field_is_available_to_a_legal_entity_too(): void
@@ -144,11 +154,11 @@ class ForeignCurrencyInvoiceTest extends TestCase
         // Државата е обична адресна податока, не дел од девизната гранка.
         $company = Company::factory()->create(['type' => 'legal']);
         $partner = Partner::factory()->for($company)->create();
-        $admin = \App\Models\User::factory()->create();
+        $admin = User::factory()->create();
         $admin->assignRole('admin');
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\PartnerShow::class, ['company' => $company, 'partner' => $partner])
+        Livewire::actingAs($admin)
+            ->test(PartnerShow::class, ['company' => $company, 'partner' => $partner])
             ->call('startEdit')
             ->set('editCountry', 'Србија')
             ->call('save')
@@ -160,11 +170,11 @@ class ForeignCurrencyInvoiceTest extends TestCase
     public function test_the_profile_stores_an_iban_and_a_swift_per_bank_account(): void
     {
         $company = Company::factory()->create(['type' => 'individual']);
-        $admin = \App\Models\User::factory()->create();
+        $admin = User::factory()->create();
         $admin->assignRole('admin');
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\CompanyProfile::class, ['company' => $company])
+        Livewire::actingAs($admin)
+            ->test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->set('bankAccounts', [[
                 'bank_name' => 'Komercijalna',
@@ -184,11 +194,11 @@ class ForeignCurrencyInvoiceTest extends TestCase
     {
         // Празен ред се фрла, но ред со внесен IBAN не е празен.
         $company = Company::factory()->create(['type' => 'individual']);
-        $admin = \App\Models\User::factory()->create();
+        $admin = User::factory()->create();
         $admin->assignRole('admin');
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\CompanyProfile::class, ['company' => $company])
+        Livewire::actingAs($admin)
+            ->test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
             ->set('bankAccounts', [[
                 'bank_name' => '',
@@ -209,7 +219,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'name' => 'Acme Ltd',
             'invoice_language' => $partnerLanguage,
         ]);
-        $admin = \App\Models\User::factory()->create();
+        $admin = User::factory()->create();
         $admin->assignRole('admin');
 
         return [$company, $partner, $admin];
@@ -231,8 +241,8 @@ class ForeignCurrencyInvoiceTest extends TestCase
     {
         [$company, $partner, $admin] = $this->individualCompanyWithPartner();
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\Invoicing\SalesInvoiceForm::class, ['company' => $company])
+        Livewire::actingAs($admin)
+            ->test(SalesInvoiceForm::class, ['company' => $company])
             ->set('partnerId', (string) $partner->id)
             ->set('invoiceDate', '2026-09-13')
             ->set('dueDate', '2026-09-30')
@@ -251,8 +261,8 @@ class ForeignCurrencyInvoiceTest extends TestCase
     {
         [$company, $partner, $admin] = $this->individualCompanyWithPartner('en');
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\Invoicing\SalesInvoiceForm::class, ['company' => $company])
+        Livewire::actingAs($admin)
+            ->test(SalesInvoiceForm::class, ['company' => $company])
             ->set('partnerId', (string) $partner->id)
             ->set('invoiceDate', '2026-09-13')
             ->set('dueDate', '2026-09-30')
@@ -262,19 +272,19 @@ class ForeignCurrencyInvoiceTest extends TestCase
             ->call('save');
 
         $invoice = SalesInvoice::where('company_id', $company->id)->firstOrFail();
-        $this->assertSame(\App\Support\InvoiceLanguage::EN, $invoice->language);
+        $this->assertSame(InvoiceLanguage::EN, $invoice->language);
 
         // Подоцнежна промена кај кооперантот не ја менува издадената фактура.
         $partner->update(['invoice_language' => 'mk']);
-        $this->assertSame(\App\Support\InvoiceLanguage::EN, $invoice->fresh()->language);
+        $this->assertSame(InvoiceLanguage::EN, $invoice->fresh()->language);
     }
 
     public function test_a_foreign_currency_without_a_rate_is_refused(): void
     {
         [$company, $partner, $admin] = $this->individualCompanyWithPartner();
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\Invoicing\SalesInvoiceForm::class, ['company' => $company])
+        Livewire::actingAs($admin)
+            ->test(SalesInvoiceForm::class, ['company' => $company])
             ->set('partnerId', (string) $partner->id)
             ->set('invoiceDate', '2026-09-13')
             ->set('dueDate', '2026-09-30')
@@ -292,8 +302,8 @@ class ForeignCurrencyInvoiceTest extends TestCase
         [$company, $partner, $admin] = $this->individualCompanyWithPartner();
 
         foreach (['0', '-1'] as $rate) {
-            \Livewire\Livewire::actingAs($admin)
-                ->test(\App\Livewire\Invoicing\SalesInvoiceForm::class, ['company' => $company])
+            Livewire::actingAs($admin)
+                ->test(SalesInvoiceForm::class, ['company' => $company])
                 ->set('partnerId', (string) $partner->id)
                 ->set('invoiceDate', '2026-09-13')
                 ->set('dueDate', '2026-09-30')
@@ -309,11 +319,11 @@ class ForeignCurrencyInvoiceTest extends TestCase
     {
         $company = Company::factory()->create(['type' => 'legal']);
         $partner = Partner::factory()->for($company)->create(['invoice_language' => 'en']);
-        $admin = \App\Models\User::factory()->create();
+        $admin = User::factory()->create();
         $admin->assignRole('admin');
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\Invoicing\SalesInvoiceForm::class, ['company' => $company])
+        Livewire::actingAs($admin)
+            ->test(SalesInvoiceForm::class, ['company' => $company])
             ->set('partnerId', (string) $partner->id)
             ->set('invoiceDate', '2026-09-13')
             ->set('dueDate', '2026-09-30')
@@ -326,17 +336,17 @@ class ForeignCurrencyInvoiceTest extends TestCase
         $invoice = SalesInvoice::where('company_id', $company->id)->firstOrFail();
         $this->assertSame('MKD', $invoice->currency);
         $this->assertSame('1.000000', (string) $invoice->exchange_rate);
-        $this->assertSame(\App\Support\InvoiceLanguage::MK, $invoice->language);
+        $this->assertSame(InvoiceLanguage::MK, $invoice->language);
     }
 
     public function test_a_legal_entity_never_sees_the_currency_field(): void
     {
         $company = Company::factory()->create(['type' => 'legal']);
-        $admin = \App\Models\User::factory()->create();
+        $admin = User::factory()->create();
         $admin->assignRole('admin');
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\Invoicing\SalesInvoiceForm::class, ['company' => $company])
+        Livewire::actingAs($admin)
+            ->test(SalesInvoiceForm::class, ['company' => $company])
             ->assertDontSee('Валута');
     }
 
@@ -350,8 +360,8 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'invoice_date' => '2026-08-01',
         ]);
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\Invoicing\SalesInvoiceForm::class, ['company' => $company])
+        Livewire::actingAs($admin)
+            ->test(SalesInvoiceForm::class, ['company' => $company])
             ->set('currency', 'EUR')
             ->assertSet('exchangeRate', '61.480000');
     }
@@ -360,8 +370,8 @@ class ForeignCurrencyInvoiceTest extends TestCase
     {
         [$company, $partner, $admin] = $this->individualCompanyWithPartner();
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\Invoicing\SalesInvoiceForm::class, ['company' => $company])
+        Livewire::actingAs($admin)
+            ->test(SalesInvoiceForm::class, ['company' => $company])
             ->set('currency', 'EUR')
             ->set('exchangeRate', '61.50')
             ->set('currency', 'MKD')
@@ -375,14 +385,14 @@ class ForeignCurrencyInvoiceTest extends TestCase
         // Постоечкиот ExchangeRateService кешира во табелата exchange_rates и
         // повикува мрежа само кога нема кеш. Полниме кеш, па тестот не оди на
         // интернет.
-        \App\Models\ExchangeRate::create([
+        ExchangeRate::create([
             'rate_date' => '2026-09-13',
             'currency_code' => 'EUR',
             'rate' => '61.4955',
         ]);
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\Invoicing\SalesInvoiceForm::class, ['company' => $company])
+        Livewire::actingAs($admin)
+            ->test(SalesInvoiceForm::class, ['company' => $company])
             ->set('invoiceDate', '2026-09-13')
             ->set('currency', 'EUR')
             ->call('fetchRate')
@@ -396,12 +406,12 @@ class ForeignCurrencyInvoiceTest extends TestCase
         // се издаде со рачно впишан курс.
         [$company, $partner, $admin] = $this->individualCompanyWithPartner();
 
-        \Illuminate\Support\Facades\Http::fake([
-            'www.nbrm.mk/*' => \Illuminate\Support\Facades\Http::response('', 500),
+        Http::fake([
+            'www.nbrm.mk/*' => Http::response('', 500),
         ]);
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\Invoicing\SalesInvoiceForm::class, ['company' => $company])
+        Livewire::actingAs($admin)
+            ->test(SalesInvoiceForm::class, ['company' => $company])
             ->set('invoiceDate', '2026-09-13')
             ->set('currency', 'EUR')
             ->call('fetchRate')
@@ -415,12 +425,12 @@ class ForeignCurrencyInvoiceTest extends TestCase
         // го запишал точниот курс.
         [$company, $partner, $admin] = $this->individualCompanyWithPartner();
 
-        \Illuminate\Support\Facades\Http::fake([
-            'www.nbrm.mk/*' => \Illuminate\Support\Facades\Http::response('', 500),
+        Http::fake([
+            'www.nbrm.mk/*' => Http::response('', 500),
         ]);
 
-        $test = \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\Invoicing\SalesInvoiceForm::class, ['company' => $company])
+        $test = Livewire::actingAs($admin)
+            ->test(SalesInvoiceForm::class, ['company' => $company])
             ->set('invoiceDate', '2026-09-13')
             ->set('currency', 'EUR')
             ->call('fetchRate')
@@ -429,7 +439,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
         // НБРМ „закрепнува“ — во тестот тоа значи дека курсот е во кешот,
         // истиот пат по кој ExchangeRateService го проверува пред мрежата,
         // па тестот не оди на интернет ниту на вториот обид.
-        \App\Models\ExchangeRate::create([
+        ExchangeRate::create([
             'rate_date' => '2026-09-13',
             'currency_code' => 'EUR',
             'rate' => '61.4955',
@@ -444,8 +454,8 @@ class ForeignCurrencyInvoiceTest extends TestCase
     {
         [$company, $partner, $admin] = $this->individualCompanyWithPartner();
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\Invoicing\SalesInvoiceForm::class, ['company' => $company])
+        Livewire::actingAs($admin)
+            ->test(SalesInvoiceForm::class, ['company' => $company])
             ->set('currency', 'MKD')
             ->call('fetchRate')
             ->assertSet('exchangeRate', '1');
@@ -469,7 +479,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'vat_treatment' => 'standard',
         ]);
 
-        app(\App\Services\Invoicing\SalesInvoiceService::class)
+        app(SalesInvoiceService::class)
             ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
 
         $entry = $invoice->fresh()->journalEntry;
@@ -501,7 +511,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'vat_treatment' => 'standard',
         ]);
 
-        app(\App\Services\Invoicing\SalesInvoiceService::class)
+        app(SalesInvoiceService::class)
             ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
 
         $receivable = $invoice->fresh()->journalEntry->lines
@@ -528,7 +538,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'vat_treatment' => 'standard',
         ]);
 
-        app(\App\Services\Invoicing\SalesInvoiceService::class)
+        app(SalesInvoiceService::class)
             ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
 
         $receivable = $invoice->fresh()->journalEntry->lines
@@ -555,7 +565,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'vat_treatment' => 'standard',
         ]);
 
-        app(\App\Services\Invoicing\SalesInvoiceService::class)
+        app(SalesInvoiceService::class)
             ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
 
         $lines = $invoice->fresh()->journalEntry->lines;
@@ -583,7 +593,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'vat_treatment' => 'standard',
         ]);
 
-        app(\App\Services\Invoicing\SalesInvoiceService::class)
+        app(SalesInvoiceService::class)
             ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
 
         $receivable = $invoice->fresh()->journalEntry->lines
@@ -609,7 +619,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'vat_treatment' => 'standard',
         ]);
 
-        $service = app(\App\Services\Invoicing\SalesInvoiceService::class);
+        $service = app(SalesInvoiceService::class);
         $service->confirm($invoice->fresh(['lines', 'company']), $admin->id);
         $service->recordPayment($invoice->fresh(['lines', 'payments', 'company']), '500.00', '2026-09-20', 'bank', $admin->id);
 
@@ -618,7 +628,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
         $this->assertSame('0.00', $invoice->fresh(['lines', 'payments'])->balanceDue());
 
         // ...а во главната книга сметка 120 се затвора точно на нула.
-        $receivableMovement = \App\Models\JournalEntryLine::whereHas(
+        $receivableMovement = JournalEntryLine::whereHas(
             'account',
             fn ($q) => $q->where('code', '120')->where('company_id', $company->id)
         )
@@ -649,13 +659,13 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'vat_treatment' => 'standard',
         ]);
 
-        $service = app(\App\Services\Invoicing\SalesInvoiceService::class);
+        $service = app(SalesInvoiceService::class);
         $service->confirm($invoice->fresh(['lines', 'company']), $admin->id);
         $service->recordPayment($invoice->fresh(['lines', 'payments', 'company']), '333.33', '2026-09-20', 'bank', $admin->id);
         $service->recordPayment($invoice->fresh(['lines', 'payments', 'company']), '333.33', '2026-09-21', 'bank', $admin->id);
         $service->recordPayment($invoice->fresh(['lines', 'payments', 'company']), '333.34', '2026-09-22', 'bank', $admin->id);
 
-        $receivableMovement = \App\Models\JournalEntryLine::whereHas(
+        $receivableMovement = JournalEntryLine::whereHas(
             'account',
             fn ($q) => $q->where('code', '120')->where('company_id', $company->id)
         )
@@ -692,7 +702,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'vat_treatment' => 'standard',
         ]);
 
-        $service = app(\App\Services\Invoicing\SalesInvoiceService::class);
+        $service = app(SalesInvoiceService::class);
         $service->confirm($invoice->fresh(['lines', 'company']), $admin->id);
         $service->recordPayment($invoice->fresh(['lines', 'payments', 'company']), '500.005', '2026-09-20', 'bank', $admin->id);
 
@@ -706,7 +716,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
 
         $this->assertSame('0.00', $invoice->fresh(['lines', 'payments'])->balanceDue());
 
-        $receivableMovement = \App\Models\JournalEntryLine::whereHas(
+        $receivableMovement = JournalEntryLine::whereHas(
             'account',
             fn ($q) => $q->where('code', '120')->where('company_id', $company->id)
         )
@@ -736,11 +746,11 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'vat_treatment' => 'standard',
         ]);
 
-        $service = app(\App\Services\Invoicing\SalesInvoiceService::class);
+        $service = app(SalesInvoiceService::class);
         $service->confirm($invoice->fresh(['lines', 'company']), $admin->id);
         $service->recordPayment($invoice->fresh(['lines', 'payments', 'company']), '1768.82', '2026-09-20', 'bank', $admin->id);
 
-        $receivableMovement = \App\Models\JournalEntryLine::whereHas(
+        $receivableMovement = JournalEntryLine::whereHas(
             'account',
             fn ($q) => $q->where('code', '120')->where('company_id', $company->id)
         )
@@ -762,7 +772,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
         // заклучено копче.
         $company = Company::factory()->create([
             'type' => 'individual',
-            'efaktura_credential_mode' => \App\Models\Company::EFAKTURA_MODE_OWN,
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
             // Комплетна адреса — инаку `hasCompleteAddress()` фаќа 422 порано
             // и тестот не би ја докажал валутната проверка воопшто.
             'street_address' => 'Мајка Тереза', 'street_number' => '12',
@@ -778,7 +788,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'currency' => 'EUR',
             'exchange_rate' => '61.500000',
         ]);
-        $accountant = \App\Models\User::factory()->create();
+        $accountant = User::factory()->create();
         $accountant->assignRole('accountant');
         $company->accountants()->attach($accountant);
 
@@ -793,7 +803,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
     {
         $company = Company::factory()->create([
             'type' => 'individual',
-            'efaktura_credential_mode' => \App\Models\Company::EFAKTURA_MODE_OWN,
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
         ]);
         $partner = Partner::factory()->for($company)->create();
         $invoice = SalesInvoice::factory()->for($company)->create([
@@ -802,7 +812,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'currency' => 'USD',
             'exchange_rate' => '56.200000',
         ]);
-        $accountant = \App\Models\User::factory()->create();
+        $accountant = User::factory()->create();
         $accountant->assignRole('accountant');
         $company->accountants()->attach($accountant);
 

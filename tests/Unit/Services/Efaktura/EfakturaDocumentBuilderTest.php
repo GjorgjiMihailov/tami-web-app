@@ -7,6 +7,7 @@ use App\Models\Partner;
 use App\Models\SalesInvoice;
 use App\Services\Efaktura\EfakturaDocumentBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class EfakturaDocumentBuilderTest extends TestCase
@@ -166,7 +167,7 @@ class EfakturaDocumentBuilderTest extends TestCase
         // primer_za_json_3.pdf's worked examples (e.g. "requestTimestamp": "2026-04-27T11:24:10"):
         // no trailing "Z", and UJP explicitly states the time must be in the Skopje timezone —
         // not UTC, which is this app's default (config/app.php: 'timezone' => 'UTC').
-        \Illuminate\Support\Carbon::setTestNow(\Illuminate\Support\Carbon::create(2026, 6, 15, 10, 0, 0, 'UTC'));
+        Carbon::setTestNow(Carbon::create(2026, 6, 15, 10, 0, 0, 'UTC'));
 
         $company = Company::factory()->create(['tax_id' => '4030001234567']);
         $partner = Partner::factory()->for($company)->create();
@@ -181,7 +182,7 @@ class EfakturaDocumentBuilderTest extends TestCase
         // Skopje is UTC+2 in June (CEST-aligned, summer time) -> 10:00 UTC = 12:00 Skopje.
         $this->assertSame('2026-06-15T12:00:00', $document['requestTimestamp']);
 
-        \Illuminate\Support\Carbon::setTestNow();
+        Carbon::setTestNow();
     }
 
     public function test_doc_references_is_present_as_empty_array(): void

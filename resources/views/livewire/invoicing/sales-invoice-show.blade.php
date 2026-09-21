@@ -41,7 +41,7 @@
                     <tr class="hover:bg-orange-50">
                         <td class="py-1">{{ $line->description }}</td>
                         <td class="py-1">{{ $line->quantity }}</td>
-                        <td class="py-1">{{ \App\Support\Format::money($line->unit_price, $currencySuffix) }}</td>
+                        <td class="py-1">{{ \App\Support\Format::money($line->effectiveUnitPrice(), $currencySuffix, $line->isGrossEntered() ? 4 : 2) }}</td>
                         <td class="py-1">{{ $line->vat_rate }}{{ $line->vat_treatment !== 'standard' ? ' ('.\App\Support\Format::vatTreatment($line->vat_treatment).')' : '' }}</td>
                         <td class="py-1">{{ \App\Support\Format::money($line->lineTotal(), $currencySuffix) }}</td>
                     </tr>

@@ -3,6 +3,7 @@
 namespace App\Support\Bank;
 
 use App\Models\BankStatement;
+use App\Support\BankStatementKind;
 use Illuminate\Support\Collection;
 
 /**
@@ -21,7 +22,7 @@ class StatementSequence
 {
     /**
      * @param  Collection<int, BankStatement>  $statements
-     * @return array<int, array{account: string, bank: string, kind: \App\Support\BankStatementKind, year: int, rows: array<int, array<string, mixed>>}>
+     * @return array<int, array{account: string, bank: string, kind: BankStatementKind, year: int, rows: array<int, array<string, mixed>>}>
      */
     public static function groups(Collection $statements): array
     {

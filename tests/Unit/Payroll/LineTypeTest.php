@@ -67,7 +67,6 @@ class LineTypeTest extends TestCase
      * are the business defaults recorded in the design spec's "Стандардни
      * проценти" section — a transcription slip there is just as silent,
      * since it also prices real hours.
-     *
      */
     #[DataProvider('offeredCodeProvider')]
     public function test_every_offered_codes_default_percent_matches_its_table_entry(string $code, float $expectedPercent): void

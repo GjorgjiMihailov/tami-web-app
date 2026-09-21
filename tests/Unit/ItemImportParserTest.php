@@ -14,10 +14,10 @@ class ItemImportParserTest extends TestCase
 
     private ItemImportParser $parser;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
-        $this->parser = new ItemImportParser();
+        $this->parser = new ItemImportParser;
     }
 
     private const HEADER = ['Шифра', 'Назив', 'Мерна единица', 'Категорија', 'ДДВ стапка', 'Продажна цена', 'Тип', 'МК-производство', 'Баркод'];

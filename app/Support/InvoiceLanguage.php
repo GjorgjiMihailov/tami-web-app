@@ -38,13 +38,18 @@ enum InvoiceLanguage: string
         return self::DICTIONARY[$key][$this->value] ?? $key;
     }
 
-    public function money(string|float|int $amount, string $currency = 'MKD'): string
+    /**
+     * $decimals оди над двете стандардни само за единечна цена на ставка
+     * внесена со бруто цена: таму цената мора да се множи чисто со
+     * количината, инаку на фактурата пишува цена × количина ≠ вкупно.
+     */
+    public function money(string|float|int $amount, string $currency = 'MKD', int $decimals = 2): string
     {
         if ($this === self::MK) {
-            return Format::money($amount, $currency === 'MKD' ? 'ден' : $currency);
+            return Format::money($amount, $currency === 'MKD' ? 'ден' : $currency, $decimals);
         }
 
-        return number_format((float) $amount, 2, '.', ',').' '.$currency;
+        return number_format((float) $amount, $decimals, '.', ',').' '.$currency;
     }
 
     public function date(mixed $value): string

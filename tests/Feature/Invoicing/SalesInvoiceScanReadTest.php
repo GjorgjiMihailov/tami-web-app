@@ -8,8 +8,8 @@ use App\Models\Partner;
 use App\Models\User;
 use App\Services\Invoicing\ScannedInvoice;
 use App\Services\Invoicing\ScannedInvoiceLine;
-use App\Services\Invoicing\ScannedInvoiceReadException;
 use App\Services\Invoicing\ScannedInvoiceReader;
+use App\Services\Invoicing\ScannedInvoiceReadException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -22,7 +22,7 @@ class SalesInvoiceScanReadTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');

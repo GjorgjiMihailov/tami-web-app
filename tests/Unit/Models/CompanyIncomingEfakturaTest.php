@@ -5,6 +5,7 @@ namespace Tests\Unit\Models;
 use App\Models\Company;
 use App\Models\IncomingEfakturaDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class CompanyIncomingEfakturaTest extends TestCase
@@ -15,7 +16,7 @@ class CompanyIncomingEfakturaTest extends TestCase
     {
         $company = Company::factory()->create(['efaktura_purchase_last_checked_at' => '2026-08-01 10:00:00']);
 
-        $this->assertInstanceOf(\Illuminate\Support\Carbon::class, $company->fresh()->efaktura_purchase_last_checked_at);
+        $this->assertInstanceOf(Carbon::class, $company->fresh()->efaktura_purchase_last_checked_at);
     }
 
     public function test_has_many_incoming_efaktura_documents(): void

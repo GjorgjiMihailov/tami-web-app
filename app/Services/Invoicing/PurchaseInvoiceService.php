@@ -65,7 +65,11 @@ class PurchaseInvoiceService
                         $line->item,
                         $invoice->warehouse,
                         (string) $line->quantity,
-                        (string) $line->unit_price,
+                        // Не `unit_price`: кај ставка внесена со бруто цена
+                        // заокружената нето цена веќе не ја дава основицата,
+                        // па залихата би примила 30,48 таму каде главната
+                        // книга задолжува 30,51.
+                        $line->effectiveUnitPrice(),
                         $invoice->invoice_date->toDateString(),
                         $userId
                     );

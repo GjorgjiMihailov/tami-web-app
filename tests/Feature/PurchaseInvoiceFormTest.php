@@ -288,7 +288,7 @@ class PurchaseInvoiceFormTest extends TestCase
             ->assertSet('lines.0.unit_price_gross', '118.00');
     }
 
-    public function test_typing_a_gross_price_fills_in_the_net_price_and_shows_what_it_rounds_to(): void
+    public function test_typing_a_gross_price_never_rewrites_what_was_typed(): void
     {
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $admin = User::factory()->create();
@@ -298,9 +298,39 @@ class PurchaseInvoiceFormTest extends TestCase
         Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
             ->set('lines.0.vat_rate', '18.00')
             ->set('lines.0.unit_price_gross', '100.00')
-            ->assertSet('lines.0.unit_price', '84.75')
-            // The gross field corrects itself so the денар of rounding is visible.
-            ->assertSet('lines.0.unit_price_gross', '100.01');
+            ->assertSet('lines.0.unit_price_gross', '100.00')
+            ->assertSet('lines.0.price_basis', 'gross')
+            ->assertSet('lines.0.unit_price', '84.75');
+    }
+
+    public function test_a_gross_entered_line_totals_exactly_what_was_typed(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('lines.0.quantity', '6')
+            ->set('lines.0.vat_rate', '18.00')
+            ->set('lines.0.unit_price_gross', '6.00')
+            ->assertSee('36,00')   // вкупно со ДДВ, не 35,97
+            ->assertSee('30,51')   // основица
+            ->assertSee('5,49');   // ДДВ
+    }
+
+    public function test_changing_the_rate_on_a_gross_line_keeps_the_gross_price_and_moves_the_net(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('lines.0.unit_price_gross', '105.00')
+            ->set('lines.0.vat_rate', '5.00')
+            ->assertSet('lines.0.unit_price_gross', '105.00')
+            ->assertSet('lines.0.unit_price', '100.00');
     }
 
     public function test_changing_the_vat_rate_refreshes_the_gross_price(): void

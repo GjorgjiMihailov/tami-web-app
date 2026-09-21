@@ -238,7 +238,7 @@ class SalesInvoiceFormTest extends TestCase
             ->assertHasErrors(['warehouseId']);
     }
 
-    public function test_typing_a_gross_price_fills_in_the_net_price_and_shows_what_it_rounds_to(): void
+    public function test_typing_a_gross_price_never_rewrites_what_was_typed(): void
     {
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $admin = User::factory()->create();
@@ -248,8 +248,25 @@ class SalesInvoiceFormTest extends TestCase
         Livewire::test(SalesInvoiceForm::class, ['company' => $company])
             ->set('lines.0.vat_rate', '18.00')
             ->set('lines.0.unit_price_gross', '100.00')
-            ->assertSet('lines.0.unit_price', '84.75')
-            ->assertSet('lines.0.unit_price_gross', '100.01');
+            ->assertSet('lines.0.unit_price_gross', '100.00')
+            ->assertSet('lines.0.price_basis', 'gross')
+            ->assertSet('lines.0.unit_price', '84.75');
+    }
+
+    public function test_a_gross_entered_line_totals_exactly_what_was_typed(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->set('lines.0.quantity', '6')
+            ->set('lines.0.vat_rate', '18.00')
+            ->set('lines.0.unit_price_gross', '6.00')
+            ->assertSee('36,00')
+            ->assertSee('30,51')
+            ->assertSee('5,49');
     }
 
     public function test_typing_a_net_price_fills_in_the_gross_price(): void
@@ -334,6 +351,38 @@ class SalesInvoiceFormTest extends TestCase
         foreach ($matches[1] as $class) {
             $this->assertStringContainsString('md:hidden', $class);
         }
+    }
+
+    /**
+     * Третман различен од стандарден ја носи стапката на нула. Кај бруто
+     * ставка тоа мора да ја помести и изведената нето цена, инаку во базата
+     * останува цена пресметана по старата стапка.
+     */
+    public function test_zeroing_the_rate_for_a_non_standard_treatment_moves_a_gross_lines_net_price(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $partner = Partner::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceForm::class, ['company' => $company])
+            ->set('partnerId', (string) $partner->id)
+            ->set('invoiceDate', '2026-03-01')
+            ->set('dueDate', '2026-03-15')
+            ->set('lines.0.description', 'Извоз')
+            ->set('lines.0.quantity', '1')
+            ->set('lines.0.unit_price_gross', '118.00')
+            ->set('lines.0.vat_treatment', 'export')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('sales_invoice_lines', [
+            'description' => 'Извоз',
+            'vat_rate' => '0.00',
+            'unit_price_gross' => '118.00',
+            'unit_price' => '118.00',
+        ]);
     }
 
     public function test_a_new_invoice_opens_dated_inside_the_working_year(): void

@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\Account;
 use App\Models\Company;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -44,7 +45,7 @@ class AccountTest extends TestCase
         $company = Company::factory()->create();
         Account::factory()->for($company)->create(['code' => '999999']);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         Account::factory()->for($company)->create(['code' => '999999']);
     }

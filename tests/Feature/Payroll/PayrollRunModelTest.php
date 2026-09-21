@@ -82,19 +82,19 @@ class PayrollRunModelTest extends TestCase
 
     public function test_a_run_employee_stores_days_of_service_as_an_integer(): void
     {
-        $company = \App\Models\Company::factory()->create();
-        $employee = \App\Models\Employee::factory()->for($company)->create();
+        $company = Company::factory()->create();
+        $employee = Employee::factory()->for($company)->create();
 
-        $run = \App\Models\PayrollRun::create([
+        $run = PayrollRun::create([
             'company_id' => $company->id,
             'year' => 2026,
             'month' => 8,
-            'status' => \App\Models\PayrollRun::DRAFT,
+            'status' => PayrollRun::DRAFT,
             'month_hours' => 168,
-            'payroll_parameter_id' => \App\Models\PayrollParameter::forDate('2026-08-31')->id,
+            'payroll_parameter_id' => PayrollParameter::forDate('2026-08-31')->id,
         ]);
 
-        $runEmployee = \App\Models\PayrollRunEmployee::create([
+        $runEmployee = PayrollRunEmployee::create([
             'payroll_run_id' => $run->id,
             'employee_id' => $employee->id,
             'staz_days' => 16,

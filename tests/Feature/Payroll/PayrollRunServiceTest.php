@@ -11,6 +11,7 @@ use App\Models\PayrollRun;
 use App\Models\PayrollRunLine;
 use App\Services\Payroll\PayrollRunService;
 use App\Support\Payroll\MpinObvrznik;
+use App\Support\Payroll\SalaryCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RuntimeException;
 use Tests\TestCase;
@@ -362,7 +363,7 @@ class PayrollRunServiceTest extends TestCase
         // sixteen days of insurance.
         $this->assertGreaterThan(
             $runEmployee->top_up,
-            \App\Support\Payroll\SalaryCalculator::fromGross(10476.19, $this->seedParameters())->topUp
+            SalaryCalculator::fromGross(10476.19, $this->seedParameters())->topUp
         );
     }
 

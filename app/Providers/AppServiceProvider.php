@@ -13,6 +13,9 @@ use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
 use App\Models\User;
 use App\Observers\CompanyObserver;
+use App\Services\Invoicing\ClaudeScannedInvoiceReader;
+use App\Services\Invoicing\NullScannedInvoiceReader;
+use App\Services\Invoicing\ScannedInvoiceReader;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
@@ -27,10 +30,10 @@ class AppServiceProvider extends ServiceProvider
         // Без клуч се врзува читачот што не чита — апликацијата мора да се
         // подигне и на сервер каде клучот не е поставен.
         $this->app->bind(
-            \App\Services\Invoicing\ScannedInvoiceReader::class,
+            ScannedInvoiceReader::class,
             fn () => filled(config('services.anthropic.key'))
-                ? new \App\Services\Invoicing\ClaudeScannedInvoiceReader
-                : new \App\Services\Invoicing\NullScannedInvoiceReader,
+                ? new ClaudeScannedInvoiceReader
+                : new NullScannedInvoiceReader,
         );
     }
 

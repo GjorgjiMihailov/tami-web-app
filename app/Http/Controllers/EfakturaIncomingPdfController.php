@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Models\IncomingEfakturaDocument;
 use App\Services\Efaktura\EfakturaJwsService;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
@@ -48,7 +49,7 @@ class EfakturaIncomingPdfController extends Controller
 
         try {
             $response = $jwsService->sendPurchaseInvoicePdfFetch($company, $cached['signing_input'], $validated['signature']);
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+        } catch (ConnectionException $e) {
             return response()->json(['error' => 'ujp_unreachable', 'message' => 'Не можам да се поврзам со серверот на УЈП — провери ја интернет-врската или обиди се подоцна.'], 503);
         }
 

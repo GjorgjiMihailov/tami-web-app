@@ -3,6 +3,7 @@
 namespace Tests\Feature\Payroll;
 
 use App\Models\PayrollMonthHours;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RuntimeException;
 use Tests\TestCase;
@@ -30,7 +31,7 @@ class PayrollMonthHoursTest extends TestCase
     {
         PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 184]);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         PayrollMonthHours::create(['year' => 2026, 'month' => 7, 'hours' => 176]);
     }

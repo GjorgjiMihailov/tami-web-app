@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Users;
 
-use App\Livewire\Forms\LoginForm;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;

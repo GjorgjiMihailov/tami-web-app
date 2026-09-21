@@ -15,7 +15,7 @@ class ExchangeRateServiceTest extends TestCase
 
     public function test_mkd_always_returns_a_rate_of_one(): void
     {
-        $service = new ExchangeRateService();
+        $service = new ExchangeRateService;
 
         $this->assertSame(1.0, $service->getRate('MKD', Carbon::parse('2026-07-01')));
     }
@@ -29,7 +29,7 @@ class ExchangeRateServiceTest extends TestCase
             ], 200),
         ]);
 
-        $service = new ExchangeRateService();
+        $service = new ExchangeRateService;
         $rate = $service->getRate('EUR', Carbon::parse('2026-07-01'));
 
         $this->assertSame(61.6917, $rate);
@@ -48,7 +48,7 @@ class ExchangeRateServiceTest extends TestCase
             'nbrm.mk/*' => Http::response('should not be called', 500),
         ]);
 
-        $service = new ExchangeRateService();
+        $service = new ExchangeRateService;
         $rate = $service->getRate('eur', Carbon::parse('2026-07-01'));
 
         $this->assertSame(61.5, $rate);
@@ -63,7 +63,7 @@ class ExchangeRateServiceTest extends TestCase
             ], 200),
         ]);
 
-        $service = new ExchangeRateService();
+        $service = new ExchangeRateService;
 
         $this->expectException(\RuntimeException::class);
 

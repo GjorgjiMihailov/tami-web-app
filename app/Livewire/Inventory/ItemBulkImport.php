@@ -39,7 +39,7 @@ class ItemBulkImport extends Component
         $this->validate(['importFile' => 'required|file|max:5120']);
 
         try {
-            $sheets = Excel::toArray(new ItemsImport(), $this->importFile);
+            $sheets = Excel::toArray(new ItemsImport, $this->importFile);
         } catch (\Throwable $e) {
             $this->addError('importFile', 'Фајлот не можеше да се прочита како табела (.xlsx или .csv). Проверете дека е точниот формат.');
             $this->importFile = null;

@@ -5,6 +5,8 @@ namespace Tests\Unit;
 use App\Models\Company;
 use App\Models\Partner;
 use App\Models\PurchaseInvoice;
+use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -48,7 +50,7 @@ class PurchaseInvoiceTest extends TestCase
         $partner = Partner::factory()->for($company)->create();
         PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'supplier_invoice_number' => 'INV-001']);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'supplier_invoice_number' => 'INV-001']);
     }
@@ -61,12 +63,12 @@ class PurchaseInvoiceTest extends TestCase
         $invoice = $invoice->fresh(['lines', 'payments']);
         $this->assertSame('unpaid', $invoice->paymentStatus());
 
-        $invoice->payments()->create(['amount' => '40.00', 'payment_date' => now(), 'payment_method' => 'bank', 'created_by' => \App\Models\User::factory()->create()->id]);
+        $invoice->payments()->create(['amount' => '40.00', 'payment_date' => now(), 'payment_method' => 'bank', 'created_by' => User::factory()->create()->id]);
         $invoice = $invoice->fresh(['lines', 'payments']);
         $this->assertSame('partially_paid', $invoice->paymentStatus());
         $this->assertSame('60.00', $invoice->balanceDue());
 
-        $invoice->payments()->create(['amount' => '60.00', 'payment_date' => now(), 'payment_method' => 'bank', 'created_by' => \App\Models\User::factory()->create()->id]);
+        $invoice->payments()->create(['amount' => '60.00', 'payment_date' => now(), 'payment_method' => 'bank', 'created_by' => User::factory()->create()->id]);
         $invoice = $invoice->fresh(['lines', 'payments']);
         $this->assertSame('paid', $invoice->paymentStatus());
     }

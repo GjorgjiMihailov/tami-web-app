@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Models\Account;
 use App\Models\Company;
 use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\SalesInvoice;
 use App\Models\User;
+use App\Support\Format;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
@@ -17,7 +17,7 @@ class SalesInvoicePdfTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -228,9 +228,9 @@ class SalesInvoicePdfTest extends TestCase
         $this->assertStringContainsString('Р.б.', $html);
         $this->assertStringContainsString('Вкупно со ДДВ', $html);
         // First line: 2 * 500.00 = 1000.00 base + 18% VAT (180.00) = 1180.00 gross
-        $this->assertStringContainsString(\App\Support\Format::money('1180.00'), $html);
+        $this->assertStringContainsString(Format::money('1180.00'), $html);
         // Second line: 1000.00 base + 18% VAT (180.00) = 1180.00 gross
-        $this->assertStringContainsString(\App\Support\Format::money('1180.00'), $html);
+        $this->assertStringContainsString(Format::money('1180.00'), $html);
     }
 
     public function test_it_shows_vat_treatment_label_for_non_standard_lines(): void
@@ -286,9 +286,9 @@ class SalesInvoicePdfTest extends TestCase
         $this->assertStringContainsString('>ДДВ</td>', $html);
         $this->assertStringContainsString('>Вкупно</td>', $html);
         $this->assertStringContainsString('>За доплата</td>', $html);
-        $this->assertStringContainsString(\App\Support\Format::money('1000.00'), $html); // subtotal
-        $this->assertStringContainsString(\App\Support\Format::money('180.00'), $html); // vat total
-        $this->assertStringContainsString(\App\Support\Format::money('1180.00'), $html); // grand total / balance due
+        $this->assertStringContainsString(Format::money('1000.00'), $html); // subtotal
+        $this->assertStringContainsString(Format::money('180.00'), $html); // vat total
+        $this->assertStringContainsString(Format::money('1180.00'), $html); // grand total / balance due
     }
 
     public function test_pdf_controller_eager_loads_bank_accounts(): void
@@ -296,7 +296,7 @@ class SalesInvoicePdfTest extends TestCase
         $company = Company::factory()->create();
         $company->bankAccounts()->create(['bank_name' => 'Комерцијална банка', 'account_number' => 'MK07300701104789126', 'position' => 0]);
         $partner = Partner::factory()->for($company)->create();
-        $entry = \App\Models\JournalEntry::factory()->for($company)->create();
+        $entry = JournalEntry::factory()->for($company)->create();
         $invoice = SalesInvoice::factory()->for($company)->create([
             'partner_id' => $partner->id, 'status' => 'confirmed',
             'fiscal_year' => 2026, 'invoice_number' => 2, 'journal_entry_id' => $entry->id,
@@ -405,7 +405,7 @@ class SalesInvoicePdfTest extends TestCase
         $this->assertStringContainsString('Комерцијална банка', $html);
         $this->assertStringContainsString('300000000000123', $html);
         // 1000.00 основа + 18% ДДВ = 1180.00
-        $this->assertStringContainsString(\App\Support\Format::money('1180.00'), $html);
+        $this->assertStringContainsString(Format::money('1180.00'), $html);
         $this->assertStringContainsString('2026/7', $html);
     }
 
@@ -456,9 +456,9 @@ class SalesInvoicePdfTest extends TestCase
         $this->assertStringContainsString('Износ на ДДВ', $html);
         // 2 * 500.00 = 1000.00 основа, 18% = 180.00 — точна ќелија, не гола подниза
         // (180,00 ден е и подниза од 1.180,00 ден во колоната „Вкупно со ДДВ")
-        $this->assertStringContainsString('<td>'.\App\Support\Format::money('180.00').'</td>', $html);
+        $this->assertStringContainsString('<td>'.Format::money('180.00').'</td>', $html);
         // 300.00 основа, 5% = 15.00 — точна ќелија, не гола подниза од 315,00 ден
-        $this->assertStringContainsString('<td>'.\App\Support\Format::money('15.00').'</td>', $html);
+        $this->assertStringContainsString('<td>'.Format::money('15.00').'</td>', $html);
     }
 
     public function test_a_company_outside_vat_gets_no_vat_amount_column(): void
@@ -525,7 +525,7 @@ class SalesInvoicePdfTest extends TestCase
             'invoice' => $invoice->fresh(['lines', 'partner', 'company.bankAccounts']),
         ])->render();
 
-        $treatment = \App\Support\Format::vatTreatment('exempt_without_credit');
+        $treatment = Format::vatTreatment('exempt_without_credit');
 
         // Третманот стои под описот, како ситен приглушен текст...
         $this->assertStringContainsString('<div class="small muted">'.$treatment.'</div>', $html);
@@ -552,7 +552,7 @@ class SalesInvoicePdfTest extends TestCase
 
         // Етикетата „Стандардна" воопшто не смее да се печати на фактурата —
         // третманот се прикажува само кога е различен од стандарден.
-        $this->assertStringNotContainsString(\App\Support\Format::vatTreatment('standard'), $html);
+        $this->assertStringNotContainsString(Format::vatTreatment('standard'), $html);
 
         // Ниту еден <div> не смее да стои помеѓу описот и затворачкото </td> на
         // таа ќелија. Не бараме голо class="small muted" затоа што истите класи

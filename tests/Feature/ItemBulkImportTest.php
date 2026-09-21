@@ -4,9 +4,13 @@ namespace Tests\Feature;
 
 use App\Livewire\Inventory\ItemBulkImport;
 use App\Models\Company;
+use App\Models\Item;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -14,7 +18,7 @@ class ItemBulkImportTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -48,27 +52,27 @@ class ItemBulkImportTest extends TestCase
         );
     }
 
-    private function makeXlsxUpload(array $rows): \Illuminate\Http\UploadedFile
+    private function makeXlsxUpload(array $rows): UploadedFile
     {
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->fromArray($rows, null, 'A1');
 
         $path = tempnam(sys_get_temp_dir(), 'items-import-').'.xlsx';
-        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save($path);
+        (new Xlsx($spreadsheet))->save($path);
 
         // Livewire's test helper (Testable::upload()) expects the uploaded file to expose
         // a public $name property, which only Illuminate\Http\Testing\File provides (a plain
         // Illuminate\Http\UploadedFile does not). createWithContent() gives us that wrapper
         // while still writing the real spreadsheet bytes to disk, so Excel::toArray() can
         // parse genuine spreadsheet content rather than fake padded bytes.
-        return \Illuminate\Http\UploadedFile::fake()->createWithContent('items.xlsx', file_get_contents($path));
+        return UploadedFile::fake()->createWithContent('items.xlsx', file_get_contents($path));
     }
 
     public function test_uploading_a_file_shows_a_preview_with_new_and_update_rows(): void
     {
         $company = Company::factory()->create();
-        \App\Models\Item::factory()->for($company)->create(['code' => 'SKU-EXISTING', 'name' => 'Old Name']);
+        Item::factory()->for($company)->create(['code' => 'SKU-EXISTING', 'name' => 'Old Name']);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $this->actingAs($admin);
@@ -114,7 +118,7 @@ class ItemBulkImportTest extends TestCase
     public function test_confirming_an_update_row_with_a_blank_vat_rate_keeps_the_existing_rate(): void
     {
         $company = Company::factory()->create();
-        \App\Models\Item::factory()->for($company)->create(['code' => 'SKU-KEEP', 'vat_rate' => '5.00']);
+        Item::factory()->for($company)->create(['code' => 'SKU-KEEP', 'vat_rate' => '5.00']);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $this->actingAs($admin);
@@ -129,7 +133,7 @@ class ItemBulkImportTest extends TestCase
             ->call('preview')
             ->call('confirmImport');
 
-        $item = \App\Models\Item::where('company_id', $company->id)->where('code', 'SKU-KEEP')->first();
+        $item = Item::where('company_id', $company->id)->where('code', 'SKU-KEEP')->first();
         $this->assertSame('Renamed', $item->name);
         $this->assertSame('5.00', (string) $item->vat_rate);
     }
@@ -141,7 +145,7 @@ class ItemBulkImportTest extends TestCase
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        $badFile = \Illuminate\Http\UploadedFile::fake()->createWithContent('items.xlsx', 'this is plain text, not a real xlsx file');
+        $badFile = UploadedFile::fake()->createWithContent('items.xlsx', 'this is plain text, not a real xlsx file');
 
         Livewire::test(ItemBulkImport::class, ['company' => $company])
             ->set('importFile', $badFile)
@@ -173,7 +177,7 @@ class ItemBulkImportTest extends TestCase
     public function test_the_preview_shows_no_change_for_untouched_fields_on_an_update_row(): void
     {
         $company = Company::factory()->create();
-        \App\Models\Item::factory()->for($company)->create(['code' => 'SKU-NOCHANGE', 'vat_rate' => '5.00']);
+        Item::factory()->for($company)->create(['code' => 'SKU-NOCHANGE', 'vat_rate' => '5.00']);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $this->actingAs($admin);
@@ -215,7 +219,7 @@ class ItemBulkImportTest extends TestCase
     public function test_a_database_failure_during_confirm_shows_a_friendly_error_and_rolls_back(): void
     {
         $company = Company::factory()->create();
-        \App\Models\Item::factory()->for($company)->create(['code' => 'SKU-RACE']);
+        Item::factory()->for($company)->create(['code' => 'SKU-RACE']);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $this->actingAs($admin);
@@ -235,7 +239,7 @@ class ItemBulkImportTest extends TestCase
         // produces a friendly error instead of a raw 500, and nothing partial persists. SKU-NEW
         // is processed before SKU-RACE in the same transaction, so if the rollback didn't
         // genuinely work, SKU-NEW would have survived as a committed row.
-        \App\Models\Item::where('code', 'SKU-RACE')->delete();
+        Item::where('code', 'SKU-RACE')->delete();
 
         $component->call('confirmImport')->assertHasErrors(['confirm']);
 

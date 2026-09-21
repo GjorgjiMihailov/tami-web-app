@@ -109,7 +109,11 @@ class EfakturaDocumentBuilder
     private function buildItem($line, int $lineNo): array
     {
         $qty = (float) $line->quantity;
-        $unitPrice = (float) $line->unit_price;
+        // Ефективната цена, не зачуваната: кај ставка внесена со бруто цена
+        // заокружената нето цена не се множи чисто со количината и УЈП би
+        // добила ред каде цена × количина ≠ вкупно. УЈП носи и четири
+        // децимали во цената (види го примерот 95.2381 подолу).
+        $unitPrice = (float) $line->effectiveUnitPrice();
         $lineTotal = (float) $line->lineTotal();
         $vatAmount = (float) $line->vatAmount();
         $vatPercent = EfakturaTaxIndicator::percent($line->vat_treatment, (string) $line->vat_rate);

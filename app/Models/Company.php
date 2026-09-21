@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Support\CompanyModule;
+use App\Support\CompanyType;
+use App\Support\Payroll\MpinObvrznik;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -72,8 +74,8 @@ class Company extends Model
             'invoice_number_year_first' => 'boolean',
             'invoice_number_year_digits' => 'integer',
             'invoice_number_padding' => 'integer',
-            'mpin_obvrznik_code' => \App\Support\Payroll\MpinObvrznik::class,
-            'type' => \App\Support\CompanyType::class,
+            'mpin_obvrznik_code' => MpinObvrznik::class,
+            'type' => CompanyType::class,
             'efaktura_token_not_before' => 'datetime',
             'efaktura_token_not_after' => 'datetime',
             'efaktura_token_registered_at' => 'datetime',

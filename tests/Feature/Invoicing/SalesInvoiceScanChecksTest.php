@@ -5,8 +5,8 @@ namespace Tests\Feature\Invoicing;
 use App\Livewire\Invoicing\SalesInvoiceForm;
 use App\Models\Company;
 use App\Models\Partner;
-use App\Models\User;
 use App\Models\SalesInvoiceLine;
+use App\Models\User;
 use App\Services\Invoicing\ScannedInvoice;
 use App\Services\Invoicing\ScannedInvoiceLine;
 use App\Services\Invoicing\ScannedInvoiceReader;
@@ -22,7 +22,7 @@ class SalesInvoiceScanChecksTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');

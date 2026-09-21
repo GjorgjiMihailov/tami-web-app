@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\Item;
 use App\Models\StockLevel;
 use App\Models\Warehouse;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -28,7 +29,7 @@ class StockLevelTest extends TestCase
         $warehouse = Warehouse::factory()->create();
         StockLevel::factory()->create(['item_id' => $item->id, 'warehouse_id' => $warehouse->id]);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         StockLevel::factory()->create(['item_id' => $item->id, 'warehouse_id' => $warehouse->id]);
     }

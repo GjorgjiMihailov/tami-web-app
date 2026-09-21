@@ -205,6 +205,79 @@ class PurchaseInvoiceServiceTest extends TestCase
         $this->service->confirm($invoice->fresh(), $user->id);
     }
 
+    /**
+     * 6,00 со ДДВ × 6 мора да го задолжи добавувачот со точно 36,00, а не со
+     * 35,97 колку што излегуваше кога основицата се градеше од заокружената
+     * нето цена.
+     */
+    public function test_confirming_a_gross_entered_line_posts_the_price_that_was_typed(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $user = User::factory()->create();
+
+        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create([
+            'account_id' => $expenseAccount->id,
+            'description' => 'Консултантски услуги',
+            'quantity' => '6',
+            'unit_price' => '5.08',
+            'unit_price_gross' => '6.00',
+            'vat_rate' => '18.00',
+        ]);
+
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+        $lines = $confirmed->journalEntry->lines;
+
+        $this->assertSame('30.51', $lines->firstWhere('account_id', $expenseAccount->id)->debit);
+        $this->assertSame('5.49', $lines->firstWhere('account_id', $this->accountId($company, '130'))->debit);
+        $this->assertSame('36.00', $lines->firstWhere('account_id', $this->accountId($company, '220'))->credit);
+    }
+
+    /**
+     * Кај бруто ставка зачуваната нето цена (5,08) веќе не ја дава основицата,
+     * па залихата мора да прими по цена што се множи чисто — инаку залихата и
+     * главната книга се разидуваат за стотинки на секоја таква фактура.
+     */
+    public function test_a_gross_entered_stock_line_receives_at_a_cost_that_matches_the_ledger(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $item = Item::factory()->for($company)->create();
+        $user = User::factory()->create();
+
+        $invoice = PurchaseInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'warehouse_id' => $warehouse->id,
+            'invoice_date' => '2026-03-01',
+        ]);
+        $invoice->lines()->create([
+            'item_id' => $item->id,
+            'description' => $item->name,
+            'quantity' => '6',
+            'unit_price' => '5.08',
+            'unit_price_gross' => '6.00',
+            'vat_rate' => '18.00',
+        ]);
+
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+
+        $movement = StockMovement::where('item_id', $item->id)->firstOrFail();
+        $this->assertSame('5.0850', (string) $movement->unit_cost);
+
+        $inventoryDebit = $confirmed->journalEntry->lines->firstWhere('account_id', $this->accountId($company, '660'))->debit;
+        $this->assertSame('30.51', $inventoryDebit);
+        $this->assertSame(
+            $inventoryDebit,
+            bcmul((string) $movement->quantity, (string) $movement->unit_cost, 2),
+            'Залихата и главната книга мора да примат иста вредност.'
+        );
+    }
+
     public function test_confirming_a_service_item_line_books_the_expense_account_without_touching_stock(): void
     {
         $company = Company::factory()->create(['is_vat_registered' => true]);

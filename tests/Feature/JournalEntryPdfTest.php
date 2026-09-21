@@ -8,6 +8,7 @@ use App\Models\JournalEntry;
 use App\Models\JournalGroup;
 use App\Models\Partner;
 use App\Models\User;
+use App\Support\Format;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -16,7 +17,7 @@ class JournalEntryPdfTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -41,7 +42,7 @@ class JournalEntryPdfTest extends TestCase
         $this->assertStringContainsString('Изводи', $html);
         $this->assertStringContainsString('Cash sale', $html);
         $this->assertStringContainsString('ABC Trading', $html);
-        $this->assertStringContainsString(\App\Support\Format::money('1000.00'), $html);
+        $this->assertStringContainsString(Format::money('1000.00'), $html);
     }
 
     public function test_admin_can_download_the_pdf(): void
@@ -96,6 +97,6 @@ class JournalEntryPdfTest extends TestCase
 
         $html = view('pdf.journal-entry', ['entry' => $entry->fresh(['lines.account', 'lines.partner', 'journalGroup', 'company'])])->render();
 
-        $this->assertStringNotContainsString(\App\Support\Format::date(now()), $html);
+        $this->assertStringNotContainsString(Format::date(now()), $html);
     }
 }

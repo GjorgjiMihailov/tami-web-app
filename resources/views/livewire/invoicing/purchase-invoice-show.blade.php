@@ -35,7 +35,7 @@
                         <td class="py-1">{{ $line->description }}</td>
                         <td class="py-1">{{ $line->item?->name ?? $line->account?->code.' — '.$line->account?->name }}</td>
                         <td class="py-1">{{ $line->quantity }}</td>
-                        <td class="py-1">{{ \App\Support\Format::money($line->unit_price) }}</td>
+                        <td class="py-1">{{ \App\Support\Format::money($line->effectiveUnitPrice(), 'ден', $line->isGrossEntered() ? 4 : 2) }}</td>
                         <td class="py-1">
                             {{ $line->vat_rate }}{{ $line->vat_deductible ? '' : ' (не се одбива)' }}
                             @if ($line->needs_review)

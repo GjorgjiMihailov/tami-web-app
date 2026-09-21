@@ -2,8 +2,10 @@
 
 namespace Tests\Unit;
 
+use App\Exceptions\InsufficientStockException;
 use App\Models\Company;
 use App\Models\Item;
+use App\Models\StockLevel;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Inventory\StockMovementService;
@@ -16,7 +18,7 @@ class StockMovementServiceTest extends TestCase
 
     private StockMovementService $service;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         $this->service = app(StockMovementService::class);
@@ -35,7 +37,7 @@ class StockMovementServiceTest extends TestCase
         $this->assertSame('10.000', (string) $movement->quantity);
         $this->assertSame('100.0000', (string) $movement->unit_cost);
 
-        $level = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
+        $level = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
         $this->assertSame('10.000', (string) $level->quantity_on_hand);
         $this->assertSame('100.0000', (string) $level->average_cost);
     }
@@ -50,7 +52,7 @@ class StockMovementServiceTest extends TestCase
         $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
         $this->service->receipt($item, $warehouse, '5', '130.00', '2026-01-12', $user->id);
 
-        $level = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
+        $level = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
 
         // ((10 * 100) + (5 * 130)) / 15 = 110.00
         $this->assertSame('15.000', (string) $level->quantity_on_hand);
@@ -68,8 +70,8 @@ class StockMovementServiceTest extends TestCase
         $this->service->receipt($item, $warehouseA, '10', '100.00', '2026-01-10', $user->id);
         $this->service->receipt($item, $warehouseB, '20', '50.00', '2026-01-10', $user->id);
 
-        $levelA = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseA->id)->first();
-        $levelB = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseB->id)->first();
+        $levelA = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseA->id)->first();
+        $levelB = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseB->id)->first();
 
         $this->assertSame('100.0000', (string) $levelA->average_cost);
         $this->assertSame('50.0000', (string) $levelB->average_cost);
@@ -95,7 +97,7 @@ class StockMovementServiceTest extends TestCase
             $this->service->receipt($item, $warehouse, '0.014', '33.3333', '2026-01-10', $user->id);
         }
 
-        $level = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
+        $level = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
 
         $this->assertSame('0.700', (string) $level->quantity_on_hand);
         $this->assertSame('33.3333', (string) $level->average_cost);
@@ -116,7 +118,7 @@ class StockMovementServiceTest extends TestCase
         $this->assertSame('6.000', (string) $movement->quantity);
         $this->assertSame('110.0000', (string) $movement->unit_cost);
 
-        $level = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
+        $level = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
         $this->assertSame('9.000', (string) $level->quantity_on_hand);
         $this->assertSame('110.0000', (string) $level->average_cost);
     }
@@ -130,7 +132,7 @@ class StockMovementServiceTest extends TestCase
 
         $this->service->receipt($item, $warehouse, '10', '100.00', '2026-01-10', $user->id);
 
-        $this->expectException(\App\Exceptions\InsufficientStockException::class);
+        $this->expectException(InsufficientStockException::class);
 
         $this->service->issue($item, $warehouse, '11', '2026-01-15', $user->id);
     }
@@ -149,7 +151,7 @@ class StockMovementServiceTest extends TestCase
         $this->assertSame('issue', $movement->type);
         $this->assertSame('10.000', (string) $movement->quantity);
 
-        $level = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
+        $level = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
         $this->assertSame('0.000', (string) $level->quantity_on_hand);
         $this->assertSame('100.0000', (string) $level->average_cost);
     }
@@ -173,8 +175,8 @@ class StockMovementServiceTest extends TestCase
         $this->assertSame($warehouseB->id, $movement->to_warehouse_id);
         $this->assertSame('110.0000', (string) $movement->unit_cost);
 
-        $levelA = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseA->id)->first();
-        $levelB = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseB->id)->first();
+        $levelA = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseA->id)->first();
+        $levelB = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseB->id)->first();
 
         $this->assertSame('10.000', (string) $levelA->quantity_on_hand);
         $this->assertSame('110.0000', (string) $levelA->average_cost);
@@ -196,7 +198,7 @@ class StockMovementServiceTest extends TestCase
         $this->service->transfer($item, $warehouseA, $warehouseB, '10', '2026-01-15', $user->id);
 
         // Warehouse B: ((10 * 80) + (10 * 120)) / 20 = 100.00
-        $levelB = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseB->id)->first();
+        $levelB = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseB->id)->first();
         $this->assertSame('20.000', (string) $levelB->quantity_on_hand);
         $this->assertSame('100.0000', (string) $levelB->average_cost);
     }
@@ -226,8 +228,8 @@ class StockMovementServiceTest extends TestCase
         $this->assertSame($warehouseB->id, $movement->to_warehouse_id);
         $this->assertSame('120.0000', (string) $movement->unit_cost);
 
-        $levelA = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseA->id)->first();
-        $levelB = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseB->id)->first();
+        $levelA = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseA->id)->first();
+        $levelB = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouseB->id)->first();
 
         $this->assertSame('0.000', (string) $levelA->quantity_on_hand);
         $this->assertSame('120.0000', (string) $levelA->average_cost);
@@ -247,7 +249,7 @@ class StockMovementServiceTest extends TestCase
 
         $this->service->receipt($item, $warehouseA, '5', '100.00', '2026-01-10', $user->id);
 
-        $this->expectException(\App\Exceptions\InsufficientStockException::class);
+        $this->expectException(InsufficientStockException::class);
 
         $this->service->transfer($item, $warehouseA, $warehouseB, '6', '2026-01-15', $user->id);
     }
@@ -281,7 +283,7 @@ class StockMovementServiceTest extends TestCase
         $this->assertSame('100.0000', (string) $movement->unit_cost);
         $this->assertSame('Physical count correction', $movement->reason);
 
-        $level = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
+        $level = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
         $this->assertSame('15.000', (string) $level->quantity_on_hand);
         $this->assertSame('100.0000', (string) $level->average_cost);
     }
@@ -298,7 +300,7 @@ class StockMovementServiceTest extends TestCase
 
         $this->assertSame('-3.000', (string) $movement->quantity);
 
-        $level = \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
+        $level = StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first();
         $this->assertSame('7.000', (string) $level->quantity_on_hand);
         $this->assertSame('100.0000', (string) $level->average_cost);
     }
@@ -312,7 +314,7 @@ class StockMovementServiceTest extends TestCase
 
         $this->service->receipt($item, $warehouse, '5', '100.00', '2026-01-10', $user->id);
 
-        $this->expectException(\App\Exceptions\InsufficientStockException::class);
+        $this->expectException(InsufficientStockException::class);
 
         $this->service->adjustment($item, $warehouse, '-6', 'Miscount', '2026-01-20', $user->id);
     }

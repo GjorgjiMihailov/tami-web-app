@@ -9,6 +9,7 @@ use App\Support\Payroll\MpinObvrznik;
 use Carbon\CarbonImmutable;
 use DOMDocument;
 use DOMElement;
+use Illuminate\Support\Collection;
 
 /**
  * Гради МПИН XML од потврдена пресметка.
@@ -143,7 +144,7 @@ final class MpinDocumentBuilder
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, PayrollRunEmployee>  $rows
+     * @param  Collection<int, PayrollRunEmployee>  $rows
      * @return array<string, int>
      */
     private static function totals($rows, MpinObvrznik $obvrznik): array
@@ -250,7 +251,7 @@ final class MpinDocumentBuilder
      * `PayrollRunCalculator` го добива employer-нетото: остаток, не осма
      * бројка за себе.
      *
-     * @param  \Illuminate\Support\Collection<int, PayrollRunLine>  $lines
+     * @param  Collection<int, PayrollRunLine>  $lines
      * @return array<int, int>
      */
     private static function lineAmounts($lines, int $gross): array

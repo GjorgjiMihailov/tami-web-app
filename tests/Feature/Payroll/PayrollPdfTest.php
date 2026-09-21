@@ -7,7 +7,6 @@ use App\Models\Company;
 use App\Models\Employee;
 use App\Models\EmployeeSalary;
 use App\Models\PayrollMonthHours;
-use App\Models\PayrollParameter;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunLine;
 use App\Models\User;

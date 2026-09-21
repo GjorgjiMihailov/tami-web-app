@@ -53,6 +53,7 @@ class IncomingPurchaseInvoiceBuilder
         $partner = Partner::where('company_id', $company->id)->select('id', 'tax_id')->get()
             ->first(function ($p) use ($incomingTaxId) {
                 $storedNormalized = preg_replace('/^(mk|мк)/iu', '', (string) ($p->tax_id ?? ''));
+
                 return $storedNormalized === $incomingTaxId;
             });
 

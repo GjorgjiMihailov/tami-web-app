@@ -12,6 +12,7 @@ use Tests\TestCase;
  * внатре во стандардниот markdown шаблон на нотификациите
  * (`notifications::email`), чии преостанати низи (поздрав, потпис,
  * подзапис за копчето, фуснота за авторски права) минуваат low-level низ
+ *
  * @lang()/__() и без `lang/mk.json` остануваат на англиски.
  */
 class UserInvitationNotificationTest extends TestCase

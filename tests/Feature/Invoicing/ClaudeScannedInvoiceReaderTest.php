@@ -3,6 +3,8 @@
 namespace Tests\Feature\Invoicing;
 
 use App\Services\Invoicing\ClaudeScannedInvoiceReader;
+use GuzzleHttp\Client;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ClaudeScannedInvoiceReaderTest extends TestCase
@@ -95,7 +97,7 @@ class ClaudeScannedInvoiceReaderTest extends TestCase
         $options = ClaudeScannedInvoiceReader::transportOptions();
 
         $this->assertSame(1, $options['maxRetries']);
-        $this->assertInstanceOf(\GuzzleHttp\Client::class, $options['transporter']);
+        $this->assertInstanceOf(Client::class, $options['transporter']);
         $this->assertSame(30.0, $options['transporter']->getConfig('timeout'));
     }
 
@@ -104,7 +106,7 @@ class ClaudeScannedInvoiceReaderTest extends TestCase
      * „3,540.00“ за истиот износ. Со запирка проверката на збирот воопшто не се
      * извршуваше. Затоа обликот се сведува тука, не се бара од моделот.
      */
-    #[\PHPUnit\Framework\Attributes\DataProvider('amountShapes')]
+    #[DataProvider('amountShapes')]
     public function test_money_amounts_are_reduced_to_a_computable_shape(string $given, ?string $expected): void
     {
         $this->assertSame($expected, ClaudeScannedInvoiceReader::normalizeAmount($given, thousands: true));
@@ -283,7 +285,7 @@ class ClaudeScannedInvoiceReaderTest extends TestCase
      * Бројот заминува кон УЈП како `docNumber`. Врз вистинска фактура моделот
      * врати „бр.25“ иако упатството бара само бројот.
      */
-    #[\PHPUnit\Framework\Attributes\DataProvider('invoiceNumbers')]
+    #[DataProvider('invoiceNumbers')]
     public function test_the_word_for_number_is_stripped_from_the_invoice_number(string $given, string $expected): void
     {
         $this->assertSame($expected, ClaudeScannedInvoiceReader::normalizeInvoiceNumber($given));
@@ -317,7 +319,7 @@ class ClaudeScannedInvoiceReaderTest extends TestCase
      * Формата прифаќа само кодови. „денари“ беше тивко игнорирано и остануваше
      * MKD — безопасно случајно; „евра“ истиот пат би дало ПОГРЕШНА валута.
      */
-    #[\PHPUnit\Framework\Attributes\DataProvider('currencies')]
+    #[DataProvider('currencies')]
     public function test_currency_names_become_codes(string $given, string $expected): void
     {
         $this->assertSame($expected, ClaudeScannedInvoiceReader::normalizeCurrency($given));

@@ -13,6 +13,6 @@ class ItemImportTemplateController extends Controller
     {
         Gate::authorize('view', $company);
 
-        return Excel::download(new ItemImportTemplateExport(), 'artikli-obrazec.xlsx');
+        return Excel::download(new ItemImportTemplateExport, 'artikli-obrazec.xlsx');
     }
 }

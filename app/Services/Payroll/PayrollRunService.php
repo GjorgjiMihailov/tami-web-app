@@ -16,6 +16,7 @@ use App\Support\Payroll\LineType;
 use App\Support\Payroll\MonthCoverage;
 use App\Support\Payroll\MpinObvrznik;
 use App\Support\Payroll\PayrollRunCalculator;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -217,7 +218,7 @@ class PayrollRunService
 
     private function endOfMonth(int $year, int $month): string
     {
-        return \Carbon\Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+        return Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
     }
 
     /**

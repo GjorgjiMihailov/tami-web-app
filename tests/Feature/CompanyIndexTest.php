@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\CompanyIndex;
 use App\Models\Company;
 use App\Models\User;
+use App\Support\CompanyType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -182,8 +183,8 @@ class CompanyIndexTest extends TestCase
 
         $type = Company::where('name', 'Марко Марковски')->first()->type;
 
-        $this->assertSame(\App\Support\CompanyType::INDIVIDUAL, $type);
-        $this->assertNotSame(\App\Support\CompanyType::LEGAL, $type);
+        $this->assertSame(CompanyType::INDIVIDUAL, $type);
+        $this->assertNotSame(CompanyType::LEGAL, $type);
     }
 
     /**
@@ -379,7 +380,7 @@ class CompanyIndexTest extends TestCase
         $this->actAsAdmin();
 
         Livewire::test(CompanyIndex::class)
-            ->set('newType', \App\Support\CompanyType::LEGAL->value)
+            ->set('newType', CompanyType::LEGAL->value)
             ->set('newName', 'Тест ДООЕЛ')
             ->call('addCompany')
             ->assertHasNoErrors();
@@ -399,7 +400,7 @@ class CompanyIndexTest extends TestCase
         $this->actAsAdmin();
 
         Livewire::test(CompanyIndex::class)
-            ->set('newType', \App\Support\CompanyType::LEGAL->value)
+            ->set('newType', CompanyType::LEGAL->value)
             ->set('newName', 'Без материјално ДОО')
             ->call('addCompany')
             ->assertHasNoErrors();
@@ -417,8 +418,8 @@ class CompanyIndexTest extends TestCase
         $this->actAsAdmin();
 
         Livewire::test(CompanyIndex::class)
-            ->set('newType', \App\Support\CompanyType::LEGAL->value)
-            ->set('newType', \App\Support\CompanyType::INDIVIDUAL->value)
+            ->set('newType', CompanyType::LEGAL->value)
+            ->set('newType', CompanyType::INDIVIDUAL->value)
             ->set('newName', 'Петар Петров')
             ->call('addCompany')
             ->assertHasNoErrors();
@@ -434,24 +435,24 @@ class CompanyIndexTest extends TestCase
     public function test_creating_a_company_lands_on_its_profile(): void
     {
         Livewire::actingAs($this->admin())
-            ->test(\App\Livewire\CompanyIndex::class)
-            ->set('newType', \App\Support\CompanyType::LEGAL->value)
+            ->test(CompanyIndex::class)
+            ->set('newType', CompanyType::LEGAL->value)
             ->set('newName', 'ТЕСТ ДООЕЛ')
             ->set('newTaxId', '4080012345678')
             ->call('addCompany')
             ->assertHasNoErrors()
-            ->assertRedirect(route('companies.profile', \App\Models\Company::where('name', 'ТЕСТ ДООЕЛ')->firstOrFail()));
+            ->assertRedirect(route('companies.profile', Company::where('name', 'ТЕСТ ДООЕЛ')->firstOrFail()));
     }
 
     public function test_a_new_company_starts_with_every_module_on(): void
     {
         Livewire::actingAs($this->admin())
-            ->test(\App\Livewire\CompanyIndex::class)
-            ->set('newType', \App\Support\CompanyType::LEGAL->value)
+            ->test(CompanyIndex::class)
+            ->set('newType', CompanyType::LEGAL->value)
             ->set('newName', 'ТЕСТ ДООЕЛ')
             ->call('addCompany');
 
-        $company = \App\Models\Company::where('name', 'ТЕСТ ДООЕЛ')->firstOrFail();
+        $company = Company::where('name', 'ТЕСТ ДООЕЛ')->firstOrFail();
 
         $this->assertTrue($company->uses_material);
         $this->assertTrue($company->uses_stock);
@@ -463,13 +464,13 @@ class CompanyIndexTest extends TestCase
     public function test_a_new_individual_is_not_vat_registered(): void
     {
         Livewire::actingAs($this->admin())
-            ->test(\App\Livewire\CompanyIndex::class)
-            ->set('newType', \App\Support\CompanyType::INDIVIDUAL->value)
+            ->test(CompanyIndex::class)
+            ->set('newType', CompanyType::INDIVIDUAL->value)
             ->set('newName', 'Петар Петров')
             ->call('addCompany');
 
         $this->assertFalse(
-            \App\Models\Company::where('name', 'Петар Петров')->firstOrFail()->is_vat_registered
+            Company::where('name', 'Петар Петров')->firstOrFail()->is_vat_registered
         );
     }
 }

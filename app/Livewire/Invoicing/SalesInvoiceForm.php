@@ -133,8 +133,17 @@ class SalesInvoiceForm extends Component
                 'item_id' => $line->item_id === null ? '' : (string) $line->item_id,
                 'description' => (string) $line->description,
                 'quantity' => (string) $line->quantity,
-                'unit_price' => (string) $line->unit_price,
-                'unit_price_gross' => VatMath::grossFromNet((string) $line->unit_price, (string) $line->vat_rate),
+                // Кај бруто ставка нето цената се ИЗВЕДУВА од бруто цената и
+                // стапката, не се чита од базата: зачуваната може да е
+                // остаток од поранешна стапка, а формата мора да е согласна
+                // сама со себе штом ќе се отвори.
+                'unit_price' => $line->isGrossEntered()
+                    ? VatMath::netFromGross((string) $line->unit_price_gross, (string) $line->vat_rate)
+                    : (string) $line->unit_price,
+                'unit_price_gross' => $line->isGrossEntered()
+                    ? (string) $line->unit_price_gross
+                    : VatMath::grossFromNet((string) $line->unit_price, (string) $line->vat_rate),
+                'price_basis' => $line->isGrossEntered() ? 'gross' : 'net',
                 'vat_rate' => (string) $line->vat_rate,
                 'vat_treatment' => (string) $line->vat_treatment,
             ])->toArray();
@@ -155,15 +164,16 @@ class SalesInvoiceForm extends Component
             'quantity' => '1',
             'unit_price' => '0',
             'unit_price_gross' => VatMath::grossFromNet('0', $rate),
+            'price_basis' => 'net',
             'vat_rate' => $rate,
             'vat_treatment' => 'standard',
         ];
     }
 
     /**
-     * Net price, gross price and VAT rate move together — same rule as the
-     * purchase invoice form. A gross price the rate cannot divide cleanly is
-     * rewritten to what the rounded net actually comes back out as.
+     * Нето и бруто цената се држат една со друга, но полето во кое човекот
+     * пишува НИКОГАШ не се преправа под неговите прсти — исто правило како кај
+     * влезните фактури.
      */
     public function updated(string $name): void
     {
@@ -177,22 +187,44 @@ class SalesInvoiceForm extends Component
             return;
         }
 
-        if ($matches[2] === 'unit_price_gross') {
-            $this->lines[$index]['unit_price'] = VatMath::netFromGross(
-                (string) $this->lines[$index]['unit_price_gross'],
-                (string) $this->lines[$index]['vat_rate'],
-            );
+        if ($matches[2] !== 'vat_rate') {
+            $this->lines[$index]['price_basis'] = $matches[2] === 'unit_price_gross' ? 'gross' : 'net';
         }
 
-        $this->syncGrossPrice($index);
+        $this->refreshPrices($index);
     }
 
-    private function syncGrossPrice(int $index): void
+    /**
+     * Го пресметува полето што НЕ е основата на внесот.
+     */
+    private function refreshPrices(int $index): void
     {
-        $this->lines[$index]['unit_price_gross'] = VatMath::grossFromNet(
-            (string) ($this->lines[$index]['unit_price'] ?? '0'),
-            (string) ($this->lines[$index]['vat_rate'] ?? '0'),
-        );
+        $line = $this->lines[$index];
+        $rate = (string) ($line['vat_rate'] ?? '0');
+
+        if (($line['price_basis'] ?? 'net') === 'gross') {
+            $this->lines[$index]['unit_price'] = VatMath::netFromGross((string) ($line['unit_price_gross'] ?? '0'), $rate);
+
+            return;
+        }
+
+        $this->lines[$index]['unit_price_gross'] = VatMath::grossFromNet((string) ($line['unit_price'] ?? '0'), $rate);
+    }
+
+    /**
+     * Истата пресметка што ќе ја направи и `SalesInvoiceLine` по зачувување.
+     *
+     * @param  array<string, mixed>  $line
+     * @return array{net: string, vat: string, gross: string}
+     */
+    private function lineAmounts(array $line, bool $vatRegistered): array
+    {
+        $quantity = (string) ($line['quantity'] ?? '0');
+        $rate = $vatRegistered ? (string) ($line['vat_rate'] ?? '0') : '0';
+
+        return ($line['price_basis'] ?? 'net') === 'gross'
+            ? VatMath::lineFromGross($quantity, (string) ($line['unit_price_gross'] ?? '0'), $rate)
+            : VatMath::lineFromNet($quantity, (string) ($line['unit_price'] ?? '0'), $rate);
     }
 
     /**
@@ -313,7 +345,8 @@ class SalesInvoiceForm extends Component
                 $this->lines[$index]['unit_price'] = (string) $item->selling_price;
             }
 
-            $this->syncGrossPrice($index);
+            $this->lines[$index]['price_basis'] = 'net';
+            $this->refreshPrices($index);
         }
     }
 
@@ -325,7 +358,7 @@ class SalesInvoiceForm extends Component
             $this->lines[$index]['vat_rate'] = '0.00';
         }
 
-        $this->syncGrossPrice($index);
+        $this->refreshPrices($index);
     }
 
     /**
@@ -546,6 +579,8 @@ class SalesInvoiceForm extends Component
                     filled($line->unitPrice) ? (string) $line->unitPrice : '0',
                     filled($line->vatRate) ? (string) $line->vatRate : '0.00',
                 ),
+                // Скенот дава цена БЕЗ ДДВ, па основата на ставката е нето.
+                'price_basis' => 'net',
                 'vat_rate' => filled($line->vatRate) ? $line->vatRate : '0.00',
                 // Ослободувањата и преносот на обврска не ги погодува машина.
                 'vat_treatment' => 'standard',
@@ -646,6 +681,10 @@ class SalesInvoiceForm extends Component
             'lines.*.description' => 'nullable|string|max:255',
             'lines.*.quantity' => 'required|numeric|min:0.001',
             'lines.*.unit_price' => 'required|numeric|min:0',
+            // Изведени, не внесени: ставка што доаѓа од скен или од друг код
+            // не мора да ги носи, а тогаш важи стариот начин на сметање.
+            'lines.*.unit_price_gross' => 'nullable|numeric|min:0',
+            'lines.*.price_basis' => 'nullable|in:net,gross',
             'lines.*.vat_rate' => 'required|numeric|min:0|max:100',
             'lines.*.vat_treatment' => ['required', Rule::in(SalesInvoiceLine::TREATMENTS)],
         ]);
@@ -671,6 +710,9 @@ class SalesInvoiceForm extends Component
         foreach ($this->lines as $index => $line) {
             if (($line['vat_treatment'] ?? 'standard') !== 'standard') {
                 $this->lines[$index]['vat_rate'] = '0.00';
+                // Нулата ја менува и изведената цена. Без ова, бруто ставка
+                // би се зачувала со нето цена пресметана по старата стапка.
+                $this->refreshPrices($index);
             }
         }
 
@@ -732,6 +774,7 @@ class SalesInvoiceForm extends Component
                     'description' => $line['description'] ?: null,
                     'quantity' => $line['quantity'],
                     'unit_price' => $line['unit_price'],
+                    'unit_price_gross' => ($line['price_basis'] ?? 'net') === 'gross' ? $line['unit_price_gross'] : null,
                     'vat_rate' => $line['vat_rate'],
                     'vat_treatment' => $line['vat_treatment'] ?? 'standard',
                 ]);
@@ -768,18 +811,12 @@ class SalesInvoiceForm extends Component
         $vat = '0.00';
 
         foreach ($this->lines as $index => $line) {
-            $lineNet = VatMath::lineNet((string) ($line['quantity'] ?? '0'), (string) ($line['unit_price'] ?? '0'));
-            $lineVat = $vatRegistered ? VatMath::vatAmount($lineNet, (string) ($line['vat_rate'] ?? '0')) : '0.00';
+            $amounts = $this->lineAmounts($line, $vatRegistered);
 
-            $rows[$index] = [
-                'net' => $lineNet,
-                'vat' => $lineVat,
-                'gross' => bcadd($lineNet, $lineVat, 2),
-                'is_stock' => $this->isStockLine($line, $types),
-            ];
+            $rows[$index] = $amounts + ['is_stock' => $this->isStockLine($line, $types)];
 
-            $net = bcadd($net, $lineNet, 2);
-            $vat = bcadd($vat, $lineVat, 2);
+            $net = bcadd($net, $amounts['net'], 2);
+            $vat = bcadd($vat, $amounts['vat'], 2);
         }
 
         return view('livewire.invoicing.sales-invoice-form', [

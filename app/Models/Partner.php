@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\InvoiceLanguage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,7 +28,7 @@ class Partner extends Model
     {
         return [
             'is_vat_registered' => 'boolean',
-            'invoice_language' => \App\Support\InvoiceLanguage::class,
+            'invoice_language' => InvoiceLanguage::class,
         ];
     }
 

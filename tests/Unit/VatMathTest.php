@@ -41,10 +41,65 @@ class VatMathTest extends TestCase
 
     public function test_it_multiplies_a_quantity_by_a_unit_price(): void
     {
-        $this->assertSame('250.00', VatMath::lineNet('5', '50.00'));
-        $this->assertSame('37.50', VatMath::lineNet('2.5', '15.00'));
+        $this->assertSame('250.00', VatMath::multiply('5', '50.00'));
+        $this->assertSame('37.50', VatMath::multiply('2.5', '15.00'));
         // Three-decimal quantities are real: 0.125 * 10.10 = 1.2625 -> 1.26.
-        $this->assertSame('1.26', VatMath::lineNet('0.125', '10.10'));
+        $this->assertSame('1.26', VatMath::multiply('0.125', '10.10'));
+    }
+
+    public function test_a_net_entered_line_grows_the_vat_on_top_of_the_base(): void
+    {
+        $this->assertSame(
+            ['net' => '250.00', 'vat' => '45.00', 'gross' => '295.00'],
+            VatMath::lineFromNet('5', '50.00', '18.00')
+        );
+    }
+
+    /**
+     * Сржта на одлуката на сопственикот: 6,00 со ДДВ × 6 мора да даде точно
+     * 36,00. Стариот начин (основица од заокружената нето цена) даваше 35,97.
+     */
+    public function test_a_gross_entered_line_lands_exactly_on_the_price_that_was_typed(): void
+    {
+        $this->assertSame(
+            ['net' => '30.51', 'vat' => '5.49', 'gross' => '36.00'],
+            VatMath::lineFromGross('6', '6.00', '18.00')
+        );
+    }
+
+    public function test_a_gross_entered_line_always_adds_up_whatever_the_numbers(): void
+    {
+        foreach ([['1', '10.00'], ['3', '7.77'], ['7', '1.05'], ['2.5', '19.99'], ['1', '0.01']] as [$qty, $price]) {
+            $line = VatMath::lineFromGross($qty, $price, '18.00');
+
+            $this->assertSame(
+                VatMath::multiply($qty, $price),
+                $line['gross'],
+                "Вкупното со ДДВ бега кај {$qty} × {$price}."
+            );
+            $this->assertSame($line['gross'], bcadd($line['net'], $line['vat'], 2));
+        }
+    }
+
+    public function test_a_zero_rate_leaves_a_gross_entered_line_untouched(): void
+    {
+        $this->assertSame(
+            ['net' => '40.00', 'vat' => '0.00', 'gross' => '40.00'],
+            VatMath::lineFromGross('4', '10.00', '0')
+        );
+    }
+
+    public function test_the_effective_unit_price_multiplies_back_to_the_base(): void
+    {
+        $unit = VatMath::unitPriceFromNetTotal('30.51', '6');
+
+        $this->assertSame('5.0850', $unit);
+        $this->assertSame('30.51', VatMath::multiply('6', $unit));
+    }
+
+    public function test_a_zero_quantity_does_not_divide_by_zero(): void
+    {
+        $this->assertSame('0.0000', VatMath::unitPriceFromNetTotal('30.51', '0'));
     }
 
     public function test_unusable_input_counts_as_zero_instead_of_blowing_up(): void
@@ -52,7 +107,7 @@ class VatMathTest extends TestCase
         $this->assertSame('0.00', VatMath::grossFromNet('', '18.00'));
         $this->assertSame('0.00', VatMath::netFromGross('', '18.00'));
         $this->assertSame('0.00', VatMath::vatAmount('abc', '18.00'));
-        $this->assertSame('0.00', VatMath::lineNet('', ''));
+        $this->assertSame('0.00', VatMath::multiply('', ''));
         $this->assertSame('100.00', VatMath::grossFromNet('100.00', 'не е број'));
         $this->assertSame('100.00', VatMath::netFromGross('100.00', ''));
     }

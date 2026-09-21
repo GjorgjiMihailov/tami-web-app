@@ -4,8 +4,8 @@ namespace App\Services\Invoicing;
 
 use Anthropic\Client;
 use App\Models\Company;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Го чита скенот преку Claude и го враќа прочитаното како обичен објект.

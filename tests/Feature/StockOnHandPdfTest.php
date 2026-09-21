@@ -7,6 +7,7 @@ use App\Models\Item;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Inventory\StockMovementService;
+use App\Support\Format;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -15,7 +16,7 @@ class StockOnHandPdfTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Role::findOrCreate('admin');
@@ -95,8 +96,8 @@ class StockOnHandPdfTest extends TestCase
         $this->assertStringContainsString('Widget', $html);
         $this->assertStringContainsString('Набавна вредност', $html);
         $this->assertStringContainsString('Продажна вредност', $html);
-        $this->assertStringContainsString(\App\Support\Format::money(500.0, currency: ''), $html);
-        $this->assertStringContainsString(\App\Support\Format::money(800.0, currency: ''), $html);
+        $this->assertStringContainsString(Format::money(500.0, currency: ''), $html);
+        $this->assertStringContainsString(Format::money(800.0, currency: ''), $html);
     }
 
     public function test_it_shows_the_warehouse_name_in_the_title_when_scoped(): void
@@ -146,6 +147,6 @@ class StockOnHandPdfTest extends TestCase
         }
 
         $this->assertStringContainsString('Продажна вредност', $text, 'Selling value column header was not found in the rendered PDF text.');
-        $this->assertStringContainsString(\App\Support\Format::money(800.0, currency: ''), $text, 'Selling value (10 units at 80.00) was not found in the rendered PDF text.');
+        $this->assertStringContainsString(Format::money(800.0, currency: ''), $text, 'Selling value (10 units at 80.00) was not found in the rendered PDF text.');
     }
 }

@@ -6,8 +6,11 @@ use App\Exceptions\InvalidInvoiceStateException;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\Item;
+use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\SalesInvoice;
+use App\Models\StockLevel;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Inventory\StockMovementService;
@@ -21,7 +24,7 @@ class SalesInvoiceServiceTest extends TestCase
 
     private SalesInvoiceService $service;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         $this->service = app(SalesInvoiceService::class);
@@ -98,7 +101,7 @@ class SalesInvoiceServiceTest extends TestCase
 
         $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
 
-        $this->assertSame('6.000', (string) \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->quantity_on_hand);
+        $this->assertSame('6.000', (string) StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->quantity_on_hand);
 
         $entry = $confirmed->journalEntry()->with('lines.account')->first();
         $this->assertCount(5, $entry->lines);
@@ -110,7 +113,7 @@ class SalesInvoiceServiceTest extends TestCase
         $this->assertSame('200.00', (string) $cogs->debit);
         $this->assertSame('200.00', (string) $inventoryAsset->credit);
 
-        $this->assertSame($line->fresh()->stock_movement_id, \App\Models\StockMovement::where('item_id', $item->id)->where('type', 'issue')->first()->id);
+        $this->assertSame($line->fresh()->stock_movement_id, StockMovement::where('item_id', $item->id)->where('type', 'issue')->first()->id);
     }
 
     public function test_confirming_skips_vat_when_company_is_not_vat_registered(): void
@@ -195,9 +198,9 @@ class SalesInvoiceServiceTest extends TestCase
         $cancelled = $this->service->cancel($confirmed, $user->id);
 
         $this->assertSame('cancelled', $cancelled->status);
-        $this->assertSame('10.000', (string) \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->quantity_on_hand);
+        $this->assertSame('10.000', (string) StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->quantity_on_hand);
 
-        $reversal = \App\Models\JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines')->first();
+        $reversal = JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines')->first();
         $this->assertNotNull($reversal);
 
         $originalTotalDebit = $confirmed->journalEntry->lines->sum('debit');
@@ -246,7 +249,7 @@ class SalesInvoiceServiceTest extends TestCase
         $this->assertSame('60.00', (string) $payment->amount);
         $this->assertSame('partially_paid', $confirmed->fresh(['lines', 'payments'])->paymentStatus());
 
-        $entry = \App\Models\JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
+        $entry = JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
         $bank = $entry->lines->firstWhere('account.code', '100');
         $ar = $entry->lines->firstWhere('account.code', '120');
 
@@ -266,7 +269,7 @@ class SalesInvoiceServiceTest extends TestCase
 
         $this->service->recordPayment($confirmed, '100.00', '2026-03-10', 'cash', $user->id);
 
-        $entry = \App\Models\JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
+        $entry = JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
         $cash = $entry->lines->firstWhere('account.code', '102');
         $this->assertSame('100.00', (string) $cash->debit);
     }
@@ -386,7 +389,7 @@ class SalesInvoiceServiceTest extends TestCase
 
         $this->service->recordPayment($confirmed, (string) $confirmed->fresh()->balanceDue(), '2026-04-15', 'bank', $user->id);
 
-        $paymentEntry = \App\Models\JournalEntry::where('description', 'like', 'Payment for invoice%')->with('lines')->firstOrFail();
+        $paymentEntry = JournalEntry::where('description', 'like', 'Payment for invoice%')->with('lines')->firstOrFail();
         $this->assertGreaterThan(0, $paymentEntry->lines->count());
         $paymentEntry->lines->each(function ($line) {
             $this->assertNotNull($line->line_date);
@@ -422,7 +425,7 @@ class SalesInvoiceServiceTest extends TestCase
         $this->assertCount(3, $entry->lines); // AR + revenue + VAT, no COGS/inventory lines
         $this->assertNull($entry->lines->firstWhere('account.code', '701'));
         $this->assertNull($entry->lines->firstWhere('account.code', '660'));
-        $this->assertSame(0, \App\Models\StockMovement::where('item_id', $serviceItem->id)->count());
+        $this->assertSame(0, StockMovement::where('item_id', $serviceItem->id)->count());
     }
 
     public function test_cancelling_an_invoice_with_a_service_type_item_line_does_not_error(): void
@@ -462,6 +465,6 @@ class SalesInvoiceServiceTest extends TestCase
         $cancelled = $this->service->cancel($confirmed->fresh(), $user->id);
 
         $this->assertSame('cancelled', $cancelled->status);
-        $this->assertSame('2.000', (string) \App\Models\StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->quantity_on_hand);
+        $this->assertSame('2.000', (string) StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->quantity_on_hand);
     }
 }

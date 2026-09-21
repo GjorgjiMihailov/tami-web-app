@@ -2,6 +2,4 @@
 
 namespace App\Exceptions;
 
-class InvalidInvoiceStateException extends \RuntimeException
-{
-}
+class InvalidInvoiceStateException extends \RuntimeException {}
