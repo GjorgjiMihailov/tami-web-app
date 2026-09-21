@@ -1,9 +1,17 @@
 @php
     // Едно место за ширините на колоните: го делат заглавието и секој ред,
     // за да не се разидат кога ќе се менува некоја колона.
-    $grid = 'md:grid md:grid-cols-[minmax(11rem,2fr)_minmax(9rem,2fr)_4.5rem_7rem_7rem_5rem_7rem_7rem_7rem_4.5rem_2rem] md:gap-x-2 md:items-start';
-    $cell = 'text-right tabular-nums';
-    $label = 'block text-[11px] font-medium text-stone md:hidden';
+    //
+    // Имињата се долги намерно. Blade не ја затвора променливата на `@foreach`,
+    // па кратко име како `$label` го презапишува некоја јамка подолу во истиот
+    // фајл и ознаките излегуваат со class="последната вредност од јамката".
+    $lineGridClass = 'md:grid md:grid-cols-[minmax(10rem,1.4fr)_minmax(8rem,1.8fr)_4rem_6.5rem_6.5rem_4.5rem_6.5rem_6.5rem_6.5rem_4rem_2rem] md:gap-x-2 md:items-start';
+    $lineNumberClass = 'text-right tabular-nums';
+    $lineLabelClass = 'block text-[11px] font-medium text-stone md:hidden';
+    // Почеток на групата „за ставката" — тенка линија што му помага на окото
+    // да ги најде збировите меѓу единечните цени.
+    $lineGroupEdge = 'md:border-l md:border-sand md:pl-2';
+    $lineDerivedClass = 'block text-sm md:pt-1.5 '.$lineNumberClass;
 @endphp
 
 <div>
@@ -65,30 +73,37 @@
             </div>
 
             <div class="overflow-x-auto">
-                <div class="md:min-w-[72rem]">
-                    <div class="{{ $grid }} hidden px-4 py-2 bg-paper-warm text-[11px] font-semibold uppercase tracking-wide text-stone border-b border-sand">
+                <div class="md:min-w-[68rem]">
+                    <div class="{{ $lineGridClass }} hidden px-4 pt-2 text-[10px] font-semibold uppercase tracking-wider text-stone/70">
+                        <div class="md:col-span-3"></div>
+                        <div class="md:col-span-3 text-center">По единица</div>
+                        <div class="md:col-span-3 text-center {{ $lineGroupEdge }}">За ставката</div>
+                        <div class="md:col-span-2"></div>
+                    </div>
+
+                    <div class="{{ $lineGridClass }} hidden px-4 pb-2 text-[11px] font-semibold uppercase tracking-wide text-stone border-b border-sand">
                         <div>Артикл / сметка</div>
                         <div>Опис</div>
                         <div class="text-right">Кол.</div>
-                        <div class="text-right">Цена без ДДВ</div>
-                        <div class="text-right">{{ $vatRegistered ? 'Цена со ДДВ' : '—' }}</div>
+                        <div class="text-right">Без ДДВ</div>
+                        <div class="text-right">{{ $vatRegistered ? 'Со ДДВ' : '—' }}</div>
                         <div class="text-right">ДДВ %</div>
-                        <div class="text-right">Износ ДДВ</div>
-                        <div class="text-right">Вкупно без ДДВ</div>
-                        <div class="text-right">Вкупно со ДДВ</div>
+                        <div class="text-right {{ $lineGroupEdge }}">ДДВ</div>
+                        <div class="text-right">Без ДДВ</div>
+                        <div class="text-right">Со ДДВ</div>
                         <div class="text-center">Одбивка</div>
                         <div></div>
                     </div>
 
                     @foreach ($lines as $index => $line)
                         <div wire:key="line-{{ $index }}"
-                            class="{{ $grid }} px-4 py-2 border-b border-sand/70 space-y-2 md:space-y-0 odd:bg-white even:bg-paper/60 hover:bg-orange-50/40">
+                            class="{{ $lineGridClass }} px-4 py-2 border-b border-sand/70 space-y-2 md:space-y-0 odd:bg-white even:bg-paper/60 hover:bg-orange-50/40">
 
                             <div class="space-y-1">
                                 @if (! empty($line['needs_review']))
                                     <x-badge status="pending" title="ДДВ стапката не можеше автоматски да се утврди — проверете рачно">⚠ Проверете ДДВ</x-badge>
                                 @endif
-                                <span class="{{ $label }}">Артикл / сметка</span>
+                                <span class="{{ $lineLabelClass }}">Артикл / сметка</span>
                                 <select wire:change="selectItem({{ $index }}, $event.target.value)"
                                     class="w-full border-gray-300 focus:border-brand focus:ring-brand rounded-lg text-sm py-1">
                                     <option value="">— без артикл —</option>
@@ -111,48 +126,48 @@
                             </div>
 
                             <div>
-                                <span class="{{ $label }}">Опис</span>
+                                <span class="{{ $lineLabelClass }}">Опис</span>
                                 <x-text-input wire:model="lines.{{ $index }}.description" class="w-full text-sm py-1" />
                             </div>
 
                             <div>
-                                <span class="{{ $label }}">Количина</span>
-                                <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.quantity" class="w-full text-sm py-1 {{ $cell }}" />
+                                <span class="{{ $lineLabelClass }}">Количина</span>
+                                <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.quantity" class="w-full text-sm py-1 {{ $lineNumberClass }}" />
                                 @error("lines.{$index}.quantity") <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
                             </div>
 
                             <div>
-                                <span class="{{ $label }}">Цена без ДДВ</span>
-                                <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.unit_price" class="w-full text-sm py-1 {{ $cell }}" />
+                                <span class="{{ $lineLabelClass }}">Цена без ДДВ</span>
+                                <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.unit_price" class="w-full text-sm py-1 {{ $lineNumberClass }}" />
                                 @error("lines.{$index}.unit_price") <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
                             </div>
 
                             <div>
                                 @if ($vatRegistered)
-                                    <span class="{{ $label }}">Цена со ДДВ</span>
-                                    <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.unit_price_gross" class="w-full text-sm py-1 {{ $cell }}" />
+                                    <span class="{{ $lineLabelClass }}">Цена со ДДВ</span>
+                                    <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.unit_price_gross" class="w-full text-sm py-1 {{ $lineNumberClass }}" />
                                 @endif
                             </div>
 
                             <div>
-                                <span class="{{ $label }}">ДДВ %</span>
-                                <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.vat_rate" class="w-full text-sm py-1 {{ $cell }}" />
+                                <span class="{{ $lineLabelClass }}">ДДВ %</span>
+                                <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.vat_rate" class="w-full text-sm py-1 {{ $lineNumberClass }}" />
                                 @error("lines.{$index}.vat_rate") <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
                             </div>
 
-                            <div class="flex justify-between md:block md:pt-2">
-                                <span class="{{ $label }}">Износ ДДВ</span>
-                                <span class="block text-sm text-stone {{ $cell }}">{{ \App\Support\Format::money($rows[$index]['vat'], '') }}</span>
+                            <div class="flex justify-between md:block {{ $lineGroupEdge }}">
+                                <span class="{{ $lineLabelClass }}">Износ ДДВ</span>
+                                <span class="text-stone {{ $lineDerivedClass }}">{{ \App\Support\Format::money($rows[$index]['vat'], '') }}</span>
                             </div>
 
-                            <div class="flex justify-between md:block md:pt-2">
-                                <span class="{{ $label }}">Вкупно без ДДВ</span>
-                                <span class="block text-sm text-stone {{ $cell }}">{{ \App\Support\Format::money($rows[$index]['net'], '') }}</span>
+                            <div class="flex justify-between md:block">
+                                <span class="{{ $lineLabelClass }}">Вкупно без ДДВ</span>
+                                <span class="text-stone {{ $lineDerivedClass }}">{{ \App\Support\Format::money($rows[$index]['net'], '') }}</span>
                             </div>
 
-                            <div class="flex justify-between md:block md:pt-2">
-                                <span class="{{ $label }}">Вкупно со ДДВ</span>
-                                <span class="block text-sm font-semibold text-gray-800 {{ $cell }}">{{ \App\Support\Format::money($rows[$index]['gross'], '') }}</span>
+                            <div class="flex justify-between md:block">
+                                <span class="{{ $lineLabelClass }}">Вкупно со ДДВ</span>
+                                <span class="font-semibold text-gray-800 {{ $lineDerivedClass }}">{{ \App\Support\Format::money($rows[$index]['gross'], '') }}</span>
                             </div>
 
                             <div class="flex items-center gap-2 md:justify-center md:pt-2">
@@ -161,7 +176,7 @@
                                 <label for="vatDeductible{{ $index }}" class="text-[11px] text-stone md:sr-only">ДДВ за одбивка</label>
                             </div>
 
-                            <div class="md:pt-1 md:text-right">
+                            <div class="md:pt-1.5 md:text-right">
                                 <button type="button" wire:click="removeLine({{ $index }})"
                                     title="Отстрани ја ставката"
                                     class="text-sm text-stone hover:text-red-600">

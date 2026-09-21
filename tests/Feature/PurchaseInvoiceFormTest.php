@@ -364,6 +364,36 @@ class PurchaseInvoiceFormTest extends TestCase
         ]);
     }
 
+    /** Види го истоимениот тест кај излезните фактури — таму беше испорачано расипано. */
+    public function test_every_blade_component_in_the_line_table_actually_compiles(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->assertDontSee('<x-', false);
+    }
+
+    public function test_the_per_cell_labels_stay_hidden_on_a_wide_screen(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $html = Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])->html();
+
+        preg_match_all('/<span class="([^"]*)">Количина<\/span>/u', $html, $matches);
+
+        $this->assertNotEmpty($matches[1], 'Ознаката „Количина" воопшто не се исцрта.');
+
+        foreach ($matches[1] as $class) {
+            $this->assertStringContainsString('md:hidden', $class);
+        }
+    }
+
     public function test_a_new_purchase_invoice_opens_dated_inside_the_working_year(): void
     {
         $company = Company::factory()->create();
