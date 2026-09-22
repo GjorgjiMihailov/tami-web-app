@@ -94,12 +94,15 @@ class SalesDashboardTest extends TestCase
 
     public function test_the_sidebar_carries_a_link_to_the_board(): void
     {
+        // Се бара класата sidebar-board, не голата адреса: панелот АПЛИКАЦИИ
+        // ја носи истата адреса на СЕКОЈА страна од апликацијата, па проверка
+        // на адресата не разликува мени од панел.
         $company = Company::factory()->create();
 
         $this->actingAs($this->admin())
             ->get(route('sales-invoices.index', $company))
             ->assertOk()
-            ->assertSee(route('prodazba.dashboard', $company), false)
+            ->assertSee('sidebar-board', false)
             ->assertSee('Табла');
     }
 
@@ -110,7 +113,7 @@ class SalesDashboardTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('accounting.journal-groups.index', $company))
             ->assertOk()
-            ->assertDontSee(route('prodazba.dashboard', $company), false);
+            ->assertDontSee('sidebar-board', false);
     }
 
     /**

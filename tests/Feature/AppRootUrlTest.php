@@ -42,15 +42,29 @@ class AppRootUrlTest extends TestCase
         }
     }
 
-    public function test_a_client_lands_on_the_first_screen_of_that_app(): void
+    public function test_a_client_lands_on_the_board_of_that_app(): void
     {
+        // Порано ова слетуваше право во Излезни фактури. Продажба сега има
+        // своја табла и таа е влезот — види Menu::landingUrl().
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('client');
 
         $this->actingAs($client)
             ->get('http://'.PortalApp::PRODAZBA->domain().'/')
-            ->assertRedirect(route('sales-invoices.index', $company));
+            ->assertRedirect(route('prodazba.dashboard', $company));
+    }
+
+    public function test_an_app_without_a_board_still_lands_on_its_first_screen(): void
+    {
+        $company = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+
+        $this->actingAs($accountant)
+            ->get('http://'.PortalApp::FINANSII->domain().'/')
+            ->assertRedirect(route('accounting.journal-groups.index', $company));
     }
 
     public function test_the_portal_root_still_shows_the_public_page(): void

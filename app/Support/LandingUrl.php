@@ -33,6 +33,6 @@ class LandingUrl
             return route('dashboard');
         }
 
-        return Menu::firstUrl($user, $companies->first(), $app) ?? route('dashboard');
+        return Menu::landingUrl($user, $companies->first(), $app) ?? route('dashboard');
     }
 }

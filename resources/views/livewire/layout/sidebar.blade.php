@@ -80,9 +80,13 @@
                 {{-- Таблата стои над групите зашто не е ставка од ниту една
                      група — таа е влезот во целата апликација. Истиот облик
                      како самостојната врска „Документи" на дното. --}}
+                {{-- Класата sidebar-board не е украс: панелот АПЛИКАЦИИ ја носи
+                     истата адреса на СЕКОЈА страна, па тест што само би барал
+                     дали URL-от го има во HTML-от не може да ги разликува
+                     двете. --}}
                 @if ($boardUrl !== '')
                     <a href="{{ $boardUrl }}" wire:navigate
-                       class="block px-4 py-2 mb-1 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'prodazba.dashboard' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
+                       class="sidebar-board block px-4 py-2 mb-1 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'prodazba.dashboard' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
                         Табла
                     </a>
                 @endif

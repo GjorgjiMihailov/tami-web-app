@@ -101,4 +101,17 @@ class AppSwitcherTest extends TestCase
             ->assertDontSee('Финансии')
             ->assertDontSee('Плати');
     }
+
+    public function test_the_prodazba_entry_points_at_the_board(): void
+    {
+        // Порано кликот на „Продажба" паѓаше право во Излезни фактури, зашто
+        // адресата беше буквално првата ставка од менито.
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $apps = collect(AppSwitcher::for($admin, $company))->keyBy('key');
+
+        $this->assertSame(route('prodazba.dashboard', $company), $apps['prodazba']['url']);
+    }
 }

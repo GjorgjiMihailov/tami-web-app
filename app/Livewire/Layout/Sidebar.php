@@ -55,7 +55,7 @@ class Sidebar extends Component
 
         $this->brandUrl = $app === PortalApp::PORTAL || ! $this->company
             ? route('dashboard')
-            : (Menu::firstUrl(auth()->user(), $this->company, $app) ?? route('dashboard'));
+            : (Menu::landingUrl(auth()->user(), $this->company, $app) ?? route('dashboard'));
 
         if (! $this->company) {
             return;
