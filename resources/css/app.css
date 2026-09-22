@@ -259,6 +259,75 @@
 }
 
 /*
+ * Картичките во фиоката АПЛИКАЦИИ. Истите три тона како плочките, но тесни —
+ * фиоката е 20rem широка.
+ */
+.app-card {
+    --tone: #ff6600;
+    --tone-soft: rgba(255, 102, 0, 0.16);
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    border-radius: 0.875rem;
+    border: 1px solid #E5DDD0;
+    background: #fff;
+    padding: 0.625rem 0.75rem;
+    transition: transform 200ms cubic-bezier(.2, .8, .2, 1), box-shadow 200ms ease-out, border-color 200ms ease-out;
+    animation: tile-in 360ms cubic-bezier(.2, .8, .2, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+.app-card--orange { --tone: #ff6600; --tone-soft: rgba(255, 102, 0, 0.16); }
+.app-card--green  { --tone: #059669; --tone-soft: rgba(5, 150, 105, 0.16); }
+.app-card--indigo { --tone: #4f46e5; --tone-soft: rgba(79, 70, 229, 0.16); }
+
+.app-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--tone-soft);
+    box-shadow: 0 8px 18px -10px var(--tone-soft);
+}
+
+.app-card.is-current {
+    border-color: var(--tone);
+    background: #FFF8F3;
+}
+
+.app-card__dot {
+    width: 0.625rem;
+    height: 0.625rem;
+    flex: none;
+    border-radius: 9999px;
+    background: var(--tone);
+    box-shadow: 0 0 0 3px var(--tone-soft);
+}
+
+.app-card__body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.app-card__label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1C1A17;
+}
+
+.app-card__text {
+    display: block;
+    font-size: 0.6875rem;
+    color: #8A8177;
+}
+
+.app-card__here {
+    flex: none;
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #8A8177;
+}
+
+/*
  * Групите во страничното мени. Стрелката се врти кога групата е отворена,
  * а ставките влегуваат една по една со благо лизгање од лево. Самото
  * отворање (висината) го прави Alpine x-collapse.
@@ -311,12 +380,65 @@
 }
 
 /*
+ * Движењето во списоците. Закачено на .app-main во layouts/app.blade.php, па
+ * важи за сите екрани со табели без ниту една измена во нив.
+ *
+ * Поминувањето со глувчето работи секогаш. Влезот важи само додека .motion-in
+ * е присутна — види го коментарот на <main> за причината.
+ */
+.app-main table tbody tr {
+    transition: background-color 150ms ease-out;
+}
+
+.app-main table tbody tr td {
+    transition: transform 150ms ease-out;
+}
+
+.app-main table tbody tr:hover td:first-child {
+    transform: translateX(2px);
+}
+
+.app-main.motion-in table tbody tr {
+    animation: row-in 240ms cubic-bezier(.2, .8, .2, 1) backwards;
+}
+
+.app-main.motion-in table tbody tr:nth-child(1)  { animation-delay: 0ms; }
+.app-main.motion-in table tbody tr:nth-child(2)  { animation-delay: 22ms; }
+.app-main.motion-in table tbody tr:nth-child(3)  { animation-delay: 44ms; }
+.app-main.motion-in table tbody tr:nth-child(4)  { animation-delay: 66ms; }
+.app-main.motion-in table tbody tr:nth-child(5)  { animation-delay: 88ms; }
+.app-main.motion-in table tbody tr:nth-child(6)  { animation-delay: 110ms; }
+.app-main.motion-in table tbody tr:nth-child(7)  { animation-delay: 132ms; }
+.app-main.motion-in table tbody tr:nth-child(8)  { animation-delay: 154ms; }
+.app-main.motion-in table tbody tr:nth-child(9)  { animation-delay: 176ms; }
+.app-main.motion-in table tbody tr:nth-child(10) { animation-delay: 198ms; }
+
+/* Од единаесеттиот ред надолу сите тргнуваат заедно: подолга низа се
+   претвора во чекање, а не во украс. */
+.app-main.motion-in table tbody tr:nth-child(n + 11) { animation-delay: 220ms; }
+
+@keyframes row-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/*
+ * Картичките во екраните исто се подигнуваат. Без анимација на влез — тие
+ * не се низа, па редослед нема што да раскаже.
+ */
+.app-main .shadow-card {
+    transition: box-shadow 200ms ease-out, transform 200ms cubic-bezier(.2, .8, .2, 1);
+}
+
+/*
  * Застанувањето (delay) не го гаси општото правило подолу, а со `backwards` би
  * оставило ставки невидливи додека чекаат — затоа тука изрично без анимација.
  */
 @media (prefers-reduced-motion: reduce) {
     .app-tile,
     .board-link,
+    .app-card,
+    .app-main.motion-in table tbody tr,
     .menu-group.is-open .menu-item {
         animation: none;
     }

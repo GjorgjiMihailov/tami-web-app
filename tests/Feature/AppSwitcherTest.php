@@ -114,4 +114,31 @@ class AppSwitcherTest extends TestCase
 
         $this->assertSame(route('prodazba.dashboard', $company), $apps['prodazba']['url']);
     }
+
+    public function test_the_panel_draws_a_card_per_app(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        // Однесувањето живее во resources/css/app.css. assertSee на текст не
+        // би забележал изгубена класа — а класата е тоа што го носи изгледот.
+        $this->actingAs($admin)
+            ->get(route('companies.dashboard', $company))
+            ->assertOk()
+            ->assertSee('app-card app-card--orange', false)
+            ->assertSee('app-card app-card--green', false)
+            ->assertSee('app-card app-card--indigo', false);
+    }
+
+    public function test_the_panel_leaves_no_blade_component_uncompiled(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin)
+            ->get(route('companies.dashboard', $company))
+            ->assertDontSee('<x-', false);
+    }
 }

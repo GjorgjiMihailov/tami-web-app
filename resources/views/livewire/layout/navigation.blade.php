@@ -128,13 +128,13 @@ new class extends Component
     {{-- Панелот влегува од десно. Истите правила како мобилната фиока: Esc,
          клик надвор и копче го затвораат. --}}
     <div x-show="appsOpen" x-cloak @keydown.escape.window="appsOpen = false">
-        <div x-transition.opacity @click="appsOpen = false" class="fixed inset-0 z-40 bg-gray-900/50"></div>
+        <div x-transition.opacity @click="appsOpen = false" class="fixed inset-0 z-40 bg-gray-900/50 backdrop-blur-sm"></div>
 
-        <div x-transition:enter="transition ease-out duration-200"
+        <div x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
-             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave="transition ease-in duration-200"
              x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
-             class="fixed inset-y-0 right-0 z-50 w-72 bg-white border-l border-sand p-4 space-y-2">
+             class="fixed inset-y-0 right-0 z-50 w-80 bg-white border-l border-sand p-4 space-y-3">
             <div class="flex items-center justify-between pb-2 border-b border-sand">
                 <span class="text-xs font-semibold tracking-wide text-gray-500">АПЛИКАЦИИ</span>
                 <button type="button" @click="appsOpen = false" aria-label="Затвори"
@@ -145,12 +145,32 @@ new class extends Component
                 </button>
             </div>
 
-            @foreach ($apps as $app)
-                <a href="{{ $app['url'] }}"
-                   class="flex items-center justify-between px-3 py-2 rounded-lg text-sm {{ $app['key'] === $currentApp ? 'bg-orange-50 font-semibold press' : 'hover:bg-gray-50 press' }}">
-                    <span class="{{ $app['accent'] }}">{{ $app['label'] }}</span>
-                    @if ($app['key'] === $currentApp)
-                        <span class="text-[10px] uppercase tracking-wide text-gray-400">тука си</span>
+            {{-- Описот и тонот се украс, па живеат тука. AppSwitcher останува
+                 местото што одлучува КОЈ што гледа.
+
+                 Променливата на јамката е $panelApp, не $app: @foreach ја
+                 презапишува променливата и по јамката (Blade нема опсег на
+                 јамка), па кратките имиња се избегнуваат по правило. --}}
+            @php
+                $appLook = [
+                    'prodazba' => ['tone' => 'app-card--orange', 'text' => 'Фактури и кооперанти'],
+                    'finansii' => ['tone' => 'app-card--green', 'text' => 'Книжење, извештаи и изводи'],
+                    'plata' => ['tone' => 'app-card--indigo', 'text' => 'Вработени и пресметка на плата'],
+                ];
+            @endphp
+
+            @foreach ($apps as $panelApp)
+                @php $panelLook = $appLook[$panelApp['key']] ?? $appLook['prodazba']; @endphp
+                <a href="{{ $panelApp['url'] }}"
+                   class="app-card {{ $panelLook['tone'] }} {{ $panelApp['key'] === $currentApp ? 'is-current' : '' }} press"
+                   style="--i: {{ $loop->index }}">
+                    <span class="app-card__dot" aria-hidden="true"></span>
+                    <span class="app-card__body">
+                        <span class="app-card__label">{{ $panelApp['label'] }}</span>
+                        <span class="app-card__text">{{ $panelLook['text'] }}</span>
+                    </span>
+                    @if ($panelApp['key'] === $currentApp)
+                        <span class="app-card__here">тука си</span>
                     @endif
                 </a>
             @endforeach
