@@ -194,6 +194,71 @@
 }
 
 /*
+ * Копчињата на таблата на апликација. Истите три тона како плочките, но
+ * пониски — тие се навигација, не влезна врата.
+ */
+.board-link {
+    --tone: #ff6600;
+    --tone-soft: rgba(255, 102, 0, 0.14);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: 1rem;
+    border: 1px solid #E5DDD0;
+    background: #fff;
+    padding: 0.875rem 1rem;
+    box-shadow: 0 1px 2px rgba(28, 26, 23, 0.04);
+    transition: transform 220ms cubic-bezier(.2, .8, .2, 1), box-shadow 220ms ease-out, border-color 220ms ease-out;
+    animation: tile-in 420ms cubic-bezier(.2, .8, .2, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+.board-link--orange { --tone: #ff6600; --tone-soft: rgba(255, 102, 0, 0.16); }
+.board-link--green  { --tone: #059669; --tone-soft: rgba(5, 150, 105, 0.16); }
+.board-link--indigo { --tone: #4f46e5; --tone-soft: rgba(79, 70, 229, 0.16); }
+
+.board-link:hover {
+    transform: translateY(-2px);
+    border-color: var(--tone-soft);
+    box-shadow: 0 10px 22px -12px var(--tone-soft), 0 2px 5px rgba(28, 26, 23, 0.05);
+}
+
+.board-link__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: none;
+    border-radius: 0.75rem;
+    color: #fff;
+    background: var(--tone);
+    box-shadow: 0 6px 12px -6px var(--tone);
+    transition: transform 300ms cubic-bezier(.34, 1.56, .64, 1);
+}
+
+.board-link:hover .board-link__icon {
+    transform: rotate(-6deg) scale(1.06);
+}
+
+.board-link__label {
+    flex: 1 1 auto;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1C1A17;
+}
+
+.board-link__arrow {
+    flex: none;
+    color: var(--tone);
+    transition: transform 220ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.board-link:hover .board-link__arrow {
+    transform: translateX(3px);
+}
+
+/*
  * Групите во страничното мени. Стрелката се врти кога групата е отворена,
  * а ставките влегуваат една по една со благо лизгање од лево. Самото
  * отворање (висината) го прави Alpine x-collapse.
@@ -251,6 +316,7 @@
  */
 @media (prefers-reduced-motion: reduce) {
     .app-tile,
+    .board-link,
     .menu-group.is-open .menu-item {
         animation: none;
     }

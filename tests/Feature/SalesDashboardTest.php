@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Company;
 use App\Models\User;
+use App\Support\CompanyType;
 use App\Support\PortalApp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -107,5 +108,74 @@ class SalesDashboardTest extends TestCase
             ->get(route('accounting.journal-groups.index', $company))
             ->assertOk()
             ->assertDontSee(route('prodazba.dashboard', $company), false);
+    }
+
+    /**
+     * Ознаката на копче на таблата, како што излегува во HTML.
+     *
+     * Гола проверка на текст („Излезни фактури") НЕ важи тука: истите зборови
+     * стојат и во страничното мени на секоја страна од Продажба, па тестот би
+     * поминувал и кога таблата е празна. Затоа се бара класата на копчето.
+     */
+    private function boardButton(string $label): string
+    {
+        return '<span class="board-link__label">'.$label.'</span>';
+    }
+
+    public function test_a_legal_entity_with_everything_on_gets_all_three_buttons(): void
+    {
+        $company = Company::factory()->create();
+
+        $this->actingAs($this->admin())
+            ->get(route('prodazba.dashboard', $company))
+            ->assertSee($this->boardButton('Излезни фактури'), false)
+            ->assertSee($this->boardButton('Влезни фактури'), false)
+            ->assertSee($this->boardButton('Кооперанти'), false);
+    }
+
+    public function test_with_material_off_only_the_partners_button_is_left(): void
+    {
+        // Копче кон екран затворен со EnsureCompanyModule завршува со
+        // „Забранет пристап" — полошо од отсутно копче.
+        $company = Company::factory()->create(['uses_material' => false]);
+
+        $this->actingAs($this->admin())
+            ->get(route('prodazba.dashboard', $company))
+            ->assertDontSee($this->boardButton('Излезни фактури'), false)
+            ->assertDontSee($this->boardButton('Влезни фактури'), false)
+            ->assertSee($this->boardButton('Кооперанти'), false);
+    }
+
+    public function test_an_individual_has_no_incoming_invoices_at_all(): void
+    {
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+
+        $this->actingAs($this->admin())
+            ->get(route('prodazba.dashboard', $company))
+            ->assertSee($this->boardButton('Излезни фактури'), false)
+            ->assertDontSee($this->boardButton('Влезни фактури'), false)
+            ->assertSee($this->boardButton('Кооперанти'), false);
+    }
+
+    public function test_each_button_points_at_its_own_screen(): void
+    {
+        $company = Company::factory()->create();
+
+        $this->actingAs($this->admin())
+            ->get(route('prodazba.dashboard', $company))
+            ->assertSee(route('sales-invoices.index', $company), false)
+            ->assertSee(route('purchase-invoices.index', $company), false)
+            ->assertSee(route('partners.index', $company), false);
+    }
+
+    public function test_the_buttons_carry_the_motion_class(): void
+    {
+        // Однесувањето живее во resources/css/app.css; изгледот само ја носи
+        // куката. assertSee на текст не би забележал изгубена класа.
+        $company = Company::factory()->create();
+
+        $this->actingAs($this->admin())
+            ->get(route('prodazba.dashboard', $company))
+            ->assertSee('board-link board-link--orange', false);
     }
 }
