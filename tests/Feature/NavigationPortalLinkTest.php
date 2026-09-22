@@ -81,13 +81,35 @@ class NavigationPortalLinkTest extends TestCase
 
     public function test_a_non_admin_with_no_company_in_context_sees_no_portal_link(): void
     {
-        // Нула видливи фирми: App\Livewire\Dashboard::companyToOpen() не наоѓа
-        // цел, па паѓа на render() од чекот екран — рутата 'dashboard' нема
-        // {company} параметар, значи нема фирма во контекст на панелот.
+        // Две видливи фирми: App\Livewire\Dashboard::companyToOpen() не може
+        // да погоди која, па паѓа на render() од екранот за избор — рутата
+        // 'dashboard' нема {company} параметар, значи нема фирма во контекст
+        // на панелот.
+        //
+        // Порано тука стоеше сметководител со НУЛА фирми. Тој веќе не останува
+        // на dashboard: сега се пренасочува на екранот за прв клиент
+        // (App\Livewire\FirstClient). Правилото што се проверува е непроменето
+        // — сменет е само човекот што го доведува екранот во таа состојба.
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        Company::factory()->create()->accountants()->attach($accountant);
+        Company::factory()->create()->accountants()->attach($accountant);
+
+        $response = $this->actingAs($accountant)->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertDontSee('Портал — фирми и поставки');
+        $response->assertDontSee('Портал — табла на фирмата');
+    }
+
+    public function test_the_first_client_screen_has_no_portal_link_either(): void
+    {
+        // Нула фирми значи и празен AppSwitcher, па копчето АПЛИКАЦИИ воопшто
+        // не се црта — а со него ниту врската кон порталот.
         $accountant = User::factory()->create();
         $accountant->assignRole('accountant');
 
-        $response = $this->actingAs($accountant)->get(route('dashboard'));
+        $response = $this->actingAs($accountant)->get(route('onboarding.first-client'));
 
         $response->assertOk();
         $response->assertDontSee('Портал — фирми и поставки');

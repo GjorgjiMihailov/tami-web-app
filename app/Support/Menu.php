@@ -103,6 +103,31 @@ class Menu
         return $items[0]['url'] ?? null;
     }
 
+    /**
+     * Каде се влегува во апликација: нејзината табла ако има, инаку првиот
+     * екран.
+     *
+     * Ова е шевот за „за другите модули потака ќе средиме". Кога ќе се одлучи
+     * што има на таблата на Финансии, тука се додава еден ред — сите три
+     * места што одлучуваат за влез (AppSwitcher, LandingUrl, brandUrl во
+     * Sidebar) веќе читаат од овде.
+     *
+     * Враќа null кога апликацијата нема ниту еден екран за оваа фирма —
+     * тогаш ни таблата не смее да се понуди, зашто би била празна врата.
+     */
+    public static function landingUrl(User $user, Company $company, PortalApp $app): ?string
+    {
+        $first = self::firstUrl($user, $company, $app);
+
+        if ($first === null) {
+            return null;
+        }
+
+        return $app === PortalApp::PRODAZBA
+            ? route('prodazba.dashboard', $company)
+            : $first;
+    }
+
     private static function itemVisible(User $user, Company $company, array $item): bool
     {
         // Unbuilt entries double as the admin's remaining-work map. A client

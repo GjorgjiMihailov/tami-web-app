@@ -28,6 +28,7 @@ use App\Livewire\Accounting\JournalEntryIndex;
 use App\Livewire\Accounting\JournalGroupIndex;
 use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
+use App\Livewire\Apps\SalesDashboard;
 use App\Livewire\Bank\BankStatementIndex;
 use App\Livewire\Bank\Form743Upload;
 use App\Livewire\Bank\Form743Worklist;
@@ -43,6 +44,7 @@ use App\Livewire\DocumentIndex;
 use App\Livewire\EfakturaAccessRequests;
 use App\Livewire\EmployeeForm;
 use App\Livewire\EmployeeIndex;
+use App\Livewire\FirstClient;
 use App\Livewire\Inventory\ItemBulkImport;
 use App\Livewire\Inventory\ItemIndex;
 use App\Livewire\Inventory\ItemMovementCardReport;
@@ -87,6 +89,13 @@ Route::domain(PortalApp::PORTAL->domain())->group(function () {
     Route::get('dashboard', [Dashboard::class, '__invoke'])
         ->middleware(['auth', 'verified'])
         ->name('dashboard');
+
+    // Излезот за сметководител што сè уште нема ниту еден клиент. Стои на
+    // порталот зашто тој човек нема фирма, па нема ни апликациски екран што
+    // би можел да го отвори.
+    Route::get('prv-klient', [FirstClient::class, '__invoke'])
+        ->middleware(['auth', 'verified'])
+        ->name('onboarding.first-client');
 
     Route::view('profile', 'profile')
         ->middleware(['auth'])
@@ -139,6 +148,13 @@ Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.
     // ненајавените на формата за најава на ИСТИОТ хост, а најавените одат на
     // својот почетен екран.
     Route::get('/', fn () => redirect(LandingUrl::for(auth()->user(), PortalApp::PRODAZBA)))->middleware('auth');
+
+    // Таблата на апликацијата. Намерно БЕЗ EnsureCompanyModule: Кооперанти
+    // немаат модул (партнерите ги бара и книжењето), па таблата мора да
+    // преживее исклучено Материјално. Секое копче на неа сама си одлучува
+    // дали да се нацрта.
+    Route::middleware(['auth'])->get('/companies/{company}/tabla', [SalesDashboard::class, '__invoke'])
+        ->name('prodazba.dashboard');
 
     // Array-callable form (not bare class-string) for the same reason as the
     // accounting.* group above. (Historically some of these target classes

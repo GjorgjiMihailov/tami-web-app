@@ -27,6 +27,13 @@ class Dashboard extends Component
             return null;
         }
 
+        // Сметководител што сè уште нема ниту еден клиент нема каде да отиде:
+        // екранот „Изберете фирма" би му понудил само врска што за него враќа
+        // 403. Го праќаме да го внесе првиот.
+        if ($user->hasRole('accountant') && ! $user->visibleCompanies()->exists()) {
+            return $this->redirect(route('onboarding.first-client'));
+        }
+
         $target = $this->companyToOpen($user);
 
         // No target means an accountant with several companies and nothing

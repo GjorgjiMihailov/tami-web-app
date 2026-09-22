@@ -25,13 +25,28 @@ class LoginLandingTest extends TestCase
 
     public function test_a_client_lands_in_the_app_it_signed_into(): void
     {
+        // Продажба сега има своја табла и таа е влезот во апликацијата —
+        // види Menu::landingUrl(). Порано ова слетуваше во Излезни фактури.
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('client');
 
         $this->assertSame(
-            route('sales-invoices.index', $company),
+            route('prodazba.dashboard', $company),
             LandingUrl::for($client, PortalApp::PRODAZBA)
+        );
+    }
+
+    public function test_an_app_without_a_board_still_lands_on_its_first_screen(): void
+    {
+        $company = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+
+        $this->assertSame(
+            route('accounting.journal-groups.index', $company),
+            LandingUrl::for($accountant, PortalApp::FINANSII)
         );
     }
 

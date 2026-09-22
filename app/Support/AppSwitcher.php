@@ -28,7 +28,7 @@ class AppSwitcher
                 continue;
             }
 
-            $url = Menu::firstUrl($user, $company, $app);
+            $url = Menu::landingUrl($user, $company, $app);
 
             if ($url === null) {
                 continue;

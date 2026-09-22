@@ -40,7 +40,21 @@
                 @endif
 
                 <!-- Page Content -->
-                <main class="flex-1 p-4 sm:p-6">
+                {{-- app-main е куката на која се потпира целиот комплет за
+                     движење во resources/css/app.css: оттаму правилата ги
+                     фаќаат табелите во сите списоци без да се допре ниту еден
+                     од нив.
+
+                     motion-in е прекинувач со краток век. Влезот на редовите
+                     важи само додека таа класа е тука. Редовите во списоците
+                     во најголем дел немаат wire:key, па Livewire ги заменува
+                     при секое освежување — без гаснење, табелата би влегувала
+                     одново при секоја буква во полето за барање. wire:navigate
+                     ја гради страната одново, па Alpine се пушта пак и влезот
+                     се гледа при секое вистинско отворање на екран. --}}
+                <main class="app-main flex-1 p-4 sm:p-6"
+                      x-data
+                      x-init="$el.classList.add('motion-in'); setTimeout(() => $el.classList.remove('motion-in'), 700)">
                     @if (session('warning'))
                         <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                             {{ session('warning') }}

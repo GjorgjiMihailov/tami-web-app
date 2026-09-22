@@ -313,4 +313,36 @@ class MenuTest extends TestCase
 
         $this->assertNull(Menu::firstUrl($admin, $company, PortalApp::PLATA));
     }
+
+    public function test_prodazba_is_entered_through_its_board_not_through_the_first_screen(): void
+    {
+        $company = Company::factory()->create();
+        $admin = $this->userWithRole('admin');
+
+        $this->assertSame(
+            route('prodazba.dashboard', $company),
+            Menu::landingUrl($admin, $company, PortalApp::PRODAZBA)
+        );
+    }
+
+    public function test_apps_without_a_board_still_open_on_their_first_screen(): void
+    {
+        $company = Company::factory()->create();
+        $admin = $this->userWithRole('admin');
+
+        $this->assertSame(
+            Menu::firstUrl($admin, $company, PortalApp::FINANSII),
+            Menu::landingUrl($admin, $company, PortalApp::FINANSII)
+        );
+    }
+
+    public function test_an_app_with_no_screens_at_all_has_no_landing(): void
+    {
+        // Без ниту еден екран ни таблата не смее да се понуди — би била
+        // празна врата.
+        $company = Company::factory()->create(['uses_payroll' => false]);
+        $admin = $this->userWithRole('admin');
+
+        $this->assertNull(Menu::landingUrl($admin, $company, PortalApp::PLATA));
+    }
 }
