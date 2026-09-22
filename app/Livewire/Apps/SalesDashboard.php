@@ -4,6 +4,9 @@ namespace App\Livewire\Apps;
 
 use App\Livewire\Concerns\InteractsWithWorkingYear;
 use App\Models\Company;
+use App\Models\Partner;
+use App\Models\PurchaseInvoice;
+use App\Models\SalesInvoice;
 use App\Support\CompanyModule;
 use App\Support\WorkingYear;
 use Illuminate\Support\Facades\Gate;
@@ -81,6 +84,40 @@ class SalesDashboard extends Component
 
     public function render()
     {
-        return view('livewire.apps.sales-dashboard');
+        $keys = array_column($this->links(), 'key');
+
+        return view('livewire.apps.sales-dashboard', [
+            // Подредено по created_at, не по invoice_date: побарани се
+            // „последните пет што се ВНЕСЕНИ". Скенирана фактура од минатиот
+            // месец, внесена денес, припаѓа на врвот.
+            //
+            // Опсегот е работната година, како во сите списоци — табла што го
+            // игнорира избирачот на година би мешала бројки од две години.
+            'recentSales' => in_array('sales', $keys, true)
+                ? SalesInvoice::where('company_id', $this->company->id)
+                    ->whereBetween('invoice_date', [$this->workingYearStart(), $this->workingYearEnd()])
+                    ->with(['partner', 'lines'])
+                    ->orderByDesc('created_at')
+                    ->orderByDesc('id')
+                    ->limit(5)
+                    ->get()
+                : null,
+            'recentPurchases' => in_array('purchases', $keys, true)
+                ? PurchaseInvoice::where('company_id', $this->company->id)
+                    ->whereBetween('invoice_date', [$this->workingYearStart(), $this->workingYearEnd()])
+                    ->with(['partner', 'lines'])
+                    ->orderByDesc('created_at')
+                    ->orderByDesc('id')
+                    ->limit(5)
+                    ->get()
+                : null,
+            // Партнерите немаат година. Врзување за година тука би значело
+            // измислување правило што не постои никаде другаде.
+            'recentPartners' => Partner::where('company_id', $this->company->id)
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->limit(5)
+                ->get(),
+        ]);
     }
 }

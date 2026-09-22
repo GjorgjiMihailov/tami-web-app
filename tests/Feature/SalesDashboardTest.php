@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Company;
+use App\Models\Partner;
+use App\Models\PurchaseInvoice;
+use App\Models\SalesInvoice;
 use App\Models\User;
 use App\Support\CompanyType;
 use App\Support\PortalApp;
@@ -177,5 +180,140 @@ class SalesDashboardTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('prodazba.dashboard', $company))
             ->assertSee('board-link board-link--orange', false);
+    }
+
+    /** Партнер на оваа фирма, со дадено име. */
+    private function partnerNamed(Company $company, string $name): Partner
+    {
+        return Partner::factory()->create(['company_id' => $company->id, 'name' => $name]);
+    }
+
+    public function test_only_the_five_latest_entered_sales_invoices_are_shown(): void
+    {
+        $company = Company::factory()->create();
+
+        // Шест фактури, внесени по ред. Првата внесена мора да испадне.
+        foreach (range(1, 6) as $i) {
+            SalesInvoice::factory()->create([
+                'company_id' => $company->id,
+                'partner_id' => $this->partnerNamed($company, "КУПУВАЧ {$i} ДООЕЛ")->id,
+                'created_at' => now()->addMinutes($i),
+            ]);
+        }
+
+        $response = $this->actingAs($this->admin())->get(route('prodazba.dashboard', $company));
+
+        $response->assertOk();
+        $response->assertSee('Последни излезни фактури');
+        $response->assertSee('КУПУВАЧ 6 ДООЕЛ');
+        $response->assertSee('КУПУВАЧ 2 ДООЕЛ');
+        $response->assertDontSee(
+            'КУПУВАЧ 1 ДООЕЛ',
+            'Најстарата по внесување мора да испадне од петте.'
+        );
+    }
+
+    public function test_the_order_is_by_entry_not_by_invoice_date(): void
+    {
+        // Побарано е „последните пет што се ВНЕСЕНИ". Скенирана фактура од
+        // минатиот месец, внесена денес, припаѓа на врвот.
+        $company = Company::factory()->create();
+
+        SalesInvoice::factory()->create([
+            'company_id' => $company->id,
+            'partner_id' => $this->partnerNamed($company, 'ВНЕСЕНА ПРВА')->id,
+            'invoice_date' => now()->toDateString(),
+            'created_at' => now()->subHour(),
+        ]);
+
+        SalesInvoice::factory()->create([
+            'company_id' => $company->id,
+            'partner_id' => $this->partnerNamed($company, 'ВНЕСЕНА ВТОРА')->id,
+            'invoice_date' => now()->subMonth()->toDateString(),
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($this->admin())
+            ->get(route('prodazba.dashboard', $company))
+            ->assertSeeInOrder(['ВНЕСЕНА ВТОРА', 'ВНЕСЕНА ПРВА']);
+    }
+
+    public function test_only_invoices_from_the_working_year_are_listed(): void
+    {
+        $company = Company::factory()->create();
+
+        SalesInvoice::factory()->create([
+            'company_id' => $company->id,
+            'partner_id' => $this->partnerNamed($company, 'ЛАНСКИ КУПУВАЧ')->id,
+            'invoice_date' => now()->subYear()->toDateString(),
+        ]);
+
+        $response = $this->actingAs($this->admin())->get(route('prodazba.dashboard', $company));
+
+        $response->assertOk();
+
+        // Фактурата постои, но табелата е празна — тоа е доказот дека филтерот
+        // по година работи. Името на партнерот НЕ се проверува: тој се појавува
+        // во табелата „Кооперанти", која намерно нема година.
+        $response->assertSee('Нема внесени излезни фактури');
+    }
+
+    public function test_incoming_invoices_have_their_own_table(): void
+    {
+        $company = Company::factory()->create();
+
+        PurchaseInvoice::factory()->create([
+            'company_id' => $company->id,
+            'partner_id' => $this->partnerNamed($company, 'ДОБАВУВАЧ ДООЕЛ')->id,
+        ]);
+
+        $this->actingAs($this->admin())
+            ->get(route('prodazba.dashboard', $company))
+            ->assertSee('Последни влезни фактури')
+            ->assertSee('ДОБАВУВАЧ ДООЕЛ');
+    }
+
+    public function test_partners_are_listed_regardless_of_the_working_year(): void
+    {
+        $company = Company::factory()->create();
+        $this->partnerNamed($company, 'КООПЕРАНТ ДООЕЛ');
+
+        $this->actingAs($this->admin())
+            ->get(route('prodazba.dashboard', $company))
+            ->assertOk()
+            ->assertSee('КООПЕРАНТ ДООЕЛ');
+    }
+
+    public function test_another_companys_records_never_appear(): void
+    {
+        $mine = Company::factory()->create();
+        $theirs = Company::factory()->create();
+        $this->partnerNamed($theirs, 'ТУЃ КООПЕРАНТ');
+
+        $this->actingAs($this->admin())
+            ->get(route('prodazba.dashboard', $mine))
+            ->assertDontSee('ТУЃ КООПЕРАНТ');
+    }
+
+    public function test_a_table_whose_button_is_hidden_is_hidden_too(): void
+    {
+        $company = Company::factory()->create(['uses_material' => false]);
+
+        $this->actingAs($this->admin())
+            ->get(route('prodazba.dashboard', $company))
+            ->assertDontSee('Последни излезни фактури')
+            ->assertDontSee('Последни влезни фактури')
+            ->assertSee('Кооперанти');
+    }
+
+    public function test_an_empty_table_says_so_instead_of_gaping(): void
+    {
+        $company = Company::factory()->create();
+
+        $this->actingAs($this->admin())
+            ->get(route('prodazba.dashboard', $company))
+            ->assertSee('Нема внесени излезни фактури')
+            ->assertSee('Нема внесени влезни фактури')
+            ->assertSee('Нема внесени кооперанти');
     }
 }
