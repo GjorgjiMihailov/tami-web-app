@@ -40,6 +40,18 @@ class DashboardTest extends TestCase
             ->assertRedirect(route('companies.dashboard', $company));
     }
 
+    public function test_an_accountant_without_a_single_company_is_sent_to_enter_their_first_client(): void
+    {
+        // Порано таквиот човек завршуваше на екранот „Изберете фирма", каде
+        // единствената врска води на companies.index — а тој за него враќа 403.
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+
+        $this->actingAs($accountant)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('onboarding.first-client'));
+    }
+
     public function test_an_accountant_with_one_company_is_sent_into_it(): void
     {
         $company = Company::factory()->create();
