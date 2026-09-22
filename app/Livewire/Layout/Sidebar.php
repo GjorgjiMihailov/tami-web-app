@@ -40,6 +40,10 @@ class Sidebar extends Component
 
     public string $brandUrl = '';
 
+    // Празна низа кога апликацијата сè уште нема своја табла. Само Продажба
+    // има; Финансии и Плати ќе добијат кога ќе се одлучи што има на нив.
+    public string $boardUrl = '';
+
     public function mount(?Company $company = null): void
     {
         $company ??= request()->route('company');
@@ -58,6 +62,10 @@ class Sidebar extends Component
         }
 
         CurrentCompany::remember($this->company);
+
+        $this->boardUrl = $app === PortalApp::PRODAZBA
+            ? route('prodazba.dashboard', $this->company)
+            : '';
 
         $this->menu = Menu::for(auth()->user(), $this->company, $app);
         $this->expandedGroup = $this->groupMatchingCurrentRoute();

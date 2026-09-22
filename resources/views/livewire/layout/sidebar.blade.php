@@ -77,6 +77,16 @@
                     </label>
                 </div>
 
+                {{-- Таблата стои над групите зашто не е ставка од ниту една
+                     група — таа е влезот во целата апликација. Истиот облик
+                     како самостојната врска „Документи" на дното. --}}
+                @if ($boardUrl !== '')
+                    <a href="{{ $boardUrl }}" wire:navigate
+                       class="block px-4 py-2 mb-1 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'prodazba.dashboard' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
+                        Табла
+                    </a>
+                @endif
+
                 {{-- Отворањето живее во прелистувачот: секој клик на „+" порано
                      беше цело барање до серверот, па каква и да е анимацијата
                      врз тоа, се гледаше како трепкање. Серверот и понатаму

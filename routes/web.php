@@ -28,6 +28,7 @@ use App\Livewire\Accounting\JournalEntryIndex;
 use App\Livewire\Accounting\JournalGroupIndex;
 use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
+use App\Livewire\Apps\SalesDashboard;
 use App\Livewire\Bank\BankStatementIndex;
 use App\Livewire\Bank\Form743Upload;
 use App\Livewire\Bank\Form743Worklist;
@@ -147,6 +148,13 @@ Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.
     // ненајавените на формата за најава на ИСТИОТ хост, а најавените одат на
     // својот почетен екран.
     Route::get('/', fn () => redirect(LandingUrl::for(auth()->user(), PortalApp::PRODAZBA)))->middleware('auth');
+
+    // Таблата на апликацијата. Намерно БЕЗ EnsureCompanyModule: Кооперанти
+    // немаат модул (партнерите ги бара и книжењето), па таблата мора да
+    // преживее исклучено Материјално. Секое копче на неа сама си одлучува
+    // дали да се нацрта.
+    Route::middleware(['auth'])->get('/companies/{company}/tabla', [SalesDashboard::class, '__invoke'])
+        ->name('prodazba.dashboard');
 
     // Array-callable form (not bare class-string) for the same reason as the
     // accounting.* group above. (Historically some of these target classes
