@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Company;
 use App\Rules\ValidEmbg;
+use App\Services\CompanyCreator;
 use App\Support\CompanyType;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -47,26 +48,15 @@ class CompanyIndex extends Component
                 : ['nullable', 'max:13'],
         ]);
 
-        $type = CompanyType::from($validated['newType']);
-        $isLegal = $type->isLegal();
-
-        // Ниту едно поле што зависи од типот не смее да остане на стандардна
-        // вредност од базата — инаку физичко лице засекогаш останува ДДВ
-        // обврзник и на фактурата излегува ДДВ што не постои. Причината е
-        // опишана во docs/superpowers/specs/2026-08-21-client-profile-types-design.md.
-        $company = Company::create([
-            'name' => $validated['newName'],
-            'type' => $type,
-            'tax_id' => $isLegal ? ($validated['newTaxId'] ?: null) : null,
-            'embg' => $isLegal ? null : ($validated['newEmbg'] ?: null),
-            'is_vat_registered' => $isLegal,
-            // Сите модули вклучени; се исклучуваат на картичката „Модули".
-            'uses_material' => true,
-            'uses_stock' => true,
-            'uses_payroll' => true,
-            'uses_finance' => true,
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM,
-        ]);
+        // Вредностите што зависат од типот живеат во CompanyCreator — истото
+        // место што го користи и екранот за прв клиент. Две копии од таа
+        // листа се разидуваат, а разликата се гледа дури на печатена фактура.
+        $company = CompanyCreator::create(
+            $validated['newName'],
+            CompanyType::from($validated['newType']),
+            $validated['newTaxId'],
+            $validated['newEmbg'],
+        );
 
         $this->reset(['newName', 'newType', 'newTaxId', 'newEmbg']);
 
