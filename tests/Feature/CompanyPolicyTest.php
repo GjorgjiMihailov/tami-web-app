@@ -53,17 +53,51 @@ class CompanyPolicyTest extends TestCase
         $this->assertFalse($accountant->can('view', $notAssigned));
     }
 
-    public function test_only_admin_can_create_a_company(): void
+    public function test_an_admin_can_always_create_a_company(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('admin');
+
+        $this->assertTrue($admin->can('create', Company::class));
+    }
+
+    public function test_an_accountant_without_a_single_company_may_create_one(): void
+    {
+        // Излезот за нов сметководител: без ова тој нема каде да почне, зашто
+        // екранот „Фирми" за него враќа 403. Види App\Livewire\FirstClient.
         $accountant = User::factory()->create();
         $accountant->assignRole('accountant');
+
+        $this->assertTrue($accountant->can('create', Company::class));
+    }
+
+    public function test_the_same_accountant_may_not_create_a_second_one(): void
+    {
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        Company::factory()->create()->accountants()->attach($accountant);
+
+        $this->assertFalse(
+            $accountant->can('create', Company::class),
+            'Правото важи само додека сметководителот нема ниту една фирма и само по себе се затвора.'
+        );
+    }
+
+    public function test_a_client_may_never_create_a_company(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+
+        $this->assertFalse($client->can('create', Company::class));
+    }
+
+    public function test_a_client_without_any_company_still_may_not_create_one(): void
+    {
+        // Правилото е врзано за улогата „сметководител", не за празнината.
         $client = User::factory()->create();
         $client->assignRole('client');
 
-        $this->assertTrue($admin->can('create', Company::class));
-        $this->assertFalse($accountant->can('create', Company::class));
         $this->assertFalse($client->can('create', Company::class));
     }
 
