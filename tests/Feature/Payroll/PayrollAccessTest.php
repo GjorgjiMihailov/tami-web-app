@@ -95,6 +95,25 @@ class PayrollAccessTest extends TestCase
         $this->actingAs($other)->get(route('payroll.recap-pdf', [$company, $run]))->assertForbidden();
     }
 
+    public function test_an_internal_client_gets_404_for_another_companys_run_through_their_own_company_url(): void
+    {
+        $companyA = Company::factory()->create();
+        $companyB = Company::factory()->create();
+        $runOfB = $this->draftRun($companyB);
+        $runEmployeeOfB = $runOfB->employees->first();
+        $client = $this->internalClient($companyA);
+
+        $this->actingAs($client)
+            ->get(route('payroll-runs.show', [$companyA, $runOfB]))
+            ->assertNotFound();
+        $this->actingAs($client)
+            ->get(route('payroll.recap-pdf', [$companyA, $runOfB]))
+            ->assertNotFound();
+        $this->actingAs($client)
+            ->get(route('payroll.payslip-pdf', [$companyA, $runOfB, $runEmployeeOfB]))
+            ->assertNotFound();
+    }
+
     public function test_an_internal_client_cannot_create_a_payroll_run(): void
     {
         $company = Company::factory()->create();

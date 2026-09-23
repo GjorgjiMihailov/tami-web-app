@@ -62,12 +62,13 @@ class PayrollRunShow extends Component
 
     public function saveLine(PayrollRunService $service): void
     {
-        // mount() authorizes once when the component is instantiated; a
-        // Livewire action call does not re-run it. EnsureAccountingAccess is
-        // registered as persistent middleware and covers the update endpoint
-        // too, but this second lock is cheap next to what a wrongly-booked
-        // payroll run would cost, and it matches the pattern this branch
-        // already established in PayrollParameterIndex::saveMonthHours().
+        // ВНИМАНИЕ — ова е ЕДИНСТВЕНАТА заштита на Livewire update-точката.
+        // mount() авторизира само еднаш, при создавање на компонентата, а
+        // рутата веќе НЕ ја носи EnsureAccountingAccess (internal_client
+        // смее да ја отвори страницата читачки). Без оваа Gate, клиентот
+        // може да повика saveLine/deleteLine/confirm/returnToDraft, а
+        // confirm() книжи во главната книга. Не ја отстранувај и не ја
+        // сметај за излишна.
         Gate::authorize('managePayroll', $this->company);
 
         if (! $this->guardDraft()) {
@@ -150,8 +151,8 @@ class PayrollRunShow extends Component
 
     public function deleteLine(int $id, PayrollRunService $service): void
     {
-        // See the comment on saveLine() above: mount() authorizes once, an
-        // action call does not re-run it.
+        // Види го коментарот на saveLine(): ова е единствената заштита на
+        // дејството, не смее да се отстрани.
         Gate::authorize('managePayroll', $this->company);
 
         if (! $this->guardDraft()) {
@@ -184,8 +185,8 @@ class PayrollRunShow extends Component
 
     public function confirm(PayrollRunService $service): void
     {
-        // See the comment on saveLine() above: mount() authorizes once, an
-        // action call does not re-run it. This one posts to the general
+        // Види го коментарот на saveLine(): ова е единствената заштита на
+        // дејството, не смее да се отстрани. This one posts to the general
         // ledger, so it is the highest-stakes of the four.
         Gate::authorize('managePayroll', $this->company);
 
@@ -198,8 +199,8 @@ class PayrollRunShow extends Component
 
     public function returnToDraft(PayrollRunService $service): void
     {
-        // See the comment on saveLine() above: mount() authorizes once, an
-        // action call does not re-run it.
+        // Види го коментарот на saveLine(): ова е единствената заштита на
+        // дејството, не смее да се отстрани.
         Gate::authorize('managePayroll', $this->company);
 
         if ($this->run->isDraft()) {
