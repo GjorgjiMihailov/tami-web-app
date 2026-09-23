@@ -92,7 +92,7 @@ class MenuTest extends TestCase
         $company = Company::factory()->create();
         $financeMenu = Menu::for($this->userWithRole('internal_client', $company), $company, PortalApp::FINANSII);
 
-        $this->assertSame(['Извештаи и обрасци'], $this->itemLabels($financeMenu, 'finance'));
+        $this->assertSame(['Извештаи и обрасци', 'Банкарски документи'], $this->itemLabels($financeMenu, 'finance'));
         $this->assertSame([], $this->itemLabels($financeMenu, 'finance-settings'));
     }
 

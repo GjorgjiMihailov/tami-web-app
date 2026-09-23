@@ -40,9 +40,9 @@ class AppSwitcherTest extends TestCase
         $user->assignRole('internal_client');
 
         $this->assertSame(
-            ['prodazba'],
+            ['prodazba', 'finansii'],
             array_column(AppSwitcher::for($user, $company), 'key'),
-            'Клиент не гледа Финансии (книжењето е на канцеларијата) ниту исклучена Плата.'
+            'Клиентот гледа Финансии (извештаи и извод) но не и исклучена Плата.'
         );
     }
 
@@ -98,7 +98,7 @@ class AppSwitcherTest extends TestCase
             ->assertOk()
             ->assertSee('АПЛИКАЦИИ')
             ->assertSee('Продажба')
-            ->assertDontSee('Финансии')
+            ->assertSee('Финансии')
             ->assertDontSee('Плати');
     }
 

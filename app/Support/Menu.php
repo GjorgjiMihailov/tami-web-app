@@ -194,7 +194,7 @@ class Menu
                 'items' => [
                     ['label' => 'Главна книга', 'url' => route('accounting.journal-groups.index', $company), 'pattern' => 'accounting.journal-groups.*', 'roles' => ['admin', 'accountant'], 'module' => CompanyModule::FINANCE],
                     ['label' => 'Извештаи и обрасци', 'url' => route('reports.index', $company), 'pattern' => 'reports.*', 'roles' => null, 'module' => CompanyModule::FINANCE],
-                    ['label' => 'Банкарски документи', 'url' => route('bank-statements.index', $company), 'pattern' => 'bank-statements.*', 'roles' => ['admin', 'accountant'], 'module' => CompanyModule::FINANCE],
+                    ['label' => 'Банкарски документи', 'url' => route('bank-statements.index', $company), 'pattern' => 'bank-statements.*', 'roles' => null, 'module' => CompanyModule::FINANCE],
                 ],
             ],
             [

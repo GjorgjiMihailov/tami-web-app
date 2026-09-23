@@ -78,6 +78,39 @@ class BankStatementIndexTest extends TestCase
      * Ова е причината бројот воопшто да се внесува: фален извод значи
      * непрокнижен промет, што инаку се открива дури на крајот од годината.
      */
+    public function test_an_internal_client_can_upload_a_statement(): void
+    {
+        Storage::fake('google');
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        Livewire::actingAs($client)
+            ->test(BankStatementIndex::class, ['company' => $company])
+            ->set('bank', 'Стопанска банка')
+            ->set('account', 'MK07300000000001234')
+            ->set('kind', BankStatementKind::DENAR->value)
+            ->set('number', '1')
+            ->set('statementDate', now()->toDateString())
+            ->set('newFile', UploadedFile::fake()->create('izvod-1.pdf', 20))
+            ->call('upload')
+            ->assertHasNoErrors();
+
+        $this->assertSame(1, BankStatement::where('company_id', $company->id)->count());
+    }
+
+    public function test_an_internal_client_cannot_open_another_companys_statements(): void
+    {
+        $own = Company::factory()->create();
+        $other = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $own->id]);
+        $client->assignRole('internal_client');
+
+        $this->actingAs($client)
+            ->get(route('bank-statements.index', $other))
+            ->assertForbidden();
+    }
+
     public function test_a_missing_number_is_reported(): void
     {
         $company = Company::factory()->create();
