@@ -214,21 +214,36 @@ EOF
 **Files:**
 - Modify: сите `.php` под `app/`, `database/`, `tests/` што содржат `'client'`
 - Modify: `app/Policies/{Form743,Employee,Item,Partner,PurchaseInvoice,SalesInvoice,StockMovement,Warehouse}Policy.php` (дополнителна рачна поправка по sed-от)
-- Modify: `tests/Feature/Bank/Form743UploadTest.php`, `tests/Feature/Bank/Form743WorklistTest.php` (дополнителна рачна поправка по sed-от)
 
 **Interfaces:**
 - Consumes: улогите од Задача 1 (`internal_client`, `freelancer_client`).
 
-- [ ] **Step 1: Механичка замена**
+- [ ] **Step 1: Механичка замена (со три изречни исклучоци)**
+
+Трите фајлови од Задача 1 НАМЕРНО го содржат старото име `'client'` — тоа е
+самата суштина на миграцијата (преименува ОД `'client'`) и на нејзините
+тестови (`'client'` како состојба „пред", како и тврдењето дека веќе не
+постои). Слепата замена ги уништува (миграцијата би станала no-op, а
+`RoleSeederTest` би тврдел спротивно од она што го проверува) — затоа се
+исклучени:
 
 ```bash
-grep -rl "'client'" app database tests --include="*.php" | xargs sed -i "s/'client'/'internal_client'/g"
+grep -rl "'client'" app database tests --include="*.php" \
+  | grep -v -e "database/migrations/2026_09_23_120000_rename_client_role_and_add_freelancer_client_role.php" \
+            -e "tests/Feature/RoleSeederTest.php" \
+            -e "tests/Unit/Migrations/RenameClientRoleMigrationTest.php" \
+  | xargs sed -i "s/'client'/'internal_client'/g"
 ```
 
-- [ ] **Step 2: Провери дека ништо не остана**
+- [ ] **Step 2: Провери дека остана точно она што треба**
 
-Run: `grep -rn "'client'" app database tests --include="*.php"`
-Expected: без резултат (празно)
+Run: `grep -rln "'client'" app database tests --include="*.php"`
+Expected: точно три фајла, и ништо друго:
+```
+database/migrations/2026_09_23_120000_rename_client_role_and_add_freelancer_client_role.php
+tests/Feature/RoleSeederTest.php
+tests/Unit/Migrations/RenameClientRoleMigrationTest.php
+```
 
 - [ ] **Step 3: Прошири ги осумте политики што прашуваат „било кој клиент"**
 
@@ -255,42 +270,30 @@ sed -i "s/\['admin', 'accountant', 'internal_client'\]/['admin', 'accountant', '
 Run: `grep -n "hasAnyRole" app/Policies/Form743Policy.php app/Policies/EmployeePolicy.php app/Policies/ItemPolicy.php app/Policies/PartnerPolicy.php app/Policies/PurchaseInvoicePolicy.php app/Policies/SalesInvoicePolicy.php app/Policies/StockMovementPolicy.php app/Policies/WarehousePolicy.php`
 Expected: секој ред содржи `['admin', 'accountant', 'internal_client', 'freelancer_client']`
 
-- [ ] **Step 5: Врати ги двата 743-тест-фајла на семантички точната улога**
+- [ ] **Step 5: Пушти го целиот пакет**
 
-Овие два фајла тестираат физичко лице (странство) — по sed-от од Step 1 добија
-`internal_client`, а логички им треба `freelancer_client` (функционално веќе
-работеше и со internal_client бидејќи Form743Policy е широка, но улогата на
-тест-профилот треба да одговара на она што навистина го тестира).
+Предуслов: `public/build/manifest.json` мора да постои (во свеж worktree е
+gitignored и не го носи checkout-от — копирај го од главниот checkout или
+пушти `npm run build`), инаку секој тест што исцртува layout паѓа со
+`ViteManifestNotFoundException` и изгледа како 235 лажни неуспеси.
 
-`tests/Feature/Bank/Form743UploadTest.php`, во методот `clientOf()`:
-
-```php
-    private function clientOf(Company $company): User
-    {
-        $user = User::factory()->create(['company_id' => $company->id]);
-        $user->assignRole('freelancer_client');
-
-        return $user;
-    }
-```
-
-`tests/Feature/Bank/Form743WorklistTest.php`, редот со `$client->assignRole(...)`:
-
-```php
-        $client->assignRole('freelancer_client');
-```
-
-- [ ] **Step 6: Пушти го целиот пакет**
+Двата 743-тест-фајла (`Form743UploadTest`, `Form743WorklistTest`) НАМЕРНО
+остануваат на `internal_client` во оваа задача: `User::visibleCompanies()`
+дури во Задача 3 учи да препознава `freelancer_client`, па преименување на
+тие два фајла на `freelancer_client` тука би ги оставило без фирма
+(„The response is not a view" / „Invalid Livewire snapshot structure"). Тоа
+преименување е во Задача 3, Step 12а.
 
 Run: `php -d memory_limit=1G vendor/bin/phpunit`
 Expected: PASS, ист број тестови како пред задачава (сите постоечки тврдења
 проверуваат однесување, не име на улога, па преименувањето само по себе не
-менува ниту едно очекување)
+менува ниту едно очекување). Резултатот го има три категории — `failed`,
+`errors` и `skipped` — провери ги СИТЕ, не само `failed`.
 
-- [ ] **Step 7: Комит**
+- [ ] **Step 6: Комит (само наведените патеки — не `git add -A`)**
 
 ```bash
-git add -A
+git add app database tests
 git commit -m "$(cat <<'EOF'
 Пренеси го целиот код на internal_client/freelancer_client
 
@@ -472,6 +475,15 @@ Expected: PASS
 
 Додади `use App\Support\CompanyType;` на врвот ако недостасува.
 
+Овој фајл (`CompanyUsersTest`) мора да ја има улогата `freelancer_client` во
+`setUp()` — без неа `assignRole('freelancer_client')` фрла
+`RoleDoesNotExist`. Додади `Role::findOrCreate('freelancer_client');` веднаш
+до постојниот `Role::findOrCreate('internal_client');` (Задача 2 го
+преименува старото `'client'` во тој ред). Истото важи за секој тест-фајл
+што подолу во оваа задача доделува или создава `freelancer_client`:
+`UserCompanyRelationsTest`, `MenuTest`, `Form743UploadTest`,
+`Form743WorklistTest`.
+
 - [ ] **Step 10: Пушти — очекувано FAIL (или лажен PASS — провери го второто тврдење)**
 
 Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Users/CompanyUsersTest.php --filter test_a_new_user_on_an_individual_company_gets_freelancer_client`
@@ -495,6 +507,38 @@ Expected: FAIL — `assertTrue($created->hasRole('freelancer_client'))` проп
 
 Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Users/CompanyUsersTest.php`
 Expected: PASS
+
+- [ ] **Step 12а: Релабелирај ги двата 743-тест-фајла на `freelancer_client`**
+
+Ова беше Задача 2, Step 5, преместено овде: дури сега `visibleCompanies()`
+(Step 7) го препознава `freelancer_client`, па релабелирањето не ги оставa
+тестовите без фирма. Двата фајла тестираат физичко лице (странство), па
+логички им треба `freelancer_client`.
+
+`tests/Feature/Bank/Form743UploadTest.php`, во `setUp()` додади
+`Role::findOrCreate('freelancer_client');` и во методот `clientOf()`:
+
+```php
+    private function clientOf(Company $company): User
+    {
+        $user = User::factory()->create(['company_id' => $company->id]);
+        $user->assignRole('freelancer_client');
+
+        return $user;
+    }
+```
+
+`tests/Feature/Bank/Form743WorklistTest.php`, во `setUp()` додади
+`Role::findOrCreate('freelancer_client');` и на редот со
+`$client->assignRole(...)`:
+
+```php
+        $client->assignRole('freelancer_client');
+```
+
+Run: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/Bank`
+Expected: PASS (сите — овие два фајла паднаа во Задача 2 кога релабелирањето
+беше пред Step 7)
 
 - [ ] **Step 13: Поправи го MenuTest::userWithRole() — денес препознава само `'client'`**
 
@@ -548,7 +592,7 @@ Expected: PASS
 - [ ] **Step 15: Комит**
 
 ```bash
-git add app/Support/CompanyType.php app/Models/User.php app/Livewire/CompanyUsers.php tests/Unit/CompanyTypeTest.php tests/Feature/UserCompanyRelationsTest.php tests/Feature/Users/CompanyUsersTest.php tests/Unit/Support/MenuTest.php
+git add app/Support/CompanyType.php app/Models/User.php app/Livewire/CompanyUsers.php tests/Unit/CompanyTypeTest.php tests/Feature/UserCompanyRelationsTest.php tests/Feature/Users/CompanyUsersTest.php tests/Unit/Support/MenuTest.php tests/Feature/Bank/Form743UploadTest.php tests/Feature/Bank/Form743WorklistTest.php
 git commit -m "$(cat <<'EOF'
 Заклучи ја улогата на нов клиентски профил на типот на фирмата
 
@@ -891,16 +935,13 @@ Expected: FAIL на првиот тест (403 денес, зашто EnsureAcco
     /**
      * Пресметување, уредување и потврдување плата — само канцеларијата.
      * internal_client гледа читачки преку `view` (visibleCompanies() веќе го
-     * пропушта), но не смее да допре ниту едно дејство што пишува.
+     * пропушта), но не смее да допре ниту едно дејство што пишува. Истото
+     * правило како `update` (истиот стил на делегирање како
+     * `updateInvoiceSettings()` погоре во истиот фајл) — не се дуплира телото.
      */
     public function managePayroll(User $user, Company $company): bool
     {
-        if ($user->hasRole('admin')) {
-            return true;
-        }
-
-        return $user->hasRole('accountant')
-            && $user->visibleCompanies()->whereKey($company->id)->exists();
+        return $this->update($user, $company);
     }
 ```
 
