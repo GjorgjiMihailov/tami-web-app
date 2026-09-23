@@ -120,8 +120,8 @@ class CompanyModulesScreenTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create();
-        Role::findOrCreate('client');
-        $client->assignRole('client');
+        Role::findOrCreate('internal_client');
+        $client->assignRole('internal_client');
         $client->forceFill(['company_id' => $company->id])->save();
 
         $this->actingAs($client)->get(route('companies.modules', $company))->assertForbidden();

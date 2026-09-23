@@ -19,7 +19,7 @@ class ItemIndexTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_it_lists_the_companys_items(): void
@@ -39,7 +39,7 @@ class ItemIndexTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($client);
 
@@ -157,7 +157,7 @@ class ItemIndexTest extends TestCase
         $company = Company::factory()->create();
         $item = Item::factory()->for($company)->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(ItemIndex::class, ['company' => $company])

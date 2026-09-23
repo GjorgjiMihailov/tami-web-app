@@ -22,7 +22,7 @@ class SalesInvoiceFormTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_it_creates_a_draft_invoice_with_a_free_text_line(): void
@@ -125,7 +125,7 @@ class SalesInvoiceFormTest extends TestCase
         $company = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(SalesInvoiceForm::class, ['company' => $company])
@@ -144,7 +144,7 @@ class SalesInvoiceFormTest extends TestCase
         $companyA = Company::factory()->create();
         $companyB = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $companyA->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(SalesInvoiceForm::class, ['company' => $companyB])

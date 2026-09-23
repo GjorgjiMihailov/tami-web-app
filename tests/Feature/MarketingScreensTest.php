@@ -55,7 +55,7 @@ class MarketingScreensTest extends TestCase
 
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
 
         $admin = User::factory()->create(['name' => 'Тамара Михаилова', 'email' => 'demo@financebuddy.mk']);
         $admin->assignRole('admin');

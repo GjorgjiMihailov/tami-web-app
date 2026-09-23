@@ -19,6 +19,6 @@ class StockMovementPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'accountant', 'client']);
+        return $user->hasAnyRole(['admin', 'accountant', 'internal_client', 'freelancer_client']);
     }
 }

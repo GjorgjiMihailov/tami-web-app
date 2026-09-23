@@ -19,12 +19,12 @@ class PurchaseInvoicePolicy
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'accountant', 'client']);
+        return $user->hasAnyRole(['admin', 'accountant', 'internal_client', 'freelancer_client']);
     }
 
     public function update(User $user, PurchaseInvoice $purchaseInvoice): bool
     {
-        return $user->hasAnyRole(['admin', 'accountant', 'client'])
+        return $user->hasAnyRole(['admin', 'accountant', 'internal_client', 'freelancer_client'])
             && $user->visibleCompanies()->whereKey($purchaseInvoice->company_id)->exists();
     }
 }

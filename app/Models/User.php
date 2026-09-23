@@ -66,7 +66,7 @@ class User extends Authenticatable
             return Company::query();
         }
 
-        if ($this->hasRole('client')) {
+        if ($this->hasRole('internal_client')) {
             return Company::where('id', $this->company_id);
         }
 

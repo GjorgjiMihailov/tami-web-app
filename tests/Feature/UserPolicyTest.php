@@ -17,7 +17,7 @@ class UserPolicyTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_an_accountant_may_invite_and_disable_a_client_of_a_company_they_work_on(): void
@@ -27,7 +27,7 @@ class UserPolicyTest extends TestCase
         $accountant->assignRole('accountant');
         $accountant->assignedCompanies()->attach($company->id);
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->assertTrue($accountant->can('invite', $client));
         $this->assertTrue($accountant->can('disable', $client));
@@ -43,7 +43,7 @@ class UserPolicyTest extends TestCase
         // граница по фирма се проверува, не само дека listата е празна.
         $accountant->assignedCompanies()->attach($theirCompany->id);
         $client = User::factory()->create(['company_id' => $otherCompany->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->assertFalse($accountant->can('invite', $client));
         $this->assertFalse($accountant->can('disable', $client));
@@ -77,7 +77,7 @@ class UserPolicyTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $officeAccountant = User::factory()->create(['company_id' => null]);
         $officeAccountant->assignRole('accountant');
 
@@ -96,7 +96,7 @@ class UserPolicyTest extends TestCase
         $accountant->assignRole('accountant');
         $accountant->assignedCompanies()->attach($company->id);
         $client = User::factory()->create(['company_id' => $company->id, 'disabled_at' => now()]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->assertFalse($accountant->can('invite', $client));
     }

@@ -21,7 +21,7 @@ class OfficeUsersTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     private function userWithRole(string $role): User
@@ -74,7 +74,7 @@ class OfficeUsersTest extends TestCase
             ->test(OfficeUsers::class)
             ->set('newName', 'Клиент Некој')
             ->set('newEmail', 'klient@primer.mk')
-            ->set('newRole', 'client')
+            ->set('newRole', 'internal_client')
             ->call('addUser')
             ->assertHasErrors('newRole');
 
@@ -84,7 +84,7 @@ class OfficeUsersTest extends TestCase
     public function test_the_list_shows_office_accounts_and_not_clients(): void
     {
         $accountant = $this->userWithRole('accountant');
-        $client = $this->userWithRole('client');
+        $client = $this->userWithRole('internal_client');
         $client->forceFill(['company_id' => Company::factory()->create()->id])->save();
 
         Livewire::actingAs($this->userWithRole('admin'))
@@ -95,7 +95,7 @@ class OfficeUsersTest extends TestCase
 
     public function test_a_client_cannot_reach_the_office_screen(): void
     {
-        $client = $this->userWithRole('client');
+        $client = $this->userWithRole('internal_client');
         $client->forceFill(['company_id' => Company::factory()->create()->id])->save();
 
         $this->actingAs($client)->get(route('companies.office'))->assertForbidden();

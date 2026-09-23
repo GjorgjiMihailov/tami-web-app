@@ -20,7 +20,7 @@ class CompanyIndexTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     private function actAsAdmin(): void
@@ -42,7 +42,7 @@ class CompanyIndexTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $accountant = User::factory()->create();
         $accountant->assignRole('accountant');
         $company->accountants()->attach($accountant);
@@ -197,7 +197,7 @@ class CompanyIndexTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($client);
 
@@ -212,7 +212,7 @@ class CompanyIndexTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($client);
 

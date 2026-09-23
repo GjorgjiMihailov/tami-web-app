@@ -23,7 +23,7 @@ class CompanyUsersTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     private function userWithRole(string $role, ?Company $company = null): User
@@ -55,7 +55,7 @@ class CompanyUsersTest extends TestCase
         $created = User::where('email', 'marija@primer.mk')->firstOrFail();
 
         $this->assertSame($company->id, $created->company_id);
-        $this->assertTrue($created->hasRole('client'));
+        $this->assertTrue($created->hasRole('internal_client'));
         $this->assertSame('invited', $created->accessStatus());
 
         Notification::assertSentTo($created, UserInvitationNotification::class);
@@ -108,7 +108,7 @@ class CompanyUsersTest extends TestCase
     public function test_an_admin_disables_and_restores_access(): void
     {
         $company = Company::factory()->create();
-        $client = $this->userWithRole('client', $company);
+        $client = $this->userWithRole('internal_client', $company);
 
         Livewire::actingAs($this->userWithRole('admin'))
             ->test(CompanyUsers::class, ['company' => $company])
@@ -141,7 +141,7 @@ class CompanyUsersTest extends TestCase
     public function test_a_client_sees_the_list_but_cannot_open_an_account(): void
     {
         $company = Company::factory()->create();
-        $client = $this->userWithRole('client', $company);
+        $client = $this->userWithRole('internal_client', $company);
 
         Livewire::actingAs($client)
             ->test(CompanyUsers::class, ['company' => $company])
@@ -182,7 +182,7 @@ class CompanyUsersTest extends TestCase
         $company = Company::factory()->create();
         $accountant = $this->userWithRole('accountant');
         $company->accountants()->attach($accountant);
-        $client = $this->userWithRole('client', $company);
+        $client = $this->userWithRole('internal_client', $company);
 
         Livewire::actingAs($accountant)
             ->test(CompanyUsers::class, ['company' => $company])
@@ -197,7 +197,7 @@ class CompanyUsersTest extends TestCase
         $company = Company::factory()->create();
         $accountant = $this->userWithRole('accountant');
         $company->accountants()->attach($accountant);
-        $client = $this->userWithRole('client', $company);
+        $client = $this->userWithRole('internal_client', $company);
 
         Livewire::actingAs($accountant)
             ->test(CompanyUsers::class, ['company' => $company])
@@ -219,7 +219,7 @@ class CompanyUsersTest extends TestCase
         $mine = Company::factory()->create();
         $others = Company::factory()->create();
 
-        $this->actingAs($this->userWithRole('client', $mine))
+        $this->actingAs($this->userWithRole('internal_client', $mine))
             ->get(route('companies.users', $others))
             ->assertForbidden();
     }
@@ -227,8 +227,8 @@ class CompanyUsersTest extends TestCase
     public function test_the_list_shows_only_this_companys_users(): void
     {
         $company = Company::factory()->create();
-        $mine = $this->userWithRole('client', $company);
-        $stranger = $this->userWithRole('client', Company::factory()->create());
+        $mine = $this->userWithRole('internal_client', $company);
+        $stranger = $this->userWithRole('internal_client', Company::factory()->create());
 
         Livewire::actingAs($this->userWithRole('admin'))
             ->test(CompanyUsers::class, ['company' => $company])
@@ -248,8 +248,8 @@ class CompanyUsersTest extends TestCase
     public function test_a_client_disabling_a_stranger_from_another_company_looks_like_disabling_a_nonexistent_id(): void
     {
         $mine = Company::factory()->create();
-        $client = $this->userWithRole('client', $mine);
-        $stranger = $this->userWithRole('client', Company::factory()->create());
+        $client = $this->userWithRole('internal_client', $mine);
+        $stranger = $this->userWithRole('internal_client', Company::factory()->create());
         $nonexistentId = (int) User::query()->max('id') + 1000;
 
         $outcomeForStranger = $this->exceptionShapeOf(fn () => Livewire::actingAs($client)
@@ -270,7 +270,7 @@ class CompanyUsersTest extends TestCase
 
         $company = Company::factory()->create();
         $admin = $this->userWithRole('admin');
-        $client = $this->userWithRole('client', $company);
+        $client = $this->userWithRole('internal_client', $company);
 
         $oldLink = UserInvitations::issue($client, $admin);
         $oldToken = basename(parse_url($oldLink, PHP_URL_PATH));
@@ -297,7 +297,7 @@ class CompanyUsersTest extends TestCase
         Notification::fake();
 
         $company = Company::factory()->create();
-        $client = $this->userWithRole('client', $company);
+        $client = $this->userWithRole('internal_client', $company);
         $client->forceFill(['disabled_at' => now()])->save();
 
         Livewire::actingAs($this->userWithRole('admin'))
@@ -313,8 +313,8 @@ class CompanyUsersTest extends TestCase
         Notification::fake();
 
         $company = Company::factory()->create();
-        $client = $this->userWithRole('client', $company);
-        $other = $this->userWithRole('client', $company);
+        $client = $this->userWithRole('internal_client', $company);
+        $other = $this->userWithRole('internal_client', $company);
 
         Livewire::actingAs($client)
             ->test(CompanyUsers::class, ['company' => $company])
@@ -330,7 +330,7 @@ class CompanyUsersTest extends TestCase
 
         $mine = Company::factory()->create();
         $admin = $this->userWithRole('admin');
-        $stranger = $this->userWithRole('client', Company::factory()->create());
+        $stranger = $this->userWithRole('internal_client', Company::factory()->create());
 
         $outcome = $this->exceptionShapeOf(fn () => Livewire::actingAs($admin)
             ->test(CompanyUsers::class, ['company' => $mine])
@@ -350,7 +350,7 @@ class CompanyUsersTest extends TestCase
     {
         $mine = Company::factory()->create();
         $admin = $this->userWithRole('admin');
-        $stranger = $this->userWithRole('client', Company::factory()->create());
+        $stranger = $this->userWithRole('internal_client', Company::factory()->create());
 
         $shapes = [
             'disable' => $this->exceptionShapeOf(fn () => Livewire::actingAs($admin)

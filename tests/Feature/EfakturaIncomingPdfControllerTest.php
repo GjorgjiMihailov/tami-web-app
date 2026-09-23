@@ -19,7 +19,7 @@ class EfakturaIncomingPdfControllerTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
         Storage::fake('local');
     }
 
@@ -106,7 +106,7 @@ class EfakturaIncomingPdfControllerTest extends TestCase
         $company = $this->makeOwnModeCompany();
         $document = IncomingEfakturaDocument::factory()->for($company)->create(['decision' => IncomingEfakturaDocument::DECISION_ACCEPTED]);
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $response = $this->actingAs($client)->postJson(
             route('incoming-efaktura.pdf.signing-input', [$company, $document]),

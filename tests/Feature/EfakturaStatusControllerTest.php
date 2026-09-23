@@ -20,7 +20,7 @@ class EfakturaStatusControllerTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     private function makeOwnModeCompany(): Company
@@ -180,7 +180,7 @@ class EfakturaStatusControllerTest extends TestCase
         $company = $this->makeOwnModeCompany();
         $this->makeSentInvoice($company);
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $response = $this->actingAs($client)->postJson(
             route('sales-invoices.efaktura.refresh-statuses.signing-input', $company),

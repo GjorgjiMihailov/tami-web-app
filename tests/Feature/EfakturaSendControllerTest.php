@@ -20,7 +20,7 @@ class EfakturaSendControllerTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     private function makeConfirmedOwnModeInvoice(): array
@@ -187,7 +187,7 @@ class EfakturaSendControllerTest extends TestCase
     {
         [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $response = $this->actingAs($client)->postJson(
             route('sales-invoices.efaktura.signing-input', [$company, $invoice]),

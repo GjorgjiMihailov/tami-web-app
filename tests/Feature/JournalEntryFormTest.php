@@ -26,7 +26,7 @@ class JournalEntryFormTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_a_balanced_entry_saves_and_posts_immediately(): void
@@ -211,7 +211,7 @@ class JournalEntryFormTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($client);
 
@@ -229,7 +229,7 @@ class JournalEntryFormTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
         $revenue = Account::where('company_id', $company->id)->where('code', '740')->first();
         $entry = JournalEntry::factory()->for($company)->create([
@@ -251,7 +251,7 @@ class JournalEntryFormTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $cash = Account::where('company_id', $company->id)->where('code', '100')->first();
         $revenue = Account::where('company_id', $company->id)->where('code', '740')->first();
         $entry = JournalEntry::factory()->for($company)->create(['created_by' => $admin->id]);
@@ -623,7 +623,7 @@ class JournalEntryFormTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $entry = JournalEntry::factory()->for($company)->create();
 
         $this->actingAs($client);

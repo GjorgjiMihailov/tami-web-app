@@ -16,7 +16,7 @@ class UserCompanyRelationsTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['admin', 'accountant', 'client'] as $role) {
+        foreach (['admin', 'accountant', 'internal_client'] as $role) {
             Role::findOrCreate($role);
         }
     }

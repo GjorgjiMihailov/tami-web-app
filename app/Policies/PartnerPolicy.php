@@ -19,12 +19,12 @@ class PartnerPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'accountant', 'client']);
+        return $user->hasAnyRole(['admin', 'accountant', 'internal_client', 'freelancer_client']);
     }
 
     public function update(User $user, Partner $partner): bool
     {
-        return $user->hasAnyRole(['admin', 'accountant', 'client'])
+        return $user->hasAnyRole(['admin', 'accountant', 'internal_client', 'freelancer_client'])
             && $user->visibleCompanies()->whereKey($partner->company_id)->exists();
     }
 }

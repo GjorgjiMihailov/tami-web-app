@@ -23,7 +23,7 @@ class AppRootUrlTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['admin', 'accountant', 'client'] as $role) {
+        foreach (['admin', 'accountant', 'internal_client'] as $role) {
             Role::findOrCreate($role);
         }
     }
@@ -48,7 +48,7 @@ class AppRootUrlTest extends TestCase
         // своја табла и таа е влезот — види Menu::landingUrl().
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($client)
             ->get('http://'.PortalApp::PRODAZBA->domain().'/')

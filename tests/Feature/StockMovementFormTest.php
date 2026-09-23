@@ -22,7 +22,7 @@ class StockMovementFormTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_it_records_a_receipt(): void
@@ -142,7 +142,7 @@ class StockMovementFormTest extends TestCase
         $item = Item::factory()->for($company)->create();
         $warehouse = Warehouse::factory()->for($company)->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($client);
 

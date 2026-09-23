@@ -25,7 +25,7 @@ class PurchaseInvoiceFormTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_it_creates_a_draft_purchase_invoice_with_an_expense_line(): void
@@ -165,7 +165,7 @@ class PurchaseInvoiceFormTest extends TestCase
         $partner = Partner::factory()->for($company)->create();
         $account = Account::where('company_id', $company->id)->where('code', '462')->first();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])

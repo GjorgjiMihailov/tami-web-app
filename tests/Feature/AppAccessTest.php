@@ -23,14 +23,14 @@ class AppAccessTest extends TestCase
         parent::setUp();
 
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
         Role::findOrCreate('accountant');
     }
 
     public function test_a_new_user_may_enter_every_app(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('client');
+        $user->assignRole('internal_client');
 
         foreach (PortalApp::workApps() as $app) {
             $this->assertTrue($user->canAccessApp($app), "Стандардно {$app->value} треба да е дозволен.");
@@ -40,7 +40,7 @@ class AppAccessTest extends TestCase
     public function test_an_unticked_app_is_closed(): void
     {
         $user = User::factory()->create(['app_finansii' => false]);
-        $user->assignRole('client');
+        $user->assignRole('internal_client');
 
         $this->assertFalse($user->canAccessApp(PortalApp::FINANSII));
         $this->assertTrue($user->canAccessApp(PortalApp::PRODAZBA));
@@ -67,7 +67,7 @@ class AppAccessTest extends TestCase
             'app_finansii' => false,
             'app_plata' => false,
         ]);
-        $user->assignRole('client');
+        $user->assignRole('internal_client');
 
         $this->assertTrue($user->canAccessApp(PortalApp::PORTAL));
     }

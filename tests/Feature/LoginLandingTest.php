@@ -20,7 +20,7 @@ class LoginLandingTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_a_client_lands_in_the_app_it_signed_into(): void
@@ -29,7 +29,7 @@ class LoginLandingTest extends TestCase
         // види Menu::landingUrl(). Порано ова слетуваше во Излезни фактури.
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->assertSame(
             route('prodazba.dashboard', $company),
@@ -64,7 +64,7 @@ class LoginLandingTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->assertSame(route('dashboard'), LandingUrl::for($client, PortalApp::PORTAL));
     }
@@ -73,7 +73,7 @@ class LoginLandingTest extends TestCase
     {
         $company = Company::factory()->create(['uses_payroll' => false]);
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->assertSame(route('dashboard'), LandingUrl::for($client, PortalApp::PLATA));
     }
@@ -87,7 +87,7 @@ class LoginLandingTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id, 'app_plata' => false]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->assertSame(route('dashboard'), LandingUrl::for($client, PortalApp::PLATA));
     }
@@ -96,7 +96,7 @@ class LoginLandingTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         foreach (PortalApp::cases() as $app) {
             $this->assertStringStartsWith('http://', LandingUrl::for($client, $app));
@@ -116,7 +116,7 @@ class LoginLandingTest extends TestCase
 
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $intended = route('companies.profile', $company);
         $default = LandingUrl::for($client, PortalApp::PRODAZBA);

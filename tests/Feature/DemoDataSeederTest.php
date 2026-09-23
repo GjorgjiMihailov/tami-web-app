@@ -31,7 +31,7 @@ class DemoDataSeederTest extends TestCase
         $this->assertCount(2, $accountant->assignedCompanies);
 
         $this->assertNotNull($client);
-        $this->assertTrue($client->hasRole('client'));
+        $this->assertTrue($client->hasRole('internal_client'));
         $this->assertNotNull($client->company_id);
     }
 

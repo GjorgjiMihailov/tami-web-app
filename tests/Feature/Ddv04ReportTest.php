@@ -20,7 +20,7 @@ class Ddv04ReportTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_it_shows_computed_fields_for_the_selected_range(): void
@@ -43,7 +43,7 @@ class Ddv04ReportTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(Ddv04Report::class, ['company' => $company])
@@ -55,7 +55,7 @@ class Ddv04ReportTest extends TestCase
         $ownCompany = Company::factory()->create();
         $otherCompany = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $ownCompany->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(Ddv04Report::class, ['company' => $otherCompany])

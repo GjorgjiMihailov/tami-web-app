@@ -19,14 +19,14 @@ class EfakturaCredentialModelRegressionTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_full_request_then_approve_flow_grants_access(): void
     {
         $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $admin = User::factory()->create();
         $admin->assignRole('admin');
 
@@ -55,7 +55,7 @@ class EfakturaCredentialModelRegressionTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($admin)->get(route('companies.profile', $company))->assertSee('е-Фактура барања');
         $this->actingAs($client)->get(route('companies.profile', $company))->assertDontSee('е-Фактура барања');

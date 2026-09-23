@@ -16,7 +16,7 @@ class CompanyPolicyTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['admin', 'accountant', 'client'] as $role) {
+        foreach (['admin', 'accountant', 'internal_client'] as $role) {
             Role::findOrCreate($role);
         }
     }
@@ -35,7 +35,7 @@ class CompanyPolicyTest extends TestCase
         $ownCompany = Company::factory()->create();
         $otherCompany = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $ownCompany->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->assertTrue($client->can('view', $ownCompany));
         $this->assertFalse($client->can('view', $otherCompany));
@@ -88,7 +88,7 @@ class CompanyPolicyTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->assertFalse($client->can('create', Company::class));
     }
@@ -97,7 +97,7 @@ class CompanyPolicyTest extends TestCase
     {
         // Правилото е врзано за улогата „сметководител", не за празнината.
         $client = User::factory()->create();
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->assertFalse($client->can('create', Company::class));
     }
@@ -120,7 +120,7 @@ class CompanyPolicyTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->assertTrue($admin->can('update', $company));
         $this->assertFalse($client->can('update', $company));

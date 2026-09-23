@@ -19,12 +19,12 @@ class SalesInvoicePolicy
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'accountant', 'client']);
+        return $user->hasAnyRole(['admin', 'accountant', 'internal_client', 'freelancer_client']);
     }
 
     public function update(User $user, SalesInvoice $salesInvoice): bool
     {
-        return $user->hasAnyRole(['admin', 'accountant', 'client'])
+        return $user->hasAnyRole(['admin', 'accountant', 'internal_client', 'freelancer_client'])
             && $user->visibleCompanies()->whereKey($salesInvoice->company_id)->exists();
     }
 }

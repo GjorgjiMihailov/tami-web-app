@@ -29,14 +29,14 @@ class NavigationPortalLinkTest extends TestCase
 
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_a_non_admin_with_a_company_in_context_sees_the_dashboard_link_not_companies_index(): void
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $response = $this->actingAs($client)->get(route('sales-invoices.index', $company));
 

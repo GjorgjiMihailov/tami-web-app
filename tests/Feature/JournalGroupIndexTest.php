@@ -20,7 +20,7 @@ class JournalGroupIndexTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_each_group_links_to_its_own_entries(): void
@@ -90,7 +90,7 @@ class JournalGroupIndexTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($client);
 
@@ -155,7 +155,7 @@ class JournalGroupIndexTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $group = JournalGroup::factory()->for($company)->create(['name' => 'Оригинален назив']);
 
         $this->actingAs($client);

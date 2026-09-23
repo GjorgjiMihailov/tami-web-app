@@ -22,7 +22,7 @@ class ItemBulkImportTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_the_bulk_import_page_renders_successfully_over_http(): void
@@ -250,7 +250,7 @@ class ItemBulkImportTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         $rows = [

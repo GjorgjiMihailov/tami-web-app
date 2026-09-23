@@ -21,7 +21,7 @@ class PayrollAccessTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['admin', 'accountant', 'client'] as $role) {
+        foreach (['admin', 'accountant', 'internal_client'] as $role) {
             Role::findOrCreate($role);
         }
     }
@@ -30,7 +30,7 @@ class PayrollAccessTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($client)
             ->get(route('payroll-runs.index', $company))
@@ -82,7 +82,7 @@ class PayrollAccessTest extends TestCase
      */
     public function test_a_user_without_accounting_access_cannot_call_a_payroll_action_on_the_update_endpoint(): void
     {
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
 
         $company = Company::factory()->create();
         PayrollMonthHours::firstOrCreate(['year' => 2026, 'month' => 7], ['hours' => 184]);
@@ -110,7 +110,7 @@ class PayrollAccessTest extends TestCase
         $snapshot = html_entity_decode($matches[1]);
 
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         $this->postJson('/livewire/update', [

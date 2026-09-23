@@ -21,14 +21,14 @@ class AccountingPoliciesTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_client_cannot_view_or_edit_their_own_companys_accounts(): void
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $account = Account::factory()->for($company)->create();
 
         // Reversed deliberately in the menu-restructure plan: the chart of
@@ -43,7 +43,7 @@ class AccountingPoliciesTest extends TestCase
         $ownCompany = Company::factory()->create();
         $otherCompany = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $ownCompany->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $account = Account::factory()->for($otherCompany)->create();
 
         $this->assertFalse($client->can('view', $account));
@@ -66,7 +66,7 @@ class AccountingPoliciesTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $entry = JournalEntry::factory()->for($company)->create();
 
         $this->assertFalse($client->can('create', JournalEntry::class));
@@ -104,7 +104,7 @@ class AccountingPoliciesTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $partner = Partner::factory()->for($company)->create();
 
         $this->assertTrue($client->can('create', Partner::class));
@@ -115,7 +115,7 @@ class AccountingPoliciesTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $group = JournalGroup::factory()->for($company)->create();
 
         $this->assertFalse($client->can('create', JournalGroup::class));

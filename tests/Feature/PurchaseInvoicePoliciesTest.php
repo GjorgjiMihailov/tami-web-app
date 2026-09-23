@@ -18,14 +18,14 @@ class PurchaseInvoicePoliciesTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_client_can_manage_their_own_companys_purchase_invoices(): void
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $invoice = PurchaseInvoice::factory()->for($company)->create();
 
         $this->assertTrue($client->can('create', PurchaseInvoice::class));
@@ -38,7 +38,7 @@ class PurchaseInvoicePoliciesTest extends TestCase
         $ownCompany = Company::factory()->create();
         $otherCompany = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $ownCompany->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $invoice = PurchaseInvoice::factory()->for($otherCompany)->create();
 
         $this->assertFalse($client->can('view', $invoice));

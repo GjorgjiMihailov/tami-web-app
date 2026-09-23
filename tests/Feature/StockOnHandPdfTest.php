@@ -20,7 +20,7 @@ class StockOnHandPdfTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_it_downloads_a_pdf_of_totals_across_all_warehouses(): void
@@ -74,7 +74,7 @@ class StockOnHandPdfTest extends TestCase
         $company = Company::factory()->create();
         $otherCompany = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $otherCompany->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($client)
             ->get(route('inventory.reports.stock-on-hand.pdf', $company))

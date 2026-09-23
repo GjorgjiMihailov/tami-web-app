@@ -19,12 +19,12 @@ class ItemPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'accountant', 'client']);
+        return $user->hasAnyRole(['admin', 'accountant', 'internal_client', 'freelancer_client']);
     }
 
     public function update(User $user, Item $item): bool
     {
-        return $user->hasAnyRole(['admin', 'accountant', 'client'])
+        return $user->hasAnyRole(['admin', 'accountant', 'internal_client', 'freelancer_client'])
             && $user->visibleCompanies()->whereKey($item->company_id)->exists();
     }
 }

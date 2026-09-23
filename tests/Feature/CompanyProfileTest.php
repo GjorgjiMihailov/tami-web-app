@@ -20,7 +20,7 @@ class CompanyProfileTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_it_shows_the_active_companys_name(): void
@@ -39,7 +39,7 @@ class CompanyProfileTest extends TestCase
         $company = Company::factory()->create();
         $otherCompany = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $otherCompany->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(CompanyProfile::class, ['company' => $company])
@@ -73,7 +73,7 @@ class CompanyProfileTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(CompanyProfile::class, ['company' => $company])
@@ -84,7 +84,7 @@ class CompanyProfileTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(CompanyProfile::class, ['company' => $company])
@@ -147,7 +147,7 @@ class CompanyProfileTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(CompanyProfile::class, ['company' => $company])

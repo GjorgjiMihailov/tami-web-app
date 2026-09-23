@@ -24,7 +24,7 @@ class DocumentManagerTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_uploading_a_document_attaches_it_to_the_purchase_invoice(): void
@@ -105,7 +105,7 @@ class DocumentManagerTest extends TestCase
         $otherCompany = Company::factory()->create();
         $invoice = PurchaseInvoice::factory()->for($otherCompany)->create();
         $client = User::factory()->create(['company_id' => $ownCompany->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(DocumentManager::class, ['documentable' => $invoice])
@@ -139,7 +139,7 @@ class DocumentManagerTest extends TestCase
         $document = Document::factory()->for($invoice, 'documentable')->create(['company_id' => $otherCompany->id, 'path' => 'documents/test/bill.pdf']);
         Storage::disk('google')->put($document->path, 'fake-pdf-content');
         $client = User::factory()->create(['company_id' => $ownCompany->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         $this->get(route('documents.download', [$otherCompany, $document]))->assertForbidden();

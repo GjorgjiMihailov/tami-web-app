@@ -20,7 +20,7 @@ class CompanyProfileSigningDeviceTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_admin_can_register_a_signing_device(): void
@@ -57,7 +57,7 @@ class CompanyProfileSigningDeviceTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         Livewire::actingAs($client)
             ->test(CompanyProfile::class, ['company' => $company])

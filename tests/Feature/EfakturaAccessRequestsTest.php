@@ -18,7 +18,7 @@ class EfakturaAccessRequestsTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_admin_sees_only_requested_companies(): void
@@ -72,7 +72,7 @@ class EfakturaAccessRequestsTest extends TestCase
     public function test_non_admin_cannot_view_the_screen(): void
     {
         $client = User::factory()->create();
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         Livewire::actingAs($client)->test(EfakturaAccessRequests::class)->assertForbidden();
     }

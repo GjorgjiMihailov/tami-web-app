@@ -20,12 +20,12 @@ class MenuTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     private function userWithRole(string $role, ?Company $company = null): User
     {
-        $user = User::factory()->create($company && $role === 'client' ? ['company_id' => $company->id] : []);
+        $user = User::factory()->create($company && $role === 'internal_client' ? ['company_id' => $company->id] : []);
         $user->assignRole($role);
 
         return $user;
@@ -88,7 +88,7 @@ class MenuTest extends TestCase
     public function test_a_client_sees_no_finance_group_at_all(): void
     {
         $company = Company::factory()->create();
-        $menu = Menu::for($this->userWithRole('client', $company), $company, PortalApp::FINANSII);
+        $menu = Menu::for($this->userWithRole('internal_client', $company), $company, PortalApp::FINANSII);
 
         $this->assertNotContains('ФИНАНСИИ', $this->groupLabels($menu));
     }
@@ -96,7 +96,7 @@ class MenuTest extends TestCase
     public function test_a_client_sees_only_the_company_item_under_settings(): void
     {
         $company = Company::factory()->create();
-        $client = $this->userWithRole('client', $company);
+        $client = $this->userWithRole('internal_client', $company);
 
         $this->assertSame(['Компанија'], $this->itemLabels(Menu::for($client, $company, PortalApp::PORTAL), 'settings'));
         $this->assertSame(['Фактурирање'], $this->itemLabels(Menu::for($client, $company, PortalApp::PRODAZBA), 'sales-settings'));
@@ -105,7 +105,7 @@ class MenuTest extends TestCase
     public function test_a_client_never_sees_a_naskoro_item(): void
     {
         $company = Company::factory()->create();
-        $client = $this->userWithRole('client', $company);
+        $client = $this->userWithRole('internal_client', $company);
 
         foreach (PortalApp::cases() as $app) {
             foreach (Menu::for($client, $company, $app) as $group) {
@@ -127,7 +127,7 @@ class MenuTest extends TestCase
 
         $this->assertSame(
             ['Вработени'],
-            $this->itemLabels(Menu::for($this->userWithRole('client', $company), $company, PortalApp::PLATA), 'payroll')
+            $this->itemLabels(Menu::for($this->userWithRole('internal_client', $company), $company, PortalApp::PLATA), 'payroll')
         );
         $this->assertSame(
             ['Вработени', 'Плата (МПИН)', 'е-ПДД'],
@@ -154,7 +154,7 @@ class MenuTest extends TestCase
     public function test_a_client_still_gets_the_full_sales_costs_and_stock_groups(): void
     {
         $company = Company::factory()->create();
-        $menu = Menu::for($this->userWithRole('client', $company), $company, PortalApp::PRODAZBA);
+        $menu = Menu::for($this->userWithRole('internal_client', $company), $company, PortalApp::PRODAZBA);
 
         // Влезни фактури moved out of ПРОДАЖБА into its own ТРОШОЦИ group.
         $this->assertSame(['Излезни фактури', 'Кооперанти'], $this->itemLabels($menu, 'sales'));

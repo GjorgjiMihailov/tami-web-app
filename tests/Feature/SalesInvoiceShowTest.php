@@ -24,7 +24,7 @@ class SalesInvoiceShowTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     private function seedAccounts(Company $company): void
@@ -191,7 +191,7 @@ class SalesInvoiceShowTest extends TestCase
         $otherCompany = Company::factory()->create();
         $invoice = SalesInvoice::factory()->for($otherCompany)->create();
         $client = User::factory()->create(['company_id' => $ownCompany->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(SalesInvoiceShow::class, ['company' => $otherCompany, 'salesInvoice' => $invoice])

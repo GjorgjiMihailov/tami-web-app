@@ -21,7 +21,7 @@ class UserAppAccessToggleTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_an_admin_closes_an_app_for_a_client(): void
@@ -30,7 +30,7 @@ class UserAppAccessToggleTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         Livewire::actingAs($admin)
             ->test(CompanyUsers::class, ['company' => $company])
@@ -45,7 +45,7 @@ class UserAppAccessToggleTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $client = User::factory()->create(['company_id' => $company->id, 'app_plata' => false]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         Livewire::actingAs($admin)
             ->test(CompanyUsers::class, ['company' => $company])
@@ -61,7 +61,7 @@ class UserAppAccessToggleTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $stranger = User::factory()->create(['company_id' => $other->id]);
-        $stranger->assignRole('client');
+        $stranger->assignRole('internal_client');
 
         // Livewire::test()->call() ги исклучува HttpException/AuthorizationException
         // од заменетиот exception handler (тие си одат преку вистинскиот render() и
@@ -91,7 +91,7 @@ class UserAppAccessToggleTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id, 'app_plata' => false]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         Livewire::actingAs($client)
             ->test(CompanyUsers::class, ['company' => $company])
@@ -151,7 +151,7 @@ class UserAppAccessToggleTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         Livewire::actingAs($admin)
             ->test(CompanyUsers::class, ['company' => $company])
@@ -170,7 +170,7 @@ class UserAppAccessToggleTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $admin = User::factory()->create();
         $admin->assignRole('admin');
 
@@ -236,7 +236,7 @@ class UserAppAccessToggleTest extends TestCase
         $accountant->assignRole('accountant');
         $company->accountants()->attach($accountant);
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         Livewire::actingAs($accountant)
             ->test(CompanyUsers::class, ['company' => $company])
@@ -249,7 +249,7 @@ class UserAppAccessToggleTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $mine = User::factory()->create();
         $mine->assignRole('accountant');
@@ -276,7 +276,7 @@ class UserAppAccessToggleTest extends TestCase
         $accountant = User::factory()->create();
         $accountant->assignRole('accountant');
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         Livewire::actingAs($accountant)
             ->test(CompanyUsers::class, ['company' => $company])

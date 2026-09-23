@@ -25,7 +25,7 @@ class OtherCostIndexTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
         // Работната година се изведува од денешниот датум кога фирмата нема
         // сопствен избор, па тестовите го фиксираат за да не се менуваат сами
         // на 1 јануари.
@@ -216,7 +216,7 @@ class OtherCostIndexTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(OtherCostIndex::class, ['company' => $company])

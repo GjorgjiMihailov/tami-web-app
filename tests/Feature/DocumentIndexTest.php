@@ -21,7 +21,7 @@ class DocumentIndexTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_it_lists_documents_across_entity_types_for_the_company(): void
@@ -75,7 +75,7 @@ class DocumentIndexTest extends TestCase
         $ownCompany = Company::factory()->create();
         $otherCompany = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $ownCompany->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(DocumentIndex::class, ['company' => $otherCompany])

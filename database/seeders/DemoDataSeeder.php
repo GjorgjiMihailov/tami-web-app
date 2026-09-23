@@ -34,6 +34,6 @@ class DemoDataSeeder extends Seeder
             'password' => bcrypt('password'),
             'company_id' => $companyA->id,
         ]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
     }
 }

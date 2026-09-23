@@ -17,7 +17,7 @@ class ComingSoonTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_an_admin_sees_the_feature_name_and_what_it_will_do(): void
@@ -51,7 +51,7 @@ class ComingSoonTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($client)
             ->get(route('coming-soon', [$company, 'popis']))

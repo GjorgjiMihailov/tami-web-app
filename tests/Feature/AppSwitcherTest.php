@@ -18,7 +18,7 @@ class AppSwitcherTest extends TestCase
         parent::setUp();
 
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_an_admin_sees_all_three_apps(): void
@@ -37,7 +37,7 @@ class AppSwitcherTest extends TestCase
     {
         $company = Company::factory()->create();
         $user = User::factory()->create(['company_id' => $company->id, 'app_plata' => false]);
-        $user->assignRole('client');
+        $user->assignRole('internal_client');
 
         $this->assertSame(
             ['prodazba'],
@@ -91,7 +91,7 @@ class AppSwitcherTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id, 'app_plata' => false]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         $this->get(route('sales-invoices.index', $company))

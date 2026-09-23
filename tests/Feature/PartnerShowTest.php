@@ -19,7 +19,7 @@ class PartnerShowTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_it_shows_the_partners_details_and_document_manager(): void
@@ -42,7 +42,7 @@ class PartnerShowTest extends TestCase
         $otherCompany = Company::factory()->create();
         $partner = Partner::factory()->for($otherCompany)->create();
         $client = User::factory()->create(['company_id' => $ownCompany->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         $this->get(route('partners.show', [$otherCompany, $partner]))->assertForbidden();
@@ -78,7 +78,7 @@ class PartnerShowTest extends TestCase
         $company = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(PartnerShow::class, ['company' => $company, 'partner' => $partner])

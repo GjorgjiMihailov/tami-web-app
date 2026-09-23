@@ -18,7 +18,7 @@ class ReportIndexTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_it_links_to_the_three_working_reports(): void
@@ -63,7 +63,7 @@ class ReportIndexTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($client)->get(route('reports.index', $company))->assertForbidden();
     }

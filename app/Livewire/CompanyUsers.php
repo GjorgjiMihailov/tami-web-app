@@ -55,7 +55,7 @@ class CompanyUsers extends Component
 
         // company_id не е во #[Fillable] на моделот.
         $user->forceFill(['company_id' => $this->company->id])->save();
-        $user->assignRole('client');
+        $user->assignRole('internal_client');
 
         $this->sendInvitation($user);
 

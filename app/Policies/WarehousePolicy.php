@@ -19,12 +19,12 @@ class WarehousePolicy
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'accountant', 'client']);
+        return $user->hasAnyRole(['admin', 'accountant', 'internal_client', 'freelancer_client']);
     }
 
     public function update(User $user, Warehouse $warehouse): bool
     {
-        return $user->hasAnyRole(['admin', 'accountant', 'client'])
+        return $user->hasAnyRole(['admin', 'accountant', 'internal_client', 'freelancer_client'])
             && $user->visibleCompanies()->whereKey($warehouse->company_id)->exists();
     }
 }

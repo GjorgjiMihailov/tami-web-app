@@ -18,7 +18,7 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     private function makeOwnModeCompany(): Company
@@ -153,7 +153,7 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
     {
         $company = $this->makeOwnModeCompany();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $response = $this->actingAs($client)->postJson(
             route('incoming-efaktura.discover.ids.signing-input', $company),

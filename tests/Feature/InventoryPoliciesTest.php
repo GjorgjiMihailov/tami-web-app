@@ -20,14 +20,14 @@ class InventoryPoliciesTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_client_can_manage_their_own_companys_warehouses_and_items(): void
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $warehouse = Warehouse::factory()->for($company)->create();
         $item = Item::factory()->for($company)->create();
 
@@ -43,7 +43,7 @@ class InventoryPoliciesTest extends TestCase
         $ownCompany = Company::factory()->create();
         $otherCompany = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $ownCompany->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $warehouse = Warehouse::factory()->for($otherCompany)->create();
         $item = Item::factory()->for($otherCompany)->create();
 
@@ -89,9 +89,9 @@ class InventoryPoliciesTest extends TestCase
         $stockMovement = StockMovement::factory()->for($item)->for($warehouse)->create();
 
         $sameCompanyClient = User::factory()->create(['company_id' => $ownCompany->id]);
-        $sameCompanyClient->assignRole('client');
+        $sameCompanyClient->assignRole('internal_client');
         $otherCompanyClient = User::factory()->create(['company_id' => $otherCompany->id]);
-        $otherCompanyClient->assignRole('client');
+        $otherCompanyClient->assignRole('internal_client');
         $admin = User::factory()->create();
         $admin->assignRole('admin');
 

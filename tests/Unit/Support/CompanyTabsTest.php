@@ -19,7 +19,7 @@ class CompanyTabsTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     private function userWithRole(string $role): User
@@ -63,7 +63,7 @@ class CompanyTabsTest extends TestCase
     {
         $this->assertSame(
             ['Профил', 'Модули', 'Корисници'],
-            $this->labels($this->userWithRole('client'), Company::factory()->create()),
+            $this->labels($this->userWithRole('internal_client'), Company::factory()->create()),
         );
     }
 

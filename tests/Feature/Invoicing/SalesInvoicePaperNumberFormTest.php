@@ -20,13 +20,13 @@ class SalesInvoicePaperNumberFormTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     private function client(Company $company): User
     {
         $user = User::factory()->create(['company_id' => $company->id]);
-        $user->assignRole('client');
+        $user->assignRole('internal_client');
         $this->actingAs($user);
 
         return $user;

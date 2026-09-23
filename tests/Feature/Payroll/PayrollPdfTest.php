@@ -23,7 +23,7 @@ class PayrollPdfTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['admin', 'client'] as $role) {
+        foreach (['admin', 'internal_client'] as $role) {
             Role::findOrCreate($role);
         }
     }
@@ -97,7 +97,7 @@ class PayrollPdfTest extends TestCase
         $run = $this->openRun($company);
 
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         // Both routes, not just one. They share a middleware group today, so
         // asserting only the recap would keep passing if the payslip's

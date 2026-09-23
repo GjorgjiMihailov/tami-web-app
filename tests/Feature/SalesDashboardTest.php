@@ -22,7 +22,7 @@ class SalesDashboardTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     private function admin(): User
@@ -78,7 +78,7 @@ class SalesDashboardTest extends TestCase
         $mine = Company::factory()->create();
         $theirs = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $mine->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($client)
             ->get(route('prodazba.dashboard', $theirs))

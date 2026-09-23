@@ -27,7 +27,7 @@ class SalesInvoiceScanReadTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
         FakeScannedInvoiceReader::reset();
         Storage::fake('local');
         config(['services.anthropic.key' => 'test-key']);
@@ -179,7 +179,7 @@ class SalesInvoiceScanReadTest extends TestCase
     public function test_a_client_cannot_read_scans(): void
     {
         $company = Company::factory()->create();
-        $this->actAs($company, 'client');
+        $this->actAs($company, 'internal_client');
 
         $component = Livewire::test(SalesInvoiceForm::class, ['company' => $company]);
 

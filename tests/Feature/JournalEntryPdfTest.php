@@ -21,7 +21,7 @@ class JournalEntryPdfTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_it_renders_the_header_and_line_items(): void
@@ -80,7 +80,7 @@ class JournalEntryPdfTest extends TestCase
         $otherCompany = Company::factory()->create();
         $entry = JournalEntry::factory()->for($otherCompany)->create();
         $client = User::factory()->create(['company_id' => $ownCompany->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $response = $this->actingAs($client)->get(route('accounting.journal-entries.pdf', [$otherCompany, $entry]));
 

@@ -20,7 +20,7 @@ class SalesInvoiceShowEfakturaTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_sign_and_send_button_hidden_without_registered_device(): void
@@ -63,7 +63,7 @@ class SalesInvoiceShowEfakturaTest extends TestCase
         $partner = Partner::factory()->for($company)->create();
         $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => '2026-03-01']);
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         Livewire::actingAs($client)
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])

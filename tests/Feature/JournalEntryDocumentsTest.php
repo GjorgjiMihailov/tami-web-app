@@ -19,7 +19,7 @@ class JournalEntryDocumentsTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_a_client_cannot_upload_a_document_to_a_journal_entry(): void
@@ -27,7 +27,7 @@ class JournalEntryDocumentsTest extends TestCase
         $company = Company::factory()->create();
         $entry = JournalEntry::factory()->for($company)->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         // Refused at mount: DocumentManager authorizes 'view' on the entry, and

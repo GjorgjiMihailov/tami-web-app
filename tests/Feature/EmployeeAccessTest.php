@@ -19,14 +19,14 @@ class EmployeeAccessTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_a_client_sees_the_payroll_group_with_only_employees_in_it(): void
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $groups = collect(Menu::for($client, $company, PortalApp::PLATA));
         $payroll = $groups->firstWhere('key', 'payroll');
@@ -78,7 +78,7 @@ class EmployeeAccessTest extends TestCase
         }
 
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($client)->get(route('employees.index', $company))->assertOk();
     }
@@ -89,7 +89,7 @@ class EmployeeAccessTest extends TestCase
         $other = Company::factory()->create();
 
         $client = User::factory()->create(['company_id' => $own->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         $this->actingAs($client)->get(route('employees.index', $other))->assertForbidden();
     }

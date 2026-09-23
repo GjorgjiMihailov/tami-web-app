@@ -20,7 +20,7 @@ class CompanyAccountantsTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     private function userWithRole(string $role): User
@@ -67,7 +67,7 @@ class CompanyAccountantsTest extends TestCase
     public function test_only_accountants_can_be_assigned(): void
     {
         $company = Company::factory()->create();
-        $client = $this->userWithRole('client');
+        $client = $this->userWithRole('internal_client');
 
         // findOrFail фрла, не враќа одговор — затоа исклучокот се фаќа, а
         // тврдењето за базата останува во finally.
@@ -105,7 +105,7 @@ class CompanyAccountantsTest extends TestCase
     public function test_a_client_cannot_assign_an_accountant(): void
     {
         $company = Company::factory()->create();
-        $client = $this->userWithRole('client');
+        $client = $this->userWithRole('internal_client');
         $client->forceFill(['company_id' => $company->id])->save();
         $accountant = $this->userWithRole('accountant');
 

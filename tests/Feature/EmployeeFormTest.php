@@ -22,7 +22,7 @@ class EmployeeFormTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     private function actAsAdmin(): void
@@ -459,7 +459,7 @@ class EmployeeFormTest extends TestCase
         $employee = Employee::factory()->for($company)->create();
 
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         $this->actingAs($client);
 
         Livewire::test(EmployeeForm::class, ['company' => $company, 'employee' => $employee])

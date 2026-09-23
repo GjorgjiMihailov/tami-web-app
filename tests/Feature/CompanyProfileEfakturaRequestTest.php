@@ -19,14 +19,14 @@ class CompanyProfileEfakturaRequestTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_client_can_request_firm_efaktura_access(): void
     {
         $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         Livewire::actingAs($client)
             ->test(CompanyProfile::class, ['company' => $company])
@@ -39,7 +39,7 @@ class CompanyProfileEfakturaRequestTest extends TestCase
     {
         $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN]);
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
 
         Livewire::actingAs($client)
             ->test(CompanyProfile::class, ['company' => $company])
@@ -53,7 +53,7 @@ class CompanyProfileEfakturaRequestTest extends TestCase
         $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
         $otherCompany = Company::factory()->create();
         $unrelatedClient = User::factory()->create(['company_id' => $otherCompany->id]);
-        $unrelatedClient->assignRole('client');
+        $unrelatedClient->assignRole('internal_client');
 
         Livewire::actingAs($unrelatedClient)
             ->test(CompanyProfile::class, ['company' => $company])

@@ -21,7 +21,7 @@ class JournalEntryIndexTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
-        Role::findOrCreate('client');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_it_lists_the_companys_journal_entries(): void
@@ -42,7 +42,7 @@ class JournalEntryIndexTest extends TestCase
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('client');
+        $client->assignRole('internal_client');
         JournalEntry::factory()->for($company)->create(['description' => 'Opening balances']);
 
         $this->actingAs($client);
