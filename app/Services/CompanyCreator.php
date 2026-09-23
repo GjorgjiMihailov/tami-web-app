@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Company;
+use App\Models\User;
 use App\Support\CompanyType;
 
 /**
@@ -26,10 +27,11 @@ class CompanyCreator
         CompanyType $type,
         ?string $taxId = null,
         ?string $embg = null,
+        ?User $actor = null,
     ): Company {
         $isLegal = $type->isLegal();
 
-        return Company::create([
+        $company = Company::create([
             'name' => $name,
             'type' => $type,
             'tax_id' => $isLegal ? ($taxId ?: null) : null,
@@ -42,5 +44,19 @@ class CompanyCreator
             'uses_finance' => true,
             'efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM,
         ]);
+
+        // Сметководител што создава фирма мора веднаш да ја гледа — инаку
+        // исчезнува од сопствениот список штом visibleCompanies() се
+        // пресмета одново. Админ никогаш не се закачува: тој гледа сè и без
+        // ред во пивот-табелата (Company::accountants()).
+        //
+        // Овој чекор намерно живее ТУКА, не во секој повикувачки екран
+        // одделно — двете места (CompanyIndex, FirstClient) веќе еднаш се
+        // разидоа кога закачувањето беше рачно во секој од нив.
+        if ($actor?->hasRole('accountant')) {
+            $company->accountants()->attach($actor->id);
+        }
+
+        return $company;
     }
 }

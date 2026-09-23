@@ -49,4 +49,39 @@ class CompanyCreatorTest extends TestCase
         $this->assertTrue($company->uses_finance);
         $this->assertSame(Company::EFAKTURA_MODE_FIRM, $company->efaktura_credential_mode);
     }
+
+    public function test_an_accountant_actor_is_attached_as_the_companys_accountant(): void
+    {
+        \Spatie\Permission\Models\Role::findOrCreate('accountant');
+        $accountant = \App\Models\User::factory()->create();
+        $accountant->assignRole('accountant');
+
+        $company = CompanyCreator::create('ТЕСТ ДООЕЛ', CompanyType::LEGAL, actor: $accountant);
+
+        $this->assertTrue(
+            $company->accountants->contains($accountant),
+            'Без ова сметководителот веднаш ја губи фирмата што штотуку ја создал.'
+        );
+    }
+
+    public function test_an_admin_actor_is_not_attached(): void
+    {
+        \Spatie\Permission\Models\Role::findOrCreate('admin');
+        $admin = \App\Models\User::factory()->create();
+        $admin->assignRole('admin');
+
+        $company = CompanyCreator::create('ТЕСТ ДООЕЛ', CompanyType::LEGAL, actor: $admin);
+
+        $this->assertFalse(
+            $company->accountants->contains($admin),
+            'Админ гледа сè без ред во company_accountant — закачување би било вишок ред.'
+        );
+    }
+
+    public function test_no_actor_means_no_attachment(): void
+    {
+        $company = CompanyCreator::create('ТЕСТ ДООЕЛ', CompanyType::LEGAL);
+
+        $this->assertCount(0, $company->accountants);
+    }
 }
