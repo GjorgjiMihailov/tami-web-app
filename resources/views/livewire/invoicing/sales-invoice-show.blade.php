@@ -77,7 +77,7 @@
         @endif
     </div>
 
-    @if ($invoice->status === 'confirmed' && auth()->user()->hasAnyRole(['admin', 'accountant']))
+    @if ($invoice->status === 'confirmed' && auth()->user()->can('signEfaktura', $company))
         <div class="mt-4 border-t pt-4" x-data="efakturaSend()">
             @if ($invoice->efaktura_status === 'sent')
                 <x-badge status="active">Испратена до УЈП ({{ optional($invoice->efaktura_sent_at)->format('d.m.Y H:i') }})</x-badge>

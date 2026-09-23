@@ -28,7 +28,7 @@
         </x-card>
     @endif
 
-    @if ($company->type->isLegal() && auth()->user()->hasAnyRole(['admin', 'accountant']))
+    @if ($company->type->isLegal() && auth()->user()->can('manageEfakturaDevice', $company))
         <x-card class="mb-6" x-data="signingDeviceRegistration()">
             <h3 class="text-sm font-semibold text-gray-700 mb-2">Потпишувачки уред (USB токен)</h3>
 

@@ -20,6 +20,7 @@ class SalesInvoiceIndexTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_it_lists_the_companys_invoices(): void
@@ -162,5 +163,27 @@ class SalesInvoiceIndexTest extends TestCase
             ->dispatch('working-year-changed', year: 2024)
             ->assertSet('workingYear', 2024)
             ->assertSee('Купувач 2024');
+    }
+
+    public function test_the_refresh_statuses_button_follows_the_sign_right_for_an_internal_client(): void
+    {
+        $own = Company::factory()->create([
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'EUJP-1',
+            'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+        $ownClient = User::factory()->create(['company_id' => $own->id]);
+        $ownClient->assignRole('internal_client');
+        $firm = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
+        $firmClient = User::factory()->create(['company_id' => $firm->id]);
+        $firmClient->assignRole('internal_client');
+
+        Livewire::actingAs($ownClient)
+            ->test(SalesInvoiceIndex::class, ['company' => $own])
+            ->assertSee('Освежи статуси');
+
+        Livewire::actingAs($firmClient)
+            ->test(SalesInvoiceIndex::class, ['company' => $firm])
+            ->assertDontSee('Освежи статуси');
     }
 }

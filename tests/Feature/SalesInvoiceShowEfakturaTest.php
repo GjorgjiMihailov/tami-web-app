@@ -20,6 +20,7 @@ class SalesInvoiceShowEfakturaTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
+        Role::findOrCreate('accountant');
         Role::findOrCreate('internal_client');
     }
 
@@ -53,7 +54,7 @@ class SalesInvoiceShowEfakturaTest extends TestCase
             ->assertSee('Потпиши и испрати до УЈП');
     }
 
-    public function test_sign_and_send_button_hidden_for_client(): void
+    public function test_sign_and_send_button_visible_for_an_internal_client_with_an_own_token(): void
     {
         $company = Company::factory()->create([
             'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
@@ -67,7 +68,51 @@ class SalesInvoiceShowEfakturaTest extends TestCase
 
         Livewire::actingAs($client)
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->assertSee('Потпиши и испрати до УЈП');
+    }
+
+    public function test_sign_and_send_button_hidden_for_an_internal_client_of_a_firm_mode_company(): void
+    {
+        $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => '2026-03-01']);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        Livewire::actingAs($client)
+            ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
             ->assertDontSee('Потпиши и испрати до УЈП');
+    }
+
+    public function test_sign_and_send_button_hidden_for_an_own_mode_client_without_a_token(): void
+    {
+        $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN, 'efaktura_eujp_id' => 'EUJP-1']);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => '2026-03-01']);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        Livewire::actingAs($client)
+            ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->assertDontSee('Потпиши и испрати до УЈП');
+    }
+
+    public function test_sign_and_send_button_visible_for_an_assigned_accountant_with_an_own_token(): void
+    {
+        $company = Company::factory()->create([
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'EUJP-1',
+            'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => '2026-03-01']);
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+
+        Livewire::actingAs($accountant)
+            ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->assertSee('Потпиши и испрати до УЈП');
     }
 
     public function test_already_sent_invoice_shows_sent_badge_not_button(): void

@@ -162,11 +162,8 @@ class CompanyProfile extends Component
      */
     public function registerSigningDevice(string $serialNumber, string $subjectName, string $notBefore, string $notAfter): void
     {
-        abort_unless(
-            auth()->user()->hasAnyRole(['admin', 'accountant'])
-                && auth()->user()->visibleCompanies()->whereKey($this->company->id)->exists(),
-            403
-        );
+        // Livewire не го повторува mount() при дејство, па правото се проверува тука.
+        Gate::authorize('manageEfakturaDevice', $this->company);
 
         abort_if($this->company->type->isIndividual(), 403, 'Потпишувачки уред се регистрира само на профил на правно лице.');
 
