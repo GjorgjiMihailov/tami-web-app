@@ -38,10 +38,78 @@ class AccountingAccessTest extends TestCase
             'journal groups' => ['accounting.journal-groups.index'],
             'journal entries' => ['accounting.journal-entries.index'],
             'new journal entry' => ['accounting.journal-entries.create'],
-            'ledger card' => ['accounting.reports.ledger-card'],
-            'trial balance' => ['accounting.reports.trial-balance'],
-            'ddv04' => ['reports.ddv04'],
         ];
+    }
+
+    private function internalClient(Company $company): User
+    {
+        $user = User::factory()->create(['company_id' => $company->id]);
+        $user->assignRole('internal_client');
+
+        return $user;
+    }
+
+    public static function readOnlyReportRoutes(): array
+    {
+        return [
+            'ddv04' => ['reports.ddv04'],
+            'reports index' => ['reports.index'],
+            'trial balance' => ['accounting.reports.trial-balance'],
+            'ledger card' => ['accounting.reports.ledger-card'],
+        ];
+    }
+
+    #[DataProvider('readOnlyReportRoutes')]
+    public function test_an_internal_client_reaches_the_read_only_reports(string $routeName): void
+    {
+        $company = Company::factory()->create();
+
+        $this->actingAs($this->internalClient($company))
+            ->get(route($routeName, $company))
+            ->assertOk();
+    }
+
+    #[DataProvider('readOnlyReportRoutes')]
+    public function test_an_admin_and_an_accountant_still_reach_the_read_only_reports(string $routeName): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+
+        $this->actingAs($admin)->get(route($routeName, $company))->assertOk();
+        $this->actingAs($accountant)->get(route($routeName, $company))->assertOk();
+    }
+
+    public static function stillClosedAccountingRoutes(): array
+    {
+        return [
+            'chart of accounts' => ['accounting.accounts.index'],
+            'journal groups' => ['accounting.journal-groups.index'],
+            'journal entries' => ['accounting.journal-entries.index'],
+        ];
+    }
+
+    #[DataProvider('stillClosedAccountingRoutes')]
+    public function test_an_internal_client_is_still_refused_the_books(string $routeName): void
+    {
+        $company = Company::factory()->create();
+
+        $this->actingAs($this->internalClient($company))
+            ->get(route($routeName, $company))
+            ->assertForbidden();
+    }
+
+    #[DataProvider('readOnlyReportRoutes')]
+    public function test_an_internal_client_cannot_reach_another_companys_reports(string $routeName): void
+    {
+        $company = Company::factory()->create();
+
+        $this->actingAs($this->internalClient(Company::factory()->create()))
+            ->get(route($routeName, $company))
+            ->assertForbidden();
     }
 
     #[DataProvider('accountingRoutes')]

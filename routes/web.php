@@ -286,6 +286,12 @@ Route::domain(PortalApp::FINANSII->domain())->middleware(EnsureAppAccess::class.
         Route::get('/journal-entries/create', [JournalEntryForm::class, '__invoke'])->name('journal-entries.create');
         Route::get('/journal-entries/{journalEntry}/edit', [JournalEntryForm::class, '__invoke'])->name('journal-entries.edit');
         Route::get('/journal-entries/{journalEntry}/pdf', [JournalEntryPdfController::class, '__invoke'])->name('journal-entries.pdf');
+    });
+
+    // Читачки извештаи: LedgerCardReport/TrialBalanceReport немаат ниту едно
+    // дејство што пишува, само mount()+render(), веќе штитени со
+    // Gate::authorize('view', $company). internal_client ги гледа сопствените.
+    Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':finance'])->prefix('companies/{company}')->name('accounting.')->group(function () {
         Route::get('/reports/ledger-card', [LedgerCardReport::class, '__invoke'])->name('reports.ledger-card');
         Route::get('/reports/trial-balance', [TrialBalanceReport::class, '__invoke'])->name('reports.trial-balance');
     });
@@ -309,7 +315,7 @@ Route::domain(PortalApp::FINANSII->domain())->middleware(EnsureAppAccess::class.
         Route::get('/izvodi', [BankStatementIndex::class, '__invoke'])->name('index');
     });
 
-    Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class, EnsureCompanyModule::class.':finance'])->prefix('companies/{company}')->name('reports.')->group(function () {
+    Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':finance'])->prefix('companies/{company}')->name('reports.')->group(function () {
         Route::get('/reports', [ReportIndex::class, '__invoke'])->name('index');
         Route::get('/reports/ddv04', [Ddv04Report::class, '__invoke'])->name('ddv04');
     });

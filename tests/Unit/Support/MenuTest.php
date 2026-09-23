@@ -87,12 +87,13 @@ class MenuTest extends TestCase
         $this->assertSame(['Контен план'], $this->itemLabels(Menu::for($accountant, $company, PortalApp::FINANSII), 'finance-settings'));
     }
 
-    public function test_a_client_sees_no_finance_group_at_all(): void
+    public function test_an_internal_client_sees_reports_but_not_the_general_ledger(): void
     {
         $company = Company::factory()->create();
-        $menu = Menu::for($this->userWithRole('internal_client', $company), $company, PortalApp::FINANSII);
+        $financeMenu = Menu::for($this->userWithRole('internal_client', $company), $company, PortalApp::FINANSII);
 
-        $this->assertNotContains('ФИНАНСИИ', $this->groupLabels($menu));
+        $this->assertSame(['Извештаи и обрасци'], $this->itemLabels($financeMenu, 'finance'));
+        $this->assertSame([], $this->itemLabels($financeMenu, 'finance-settings'));
     }
 
     public function test_a_client_sees_only_the_company_item_under_settings(): void

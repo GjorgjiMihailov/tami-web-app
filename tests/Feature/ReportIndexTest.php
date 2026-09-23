@@ -59,10 +59,19 @@ class ReportIndexTest extends TestCase
         $this->actingAs($admin)->get(route('reports.index', $company))->assertOk();
     }
 
-    public function test_a_client_is_refused(): void
+    public function test_an_internal_client_reaches_their_own_reports_index(): void
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        $this->actingAs($client)->get(route('reports.index', $company))->assertOk();
+    }
+
+    public function test_a_client_is_refused_another_companys_reports_index(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => Company::factory()->create()->id]);
         $client->assignRole('internal_client');
 
         $this->actingAs($client)->get(route('reports.index', $company))->assertForbidden();
