@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Company;
 use App\Models\User;
+use App\Support\CompanyType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -16,7 +17,7 @@ class CompanyPolicyTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['admin', 'accountant', 'internal_client'] as $role) {
+        foreach (['admin', 'accountant', 'internal_client', 'freelancer_client'] as $role) {
             Role::findOrCreate($role);
         }
     }
@@ -153,5 +154,91 @@ class CompanyPolicyTest extends TestCase
         );
 
         $this->assertTrue($accountant->can('create', Company::class));
+    }
+
+    private function ownModeCompany(array $overrides = []): Company
+    {
+        return Company::factory()->create($overrides + [
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'EUJP-1',
+            'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+    }
+
+    private function internalClientOf(Company $company): User
+    {
+        $user = User::factory()->create(['company_id' => $company->id]);
+        $user->assignRole('internal_client');
+
+        return $user;
+    }
+
+    public function test_admin_and_the_assigned_accountant_can_sign_efaktura_an_unassigned_accountant_cannot(): void
+    {
+        $company = $this->ownModeCompany();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $mine = User::factory()->create();
+        $mine->assignRole('accountant');
+        $company->accountants()->attach($mine);
+        $other = User::factory()->create();
+        $other->assignRole('accountant');
+
+        $this->assertTrue($admin->can('signEfaktura', $company));
+        $this->assertTrue($mine->can('signEfaktura', $company));
+        $this->assertFalse($other->can('signEfaktura', $company));
+        $this->assertTrue($admin->can('manageEfakturaDevice', $company));
+        $this->assertTrue($mine->can('manageEfakturaDevice', $company));
+        $this->assertFalse($other->can('manageEfakturaDevice', $company));
+    }
+
+    public function test_an_internal_client_with_an_own_token_can_sign_and_manage_the_device(): void
+    {
+        $company = $this->ownModeCompany();
+        $client = $this->internalClientOf($company);
+
+        $this->assertTrue($client->can('signEfaktura', $company));
+        $this->assertTrue($client->can('manageEfakturaDevice', $company));
+    }
+
+    public function test_an_internal_client_without_a_registered_token_can_register_but_not_sign(): void
+    {
+        $company = $this->ownModeCompany(['efaktura_token_serial_number' => null]);
+        $client = $this->internalClientOf($company);
+
+        $this->assertTrue($client->can('manageEfakturaDevice', $company));
+        $this->assertFalse($client->can('signEfaktura', $company));
+    }
+
+    public function test_an_internal_client_of_a_firm_mode_company_can_do_neither(): void
+    {
+        $company = Company::factory()->create([
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM,
+            'efaktura_firm_access_status' => Company::EFAKTURA_STATUS_APPROVED,
+        ]);
+        $client = $this->internalClientOf($company);
+
+        $this->assertFalse($client->can('signEfaktura', $company));
+        $this->assertFalse($client->can('manageEfakturaDevice', $company));
+    }
+
+    public function test_an_internal_client_cannot_touch_another_companys_efaktura(): void
+    {
+        $mine = $this->ownModeCompany();
+        $theirs = $this->ownModeCompany();
+        $client = $this->internalClientOf($mine);
+
+        $this->assertFalse($client->can('signEfaktura', $theirs));
+        $this->assertFalse($client->can('manageEfakturaDevice', $theirs));
+    }
+
+    public function test_a_freelancer_client_has_no_efaktura(): void
+    {
+        $company = $this->ownModeCompany(['type' => CompanyType::INDIVIDUAL]);
+        $freelancer = User::factory()->create(['company_id' => $company->id]);
+        $freelancer->assignRole('freelancer_client');
+
+        $this->assertFalse($freelancer->can('signEfaktura', $company));
+        $this->assertFalse($freelancer->can('manageEfakturaDevice', $company));
     }
 }

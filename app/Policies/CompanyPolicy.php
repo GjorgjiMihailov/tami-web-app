@@ -80,4 +80,37 @@ class CompanyPolicy
     {
         return $this->update($user, $company);
     }
+
+    /**
+     * Запишување на потпишувачкиот уред (токенот) на фирмата. Админ и
+     * сметководител на таа фирма — секогаш. Клиентот со интерно сметководство —
+     * само за СВОЈАТА фирма, само кога е правно лице и во режим „свој токен":
+     * токенот е физички кај него, па само тој може да го прочита. Режимот и
+     * ЕУЈП-идентификаторот ги менува канцеларијата (правото `update`).
+     */
+    public function manageEfakturaDevice(User $user, Company $company): bool
+    {
+        if ($this->update($user, $company)) {
+            return true;
+        }
+
+        return $user->hasRole('internal_client')
+            && $user->visibleCompanies()->whereKey($company->id)->exists()
+            && $company->type->isLegal()
+            && $company->efaktura_credential_mode === Company::EFAKTURA_MODE_OWN;
+    }
+
+    /**
+     * Потпишување и праќање/прием на е-Фактура. Единствено место што одговара
+     * „смее ли овој човек". Клиентот дополнително бара веќе запишан токен
+     * (`hasEfakturaAccess()`); канцеларијата не бара, зашто ја регистрира.
+     */
+    public function signEfaktura(User $user, Company $company): bool
+    {
+        if ($this->update($user, $company)) {
+            return true;
+        }
+
+        return $this->manageEfakturaDevice($user, $company) && $company->hasEfakturaAccess();
+    }
 }
