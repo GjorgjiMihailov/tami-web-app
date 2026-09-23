@@ -35,11 +35,14 @@ class UserPolicyTest extends TestCase
 
     public function test_an_accountant_may_not_touch_a_client_of_a_company_they_dont_work_on(): void
     {
-        $company = Company::factory()->create();
+        $theirCompany = Company::factory()->create();
+        $otherCompany = Company::factory()->create();
         $accountant = User::factory()->create();
         $accountant->assignRole('accountant');
-        // Намерно НЕ закачен на $company.
-        $client = User::factory()->create(['company_id' => $company->id]);
+        // Закачен на $theirCompany, НЕ на $otherCompany — доказ дека самата
+        // граница по фирма се проверува, не само дека listата е празна.
+        $accountant->assignedCompanies()->attach($theirCompany->id);
+        $client = User::factory()->create(['company_id' => $otherCompany->id]);
         $client->assignRole('client');
 
         $this->assertFalse($accountant->can('invite', $client));

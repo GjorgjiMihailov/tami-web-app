@@ -199,6 +199,13 @@ class CompanyUsersTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertNotNull($client->fresh()->disabled_at);
+
+        Livewire::actingAs($accountant)
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->call('enable', $client->id)
+            ->assertHasNoErrors();
+
+        $this->assertNull($client->fresh()->disabled_at);
     }
 
     public function test_a_client_cannot_reach_another_companys_users(): void
