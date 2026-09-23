@@ -5,6 +5,7 @@ namespace Tests\Feature\Bank;
 use App\Livewire\Bank\BankStatementIndex;
 use App\Models\BankStatement;
 use App\Models\Company;
+use App\Models\Document;
 use App\Models\User;
 use App\Support\BankStatementKind;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -237,5 +238,57 @@ class BankStatementIndexTest extends TestCase
             ->assertHasErrors(['bank', 'account', 'number', 'statementDate', 'newFile']);
 
         $this->assertSame(0, BankStatement::count());
+    }
+
+    private function statementDocument(Company $company): Document
+    {
+        Storage::fake('google');
+        $statement = BankStatement::factory()->create(['company_id' => $company->id]);
+        $document = Document::factory()->for($statement, 'documentable')->create([
+            'company_id' => $company->id,
+            'path' => 'documents/test/izvod.pdf',
+        ]);
+        Storage::disk('google')->put($document->path, 'fake-pdf-content');
+
+        return $document;
+    }
+
+    private function clientOf(Company $company): User
+    {
+        $user = User::factory()->create(['company_id' => $company->id]);
+        $user->assignRole('internal_client');
+
+        return $user;
+    }
+
+    public function test_an_admin_an_assigned_accountant_and_the_own_client_can_download_a_statement_file(): void
+    {
+        $company = Company::factory()->create();
+        $document = $this->statementDocument($company);
+
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+
+        foreach ([$this->admin(), $accountant, $this->clientOf($company)] as $user) {
+            $this->actingAs($user)
+                ->get(route('documents.download', [$company, $document]))
+                ->assertOk();
+        }
+    }
+
+    public function test_another_companys_client_and_an_unassigned_accountant_cannot_download_a_statement_file(): void
+    {
+        $company = Company::factory()->create();
+        $document = $this->statementDocument($company);
+
+        $unassigned = User::factory()->create();
+        $unassigned->assignRole('accountant');
+
+        foreach ([$this->clientOf(Company::factory()->create()), $unassigned] as $user) {
+            $this->actingAs($user)
+                ->get(route('documents.download', [$company, $document]))
+                ->assertForbidden();
+        }
     }
 }
