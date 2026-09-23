@@ -68,11 +68,8 @@ class FirstClient extends Component
             CompanyType::from($validated['type']),
             $validated['taxId'],
             $validated['embg'],
+            auth()->user(),
         );
-
-        // Без ова visibleCompanies() останува празно и човекот се враќа на
-        // истиот екран во круг.
-        $company->accountants()->attach(auth()->id());
 
         return $this->redirect(route('companies.profile', $company), navigate: true);
     }

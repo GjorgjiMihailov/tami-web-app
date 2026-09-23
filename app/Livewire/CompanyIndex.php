@@ -24,11 +24,10 @@ class CompanyIndex extends Component
 
     public function mount(): void
     {
-        // Фирми is an admin screen — see the role table in
-        // docs/superpowers/specs/2026-08-11-sidebar-ia-and-working-year-design.md.
-        // An accountant with several companies reaches the chooser through
-        // App\Livewire\Dashboard instead, which is not a menu entry.
-        abort_unless(auth()->user()->hasRole('admin'), 403);
+        // Фирми — сега достапен и за сметководител, скроен на неговите
+        // фирми преку visibleCompanies() во render(). Само клиент останува
+        // надвор.
+        abort_unless(auth()->user()->hasAnyRole(['admin', 'accountant']), 403);
     }
 
     public function addCompany(): void
@@ -56,6 +55,7 @@ class CompanyIndex extends Component
             CompanyType::from($validated['newType']),
             $validated['newTaxId'],
             $validated['newEmbg'],
+            auth()->user(),
         );
 
         $this->reset(['newName', 'newType', 'newTaxId', 'newEmbg']);

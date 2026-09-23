@@ -38,7 +38,7 @@ class CompanyIndexTest extends TestCase
         return $admin;
     }
 
-    public function test_only_an_admin_may_open_the_companies_screen(): void
+    public function test_a_client_may_not_open_the_companies_screen_but_an_accountant_may(): void
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
@@ -48,7 +48,7 @@ class CompanyIndexTest extends TestCase
         $company->accountants()->attach($accountant);
 
         $this->actingAs($client)->get(route('companies.index'))->assertForbidden();
-        $this->actingAs($accountant)->get(route('companies.index'))->assertForbidden();
+        $this->actingAs($accountant)->get(route('companies.index'))->assertOk();
     }
 
     public function test_admin_sees_all_companies(): void
@@ -65,11 +65,84 @@ class CompanyIndexTest extends TestCase
             ->assertSee('Beta Ltd');
     }
 
-    // The two per-role list-filtering tests that stood here are gone: Фирми is
-    // an admin-only screen now, so a client or accountant never sees a filtered
-    // list — they are refused outright. test_only_an_admin_may_open_the_companies_screen
-    // above is the replacement, and the accountant's own multi-company chooser
-    // is covered by DashboardTest.
+    public function test_an_accountant_sees_only_their_own_companies(): void
+    {
+        $mine = Company::factory()->create(['name' => 'Мојата ДООЕЛ']);
+        $notMine = Company::factory()->create(['name' => 'Туѓата ДООЕЛ']);
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $mine->accountants()->attach($accountant);
+
+        $this->actingAs($accountant);
+
+        Livewire::test(CompanyIndex::class)
+            ->assertSee('Мојата ДООЕЛ')
+            ->assertDontSee('Туѓата ДООЕЛ');
+    }
+
+    public function test_an_accountant_can_add_a_company_and_it_stays_visible_to_them(): void
+    {
+        // Регресија за замката именувана во спецификацијата: без закачување
+        // на создавачот, фирмата веднаш би исчезнала од visibleCompanies().
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+
+        Livewire::actingAs($accountant)
+            ->test(CompanyIndex::class)
+            ->set('newName', 'Нов Клиент ДООЕЛ')
+            ->set('newType', 'legal')
+            ->call('addCompany')
+            ->assertHasNoErrors();
+
+        $company = Company::where('name', 'Нов Клиент ДООЕЛ')->firstOrFail();
+
+        $this->assertTrue($accountant->fresh()->visibleCompanies()->whereKey($company->id)->exists());
+    }
+
+    public function test_an_accountant_with_several_companies_can_still_add_another(): void
+    {
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        Company::factory()->create()->accountants()->attach($accountant);
+
+        Livewire::actingAs($accountant)
+            ->test(CompanyIndex::class)
+            ->set('newName', 'Втора Фирма ДООЕЛ')
+            ->set('newType', 'legal')
+            ->call('addCompany')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('companies', ['name' => 'Втора Фирма ДООЕЛ']);
+    }
+
+    public function test_the_office_tab_is_hidden_from_an_accountant(): void
+    {
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+
+        $this->actingAs($accountant)
+            ->get(route('companies.index'))
+            ->assertOk()
+            ->assertDontSee(route('companies.office'), false);
+    }
+
+    public function test_the_office_tab_is_shown_to_an_admin(): void
+    {
+        $this->actingAs($this->admin())
+            ->get(route('companies.index'))
+            ->assertOk()
+            ->assertSee(route('companies.office'), false);
+    }
+
+    public function test_a_company_name_links_to_its_dashboard(): void
+    {
+        $company = Company::factory()->create(['name' => 'Линкувана ДООЕЛ']);
+
+        $this->actingAs($this->admin())
+            ->get(route('companies.index'))
+            ->assertOk()
+            ->assertSee(route('companies.dashboard', $company), false);
+    }
 
     public function test_the_route_requires_authentication(): void
     {
