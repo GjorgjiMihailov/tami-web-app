@@ -143,9 +143,12 @@ class CompanyAccountantsTest extends TestCase
     {
         // Истата причина како во CompanyUsersTest: mount() (view()) веќе
         // одбива пред assignAccountant() да се повика — нема верижење по
-        // неуспешен mount().
+        // неуспешен mount(). „Странецот" е доделен на ДРУГА фирма, не
+        // едноставно недоделен на ништо — истата дисциплина како кај Task 4.
         $company = Company::factory()->create();
+        $other = Company::factory()->create();
         $stranger = $this->userWithRole('accountant');
+        $other->accountants()->attach($stranger);
 
         Livewire::actingAs($stranger)
             ->test(CompanyUsers::class, ['company' => $company])
