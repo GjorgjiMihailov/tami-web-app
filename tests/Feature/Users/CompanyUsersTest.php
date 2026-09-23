@@ -155,8 +155,12 @@ class CompanyUsersTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'nov@primer.mk']);
     }
 
-    public function test_an_accountant_cannot_open_an_account(): void
+    public function test_an_accountant_of_that_company_can_open_an_account(): void
     {
+        // Спротивно од порано: сметководителот сега целосно ја поставува
+        // фирмата на која работи, без одобрување.
+        Notification::fake();
+
         $company = Company::factory()->create();
         $accountant = $this->userWithRole('accountant');
         $company->accountants()->attach($accountant);
@@ -166,7 +170,9 @@ class CompanyUsersTest extends TestCase
             ->set('newName', 'Нов Некој')
             ->set('newEmail', 'nov@primer.mk')
             ->call('addUser')
-            ->assertForbidden();
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('users', ['email' => 'nov@primer.mk']);
     }
 
     public function test_an_accountant_can_reinvite_a_client_of_their_own_company(): void

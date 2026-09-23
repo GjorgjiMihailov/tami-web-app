@@ -116,4 +116,41 @@ class CompanyAccountantsTest extends TestCase
 
         $this->assertSame(0, $company->fresh()->accountants->count());
     }
+
+    public function test_an_accountant_of_the_company_assigns_and_removes_a_colleague(): void
+    {
+        $company = Company::factory()->create();
+        $me = $this->userWithRole('accountant');
+        $company->accountants()->attach($me);
+        $colleague = $this->userWithRole('accountant');
+
+        Livewire::actingAs($me)
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->call('assignAccountant', $colleague->id)
+            ->assertHasNoErrors();
+
+        $this->assertTrue($company->fresh()->accountants->contains($colleague));
+
+        Livewire::actingAs($me)
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->call('removeAccountant', $colleague->id)
+            ->assertHasNoErrors();
+
+        $this->assertFalse($company->fresh()->accountants->contains($colleague));
+    }
+
+    public function test_an_accountant_not_on_the_company_cannot_even_reach_the_screen(): void
+    {
+        // Истата причина како во CompanyUsersTest: mount() (view()) веќе
+        // одбива пред assignAccountant() да се повика — нема верижење по
+        // неуспешен mount().
+        $company = Company::factory()->create();
+        $stranger = $this->userWithRole('accountant');
+
+        Livewire::actingAs($stranger)
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->assertForbidden();
+
+        $this->assertSame(0, $company->fresh()->accountants->count());
+    }
 }
