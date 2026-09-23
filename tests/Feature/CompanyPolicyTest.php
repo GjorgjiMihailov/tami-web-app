@@ -71,16 +71,17 @@ class CompanyPolicyTest extends TestCase
         $this->assertTrue($accountant->can('create', Company::class));
     }
 
-    public function test_the_same_accountant_may_not_create_a_second_one(): void
+    public function test_an_accountant_with_existing_companies_may_still_create_another(): void
     {
+        // Спротивно од порано: правото повеќе не се затвора по првото
+        // создавање. Сопственикот побара сметководителот сам ги внесува
+        // сите свои клиенти, не само првиот.
         $accountant = User::factory()->create();
         $accountant->assignRole('accountant');
         Company::factory()->create()->accountants()->attach($accountant);
+        Company::factory()->create()->accountants()->attach($accountant);
 
-        $this->assertFalse(
-            $accountant->can('create', Company::class),
-            'Правото важи само додека сметководителот нема ниту една фирма и само по себе се затвора.'
-        );
+        $this->assertTrue($accountant->can('create', Company::class));
     }
 
     public function test_a_client_may_never_create_a_company(): void
@@ -101,7 +102,19 @@ class CompanyPolicyTest extends TestCase
         $this->assertFalse($client->can('create', Company::class));
     }
 
-    public function test_only_admin_can_update_a_company(): void
+    public function test_an_accountant_may_update_only_the_companies_they_work_on(): void
+    {
+        $mine = Company::factory()->create();
+        $notMine = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $accountant->assignedCompanies()->attach($mine->id);
+
+        $this->assertTrue($accountant->can('update', $mine));
+        $this->assertFalse($accountant->can('update', $notMine));
+    }
+
+    public function test_an_admin_and_the_assigned_accountant_can_update_a_company_a_client_cannot(): void
     {
         $company = Company::factory()->create();
         $admin = User::factory()->create();

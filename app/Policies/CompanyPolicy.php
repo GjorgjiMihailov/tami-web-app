@@ -18,29 +18,34 @@ class CompanyPolicy
     }
 
     /**
-     * Админ секогаш. Сметководител — само додека нема ниту една фирма, за да
-     * може сам да го внесе првиот клиент (App\Livewire\FirstClient).
-     *
-     * Правилото се затвора само по себе: штом првата фирма е создадена и
-     * закачена на него, visibleCompanies() повеќе не е празно. Намерно не е
-     * напишано како трајно право — тоа би била друга одлука од таа во
-     * docs/superpowers/specs/2026-09-22-first-client-app-board-and-motion-design.md.
-     *
-     * Ова е право на ДЕЈСТВОТО, не на екранот: „Фирми" (App\Livewire\CompanyIndex)
-     * останува само за админ.
+     * Админ секогаш. Сметководител — секогаш, без ограничување: сам ги
+     * внесува сите свои клиенти, не само првиот. Порано ова важеше само
+     * додека немаше ниту една фирма (излезот за App\Livewire\FirstClient);
+     * тоа ограничување е тргнато со изречна одлука на сопственикот — види
+     * docs/superpowers/specs/2026-09-23-accountant-self-service-companies-design.md.
      */
     public function create(User $user): bool
+    {
+        return $user->hasRole('admin') || $user->hasRole('accountant');
+    }
+
+    /**
+     * Вратата за целата поставка на фирмата: профил (CompanyProfile),
+     * модули (CompanyModules), и корисници (CompanyUsers, преку ова исто
+     * правило — не UserPolicy::create, кое мора да остане админ-само зашто
+     * го користи и OfficeUsers за сметки на канцеларијата).
+     *
+     * Админ секогаш. Сметководител — само за фирма на која работи
+     * (visibleCompanies() ја содржи).
+     */
+    public function update(User $user, Company $company): bool
     {
         if ($user->hasRole('admin')) {
             return true;
         }
 
-        return $user->hasRole('accountant') && ! $user->visibleCompanies()->exists();
-    }
-
-    public function update(User $user, Company $company): bool
-    {
-        return $user->hasRole('admin');
+        return $user->hasRole('accountant')
+            && $user->visibleCompanies()->whereKey($company->id)->exists();
     }
 
     /**
