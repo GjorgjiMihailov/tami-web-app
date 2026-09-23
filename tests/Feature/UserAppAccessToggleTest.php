@@ -198,4 +198,38 @@ class UserAppAccessToggleTest extends TestCase
             'Админ треба да ги гледа квадратчињата живи и на Канцеларија.'
         );
     }
+
+    public function test_an_accountant_of_the_company_toggles_an_app_for_a_client(): void
+    {
+        $company = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+
+        Livewire::actingAs($accountant)
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->call('toggleApp', $client->id, 'plata');
+
+        $this->assertFalse($client->fresh()->app_plata);
+    }
+
+    public function test_an_accountant_not_on_the_company_cannot_even_reach_the_screen_to_toggle(): void
+    {
+        // Истата причина: mount() (view()) веќе одбива пред toggleApp() да
+        // се повика — нема сценарио каде овој метод воопшто се стигнува за
+        // фирма на која актерот не е доделен.
+        $company = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+
+        Livewire::actingAs($accountant)
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->assertForbidden();
+
+        $this->assertTrue($client->fresh()->app_plata);
+    }
 }

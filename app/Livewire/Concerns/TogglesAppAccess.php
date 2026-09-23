@@ -4,18 +4,23 @@ namespace App\Livewire\Concerns;
 
 use App\Models\User;
 use App\Support\PortalApp;
-use Illuminate\Support\Facades\Gate;
 
 /**
- * Штиклирањето „во која апликација влегува овој човек". Правилото е исто на
- * двата екрана; разликува само опсегот — кој корисник смее да се допре — па него
- * го дава компонентата преку appAccessTarget().
+ * Штиклирањето „во која апликација влегува овој човек". Механизмот е ист на
+ * двата екрана (CompanyUsers, OfficeUsers); опсегот (кој корисник смее да се
+ * допре) го дава appAccessTarget(), а ПРАВОТО (смее ли воопшто актерот) го
+ * дава authorizeAppAccessChange() — намерно ОДДЕЛНО за секој екран.
+ *
+ * Не смее да има заедничка проверка тука: CompanyUsers сега е отворен за
+ * сметководител на таа фирма (CompanyPolicy::update), а OfficeUsers мора да
+ * остане строго админ-само — заедничка проверка би значела дека проширување
+ * на едната автоматски протекува во другата.
  */
 trait TogglesAppAccess
 {
     public function toggleApp(int $userId, string $app): void
     {
-        Gate::authorize('create', User::class);
+        $this->authorizeAppAccessChange();
 
         $portalApp = PortalApp::tryFrom($app);
 
@@ -33,4 +38,11 @@ trait TogglesAppAccess
      * секој што е надвор од неговиот опсег.
      */
     abstract protected function appAccessTarget(int $userId): User;
+
+    /**
+     * Смее ли актерот воопшто да го допре квадратчето на овој екран. Секој
+     * екран го дава своето — ова НЕ смее да биде заедничка, тврдо вградена
+     * проверка во трејтот.
+     */
+    abstract protected function authorizeAppAccessChange(): void;
 }

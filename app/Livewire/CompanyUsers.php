@@ -153,6 +153,11 @@ class CompanyUsers extends Component
         return $this->companyUser($userId);
     }
 
+    protected function authorizeAppAccessChange(): void
+    {
+        Gate::authorize('update', $this->company);
+    }
+
     public function render()
     {
         return view('livewire.company-users', [
