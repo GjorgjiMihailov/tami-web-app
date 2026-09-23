@@ -215,6 +215,28 @@ class UserAppAccessToggleTest extends TestCase
         $this->assertFalse($client->fresh()->app_plata);
     }
 
+    public function test_an_accountant_of_the_company_sees_live_checkboxes_a_stranger_accountant_sees_forbidden(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+
+        $mine = User::factory()->create();
+        $mine->assignRole('accountant');
+        $company->accountants()->attach($mine);
+
+        $html = Livewire::actingAs($mine)
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->assertOk()
+            ->html();
+
+        $this->assertStringContainsString(
+            "wire:click=\"toggleApp({$client->id}, 'plata')\"",
+            $html,
+            'Сметководител на таа фирма треба да гледа живи квадратчиња, како админ.'
+        );
+    }
+
     public function test_an_accountant_not_on_the_company_cannot_even_reach_the_screen_to_toggle(): void
     {
         // Истата причина: mount() (view()) веќе одбива пред toggleApp() да
