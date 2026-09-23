@@ -158,4 +158,46 @@ class OfficeUsersTest extends TestCase
 
         $this->assertNull($admin->fresh()->disabled_at);
     }
+
+    public function test_an_admin_sets_a_companys_limit_on_an_accountant(): void
+    {
+        $accountant = $this->userWithRole('accountant');
+
+        Livewire::actingAs($this->userWithRole('admin'))
+            ->test(OfficeUsers::class)
+            ->call('updateCompanyLimit', $accountant->id, '3')
+            ->assertHasNoErrors();
+
+        $this->assertSame(3, $accountant->fresh()->company_limit);
+    }
+
+    public function test_an_empty_value_clears_the_limit_to_unlimited(): void
+    {
+        $accountant = $this->userWithRole('accountant');
+        $accountant->forceFill(['company_limit' => 2])->save();
+
+        Livewire::actingAs($this->userWithRole('admin'))
+            ->test(OfficeUsers::class)
+            ->call('updateCompanyLimit', $accountant->id, '');
+
+        $this->assertNull($accountant->fresh()->company_limit);
+    }
+
+    public function test_an_accountant_cannot_set_their_own_limit(): void
+    {
+        $accountant = $this->userWithRole('accountant');
+
+        // mount() веќе го затвора екранот за сметководител, па компонентата се
+        // монтира како админ, а потоа сесијата се менува — така се тестира
+        // самата заштита на методата (Livewire повици може да стигнат и без екранот).
+        $component = Livewire::actingAs($this->userWithRole('admin'))
+            ->test(OfficeUsers::class);
+
+        $this->actingAs($accountant);
+
+        $component->call('updateCompanyLimit', $accountant->id, '5')
+            ->assertForbidden();
+
+        $this->assertNull($accountant->fresh()->company_limit);
+    }
 }

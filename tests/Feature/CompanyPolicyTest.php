@@ -125,4 +125,33 @@ class CompanyPolicyTest extends TestCase
         $this->assertTrue($admin->can('update', $company));
         $this->assertFalse($client->can('update', $company));
     }
+
+    public function test_an_accountant_at_their_company_limit_may_not_create_another(): void
+    {
+        $accountant = User::factory()->create(['company_limit' => 1]);
+        $accountant->assignRole('accountant');
+        Company::factory()->create()->accountants()->attach($accountant);
+
+        $this->assertFalse($accountant->can('create', Company::class));
+    }
+
+    public function test_an_accountant_under_their_company_limit_may_still_create(): void
+    {
+        $accountant = User::factory()->create(['company_limit' => 2]);
+        $accountant->assignRole('accountant');
+        Company::factory()->create()->accountants()->attach($accountant);
+
+        $this->assertTrue($accountant->can('create', Company::class));
+    }
+
+    public function test_a_null_company_limit_means_unlimited(): void
+    {
+        $accountant = User::factory()->create(['company_limit' => null]);
+        $accountant->assignRole('accountant');
+        Company::factory()->count(5)->create()->each(
+            fn (Company $c) => $c->accountants()->attach($accountant)
+        );
+
+        $this->assertTrue($accountant->can('create', Company::class));
+    }
 }

@@ -42,6 +42,7 @@
                     <th class="py-1">Име</th>
                     <th class="py-1">Е-пошта</th>
                     <th class="py-1">Улога</th>
+                    <th class="py-1">Лимит на фирми</th>
                     <th class="py-1">Состојба</th>
                     <th class="py-1">Апликации</th>
                     <th class="py-1"></th>
@@ -54,6 +55,15 @@
                         <td class="py-1">{{ $user->email }}</td>
                         <td class="py-1">
                             {{ \App\Livewire\OfficeUsers::ROLES[$user->roles->first()?->name] ?? '' }}
+                        </td>
+                        <td class="py-1">
+                            @if ($user->hasRole('accountant'))
+                                <input type="number" min="0"
+                                       wire:change="updateCompanyLimit({{ $user->id }}, $event.target.value)"
+                                       value="{{ $user->company_limit }}"
+                                       placeholder="неограничено"
+                                       class="w-24 border-gray-300 rounded-md text-sm">
+                            @endif
                         </td>
                         <td class="py-1">
                             @switch($user->accessStatus())

@@ -89,6 +89,21 @@ class OfficeUsers extends Component
         $user->forceFill(['disabled_at' => null])->save();
     }
 
+    public function updateCompanyLimit(int $userId, string $limit): void
+    {
+        abort_unless(auth()->user()->hasRole('admin'), 403);
+
+        $user = $this->officeUser($userId);
+
+        abort_unless($user->hasRole('accountant'), 403);
+
+        // Празно поле = неограничено (null).
+        $trimmed = trim($limit);
+        $value = $trimmed === '' ? null : max(0, (int) $trimmed);
+
+        $user->forceFill(['company_limit' => $value])->save();
+    }
+
     private function officeUser(int $userId): User
     {
         return User::role(array_keys(self::ROLES))->findOrFail($userId);

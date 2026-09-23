@@ -18,15 +18,27 @@ class CompanyPolicy
     }
 
     /**
-     * Админ секогаш. Сметководител — секогаш, без ограничување: сам ги
-     * внесува сите свои клиенти, не само првиот. Порано ова важеше само
-     * додека немаше ниту една фирма (излезот за App\Livewire\FirstClient);
-     * тоа ограничување е тргнато со изречна одлука на сопственикот — види
-     * docs/superpowers/specs/2026-09-23-accountant-self-service-companies-design.md.
+     * Админ секогаш, без лимит. Сметководител — сам ги внесува сите свои
+     * клиенти, не само првиот (изречна одлука на сопственикот — види
+     * docs/superpowers/specs/2026-09-23-accountant-self-service-companies-design.md),
+     * но само до својот лимит: users.company_limit, null = неограничено.
+     * Лимитот го поставува само админ (OfficeUsers::updateCompanyLimit).
      */
     public function create(User $user): bool
     {
-        return $user->hasRole('admin') || $user->hasRole('accountant');
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        if (! $user->hasRole('accountant')) {
+            return false;
+        }
+
+        if ($user->company_limit === null) {
+            return true;
+        }
+
+        return $user->assignedCompanies()->count() < $user->company_limit;
     }
 
     /**
