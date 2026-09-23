@@ -1,6 +1,7 @@
 <div>
     <div class="flex items-center justify-between mb-4">
         <h1 class="text-2xl font-bold text-gray-800">Плата — {{ $company->name }}</h1>
+        @can('managePayroll', $company)
         <div class="flex items-end gap-2">
             <div>
                 <label class="block text-xs text-gray-500 mb-1">Нова пресметка за {{ $year }}</label>
@@ -13,6 +14,7 @@
             </div>
             <button wire:click="createRun" class="rounded bg-brand px-3 py-2 text-sm text-white">Отвори</button>
         </div>
+        @endcan
     </div>
 
     @error('newMonth') <p class="text-sm text-red-600 mb-4">{{ $message }}</p> @enderror

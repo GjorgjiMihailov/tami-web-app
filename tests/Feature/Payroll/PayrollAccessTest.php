@@ -169,6 +169,65 @@ class PayrollAccessTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_a_client_does_not_see_the_payroll_write_controls_but_still_sees_the_read_content(): void
+    {
+        $company = Company::factory()->create();
+        $run = $this->draftRun($company);
+        $employeeName = $run->employees->first()->employee->full_name;
+
+        Livewire::actingAs($this->internalClient($company))
+            ->test(PayrollRunShow::class, ['company' => $company, 'run' => $run])
+            ->assertDontSee('Потврди')
+            ->assertDontSee('Извези МПИН')
+            ->assertDontSee('МПИН извозот не е можен')
+            ->assertSee($employeeName)
+            ->assertSee('Исплатна листа')
+            ->assertSee('Рекапитулар (PDF)')
+            ->call('selectEmployee', $run->employees->first()->id)
+            ->assertDontSee('Додади')
+            ->assertDontSee('Избриши');
+
+        Livewire::actingAs($this->internalClient($company))
+            ->test(PayrollRunIndex::class, ['company' => $company])
+            ->assertDontSee('Нова пресметка')
+            ->assertDontSee('Отвори');
+    }
+
+    public function test_an_admin_and_an_assigned_accountant_still_see_the_payroll_write_controls(): void
+    {
+        $company = Company::factory()->create();
+        $run = $this->draftRun($company);
+
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        foreach ([$admin, $accountant] as $user) {
+            Livewire::actingAs($user)
+                ->test(PayrollRunShow::class, ['company' => $company, 'run' => $run])
+                ->assertSee('Потврди')
+                ->call('selectEmployee', $run->employees->first()->id)
+                ->assertSee('Додади');
+
+            Livewire::actingAs($user)
+                ->test(PayrollRunIndex::class, ['company' => $company])
+                ->assertSee('Нова пресметка')
+                ->assertSee('Отвори');
+        }
+    }
+
+    public function test_an_internal_client_can_download_their_own_payslip(): void
+    {
+        $company = Company::factory()->create();
+        $run = $this->draftRun($company);
+
+        $this->actingAs($this->internalClient($company))
+            ->get(route('payroll.payslip-pdf', [$company, $run, $run->employees->first()]))
+            ->assertOk();
+    }
+
     public function test_an_accountant_can(): void
     {
         $company = Company::factory()->create();

@@ -7,14 +7,20 @@
         <div class="flex items-center gap-2">
             <a href="{{ route('payroll.recap-pdf', [$company, $run]) }}" class="text-brand hover:underline text-sm">Рекапитулар (PDF)</a>
             @if ($run->isDraft())
-                <button wire:click="confirm" class="rounded bg-brand px-3 py-2 text-sm text-white">Потврди</button>
+                @can('managePayroll', $company)
+                    <button wire:click="confirm" class="rounded bg-brand px-3 py-2 text-sm text-white">Потврди</button>
+                @endcan
             @else
                 <span class="text-xs font-medium text-green-700 bg-green-100 rounded-full px-2 py-0.5">Потврдена</span>
-                <button wire:click="returnToDraft" class="rounded border border-gray-300 px-3 py-2 text-sm">Врати во нацрт</button>
+                @can('managePayroll', $company)
+                    <button wire:click="returnToDraft" class="rounded border border-gray-300 px-3 py-2 text-sm">Врати во нацрт</button>
+                @endcan
             @endif
         </div>
     </div>
 
+    {{-- МПИН извозот е само за канцеларијата (admin/сметководител). --}}
+    @can('managePayroll', $company)
     @if ($mpin)
         @if ($mpin->errors)
             <div class="mt-3 rounded border border-red-200 bg-red-50 p-3">
@@ -48,6 +54,7 @@
             </p>
         @endif
     @endif
+    @endcan
 
     @error('lineKind') <p class="text-sm text-red-600 mb-4">{{ $message }}</p> @enderror
 
@@ -148,15 +155,18 @@
                             <td class="py-1 px-3 text-right">{{ number_format($line->amount, 2, ',', '.') }}</td>
                             <td class="py-1 px-3">{{ $line->borne_by === 'fzo' ? 'ФЗО' : 'Работодавач' }}</td>
                             <td class="py-1 px-3 text-right">
-                                @if (! $line->is_automatic && $run->isDraft())
-                                    <button wire:click="deleteLine({{ $line->id }})" class="text-red-600 hover:underline text-xs">Избриши</button>
-                                @endif
+                                @can('managePayroll', $company)
+                                    @if (! $line->is_automatic && $run->isDraft())
+                                        <button wire:click="deleteLine({{ $line->id }})" class="text-red-600 hover:underline text-xs">Избриши</button>
+                                    @endif
+                                @endcan
                             </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
 
+            @can('managePayroll', $company)
             @if ($run->isDraft())
                 <div class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
                     <div class="md:col-span-2">
@@ -200,6 +210,7 @@
                 @error('lineAmount') <p class="text-sm text-red-600 mt-2">{{ $message }}</p> @enderror
                 @error('lineDescription') <p class="text-sm text-red-600 mt-2">{{ $message }}</p> @enderror
             @endif
+            @endcan
         </x-card>
     @endif
 </div>
