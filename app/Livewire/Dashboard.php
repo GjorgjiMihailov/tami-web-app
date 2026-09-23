@@ -134,7 +134,12 @@ class Dashboard extends Component
                 'freelancers' => $withRole('freelancer_client'),
                 'needAttention' => $needAttention->count(),
             ],
-            'accountants' => User::role('accountant')->withCount('assignedCompanies')->orderBy('name')->get(),
+            // whereHas, не User::role(): scope-от фрла RoleDoesNotExist кога
+            // улогата ја нема во базата, а таблото не смее да падне поради тоа.
+            'accountants' => User::whereHas('roles', fn ($q) => $q->where('name', 'accountant'))
+                ->withCount('assignedCompanies')
+                ->orderBy('name')
+                ->get(),
             'statusCounts' => $statusCounts,
             'needAttention' => $needAttention,
             'sessionsAvailable' => $sessionsAvailable,
