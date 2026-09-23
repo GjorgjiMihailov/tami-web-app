@@ -21,6 +21,20 @@ class UserCompanyRelationsTest extends TestCase
         }
     }
 
+    public function test_a_freelancer_client_sees_only_their_own_company_and_a_roleless_user_sees_none(): void
+    {
+        $companyA = Company::factory()->create(['type' => 'individual']);
+        $companyB = Company::factory()->create(['type' => 'individual']);
+
+        $freelancer = User::factory()->create(['company_id' => $companyA->id]);
+        $freelancer->assignRole('freelancer_client');
+        $roleless = User::factory()->create(['company_id' => $companyA->id]);
+
+        $this->assertSame([$companyA->id], $freelancer->visibleCompanies()->pluck('id')->all());
+        $this->assertFalse($freelancer->visibleCompanies()->whereKey($companyB->id)->exists());
+        $this->assertSame(0, $roleless->visibleCompanies()->count());
+    }
+
     public function test_an_admin_can_see_all_companies_via_visible_companies(): void
     {
         $companyA = Company::factory()->create();
