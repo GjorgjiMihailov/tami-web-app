@@ -232,13 +232,36 @@ class CompanyPolicyTest extends TestCase
         $this->assertFalse($client->can('manageEfakturaDevice', $theirs));
     }
 
-    public function test_a_freelancer_client_has_no_efaktura(): void
+    public function test_an_internal_client_of_an_individual_company_has_no_efaktura(): void
     {
-        $company = $this->ownModeCompany(['type' => CompanyType::INDIVIDUAL]);
+        $company = Company::factory()->create([
+            'type' => CompanyType::INDIVIDUAL,
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'EUJP-1',
+            'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+        $client = $this->internalClientOf($company);
+
+        $this->assertFalse($client->can('signEfaktura', $company));
+        $this->assertFalse($client->can('manageEfakturaDevice', $company));
+    }
+
+    public function test_a_freelancer_client_of_a_legal_company_has_no_efaktura(): void
+    {
+        $company = $this->ownModeCompany();
         $freelancer = User::factory()->create(['company_id' => $company->id]);
         $freelancer->assignRole('freelancer_client');
 
         $this->assertFalse($freelancer->can('signEfaktura', $company));
         $this->assertFalse($freelancer->can('manageEfakturaDevice', $company));
+    }
+
+    public function test_a_roleless_user_of_an_own_mode_company_has_no_efaktura(): void
+    {
+        $company = $this->ownModeCompany();
+        $user = User::factory()->create(['company_id' => $company->id]);
+
+        $this->assertFalse($user->can('signEfaktura', $company));
+        $this->assertFalse($user->can('manageEfakturaDevice', $company));
     }
 }
