@@ -21,6 +21,8 @@ class EfakturaStatusControllerTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('internal_client');
+        Role::findOrCreate('accountant');
+        Role::findOrCreate('freelancer_client');
     }
 
     private function makeOwnModeCompany(): Company
@@ -175,19 +177,72 @@ class EfakturaStatusControllerTest extends TestCase
         $response->assertStatus(503)->assertJson(['error' => 'ujp_unreachable']);
     }
 
-    public function test_client_role_is_forbidden(): void
+    public function test_an_internal_client_with_an_own_token_can_refresh_statuses(): void
     {
         $company = $this->makeOwnModeCompany();
         $this->makeSentInvoice($company);
         $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('internal_client');
 
-        $response = $this->actingAs($client)->postJson(
+        $this->actingAs($client)->postJson(
             route('sales-invoices.efaktura.refresh-statuses.signing-input', $company),
             ['certificateBase64' => base64_encode('fake-cert')]
-        );
+        )->assertOk()->assertJsonStructure(['token', 'signingInput']);
+    }
 
-        $response->assertStatus(403);
+    public function test_an_internal_client_of_a_firm_mode_company_cannot_refresh_statuses(): void
+    {
+        $company = $this->makeOwnModeCompany();
+        $this->makeSentInvoice($company);
+        $company->update(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        $this->actingAs($client)->postJson(
+            route('sales-invoices.efaktura.refresh-statuses.signing-input', $company),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertStatus(403);
+    }
+
+    public function test_an_internal_client_cannot_refresh_statuses_of_another_company(): void
+    {
+        $company = $this->makeOwnModeCompany();
+        $this->makeSentInvoice($company);
+        $otherCompany = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $otherCompany->id]);
+        $client->assignRole('internal_client');
+
+        $this->actingAs($client)->postJson(
+            route('sales-invoices.efaktura.refresh-statuses.signing-input', $company),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertStatus(403);
+    }
+
+    public function test_an_internal_client_without_a_registered_token_cannot_refresh_statuses(): void
+    {
+        $company = $this->makeOwnModeCompany();
+        $this->makeSentInvoice($company);
+        $company->update(['efaktura_token_serial_number' => null]);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        $this->actingAs($client)->postJson(
+            route('sales-invoices.efaktura.refresh-statuses.signing-input', $company),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertStatus(403);
+    }
+
+    public function test_a_freelancer_client_cannot_refresh_statuses(): void
+    {
+        $company = $this->makeOwnModeCompany();
+        $this->makeSentInvoice($company);
+        $freelancer = User::factory()->create(['company_id' => $company->id]);
+        $freelancer->assignRole('freelancer_client');
+
+        $this->actingAs($freelancer)->postJson(
+            route('sales-invoices.efaktura.refresh-statuses.signing-input', $company),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertStatus(403);
     }
 
     public function test_firm_mode_company_is_rejected(): void

@@ -82,7 +82,7 @@ class EfakturaSendController extends Controller
     {
         Gate::authorize('view', $salesInvoice);
         abort_if($salesInvoice->company_id !== $company->id, 404);
-        abort_unless(auth()->user()->hasAnyRole(['admin', 'accountant']), 403);
+        Gate::authorize('signEfaktura', $company);
         abort_unless($salesInvoice->status === 'confirmed', 422, 'Само потврдени фактури можат да се потпишат и испратат.');
         // УЈП прима денарски износи. Девизна фактура таму нема што да бара, а
         // погрешно испратен износ е поскап од заклучено копче.

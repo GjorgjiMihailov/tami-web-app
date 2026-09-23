@@ -21,6 +21,8 @@ class EfakturaSendControllerTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('internal_client');
+        Role::findOrCreate('accountant');
+        Role::findOrCreate('freelancer_client');
     }
 
     private function makeConfirmedOwnModeInvoice(): array
@@ -183,9 +185,30 @@ class EfakturaSendControllerTest extends TestCase
         $this->assertStringContainsString('cURL error 28', $invoice->fresh()->efaktura_error);
     }
 
-    public function test_client_role_is_forbidden(): void
+    public function test_an_internal_client_with_an_own_token_can_get_a_signing_input_and_send(): void
+    {
+        Http::fake(['*' => Http::response(['euid' => 'euid-9'], 200)]);
+        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        $signing = $this->actingAs($client)->postJson(
+            route('sales-invoices.efaktura.signing-input', [$company, $invoice]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertOk()->json();
+
+        $this->actingAs($client)->postJson(
+            route('sales-invoices.efaktura.send', [$company, $invoice]),
+            ['token' => $signing['token'], 'signature' => 'fake-signature']
+        )->assertOk();
+
+        $this->assertSame('sent', $invoice->fresh()->efaktura_status);
+    }
+
+    public function test_an_internal_client_of_a_firm_mode_company_is_forbidden_as_json(): void
     {
         [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
+        $company->update(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
         $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('internal_client');
 
@@ -195,10 +218,47 @@ class EfakturaSendControllerTest extends TestCase
         );
 
         $response->assertStatus(403);
-        // Fix 2 coverage: bootstrap/app.php's shouldRenderJsonWhen must cover efaktura routes,
-        // otherwise this 403 would render as HTML and $response->json() would throw.
+        // bootstrap/app.php shouldRenderJsonWhen мора да ги покрива е-Фактура рутите.
         $response->assertHeader('Content-Type', 'application/json');
         $this->assertIsArray($response->json());
+    }
+
+    public function test_an_internal_client_cannot_send_for_another_company(): void
+    {
+        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
+        $otherCompany = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $otherCompany->id]);
+        $client->assignRole('internal_client');
+
+        $this->actingAs($client)->postJson(
+            route('sales-invoices.efaktura.signing-input', [$company, $invoice]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertStatus(403);
+    }
+
+    public function test_an_internal_client_cannot_send_before_registering_a_token(): void
+    {
+        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
+        $company->update(['efaktura_token_serial_number' => null]);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        $this->actingAs($client)->postJson(
+            route('sales-invoices.efaktura.signing-input', [$company, $invoice]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertStatus(403);
+    }
+
+    public function test_a_freelancer_client_cannot_use_efaktura(): void
+    {
+        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
+        $freelancer = User::factory()->create(['company_id' => $company->id]);
+        $freelancer->assignRole('freelancer_client');
+
+        $this->actingAs($freelancer)->postJson(
+            route('sales-invoices.efaktura.signing-input', [$company, $invoice]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertStatus(403);
     }
 
     public function test_second_send_attempt_on_already_sent_invoice_is_rejected(): void

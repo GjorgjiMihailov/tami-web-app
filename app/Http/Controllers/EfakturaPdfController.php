@@ -91,7 +91,7 @@ class EfakturaPdfController extends Controller
     {
         Gate::authorize('view', $salesInvoice);
         abort_if($salesInvoice->company_id !== $company->id, 404);
-        abort_unless(auth()->user()->hasAnyRole(['admin', 'accountant']), 403);
+        Gate::authorize('signEfaktura', $company);
         abort_unless(
             $company->efaktura_credential_mode === Company::EFAKTURA_MODE_OWN,
             422,

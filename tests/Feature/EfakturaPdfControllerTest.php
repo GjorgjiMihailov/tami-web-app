@@ -20,6 +20,9 @@ class EfakturaPdfControllerTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
+        Role::findOrCreate('internal_client');
+        Role::findOrCreate('accountant');
+        Role::findOrCreate('freelancer_client');
         Storage::fake('local');
     }
 
@@ -54,6 +57,69 @@ class EfakturaPdfControllerTest extends TestCase
         );
 
         $response->assertOk()->assertJsonStructure(['token', 'signingInput']);
+    }
+
+    public function test_an_internal_client_with_an_own_token_can_get_a_pdf_signing_input(): void
+    {
+        [$company, $invoice] = $this->makeAcceptedInvoice();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        $this->actingAs($client)->postJson(
+            route('sales-invoices.efaktura.pdf.signing-input', [$company, $invoice]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertOk()->assertJsonStructure(['token', 'signingInput']);
+    }
+
+    public function test_an_internal_client_of_a_firm_mode_company_cannot_get_a_pdf_signing_input(): void
+    {
+        [$company, $invoice] = $this->makeAcceptedInvoice();
+        $company->update(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        $this->actingAs($client)->postJson(
+            route('sales-invoices.efaktura.pdf.signing-input', [$company, $invoice]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertStatus(403);
+    }
+
+    public function test_an_internal_client_cannot_get_a_pdf_signing_input_for_another_company(): void
+    {
+        [$company, $invoice] = $this->makeAcceptedInvoice();
+        $otherCompany = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $otherCompany->id]);
+        $client->assignRole('internal_client');
+
+        $this->actingAs($client)->postJson(
+            route('sales-invoices.efaktura.pdf.signing-input', [$company, $invoice]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertStatus(403);
+    }
+
+    public function test_a_freelancer_client_cannot_get_a_pdf_signing_input(): void
+    {
+        [$company, $invoice] = $this->makeAcceptedInvoice();
+        $freelancer = User::factory()->create(['company_id' => $company->id]);
+        $freelancer->assignRole('freelancer_client');
+
+        $this->actingAs($freelancer)->postJson(
+            route('sales-invoices.efaktura.pdf.signing-input', [$company, $invoice]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertStatus(403);
+    }
+
+    public function test_an_internal_client_without_a_registered_token_cannot_get_a_pdf_signing_input(): void
+    {
+        [$company, $invoice] = $this->makeAcceptedInvoice();
+        $company->update(['efaktura_token_serial_number' => null]);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        $this->actingAs($client)->postJson(
+            route('sales-invoices.efaktura.pdf.signing-input', [$company, $invoice]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertStatus(403);
     }
 
     public function test_signing_input_rejects_an_invoice_not_yet_accepted(): void
