@@ -333,18 +333,27 @@ Route::domain(PortalApp::PLATA->domain())->middleware(EnsureAppAccess::class.':p
         Route::get('/payroll-parameters', [PayrollParameterIndex::class, '__invoke'])->name('index');
     });
 
-    // Registered before payroll-runs. below so /payroll-runs/{run}/recap.pdf is
-    // not swallowed by /payroll-runs/{run}.
-    Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('payroll.')->group(function () {
+    // Читачки: PDF-от веќе прашува Gate::authorize('view', $company) внатре,
+    // internal_client го гледа сопствениот платопис/рекапитулар. Мора да
+    // остане пред payroll-runs. подолу — /payroll-runs/{run}/recap.pdf не
+    // смее да се проголта од /payroll-runs/{run}.
+    Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('payroll.')->group(function () {
         Route::get('/payroll-runs/{run}/recap.pdf', PayrollRecapPdfController::class)->name('recap-pdf');
         Route::get('/payroll-runs/{run}/payslip/{runEmployee}.pdf', PayslipPdfController::class)->name('payslip-pdf');
+    });
+
+    // МПИН извозот пишува во run (mpin_exported_at) и е канцелариска задача
+    // — останува затворено.
+    Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('payroll.')->group(function () {
         Route::get('/payroll-runs/{run}/mpin.xml', MpinExportController::class)->name('mpin-export');
     });
 
-    // EnsureAccountingAccess, not a policy: payroll is the firm's work, not the
-    // client's, and a group-level gate covers screens added later by default
-    // instead of by remembering.
-    Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('payroll-runs.')->group(function () {
+    // Читачки: mount() веќе прашува Gate::authorize('view', $company).
+    // Секое дејство што пишува (createRun, saveLine, deleteLine, confirm,
+    // returnToDraft) си носи сопствена CompanyPolicy::managePayroll проверка
+    // однатре — EnsureAccountingAccess веќе не се повторува на овие дејства
+    // штом ја нема во почетната рута.
+    Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('payroll-runs.')->group(function () {
         Route::get('/payroll-runs', [PayrollRunIndex::class, '__invoke'])->name('index');
         Route::get('/payroll-runs/{run}', [PayrollRunShow::class, '__invoke'])->name('show');
     });

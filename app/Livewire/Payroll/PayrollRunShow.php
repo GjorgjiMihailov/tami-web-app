@@ -68,7 +68,7 @@ class PayrollRunShow extends Component
         // too, but this second lock is cheap next to what a wrongly-booked
         // payroll run would cost, and it matches the pattern this branch
         // already established in PayrollParameterIndex::saveMonthHours().
-        Gate::authorize('view', $this->company);
+        Gate::authorize('managePayroll', $this->company);
 
         if (! $this->guardDraft()) {
             return;
@@ -152,7 +152,7 @@ class PayrollRunShow extends Component
     {
         // See the comment on saveLine() above: mount() authorizes once, an
         // action call does not re-run it.
-        Gate::authorize('view', $this->company);
+        Gate::authorize('managePayroll', $this->company);
 
         if (! $this->guardDraft()) {
             return;
@@ -187,7 +187,7 @@ class PayrollRunShow extends Component
         // See the comment on saveLine() above: mount() authorizes once, an
         // action call does not re-run it. This one posts to the general
         // ledger, so it is the highest-stakes of the four.
-        Gate::authorize('view', $this->company);
+        Gate::authorize('managePayroll', $this->company);
 
         if (! $this->guardDraft()) {
             return;
@@ -200,7 +200,7 @@ class PayrollRunShow extends Component
     {
         // See the comment on saveLine() above: mount() authorizes once, an
         // action call does not re-run it.
-        Gate::authorize('view', $this->company);
+        Gate::authorize('managePayroll', $this->company);
 
         if ($this->run->isDraft()) {
             return;

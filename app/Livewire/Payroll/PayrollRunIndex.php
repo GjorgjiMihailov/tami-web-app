@@ -27,6 +27,8 @@ class PayrollRunIndex extends Component
 
     public function createRun(PayrollRunService $service): mixed
     {
+        Gate::authorize('managePayroll', $this->company);
+
         $this->validate([
             'newMonth' => ['required', 'integer', 'min:1', 'max:12'],
         ], attributes: ['newMonth' => 'месец']);

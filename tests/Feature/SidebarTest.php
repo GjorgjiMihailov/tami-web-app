@@ -128,13 +128,13 @@ class SidebarTest extends TestCase
             ->assertDontSeeHtml('href="'.route('companies.index').'"')
             ->assertDontSeeHtml(route('efaktura.access-requests'));
 
-        // ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ moved to the plata app. Вработени is built,
-        // so a client sees the group there, just not the two still-unbuilt
-        // entries inside it.
+        // ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ moved to the plata app. Вработени and
+        // Плата (МПИН) are open read-only to internal_client; е-ПДД is still
+        // unbuilt and stays hidden.
         $this->get(route('employees.index', $company))
             ->assertOk()
             ->assertSee('ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ')
-            ->assertDontSee('Плата (МПИН)')
+            ->assertSee('Плата (МПИН)')
             ->assertDontSee('е-ПДД');
     }
 

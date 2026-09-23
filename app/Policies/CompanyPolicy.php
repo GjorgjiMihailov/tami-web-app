@@ -68,4 +68,16 @@ class CompanyPolicy
     {
         return $this->view($user, $company);
     }
+
+    /**
+     * Пресметување, уредување и потврдување плата — само канцеларијата.
+     * internal_client гледа читачки преку `view` (visibleCompanies() веќе го
+     * пропушта), но не смее да допре ниту едно дејство што пишува. Истото
+     * правило како `update` (истиот стил на делегирање како
+     * `updateInvoiceSettings()` погоре во истиот фајл) — не се дуплира телото.
+     */
+    public function managePayroll(User $user, Company $company): bool
+    {
+        return $this->update($user, $company);
+    }
 }

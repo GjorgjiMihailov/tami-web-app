@@ -91,24 +91,33 @@ class PayrollPdfTest extends TestCase
         $response->assertHeader('content-type', 'application/pdf');
     }
 
-    public function test_a_client_cannot_download_either_document(): void
+    public function test_an_internal_client_can_download_their_own_documents_but_not_another_companys(): void
     {
         $company = Company::factory()->create();
         $run = $this->openRun($company);
+        $payslip = $run->employees->first();
 
         $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('internal_client');
 
-        // Both routes, not just one. They share a middleware group today, so
-        // asserting only the recap would keep passing if the payslip's
-        // protection were ever removed — and the payslip is the document with
-        // one person's pay on it.
+        // Читачки пристап: и двата документа, на сопствената фирма.
         $this->actingAs($client)
             ->get(route('payroll.recap-pdf', [$company, $run]))
-            ->assertForbidden();
-
+            ->assertOk();
         $this->actingAs($client)
-            ->get(route('payroll.payslip-pdf', [$company, $run, $run->employees->first()]))
+            ->get(route('payroll.payslip-pdf', [$company, $run, $payslip]))
+            ->assertOk();
+
+        // Both routes for a stranger, not just one — the payslip is the
+        // document with one person's pay on it.
+        $stranger = User::factory()->create(['company_id' => Company::factory()->create()->id]);
+        $stranger->assignRole('internal_client');
+
+        $this->actingAs($stranger)
+            ->get(route('payroll.recap-pdf', [$company, $run]))
+            ->assertForbidden();
+        $this->actingAs($stranger)
+            ->get(route('payroll.payslip-pdf', [$company, $run, $payslip]))
             ->assertForbidden();
     }
 

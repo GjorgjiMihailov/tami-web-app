@@ -239,7 +239,7 @@ class Menu
                 'label' => 'ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ',
                 'items' => [
                     ['label' => 'Вработени', 'url' => route('employees.index', $company), 'pattern' => 'employees.*', 'roles' => null, 'module' => CompanyModule::PAYROLL],
-                    ['label' => 'Плата (МПИН)', 'url' => route('payroll-runs.index', $company), 'pattern' => 'payroll-runs.*', 'roles' => ['admin', 'accountant'], 'module' => CompanyModule::PAYROLL],
+                    ['label' => 'Плата (МПИН)', 'url' => route('payroll-runs.index', $company), 'pattern' => 'payroll-runs.*', 'roles' => null, 'module' => CompanyModule::PAYROLL],
                     self::soon($company, 'e-pdd', CompanyModule::PAYROLL),
                 ],
             ],
