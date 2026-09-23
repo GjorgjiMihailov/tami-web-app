@@ -127,7 +127,7 @@ class CompanyModulesScreenTest extends TestCase
         $this->actingAs($client)->get(route('companies.modules', $company))->assertForbidden();
     }
 
-    public function test_an_accountant_cannot_reach_the_modules_tab(): void
+    public function test_an_accountant_not_assigned_to_the_company_cannot_reach_the_modules_tab(): void
     {
         $company = Company::factory()->create();
         $accountant = User::factory()->create();

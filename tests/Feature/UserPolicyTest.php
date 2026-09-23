@@ -55,11 +55,19 @@ class UserPolicyTest extends TestCase
         // company_id === null. Тоа мора да остане надвор од дофат на
         // сметководителскиот услов без разлика на кои фирми работи —
         // единствениот услов проверен тука е дека company_id е null.
+        //
+        // $actor е нарочно закачен на вистинска фирма (не само со улога
+        // accountant без ниту една фирма): ако visibleCompanies() е празна
+        // и без тоа, тестот ќе помине дури и ако company_id !== null условот
+        // во UserPolicy::manages() се избрише целосно — истата дупка веќе
+        // двапати фатена порано на оваа гранка (UserPolicy, CompanyUsers).
+        $company = Company::factory()->create();
         $officeAccountant = User::factory()->create(['company_id' => null]);
         $officeAccountant->assignRole('accountant');
 
         $actor = User::factory()->create();
         $actor->assignRole('accountant');
+        $actor->assignedCompanies()->attach($company->id);
 
         $this->assertFalse($actor->can('invite', $officeAccountant));
         $this->assertFalse($actor->can('disable', $officeAccountant));

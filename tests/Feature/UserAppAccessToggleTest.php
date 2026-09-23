@@ -115,6 +115,36 @@ class UserAppAccessToggleTest extends TestCase
         $this->assertFalse($accountant->fresh()->app_finansii);
     }
 
+    /**
+     * authorizeAppAccessChange() на OfficeUsers мора самата да го проверува
+     * актерот при секој повик — не смее да се потпира на тоа што mount()
+     * веќе провери админ при почетното вчитување. Livewire НЕ го повикува
+     * mount() при секој wire:click повик (само при почетното вчитување на
+     * екранот), па ако mount() некогаш се разлаба (на пример по образецот
+     * на CompanyUsers), само оваа проверка би останала да брани. Затоа
+     * екранот се вчитува како админ (mount() поминува), а потоа актерот се
+     * менува пред toggleApp() — за да се докаже дека токму
+     * authorizeAppAccessChange() одбива, не mount().
+     */
+    public function test_a_non_admin_cannot_toggle_an_app_on_office_users_even_after_the_screen_loaded_as_admin(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $target = User::factory()->create();
+        $target->assignRole('accountant');
+
+        $component = Livewire::actingAs($admin)->test(OfficeUsers::class);
+
+        $this->actingAs($accountant);
+
+        $component->call('toggleApp', $target->id, 'finansii')
+            ->assertStatus(403);
+
+        $this->assertTrue($target->fresh()->app_finansii);
+    }
+
     public function test_an_unknown_app_name_is_refused(): void
     {
         $company = Company::factory()->create();
