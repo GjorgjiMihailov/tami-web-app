@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Livewire\Concerns\SendsInvitations;
 use App\Livewire\Concerns\TogglesAppAccess;
+use App\Livewire\Concerns\UpdatesCompanyLimit;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -20,6 +21,7 @@ class OfficeUsers extends Component
 {
     use SendsInvitations;
     use TogglesAppAccess;
+    use UpdatesCompanyLimit;
 
     public const ROLES = ['accountant' => 'Сметководител', 'admin' => 'Админ'];
 
@@ -87,21 +89,6 @@ class OfficeUsers extends Component
         Gate::authorize('disable', $user);
 
         $user->forceFill(['disabled_at' => null])->save();
-    }
-
-    public function updateCompanyLimit(int $userId, string $limit): void
-    {
-        abort_unless(auth()->user()->hasRole('admin'), 403);
-
-        $user = $this->officeUser($userId);
-
-        abort_unless($user->hasRole('accountant'), 403);
-
-        // Празно поле = неограничено (null).
-        $trimmed = trim($limit);
-        $value = $trimmed === '' ? null : max(0, (int) $trimmed);
-
-        $user->forceFill(['company_limit' => $value])->save();
     }
 
     private function officeUser(int $userId): User

@@ -11,12 +11,15 @@ use App\Models\OtherCost;
 use App\Models\Partner;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
+use App\Listeners\RecordLastLogin;
 use App\Models\User;
 use App\Observers\CompanyObserver;
 use App\Services\Invoicing\ClaudeScannedInvoiceReader;
 use App\Services\Invoicing\NullScannedInvoiceReader;
 use App\Services\Invoicing\ScannedInvoiceReader;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 
@@ -43,6 +46,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Company::observe(CompanyObserver::class);
+
+        Event::listen(Login::class, RecordLastLogin::class);
 
         Relation::enforceMorphMap([
             'purchase_invoice' => PurchaseInvoice::class,

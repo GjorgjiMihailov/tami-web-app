@@ -16,7 +16,9 @@ class LandingUrl
 {
     public static function for(User $user, ?PortalApp $app): string
     {
-        if ($app === null || $app === PortalApp::PORTAL) {
+        // Админот не бира фирма и не влегува во апликација при најава: има
+        // сопствено табло. И кога системот има само една фирма.
+        if ($app === null || $app === PortalApp::PORTAL || $user->hasRole('admin')) {
             return route('dashboard');
         }
 

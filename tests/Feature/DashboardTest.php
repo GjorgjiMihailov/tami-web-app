@@ -109,13 +109,22 @@ class DashboardTest extends TestCase
         $this->get(route('dashboard'))->assertRedirect(route('companies.dashboard', $mine));
     }
 
+    private function accountantWithTwoCompanies(): array
+    {
+        $first = Company::factory()->create(['name' => 'Alpha Ltd']);
+        $second = Company::factory()->create(['name' => 'Beta Ltd']);
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $first->accountants()->attach($accountant);
+        $second->accountants()->attach($accountant);
+
+        return [$accountant, $first, $second];
+    }
+
     public function test_it_shows_a_company_picker_listing_every_visible_company(): void
     {
-        $admin = User::factory()->create();
-        $admin->assignRole('admin');
-        Company::factory()->create(['name' => 'Alpha Ltd']);
-        Company::factory()->create(['name' => 'Beta Ltd']);
-        $this->actingAs($admin);
+        [$accountant] = $this->accountantWithTwoCompanies();
+        $this->actingAs($accountant);
 
         $this->get(route('dashboard'))
             ->assertOk()
@@ -123,10 +132,9 @@ class DashboardTest extends TestCase
             ->assertSee('Beta Ltd');
     }
 
-    // A non-admin with exactly one company is now sent straight into it (see
-    // test_a_client_is_sent_straight_into_their_own_company), so the picker
-    // itself is only ever rendered for an admin or a multi-company accountant.
-    public function test_the_picker_still_shows_for_an_admin_with_only_one_company(): void
+    // Админот повеќе не добива избирач на фирма — има сопствено табло. Види
+    // tests/Feature/AdminDashboardTest.php.
+    public function test_an_admin_never_gets_the_company_picker(): void
     {
         Company::factory()->create(['name' => 'Solo Ltd']);
         $admin = User::factory()->create();
@@ -135,20 +143,18 @@ class DashboardTest extends TestCase
 
         $this->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('Solo Ltd')
-            ->assertSee('Изберете фирма');
+            ->assertDontSee('Изберете фирма')
+            ->assertDontSee('Solo Ltd');
     }
 
     public function test_picking_a_company_links_to_its_own_dashboard(): void
     {
-        $admin = User::factory()->create();
-        $admin->assignRole('admin');
-        $company = Company::factory()->create(['name' => 'Alpha Ltd']);
-        $this->actingAs($admin);
+        [$accountant, $first] = $this->accountantWithTwoCompanies();
+        $this->actingAs($accountant);
 
         $this->get(route('dashboard'))
             ->assertOk()
-            ->assertSeeHtml(route('companies.dashboard', $company));
+            ->assertSeeHtml(route('companies.dashboard', $first));
     }
 
     public function test_it_does_not_show_companies_the_user_cannot_access(): void
@@ -172,10 +178,8 @@ class DashboardTest extends TestCase
 
     public function test_the_popup_has_no_dismiss_control(): void
     {
-        $admin = User::factory()->create();
-        $admin->assignRole('admin');
-        Company::factory()->create(['name' => 'Alpha Ltd']);
-        $this->actingAs($admin);
+        [$accountant] = $this->accountantWithTwoCompanies();
+        $this->actingAs($accountant);
 
         $this->get(route('dashboard'))
             ->assertOk()

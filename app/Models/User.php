@@ -43,6 +43,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'disabled_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
             'app_prodazba' => 'boolean',
             'app_finansii' => 'boolean',
