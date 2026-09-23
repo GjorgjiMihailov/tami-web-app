@@ -169,6 +169,38 @@ class CompanyUsersTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_an_accountant_can_reinvite_a_client_of_their_own_company(): void
+    {
+        Notification::fake();
+
+        $company = Company::factory()->create();
+        $accountant = $this->userWithRole('accountant');
+        $company->accountants()->attach($accountant);
+        $client = $this->userWithRole('client', $company);
+
+        Livewire::actingAs($accountant)
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->call('reinvite', $client->id)
+            ->assertHasNoErrors();
+
+        Notification::assertSentTo($client, UserInvitationNotification::class);
+    }
+
+    public function test_an_accountant_disables_and_restores_a_client_of_their_own_company(): void
+    {
+        $company = Company::factory()->create();
+        $accountant = $this->userWithRole('accountant');
+        $company->accountants()->attach($accountant);
+        $client = $this->userWithRole('client', $company);
+
+        Livewire::actingAs($accountant)
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->call('disable', $client->id)
+            ->assertHasNoErrors();
+
+        $this->assertNotNull($client->fresh()->disabled_at);
+    }
+
     public function test_a_client_cannot_reach_another_companys_users(): void
     {
         $mine = Company::factory()->create();
