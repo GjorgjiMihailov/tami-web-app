@@ -45,6 +45,77 @@ public class RequestRouterTests
         Assert.Equal(AllowedOrigin, response.Headers["Access-Control-Allow-Origin"]);
     }
 
+    // Екраните за е-Фактура живеат на под-домените на апликациите, не само на
+    // порталот — прелистувачот ја праќа адресата на страницата како извор.
+    [Theory]
+    [InlineData("https://portal.financebuddy.mk")]
+    [InlineData("https://prodazba.financebuddy.mk")]
+    [InlineData("https://finansii.financebuddy.mk")]
+    [InlineData("https://plata.financebuddy.mk")]
+    public void Health_EveryAppOrigin_Returns200AndEchoesThatSameOrigin(string origin)
+    {
+        RequestRouter router = CreateRouter();
+
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "GET",
+            Path = "/health",
+            OriginHeader = origin,
+            HostHeader = "127.0.0.1:9847",
+        });
+
+        Assert.Equal(200, response.StatusCode);
+        // Точно изворот што го пратил барањето, никогаш „*" и никогаш друг извор.
+        Assert.Equal(origin, response.Headers["Access-Control-Allow-Origin"]);
+    }
+
+    [Theory]
+    [InlineData("https://prodazba.financebuddy.mk.evil.example")]
+    [InlineData("https://evilprodazba.financebuddy.mk")]
+    [InlineData("https://evil.example/https://prodazba.financebuddy.mk")]
+    [InlineData("http://prodazba.financebuddy.mk")]
+    [InlineData("https://prodazba.financebuddy.mk:8443")]
+    [InlineData("https://PRODAZBA.financebuddy.mk")]
+    [InlineData("https://www.financebuddy.mk")]
+    [InlineData("https://financebuddy.mk")]
+    [InlineData("null")]
+    public void Health_LookAlikeOrigin_Returns403(string origin)
+    {
+        RequestRouter router = CreateRouter();
+
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "GET",
+            Path = "/health",
+            OriginHeader = origin,
+            HostHeader = "127.0.0.1:9847",
+        });
+
+        Assert.Equal(403, response.StatusCode);
+        Assert.DoesNotContain("Access-Control-Allow-Origin", response.Headers.Keys);
+    }
+
+    [Theory]
+    [InlineData("https://prodazba.financebuddy.mk")]
+    [InlineData("https://plata.financebuddy.mk")]
+    public void Sign_FromAnAppOrigin_ReachesTheSigningService(string origin)
+    {
+        var fake = new FakeSigningService();
+        RequestRouter router = CreateRouter(fake);
+
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "POST",
+            Path = "/sign",
+            OriginHeader = origin,
+            HostHeader = "127.0.0.1:9847",
+            Body = """{"data":"aGVsbG8"}""",
+        });
+
+        Assert.Equal(200, response.StatusCode);
+        Assert.Equal(origin, response.Headers["Access-Control-Allow-Origin"]);
+    }
+
     [Fact]
     public void Health_DisallowedOrigin_Returns403()
     {

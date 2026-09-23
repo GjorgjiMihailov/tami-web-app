@@ -7,7 +7,18 @@ namespace EfakturaBridge.Server;
 
 public sealed class RequestRouter
 {
-    private const string AllowedOrigin = "https://portal.financebuddy.mk";
+    // Порталот и апликациите (Продажба, Финансии, Плати) — екраните за е-Фактура
+    // живеат на под-домените, а прелистувачот ја праќа адресата на страницата
+    // како извор. Споредбата е точна и чувствителна на големина: ништо што само
+    // ЛИЧИ или СОДРЖИ дозволена адреса не поминува.
+    private static readonly string[] AllowedOrigins =
+    {
+        "https://portal.financebuddy.mk",
+        "https://prodazba.financebuddy.mk",
+        "https://finansii.financebuddy.mk",
+        "https://plata.financebuddy.mk",
+    };
+
     private static readonly string[] AllowedHosts = { "127.0.0.1:9847", "localhost:9847" };
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -58,12 +69,14 @@ public sealed class RequestRouter
     {
         if (origin is null)
             return new Dictionary<string, string>();
-        if (origin != AllowedOrigin)
+        if (Array.IndexOf(AllowedOrigins, origin) < 0)
             return null;
 
+        // Го враќаме точно изворот што го пратил барањето (никогаш „*"): пишувањето
+        // на еден извор не му дава право на друг.
         return new Dictionary<string, string>
         {
-            ["Access-Control-Allow-Origin"] = AllowedOrigin,
+            ["Access-Control-Allow-Origin"] = origin,
             ["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS",
             ["Access-Control-Allow-Headers"] = "Content-Type",
         };
