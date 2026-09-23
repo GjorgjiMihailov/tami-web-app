@@ -73,7 +73,7 @@ class CompanyModulesScreenTest extends TestCase
         $this->assertDatabaseHas('partners', ['id' => $partner->id]);
     }
 
-    public function test_an_accountant_cannot_change_the_modules(): void
+    public function test_an_accountant_can_change_modules_for_their_own_company(): void
     {
         $company = Company::factory()->create();
         $accountant = User::factory()->create();
@@ -82,6 +82,19 @@ class CompanyModulesScreenTest extends TestCase
 
         Livewire::actingAs($accountant)
             ->test(CompanyModules::class, ['company' => $company])
+            ->assertSuccessful();
+    }
+
+    public function test_an_accountant_cannot_change_modules_for_other_companies(): void
+    {
+        $company = Company::factory()->create();
+        $other = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+
+        Livewire::actingAs($accountant)
+            ->test(CompanyModules::class, ['company' => $other])
             ->assertForbidden();
     }
 
@@ -114,7 +127,7 @@ class CompanyModulesScreenTest extends TestCase
         $this->actingAs($client)->get(route('companies.modules', $company))->assertForbidden();
     }
 
-    public function test_an_accountant_cannot_reach_the_modules_tab(): void
+    public function test_an_accountant_not_assigned_to_the_company_cannot_reach_the_modules_tab(): void
     {
         $company = Company::factory()->create();
         $accountant = User::factory()->create();

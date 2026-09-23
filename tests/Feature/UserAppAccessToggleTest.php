@@ -115,6 +115,36 @@ class UserAppAccessToggleTest extends TestCase
         $this->assertFalse($accountant->fresh()->app_finansii);
     }
 
+    /**
+     * authorizeAppAccessChange() на OfficeUsers мора самата да го проверува
+     * актерот при секој повик — не смее да се потпира на тоа што mount()
+     * веќе провери админ при почетното вчитување. Livewire НЕ го повикува
+     * mount() при секој wire:click повик (само при почетното вчитување на
+     * екранот), па ако mount() некогаш се разлаба (на пример по образецот
+     * на CompanyUsers), само оваа проверка би останала да брани. Затоа
+     * екранот се вчитува како админ (mount() поминува), а потоа актерот се
+     * менува пред toggleApp() — за да се докаже дека токму
+     * authorizeAppAccessChange() одбива, не mount().
+     */
+    public function test_a_non_admin_cannot_toggle_an_app_on_office_users_even_after_the_screen_loaded_as_admin(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $target = User::factory()->create();
+        $target->assignRole('accountant');
+
+        $component = Livewire::actingAs($admin)->test(OfficeUsers::class);
+
+        $this->actingAs($accountant);
+
+        $component->call('toggleApp', $target->id, 'finansii')
+            ->assertStatus(403);
+
+        $this->assertTrue($target->fresh()->app_finansii);
+    }
+
     public function test_an_unknown_app_name_is_refused(): void
     {
         $company = Company::factory()->create();
@@ -197,5 +227,61 @@ class UserAppAccessToggleTest extends TestCase
             $html,
             'Админ треба да ги гледа квадратчињата живи и на Канцеларија.'
         );
+    }
+
+    public function test_an_accountant_of_the_company_toggles_an_app_for_a_client(): void
+    {
+        $company = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+
+        Livewire::actingAs($accountant)
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->call('toggleApp', $client->id, 'plata');
+
+        $this->assertFalse($client->fresh()->app_plata);
+    }
+
+    public function test_an_accountant_of_the_company_sees_live_checkboxes_a_stranger_accountant_sees_forbidden(): void
+    {
+        $company = Company::factory()->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+
+        $mine = User::factory()->create();
+        $mine->assignRole('accountant');
+        $company->accountants()->attach($mine);
+
+        $html = Livewire::actingAs($mine)
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->assertOk()
+            ->html();
+
+        $this->assertStringContainsString(
+            "wire:click=\"toggleApp({$client->id}, 'plata')\"",
+            $html,
+            'Сметководител на таа фирма треба да гледа живи квадратчиња, како админ.'
+        );
+    }
+
+    public function test_an_accountant_not_on_the_company_cannot_even_reach_the_screen_to_toggle(): void
+    {
+        // Истата причина: mount() (view()) веќе одбива пред toggleApp() да
+        // се повика — нема сценарио каде овој метод воопшто се стигнува за
+        // фирма на која актерот не е доделен.
+        $company = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('client');
+
+        Livewire::actingAs($accountant)
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->assertForbidden();
+
+        $this->assertTrue($client->fresh()->app_plata);
     }
 }

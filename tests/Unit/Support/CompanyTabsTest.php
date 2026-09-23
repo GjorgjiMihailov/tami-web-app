@@ -51,19 +51,34 @@ class CompanyTabsTest extends TestCase
         );
     }
 
-    public function test_a_client_does_not_see_the_modules_tab(): void
+    /**
+     * 'Модули' сега е 'roles' => null, исто како 'Профил' и 'Корисници' —
+     * CompanyTabs не е вистинската брана (CompanyPolicy::update е), затоа
+     * листата на картички повеќе не го крие линкот за клиент. Клиентот
+     * сепак не може да ја отвори (CompanyModules::mount() бара admin или
+     * доделен сметководител), исто како што ниту порано не постоеше по-строга
+     * заштита за 'Профил'/'Корисници' тука — само на екранот.
+     */
+    public function test_a_client_sees_all_three_tab_labels_but_cannot_open_modules(): void
     {
         $this->assertSame(
-            ['Профил', 'Корисници'],
+            ['Профил', 'Модули', 'Корисници'],
             $this->labels($this->userWithRole('client'), Company::factory()->create()),
         );
     }
 
-    public function test_an_accountant_does_not_see_the_modules_tab(): void
+    public function test_an_accountant_assigned_to_the_company_sees_the_modules_tab(): void
     {
+        // CompanyPolicy::update ги пушта таквите сметководители на екранот
+        // CompanyModules — 'Модули' мора да им е видлива, исто како 'Профил'
+        // и 'Корисници', инаку копчето постои, но никаде не води до него.
+        $company = Company::factory()->create();
+        $accountant = $this->userWithRole('accountant');
+        $company->accountants()->attach($accountant);
+
         $this->assertSame(
-            ['Профил', 'Корисници'],
-            $this->labels($this->userWithRole('accountant'), Company::factory()->create()),
+            ['Профил', 'Модули', 'Корисници'],
+            $this->labels($accountant, $company),
         );
     }
 }

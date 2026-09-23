@@ -99,6 +99,14 @@ class OfficeUsers extends Component
         return $this->officeUser($userId);
     }
 
+    protected function authorizeAppAccessChange(): void
+    {
+        // Намерно НЕ CompanyPolicy::update — оваа проверка мора да остане
+        // строго админ-само, без разлика како се менуваат правилата за
+        // фирмите. Ист образец како mount() погоре.
+        abort_unless(auth()->user()->hasRole('admin'), 403);
+    }
+
     public function render()
     {
         return view('livewire.office-users', [

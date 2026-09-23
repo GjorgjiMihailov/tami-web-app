@@ -21,7 +21,7 @@ class CompanyTabs
     {
         $tabs = [
             ['label' => 'Профил', 'route' => 'companies.profile', 'roles' => null, 'legalOnly' => false],
-            ['label' => 'Модули', 'route' => 'companies.modules', 'roles' => ['admin'], 'legalOnly' => true],
+            ['label' => 'Модули', 'route' => 'companies.modules', 'roles' => null, 'legalOnly' => true],
             ['label' => 'Корисници', 'route' => 'companies.users', 'roles' => null, 'legalOnly' => false],
         ];
 

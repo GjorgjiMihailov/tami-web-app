@@ -1,10 +1,16 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-4">Фирми</h1>
 
-    <x-tab-strip :tabs="[
-        ['label' => 'Клиенти', 'url' => route('companies.index'), 'active' => true],
-        ['label' => 'Канцеларија', 'url' => route('companies.office'), 'active' => false],
-    ]" />
+    @if (auth()->user()->hasRole('admin'))
+        <x-tab-strip :tabs="[
+            ['label' => 'Клиенти', 'url' => route('companies.index'), 'active' => true],
+            ['label' => 'Канцеларија', 'url' => route('companies.office'), 'active' => false],
+        ]" />
+    @else
+        <x-tab-strip :tabs="[
+            ['label' => 'Клиенти', 'url' => route('companies.index'), 'active' => true],
+        ]" />
+    @endif
 
     @can('create', \App\Models\Company::class)
         <x-card class="mb-6">
@@ -59,7 +65,9 @@
         <ul class="divide-y divide-gray-200">
             @foreach ($companies as $company)
                 <li class="py-3">
-                    <span class="font-medium">{{ $company->name }}</span>
+                    <a href="{{ route('companies.dashboard', $company) }}" wire:navigate class="font-medium text-brand hover:underline">
+                        {{ $company->name }}
+                    </a>
                 </li>
             @endforeach
         </ul>

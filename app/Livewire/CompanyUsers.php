@@ -35,7 +35,7 @@ class CompanyUsers extends Component
 
     public function addUser(): void
     {
-        Gate::authorize('create', User::class);
+        Gate::authorize('update', $this->company);
 
         $validated = $this->validate([
             'newName' => 'required|string|max:255',
@@ -87,7 +87,7 @@ class CompanyUsers extends Component
 
     public function assignAccountant(int|string $userId): void
     {
-        Gate::authorize('create', User::class);
+        Gate::authorize('update', $this->company);
 
         if ($userId === '' || $userId === null) {
             return;
@@ -103,7 +103,7 @@ class CompanyUsers extends Component
 
     public function removeAccountant(int $userId): void
     {
-        Gate::authorize('create', User::class);
+        Gate::authorize('update', $this->company);
 
         $this->company->accountants()->detach($userId);
     }
@@ -151,6 +151,11 @@ class CompanyUsers extends Component
     protected function appAccessTarget(int $userId): User
     {
         return $this->companyUser($userId);
+    }
+
+    protected function authorizeAppAccessChange(): void
+    {
+        Gate::authorize('update', $this->company);
     }
 
     public function render()

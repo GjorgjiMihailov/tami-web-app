@@ -30,7 +30,8 @@ class CompanyModules extends Component
 
     public function mount(Company $company): void
     {
-        // Модулите ги менува само админ — истото правило како за профилот.
+        // Админ секогаш. Сметководител — само за фирма на која работи —
+        // истото правило како за профилот (CompanyPolicy::update).
         Gate::authorize('update', $company);
 
         $this->company = $company;

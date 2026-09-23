@@ -5,7 +5,7 @@
 
     <x-invite-link-card :link="$inviteLink" :name="$invitedName" :mail-sent="$inviteMailSent" />
 
-    @can('create', \App\Models\User::class)
+    @can('update', $company)
         <x-card class="mb-6">
             <h2 class="font-semibold text-gray-700 mb-2">Отвори сметка</h2>
             <form wire:submit="addUser" class="flex flex-wrap gap-3 items-end">
@@ -61,7 +61,7 @@
                             <div class="flex items-center gap-3">
                                 @foreach (\App\Support\PortalApp::workApps() as $app)
                                     <label class="inline-flex items-center gap-1 text-xs text-gray-600">
-                                        @can('create', \App\Models\User::class)
+                                        @can('update', $company)
                                             <input type="checkbox"
                                                    wire:click="toggleApp({{ $user->id }}, '{{ $app->value }}')"
                                                    @checked($user->{$app->userColumn()})
@@ -107,7 +107,7 @@
             @forelse ($assigned as $accountant)
                 <li class="py-1 flex justify-between items-center">
                     <span>{{ $accountant->name }} <span class="text-gray-500">({{ $accountant->email }})</span></span>
-                    @can('create', \App\Models\User::class)
+                    @can('update', $company)
                         <button type="button" wire:click="removeAccountant({{ $accountant->id }})"
                                 class="text-red-600 hover:underline">Тргни</button>
                     @endcan
@@ -117,7 +117,7 @@
             @endforelse
         </ul>
 
-        @can('create', \App\Models\User::class)
+        @can('update', $company)
             @if ($available->isNotEmpty())
                 <div class="mt-3 flex gap-2 items-center">
                     <select wire:model="accountantToAssign" class="border-gray-300 rounded-md text-sm">
