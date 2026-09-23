@@ -16,7 +16,7 @@ class UserCompanyRelationsTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['admin', 'accountant', 'internal_client'] as $role) {
+        foreach (['admin', 'accountant', 'internal_client', 'freelancer_client'] as $role) {
             Role::findOrCreate($role);
         }
     }
@@ -50,5 +50,27 @@ class UserCompanyRelationsTest extends TestCase
         $this->assertCount(2, $accountant->assignedCompanies()->get());
         $this->assertTrue($accountant->assignedCompanies->contains($companyA));
         $this->assertTrue($accountant->assignedCompanies->contains($companyB));
+    }
+
+    public function test_is_client_is_true_for_both_client_roles(): void
+    {
+        $internal = User::factory()->create();
+        $internal->assignRole('internal_client');
+        $freelancer = User::factory()->create();
+        $freelancer->assignRole('freelancer_client');
+
+        $this->assertTrue($internal->isClient());
+        $this->assertTrue($freelancer->isClient());
+    }
+
+    public function test_is_client_is_false_for_office_roles(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+
+        $this->assertFalse($admin->isClient());
+        $this->assertFalse($accountant->isClient());
     }
 }

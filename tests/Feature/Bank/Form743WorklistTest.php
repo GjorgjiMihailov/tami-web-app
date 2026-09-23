@@ -24,6 +24,7 @@ class Form743WorklistTest extends TestCase
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
         Role::findOrCreate('internal_client');
+        Role::findOrCreate('freelancer_client');
     }
 
     private function individual(): Company
@@ -108,7 +109,7 @@ class Form743WorklistTest extends TestCase
     {
         $company = $this->individual();
         $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('internal_client');
+        $client->assignRole('freelancer_client');
         $this->actingAs($client);
 
         $this->get(route('form743.worklist'))->assertForbidden();

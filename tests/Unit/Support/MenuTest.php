@@ -21,11 +21,13 @@ class MenuTest extends TestCase
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
         Role::findOrCreate('internal_client');
+        Role::findOrCreate('freelancer_client');
     }
 
     private function userWithRole(string $role, ?Company $company = null): User
     {
-        $user = User::factory()->create($company && $role === 'internal_client' ? ['company_id' => $company->id] : []);
+        $isClientRole = in_array($role, ['internal_client', 'freelancer_client'], true);
+        $user = User::factory()->create($company && $isClientRole ? ['company_id' => $company->id] : []);
         $user->assignRole($role);
 
         return $user;
@@ -344,5 +346,14 @@ class MenuTest extends TestCase
         $admin = $this->userWithRole('admin');
 
         $this->assertNull(Menu::landingUrl($admin, $company, PortalApp::PLATA));
+    }
+
+    public function test_a_freelancer_client_sees_the_individual_tree_unchanged(): void
+    {
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+        $freelancer = $this->userWithRole('freelancer_client', $company);
+
+        $this->assertSame(['Излезни фактури', 'Кооперанти'], $this->itemLabels(Menu::for($freelancer, $company, PortalApp::PRODAZBA), 'sales'));
+        $this->assertSame(['743 обрасци'], $this->itemLabels(Menu::for($freelancer, $company, PortalApp::FINANSII), 'bank'));
     }
 }

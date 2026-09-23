@@ -27,6 +27,7 @@ class Form743UploadTest extends TestCase
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
         Role::findOrCreate('internal_client');
+        Role::findOrCreate('freelancer_client');
     }
 
     private function individual(): Company
@@ -37,7 +38,7 @@ class Form743UploadTest extends TestCase
     private function clientOf(Company $company): User
     {
         $user = User::factory()->create(['company_id' => $company->id]);
-        $user->assignRole('internal_client');
+        $user->assignRole('freelancer_client');
 
         return $user;
     }

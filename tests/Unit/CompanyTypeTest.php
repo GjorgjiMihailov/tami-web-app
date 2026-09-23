@@ -26,4 +26,14 @@ class CompanyTypeTest extends TestCase
         $this->assertSame('Правно лице', CompanyType::LEGAL->label());
         $this->assertSame('Физичко лице', CompanyType::INDIVIDUAL->label());
     }
+
+    public function test_legal_maps_to_internal_client(): void
+    {
+        $this->assertSame('internal_client', CompanyType::LEGAL->clientRole());
+    }
+
+    public function test_individual_maps_to_freelancer_client(): void
+    {
+        $this->assertSame('freelancer_client', CompanyType::INDIVIDUAL->clientRole());
+    }
 }

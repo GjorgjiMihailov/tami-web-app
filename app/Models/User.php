@@ -60,13 +60,19 @@ class User extends Authenticatable
         return $this->belongsToMany(Company::class);
     }
 
+    /** Клиентски профил е секој што ја носи една од двете клиентски улоги. */
+    public function isClient(): bool
+    {
+        return $this->hasAnyRole(['internal_client', 'freelancer_client']);
+    }
+
     public function visibleCompanies(): Builder
     {
         if ($this->hasRole('admin')) {
             return Company::query();
         }
 
-        if ($this->hasRole('internal_client')) {
+        if ($this->isClient()) {
             return Company::where('id', $this->company_id);
         }
 

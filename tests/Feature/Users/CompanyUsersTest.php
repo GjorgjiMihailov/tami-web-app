@@ -6,6 +6,7 @@ use App\Livewire\CompanyUsers;
 use App\Models\Company;
 use App\Models\User;
 use App\Notifications\UserInvitationNotification;
+use App\Support\CompanyType;
 use App\Support\UserInvitations;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,6 +25,7 @@ class CompanyUsersTest extends TestCase
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
         Role::findOrCreate('internal_client');
+        Role::findOrCreate('freelancer_client');
     }
 
     private function userWithRole(string $role, ?Company $company = null): User
@@ -386,5 +388,41 @@ class CompanyUsersTest extends TestCase
         } catch (\Throwable $e) {
             return get_class($e);
         }
+    }
+
+    public function test_a_new_user_on_a_legal_company_gets_internal_client(): void
+    {
+        $company = Company::factory()->create(); // default type = LEGAL
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        Livewire::actingAs($admin)
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->set('newName', 'Марија Петровска')
+            ->set('newEmail', 'marija@primer.mk')
+            ->call('addUser')
+            ->assertHasNoErrors();
+
+        $created = User::where('email', 'marija@primer.mk')->firstOrFail();
+        $this->assertTrue($created->hasRole('internal_client'));
+        $this->assertFalse($created->hasRole('freelancer_client'));
+    }
+
+    public function test_a_new_user_on_an_individual_company_gets_freelancer_client(): void
+    {
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        Livewire::actingAs($admin)
+            ->test(CompanyUsers::class, ['company' => $company])
+            ->set('newName', 'Иван Стоилков')
+            ->set('newEmail', 'ivan@primer.mk')
+            ->call('addUser')
+            ->assertHasNoErrors();
+
+        $created = User::where('email', 'ivan@primer.mk')->firstOrFail();
+        $this->assertTrue($created->hasRole('freelancer_client'));
+        $this->assertFalse($created->hasRole('internal_client'));
     }
 }

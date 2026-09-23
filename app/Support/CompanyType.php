@@ -36,4 +36,16 @@ enum CompanyType: string
     {
         return $this === self::INDIVIDUAL;
     }
+
+    /**
+     * Улогата што ја добива секој нов клиентски профил на фирма од овој тип.
+     * Заклучена врска — нема начин низ UI да се додели спротивното.
+     */
+    public function clientRole(): string
+    {
+        return match ($this) {
+            self::LEGAL => 'internal_client',
+            self::INDIVIDUAL => 'freelancer_client',
+        };
+    }
 }
