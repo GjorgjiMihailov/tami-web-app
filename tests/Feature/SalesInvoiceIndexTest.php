@@ -21,6 +21,7 @@ class SalesInvoiceIndexTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('internal_client');
+        Role::findOrCreate('freelancer_client');
     }
 
     public function test_it_lists_the_companys_invoices(): void
@@ -185,5 +186,47 @@ class SalesInvoiceIndexTest extends TestCase
         Livewire::actingAs($firmClient)
             ->test(SalesInvoiceIndex::class, ['company' => $firm])
             ->assertDontSee('Освежи статуси');
+    }
+
+    /** Свој режим + токен, но гледачот нема право да потпишува: контролите мора да се скриени. */
+    public function test_the_refresh_button_is_hidden_for_a_freelancer_client_even_with_an_own_token(): void
+    {
+        $company = Company::factory()->create([
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'EUJP-1',
+            'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('freelancer_client');
+
+        Livewire::actingAs($client)
+            ->test(SalesInvoiceIndex::class, ['company' => $company])
+            ->assertDontSee('Освежи статуси');
+    }
+
+    public function test_the_pdf_fetch_control_is_hidden_for_a_freelancer_client_but_shown_to_an_internal_client(): void
+    {
+        $company = Company::factory()->create([
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'EUJP-1',
+            'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+        $partner = Partner::factory()->for($company)->create();
+        SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => '2026-03-01',
+            'efaktura_ujp_status_code' => '03', 'efaktura_ujp_status_name' => 'Прифатена',
+        ]);
+        $freelancer = User::factory()->create(['company_id' => $company->id]);
+        $freelancer->assignRole('freelancer_client');
+        $internal = User::factory()->create(['company_id' => $company->id]);
+        $internal->assignRole('internal_client');
+
+        Livewire::actingAs($internal)
+            ->test(SalesInvoiceIndex::class, ['company' => $company])
+            ->assertSee('Преземи ПДФ');
+
+        Livewire::actingAs($freelancer)
+            ->test(SalesInvoiceIndex::class, ['company' => $company])
+            ->assertDontSee('Преземи ПДФ');
     }
 }

@@ -22,6 +22,7 @@ class SalesInvoiceShowEfakturaTest extends TestCase
         Role::findOrCreate('admin');
         Role::findOrCreate('accountant');
         Role::findOrCreate('internal_client');
+        Role::findOrCreate('freelancer_client');
     }
 
     public function test_sign_and_send_button_hidden_without_registered_device(): void
@@ -133,6 +134,24 @@ class SalesInvoiceShowEfakturaTest extends TestCase
         Livewire::actingAs($admin)
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
             ->assertSee('Испратена до УЈП')
+            ->assertDontSee('Потпиши и испрати до УЈП');
+    }
+
+    /** Свој режим + ЕУЈП-ид + токен, но гледачот нема право да потпишува: копчето мора да е скриено. */
+    public function test_sign_and_send_button_hidden_for_a_freelancer_client_even_with_an_own_token(): void
+    {
+        $company = Company::factory()->create([
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'EUJP-1',
+            'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => '2026-03-01']);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('freelancer_client');
+
+        Livewire::actingAs($client)
+            ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
             ->assertDontSee('Потпиши и испрати до УЈП');
     }
 }
