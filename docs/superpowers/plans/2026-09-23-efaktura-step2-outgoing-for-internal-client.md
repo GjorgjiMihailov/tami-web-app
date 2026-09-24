@@ -403,3 +403,27 @@
 - [ ] **Step 4: Run — expect PASS:** `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/CompanyProfileSigningDeviceTest.php tests/Feature/SalesInvoiceShowEfakturaTest.php tests/Feature/CompanyProfileTest.php tests/Feature/CompanyProfileEfakturaRequestTest.php tests/Feature/SalesInvoiceShowTest.php` (+ индекс-тестот). Потоа `npm run build` (Blade е менувана).
 
 - [ ] **Step 5: Commit** (порака на македонски: „Клиентот со свој токен го запишува токенот и ги гледа копчињата за е-Фактура").
+
+---
+
+## Task 4: Совет за клиент што уште нема запишан токен
+
+Финалниот наод на ревизијата на Task 3: `internal_client` во режим „свој токен" кој уште нема запишан токен не гледа НИШТО во е-Фактура блокот на фактурата (целиот блок е зад `signEfaktura`), па нема поим дека токенот се запишува на профилот на фирмата.
+
+**Files:**
+- Modify: `resources/views/livewire/invoicing/sales-invoice-show.blade.php` (ред ~80)
+- Test: `tests/Feature/SalesInvoiceShowEfakturaTest.php`
+
+- [ ] **Step 1: Failing tests** (додади во `SalesInvoiceShowEfakturaTest.php`; постојат helper-и/образец за компанија+фактура во истиот фајл; текстот на советот е точно: `Регистрирај потпишувачки уред за оваа компанија`):
+  - `internal_client` на `own` фирма со eUJP-id, БЕЗ запишан токен (`efaktura_token_serial_number` = null), потврдена фактура → ГО ГЛЕДА советот и НЕ го гледа копчето „Потпиши и испрати до УЈП".
+  - `internal_client` на `firm` фирма → НЕ го гледа советот.
+  - `freelancer_client` на `own` фирма без токен → НЕ го гледа советот.
+  - Постојните тестови за админ (совет кога нема уред) остануваат непроменети.
+
+- [ ] **Step 2: Run — expect FAIL** на првиот тест: `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/SalesInvoiceShowEfakturaTest.php`
+
+- [ ] **Step 3: Implement** — на редот ~80 замени `auth()->user()->can('signEfaktura', $company)` со `(auth()->user()->can('signEfaktura', $company) || auth()->user()->can('manageEfakturaDevice', $company))`. Внатрешните услови не се менуваат: кога нема запишан токен се прикажува постојниот совет, а копчето само кога `signEfaktura` навистина важи (внатрешниот `else` бара `hasEfakturaAccess()`, а клиентот со `manageEfakturaDevice` без токен никогаш не стигнува до него).
+
+- [ ] **Step 4: Run — expect PASS:** `php -d memory_limit=1G vendor/bin/phpunit tests/Feature/SalesInvoiceShowEfakturaTest.php tests/Feature/SalesInvoiceShowTest.php tests/Feature/SalesInvoiceIndexTest.php`. Докажи дека негативните тестови не се празни: привремено врати ја старата состојба (само `signEfaktura`) и види дека првиот тест паѓа; и привремено замени го `manageEfakturaDevice` со `true` и види дека `freelancer_client` тестот паѓа; врати.
+
+- [ ] **Step 5: Commit** (порака на македонски: „Клиент без запишан токен добива совет каде да го запише").
