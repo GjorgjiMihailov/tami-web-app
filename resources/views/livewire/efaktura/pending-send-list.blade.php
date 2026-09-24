@@ -1,8 +1,7 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-1">е-Фактури што чекаат праќање</h1>
     <p class="text-sm text-gray-500 mb-4">
-        Потврдени излезни фактури што сè уште не се пратени до УЈП. Праќањето се прави од самата
-        фактура, на компјутерот каде е приклучен токенот на фирмата.
+        Од апликацијата може да се прати само фактура на фирма со свој токен, и тоа од компјутерот каде е приклучен токенот на таа фирма. Фирмите во режим „канцеларија“ засега не може да праќаат од апликацијата.
     </p>
 
     <x-card>
@@ -30,7 +29,7 @@
                         <td class="py-1 text-right">{{ \App\Support\Format::money($invoice->grandTotal(), 'ден') }}</td>
                         <td class="py-1">
                             @if ($company->efaktura_credential_mode !== \App\Models\Company::EFAKTURA_MODE_OWN)
-                                <span class="text-gray-500">Токен на канцеларијата — праќањето не е поддржано</span>
+                                <span class="text-gray-500">Режим „канцеларија“ — праќањето не е поддржано</span>
                             @elseif ($company->hasEfakturaAccess())
                                 <x-badge status="active">Запишан</x-badge>
                             @else

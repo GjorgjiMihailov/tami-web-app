@@ -151,7 +151,7 @@ class EfakturaPendingSendListTest extends TestCase
         Livewire::actingAs($this->userWithRole('admin'))->test(PendingSendList::class)
             ->assertSee('Запишан')
             ->assertSee('Нема запишан токен')
-            ->assertSee('Токен на канцеларијата');
+            ->assertSee('Режим „канцеларија“ — праќањето не е поддржано');
     }
 
     public function test_clients_and_freelancers_are_refused(): void
