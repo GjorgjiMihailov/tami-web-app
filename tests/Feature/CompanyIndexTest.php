@@ -91,6 +91,7 @@ class CompanyIndexTest extends TestCase
             ->test(CompanyIndex::class)
             ->set('newName', 'Нов Клиент ДООЕЛ')
             ->set('newType', 'legal')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasNoErrors();
 
@@ -109,6 +110,7 @@ class CompanyIndexTest extends TestCase
             ->test(CompanyIndex::class)
             ->set('newName', 'Втора Фирма ДООЕЛ')
             ->set('newType', 'legal')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasNoErrors();
 
@@ -171,6 +173,7 @@ class CompanyIndexTest extends TestCase
             ->set('newName', 'New Client DOO')
             ->set('newType', 'legal')
             ->set('newTaxId', '4012345678901')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasNoErrors();
 
@@ -189,6 +192,7 @@ class CompanyIndexTest extends TestCase
 
         Livewire::test(CompanyIndex::class)
             ->set('newName', '')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasErrors(['newName' => 'required']);
     }
@@ -251,6 +255,7 @@ class CompanyIndexTest extends TestCase
         Livewire::test(CompanyIndex::class)
             ->set('newName', 'Марко Марковски')
             ->set('newType', 'individual')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasNoErrors();
 
@@ -275,6 +280,7 @@ class CompanyIndexTest extends TestCase
         Livewire::test(CompanyIndex::class)
             ->set('newName', 'ТЕСТ ДООЕЛ')
             ->set('newType', '')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasErrors('newType');
 
@@ -288,6 +294,7 @@ class CompanyIndexTest extends TestCase
         Livewire::test(CompanyIndex::class)
             ->set('newName', 'ТЕСТ ДООЕЛ')
             ->set('newType', 'something-else')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasErrors('newType');
     }
@@ -315,6 +322,7 @@ class CompanyIndexTest extends TestCase
         Livewire::test(CompanyIndex::class)
             ->set('newName', 'Марко Марковски')
             ->set('newType', 'individual')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasNoErrors();
 
@@ -328,6 +336,7 @@ class CompanyIndexTest extends TestCase
         Livewire::test(CompanyIndex::class)
             ->set('newName', 'ТЕСТ ДООЕЛ')
             ->set('newType', 'legal')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasNoErrors();
 
@@ -348,6 +357,7 @@ class CompanyIndexTest extends TestCase
         Livewire::test(CompanyIndex::class)
             ->set('newName', 'Ана Анастасова')
             ->set('newType', 'individual')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasNoErrors();
 
@@ -385,6 +395,7 @@ class CompanyIndexTest extends TestCase
             ->set('newName', 'Марко Марковски')
             ->set('newType', 'individual')
             ->set('newEmbg', '3101980455019')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasNoErrors();
 
@@ -402,6 +413,7 @@ class CompanyIndexTest extends TestCase
             ->set('newName', 'Марко Марковски')
             ->set('newType', 'individual')
             ->set('newEmbg', '1234567890123')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasErrors('newEmbg');
 
@@ -424,6 +436,7 @@ class CompanyIndexTest extends TestCase
             ->set('newType', 'legal')
             ->set('newTaxId', '4012345678901')
             ->set('newType', 'individual')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasNoErrors();
 
@@ -439,6 +452,7 @@ class CompanyIndexTest extends TestCase
             ->set('newType', 'individual')
             ->set('newEmbg', '3101980455019')
             ->set('newType', 'legal')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasNoErrors();
 
@@ -455,6 +469,7 @@ class CompanyIndexTest extends TestCase
         Livewire::test(CompanyIndex::class)
             ->set('newType', CompanyType::LEGAL->value)
             ->set('newName', 'Тест ДООЕЛ')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasNoErrors();
 
@@ -475,6 +490,7 @@ class CompanyIndexTest extends TestCase
         Livewire::test(CompanyIndex::class)
             ->set('newType', CompanyType::LEGAL->value)
             ->set('newName', 'Без материјално ДОО')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasNoErrors();
 
@@ -494,6 +510,7 @@ class CompanyIndexTest extends TestCase
             ->set('newType', CompanyType::LEGAL->value)
             ->set('newType', CompanyType::INDIVIDUAL->value)
             ->set('newName', 'Петар Петров')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasNoErrors();
 
@@ -505,16 +522,18 @@ class CompanyIndexTest extends TestCase
         $this->assertTrue($company->uses_finance);
     }
 
-    public function test_creating_a_company_lands_on_its_profile(): void
+    public function test_creating_a_company_keeps_the_invite_link_on_screen(): void
     {
         Livewire::actingAs($this->admin())
             ->test(CompanyIndex::class)
             ->set('newType', CompanyType::LEGAL->value)
             ->set('newName', 'ТЕСТ ДООЕЛ')
             ->set('newTaxId', '4080012345678')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany')
             ->assertHasNoErrors()
-            ->assertRedirect(route('companies.profile', Company::where('name', 'ТЕСТ ДООЕЛ')->firstOrFail()).'?uredi=1');
+            ->assertNoRedirect()
+            ->assertSet('inviteLink', fn ($link) => filled($link));
     }
 
     public function test_a_new_company_starts_with_every_module_on(): void
@@ -523,6 +542,7 @@ class CompanyIndexTest extends TestCase
             ->test(CompanyIndex::class)
             ->set('newType', CompanyType::LEGAL->value)
             ->set('newName', 'ТЕСТ ДООЕЛ')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany');
 
         $company = Company::where('name', 'ТЕСТ ДООЕЛ')->firstOrFail();
@@ -540,6 +560,7 @@ class CompanyIndexTest extends TestCase
             ->test(CompanyIndex::class)
             ->set('newType', CompanyType::INDIVIDUAL->value)
             ->set('newName', 'Петар Петров')
+            ->set('newEmail', 'k'.uniqid().'@klient.test')
             ->call('addCompany');
 
         $this->assertFalse(
@@ -585,5 +606,17 @@ class CompanyIndexTest extends TestCase
             ->assertHasErrors('newEmail');
 
         $this->assertDatabaseMissing('companies', ['name' => 'НЕКОЈ ДООЕЛ']);
+    }
+
+    public function test_the_client_email_is_required(): void
+    {
+        Livewire::actingAs($this->admin())
+            ->test(CompanyIndex::class)
+            ->set('newType', CompanyType::LEGAL->value)
+            ->set('newName', 'БЕЗ ПОШТА ДООЕЛ')
+            ->call('addCompany')
+            ->assertHasErrors(['newEmail' => 'required']);
+
+        $this->assertDatabaseMissing('companies', ['name' => 'БЕЗ ПОШТА ДООЕЛ']);
     }
 }

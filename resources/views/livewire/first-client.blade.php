@@ -2,10 +2,17 @@
     <x-card padding="p-6">
         <h1 class="text-xl font-bold text-ink">Внесете го вашиот прв клиент</h1>
         <p class="mt-2 text-sm text-stone">
-            Сè уште немате ниту една фирма на која работите. Внесете ја првата тука и
-            веднаш преминувате на нејзиниот профил, каде ги дополнувате остатокот од
-            податоците.
+            Сè уште немате ниту една фирма на која работите. Внесете ја првата тука
+            заедно со е-поштата на клиентот — тој добива покана за најава — а потоа
+            го дополнувате остатокот од податоците на профилот.
         </p>
+
+        <x-invite-link-card :link="$inviteLink" :name="$invitedName" :mail-sent="$inviteMailSent" />
+        @if ($createdCompany && $inviteLink)
+            <p class="mt-4 text-sm">
+                <a href="{{ route('companies.profile', $createdCompany).'?uredi=1' }}" wire:navigate class="text-brand hover:underline">Отвори го профилот и дополни ги податоците →</a>
+            </p>
+        @endif
 
         <form wire:submit="save" class="mt-6 space-y-4">
             <div>
@@ -41,6 +48,20 @@
                     <x-input-error :messages="$errors->get('embg')" class="mt-2" />
                 </div>
             @endif
+
+            @if ($type === \App\Support\CompanyType::LEGAL->value)
+                <div>
+                    <x-input-label for="first-client-contact" value="Лице за најава (име)" />
+                    <x-text-input id="first-client-contact" wire:model="contactName" type="text" class="mt-1 block w-full" />
+                </div>
+            @endif
+
+            <div>
+                <x-input-label for="first-client-email" value="Е-пошта на клиентот (за најава)" />
+                <x-text-input id="first-client-email" wire:model="email" type="text" class="mt-1 block w-full" />
+                <p class="mt-1 text-xs text-stone">Задолжително. Клиентот добива покана да си постави лозинка и да работи.</p>
+                <x-input-error :messages="$errors->get('email')" class="mt-2" />
+            </div>
 
             <x-primary-button class="press">Зачувај и продолжи</x-primary-button>
         </form>

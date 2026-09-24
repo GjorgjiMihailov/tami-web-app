@@ -2,10 +2,12 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\SendsInvitations;
 use App\Models\Company;
 use App\Rules\ValidEmbg;
 use App\Services\CompanyCreator;
 use App\Support\CompanyType;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -25,6 +27,8 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class FirstClient extends Component
 {
+    use SendsInvitations;
+
     public string $name = '';
 
     public string $type = '';
@@ -32,6 +36,12 @@ class FirstClient extends Component
     public string $taxId = '';
 
     public string $embg = '';
+
+    public string $contactName = '';
+
+    public string $email = '';
+
+    public ?int $createdCompanyId = null;
 
     public function mount()
     {
@@ -61,21 +71,44 @@ class FirstClient extends Component
             'embg' => $this->type === CompanyType::INDIVIDUAL->value && $this->embg !== ''
                 ? ['nullable', 'max:13', new ValidEmbg]
                 : ['nullable', 'max:13'],
+            'contactName' => 'nullable|string|max:255',
+            // Без е-пошта клиентот нема како да се најави и да работи.
+            'email' => 'required|email|max:255|unique:users,email',
+        ], [
+            'email.unique' => 'Оваа е-пошта веќе има сметка во порталот.',
         ]);
 
-        $company = CompanyCreator::create(
-            $validated['name'],
-            CompanyType::from($validated['type']),
-            $validated['taxId'],
-            $validated['embg'],
-            auth()->user(),
-        );
+        $type = CompanyType::from($validated['type']);
 
-        return $this->redirect(route('companies.profile', $company), navigate: true);
+        $account = DB::transaction(function () use ($validated, $type) {
+            $company = CompanyCreator::create(
+                $validated['name'],
+                $type,
+                $validated['taxId'],
+                $validated['embg'],
+                auth()->user(),
+            );
+
+            return CompanyCreator::createLogin(
+                $company,
+                $type->isLegal() && filled($validated['contactName'])
+                    ? $validated['contactName']
+                    : $validated['name'],
+                $validated['email'],
+            );
+        });
+
+        // Линкот на поканата се гледа само еднаш, па се остава на овој екран.
+        $this->createdCompanyId = $account->company_id;
+        $this->sendInvitation($account);
+        $this->reset(['name', 'type', 'taxId', 'embg', 'contactName', 'email']);
     }
 
     public function render()
     {
-        return view('livewire.first-client', ['types' => CompanyType::cases()]);
+        return view('livewire.first-client', [
+            'types' => CompanyType::cases(),
+            'createdCompany' => $this->createdCompanyId ? Company::find($this->createdCompanyId) : null,
+        ]);
     }
 }

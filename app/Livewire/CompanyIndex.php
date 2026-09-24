@@ -4,13 +4,11 @@ namespace App\Livewire;
 
 use App\Livewire\Concerns\SendsInvitations;
 use App\Models\Company;
-use App\Models\User;
 use App\Rules\ValidEmbg;
 use App\Services\CompanyCreator;
 use App\Support\CompanyType;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -54,10 +52,9 @@ class CompanyIndex extends Component
             // и кога типот е физичко лице — истиот образец како во
             // App\Livewire\CompanyProfile::save(). Профил може да се создаде и
             // без ЕМБГ, па да се дополни подоцна во профилот.
-            // Е-пошта на клиентот: ако е внесена, фирмата добива сметка за
-            // најава (покана), преку која клиентот внесува фактури, потпишува,
-            // качува изводи.
-            'newEmail' => 'nullable|email|max:255|unique:users,email',
+            // Е-пошта на клиентот: фирмата добива сметка за најава (покана),
+            // преку која клиентот внесува фактури, потпишува, качува изводи.
+            'newEmail' => 'required|email|max:255|unique:users,email',
             'newContactName' => 'nullable|string|max:255',
             'newEmbg' => $this->newType === CompanyType::INDIVIDUAL->value && $this->newEmbg !== ''
                 ? ['nullable', 'max:13', new ValidEmbg]
@@ -71,7 +68,7 @@ class CompanyIndex extends Component
         // листа се разидуваат, а разликата се гледа дури на печатена фактура.
         $type = CompanyType::from($validated['newType']);
 
-        $result = DB::transaction(function () use ($validated, $type) {
+        $account = DB::transaction(function () use ($validated, $type) {
             $company = CompanyCreator::create(
                 $validated['newName'],
                 $type,
@@ -80,40 +77,21 @@ class CompanyIndex extends Component
                 auth()->user(),
             );
 
-            if (blank($validated['newEmail'])) {
-                return $company;
-            }
-
-            $account = User::create([
+            return CompanyCreator::createLogin(
+                $company,
                 // Кај физичко лице фирмата и човекот се исто име.
-                'name' => $type->isLegal() && filled($validated['newContactName'])
+                $type->isLegal() && filled($validated['newContactName'])
                     ? $validated['newContactName']
                     : $validated['newName'],
-                'email' => $validated['newEmail'],
-                // Со оваа лозинка не може да се влезе; вистинска се поставува
-                // преку поканата.
-                'password' => Str::random(64),
-            ]);
-            // company_id не е во #[Fillable] на моделот.
-            $account->forceFill(['company_id' => $company->id])->save();
-            $account->assignRole($type->clientRole());
-
-            return $account;
+                $validated['newEmail'],
+            );
         });
 
         $this->reset(['newName', 'newType', 'newTaxId', 'newEmbg', 'newContactName', 'newEmail']);
 
-        if ($result instanceof Company) {
-            // Остатокот од податоците се дополнува на профилот, веднаш во
-            // уредување — таму е и единствената форма за нив.
-            $this->redirect(route('companies.profile', $result).'?uredi=1', navigate: true);
-
-            return;
-        }
-
         // Линкот на поканата се гледа само еднаш, па се остава на овој екран.
-        $this->createdCompanyId = $result->company_id;
-        $this->sendInvitation($result);
+        $this->createdCompanyId = $account->company_id;
+        $this->sendInvitation($account);
     }
 
     public function render()

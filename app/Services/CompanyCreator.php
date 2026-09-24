@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Company;
 use App\Models\User;
 use App\Support\CompanyType;
+use Illuminate\Support\Str;
 
 /**
  * Единственото место што создава фирма.
@@ -58,5 +59,24 @@ class CompanyCreator
         }
 
         return $company;
+    }
+
+    /**
+     * Сметката за најава на фирмата — клиентот преку неа внесува фактури,
+     * потпишува, качува изводи. Лозинка нема: вистинска се поставува преку
+     * поканата (со оваа случајна не може да се влезе).
+     */
+    public static function createLogin(Company $company, string $name, string $email): User
+    {
+        $user = User::create([
+            'name' => $name,
+            'email' => $email,
+            'password' => Str::random(64),
+        ]);
+        // company_id не е во #[Fillable] на моделот.
+        $user->forceFill(['company_id' => $company->id])->save();
+        $user->assignRole($company->type->clientRole());
+
+        return $user;
     }
 }

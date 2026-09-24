@@ -71,7 +71,7 @@
                 <div>
                     <x-input-label for="newEmail" value="Е-пошта на клиентот (за најава)" />
                     <x-text-input id="newEmail" wire:model="newEmail" class="w-64" />
-                    <p class="text-xs text-gray-500">Клиентот добива покана да си постави лозинка.</p>
+                    <p class="text-xs text-gray-500">Задолжително. Клиентот добива покана да си постави лозинка.</p>
                     @error('newEmail') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <x-primary-button type="submit">Додади фирма</x-primary-button>

@@ -86,6 +86,7 @@ class FirstClientTest extends TestCase
             ->set('name', 'ПРВ КЛИЕНТ ДООЕЛ')
             ->set('type', CompanyType::LEGAL->value)
             ->set('taxId', '4080012345678')
+            ->set('email', 'k'.uniqid().'@klient.test')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -98,7 +99,28 @@ class FirstClientTest extends TestCase
         );
     }
 
-    public function test_saving_redirects_to_the_company_profile(): void
+    public function test_saving_creates_the_client_login_and_keeps_the_invite_link(): void
+    {
+        $this->actingAs($this->accountantWithoutCompanies());
+
+        Livewire::test(FirstClient::class)
+            ->set('name', 'ПРВ КЛИЕНТ ДООЕЛ')
+            ->set('type', CompanyType::LEGAL->value)
+            ->set('contactName', 'Петар Петров')
+            ->set('email', 'petar@prv.test')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertNoRedirect()
+            ->assertSet('inviteLink', fn ($link) => filled($link));
+
+        $company = Company::where('name', 'ПРВ КЛИЕНТ ДООЕЛ')->firstOrFail();
+        $login = User::where('email', 'petar@prv.test')->firstOrFail();
+        $this->assertSame($company->id, $login->company_id);
+        $this->assertTrue($login->hasRole('internal_client'));
+        $this->assertSame('Петар Петров', $login->name);
+    }
+
+    public function test_the_email_is_required(): void
     {
         $this->actingAs($this->accountantWithoutCompanies());
 
@@ -106,7 +128,9 @@ class FirstClientTest extends TestCase
             ->set('name', 'ПРВ КЛИЕНТ ДООЕЛ')
             ->set('type', CompanyType::LEGAL->value)
             ->call('save')
-            ->assertRedirect(route('companies.profile', Company::where('name', 'ПРВ КЛИЕНТ ДООЕЛ')->firstOrFail()));
+            ->assertHasErrors(['email' => 'required']);
+
+        $this->assertDatabaseMissing('companies', ['name' => 'ПРВ КЛИЕНТ ДООЕЛ']);
     }
 
     public function test_an_individual_is_not_created_as_a_vat_payer(): void
@@ -117,6 +141,7 @@ class FirstClientTest extends TestCase
             ->set('name', 'Петар Петров')
             ->set('type', CompanyType::INDIVIDUAL->value)
             ->set('embg', '0101990450006')
+            ->set('email', 'k'.uniqid().'@klient.test')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -130,6 +155,7 @@ class FirstClientTest extends TestCase
         Livewire::test(FirstClient::class)
             ->set('name', '')
             ->set('type', CompanyType::LEGAL->value)
+            ->set('email', 'k'.uniqid().'@klient.test')
             ->call('save')
             ->assertHasErrors(['name' => 'required']);
     }
@@ -144,6 +170,7 @@ class FirstClientTest extends TestCase
             ->set('name', 'Петар Петров')
             ->set('type', CompanyType::INDIVIDUAL->value)
             ->set('embg', '3101980455018')
+            ->set('email', 'k'.uniqid().'@klient.test')
             ->call('save')
             ->assertHasErrors('embg');
     }
