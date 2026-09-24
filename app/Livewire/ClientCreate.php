@@ -35,6 +35,8 @@ class ClientCreate extends Component
 
     public string $name = '';
 
+    public string $firmName = '';
+
     public string $taxId = '';
 
     public string $embg = '';
@@ -61,17 +63,23 @@ class ClientCreate extends Component
         $emailMessages = ['email.unique' => 'Оваа е-пошта веќе има сметка во порталот.'];
 
         if ($this->kind === 'smetkovoditel') {
-            $validated = $this->validate(['name' => 'required|string|max:255', 'email' => $emailRule], $emailMessages);
+            $validated = $this->validate([
+                'name' => 'required|string|max:255',
+                'firmName' => 'nullable|string|max:255',
+                'email' => $emailRule,
+            ], $emailMessages);
 
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => Str::random(64),
             ]);
+            // firm_name не е во #[Fillable] на моделот.
+            $user->forceFill(['firm_name' => $validated['firmName'] ?: null])->save();
             $user->assignRole('accountant');
 
             $this->sendInvitation($user);
-            $this->reset(['name', 'email']);
+            $this->reset(['name', 'firmName', 'email']);
 
             return;
         }

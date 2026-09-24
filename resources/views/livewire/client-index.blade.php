@@ -25,17 +25,23 @@
                 @foreach ($accountants as $accountant)
                     <li class="py-3" wire:key="acc-{{ $accountant->id }}">
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="font-medium text-gray-800">{{ $accountant->name }}</span>
+                            <span class="font-medium text-gray-800">{{ $accountant->firm_name ?: $accountant->name }}</span>
                             <x-badge status="active">Сметководител</x-badge>
                             @if ($accountant->accessStatus() !== 'active')
                                 <x-badge status="pending">{{ $accountant->accessStatus() === 'invited' ? 'Поканет' : 'Не е активен' }}</x-badge>
                             @endif
                         </div>
                         <p class="text-sm text-gray-500 mt-0.5">
+                            @if ($accountant->firm_name)
+                                {{ $accountant->name }} ·
+                            @endif
                             @if ($accountant->assignedCompanies->isEmpty())
-                                Нема доделени клиенти.
+                                Нема доделени фирми.
                             @else
-                                Работи за: {{ $accountant->assignedCompanies->pluck('name')->join(', ') }}
+                                Работи за:
+                                @foreach ($accountant->assignedCompanies as $worked)
+                                    <a href="{{ route('companies.profile', $worked) }}" wire:navigate class="text-brand hover:underline">{{ $worked->name }}</a>@if (! $loop->last), @endif
+                                @endforeach
                             @endif
                         </p>
                     </li>

@@ -30,7 +30,10 @@ class ClientIndex extends Component
             ->orderBy('name')
             ->get();
 
+        // „Клиенти" се профилите на порталот. Фирмите без своја сметка ги
+        // работи сметководител — тие се гледаат под него („Работи за"), не тука.
         $companies = Company::with(['accountants' => fn ($query) => $query->orderBy('name')])
+            ->whereIn('id', User::whereNotNull('company_id')->select('company_id'))
             ->orderBy('name')
             ->get();
 

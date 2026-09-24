@@ -51,18 +51,64 @@ class ClientsPageTest extends TestCase
         $accountant->update(['name' => 'Ana Sметководител']);
         $company = Company::factory()->create(['name' => 'Alpha Ltd']);
         $company->accountants()->attach($accountant);
-        Company::factory()->create(['name' => 'Lonely Ltd']);
+        $lonely = Company::factory()->create(['name' => 'Lonely Ltd']);
+        // Само фирма со своја сметка е клиент на порталот.
+        foreach ([$company, $lonely] as $c) {
+            User::factory()->create(['company_id' => $c->id])->assignRole('internal_client');
+        }
 
         $this->actingAs($this->userWithRole('admin'));
 
         Livewire::test(ClientIndex::class)
             ->assertSee('Сметководител')
-            ->assertSee('Работи за: Alpha Ltd')
+            ->assertSee('Работи за:')
+            ->assertSee('Alpha Ltd')
             ->assertSee('Го води: Ana Sметководител')
             ->assertSee('Без сметководител')
             ->assertSee('Нов сметководител')
             ->assertSee('Ново правно лице')
             ->assertSee('Ново физичко лице');
+    }
+
+    public function test_a_company_without_its_own_account_is_not_a_portal_client(): void
+    {
+        $accountant = $this->userWithRole('accountant');
+        $worked = Company::factory()->create(['name' => 'Worked Ltd']);
+        $worked->accountants()->attach($accountant);
+
+        $this->actingAs($this->userWithRole('admin'));
+
+        // Се гледа само под сметководителот, не како посебен клиент.
+        Livewire::test(ClientIndex::class)
+            ->assertSee('Worked Ltd')
+            ->assertDontSee('Без сметководител')
+            ->assertDontSee('Го води:');
+    }
+
+    public function test_an_accountant_can_be_created_with_an_optional_firm_name(): void
+    {
+        $this->actingAs($this->userWithRole('admin'));
+
+        Livewire::test(ClientCreate::class, ['kind' => 'smetkovoditel'])
+            ->set('name', 'Ana Anevska')
+            ->set('firmName', 'Ana Consulting DOO')
+            ->set('email', 'ana@firm.test')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $accountant = User::where('email', 'ana@firm.test')->firstOrFail();
+        $this->assertSame('Ana Consulting DOO', $accountant->firm_name);
+        $this->assertSame(0, Company::count());
+
+        Livewire::test(ClientCreate::class, ['kind' => 'smetkovoditel'])
+            ->set('name', 'Bojan Bojanov')
+            ->set('email', 'bojan@firm.test')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertNull(User::where('email', 'bojan@firm.test')->firstOrFail()->firm_name);
+
+        Livewire::test(ClientIndex::class)->assertSee('Ana Consulting DOO');
     }
 
     public function test_only_the_admin_may_open_the_pages(): void

@@ -12,7 +12,13 @@
                 @error('name') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
 
-            @if ($kind === 'pravno-lice')
+            @if ($kind === 'smetkovoditel')
+                <div>
+                    <x-input-label for="firmName" value="Назив на сметководствената фирма (по избор)" />
+                    <x-text-input id="firmName" wire:model="firmName" class="w-full" />
+                    @error('firmName') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                </div>
+            @elseif ($kind === 'pravno-lice')
                 <div>
                     <x-input-label for="taxId" value="ЕДБ" />
                     <x-text-input id="taxId" wire:model="taxId" class="w-48" />
