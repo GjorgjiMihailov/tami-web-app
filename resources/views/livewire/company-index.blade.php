@@ -12,6 +12,14 @@
         ]" />
     @endif
 
+    <x-invite-link-card :link="$inviteLink" :name="$invitedName" :mail-sent="$inviteMailSent" />
+    @if ($createdCompany && $inviteLink)
+        <p class="mb-4 text-sm">
+            Фирмата е создадена.
+            <a href="{{ route('companies.profile', $createdCompany).'?uredi=1' }}" wire:navigate class="text-brand hover:underline">Отвори го профилот и дополни ги податоците →</a>
+        </p>
+    @endif
+
     @can('create', \App\Models\Company::class)
         <x-card class="mb-6">
             <h2 class="font-semibold text-gray-700 mb-2">Додади фирма</h2>
@@ -54,6 +62,18 @@
                         @error('newEmbg') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                     </div>
                 @endif
+                @if ($newType === \App\Support\CompanyType::LEGAL->value)
+                    <div>
+                        <x-input-label for="newContactName" value="Лице за најава (име)" />
+                        <x-text-input id="newContactName" wire:model="newContactName" class="w-48" />
+                    </div>
+                @endif
+                <div>
+                    <x-input-label for="newEmail" value="Е-пошта на клиентот (за најава)" />
+                    <x-text-input id="newEmail" wire:model="newEmail" class="w-64" />
+                    <p class="text-xs text-gray-500">Клиентот добива покана да си постави лозинка.</p>
+                    @error('newEmail') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                </div>
                 <x-primary-button type="submit">Додади фирма</x-primary-button>
             </form>
         </x-card>

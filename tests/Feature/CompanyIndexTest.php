@@ -514,7 +514,7 @@ class CompanyIndexTest extends TestCase
             ->set('newTaxId', '4080012345678')
             ->call('addCompany')
             ->assertHasNoErrors()
-            ->assertRedirect(route('companies.profile', Company::where('name', 'ТЕСТ ДООЕЛ')->firstOrFail()));
+            ->assertRedirect(route('companies.profile', Company::where('name', 'ТЕСТ ДООЕЛ')->firstOrFail()).'?uredi=1');
     }
 
     public function test_a_new_company_starts_with_every_module_on(): void
@@ -545,5 +545,45 @@ class CompanyIndexTest extends TestCase
         $this->assertFalse(
             Company::where('name', 'Петар Петров')->firstOrFail()->is_vat_registered
         );
+    }
+
+    public function test_an_accountant_creating_a_firm_with_an_email_also_creates_the_client_login(): void
+    {
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+
+        Livewire::actingAs($accountant)
+            ->test(CompanyIndex::class)
+            ->set('newType', CompanyType::LEGAL->value)
+            ->set('newName', 'КЛИЕНТ ДООЕЛ')
+            ->set('newContactName', 'Петар Петров')
+            ->set('newEmail', 'petar@klient.test')
+            ->call('addCompany')
+            ->assertHasNoErrors()
+            ->assertSet('inviteMailSent', fn ($sent) => is_bool($sent));
+
+        $company = Company::where('name', 'КЛИЕНТ ДООЕЛ')->firstOrFail();
+        $this->assertTrue($company->accountants->contains($accountant));
+
+        $login = User::where('email', 'petar@klient.test')->firstOrFail();
+        $this->assertSame($company->id, $login->company_id);
+        $this->assertTrue($login->hasRole('internal_client'));
+        $this->assertSame('Петар Петров', $login->name);
+        $this->assertNotNull($login->latestInvitation);
+    }
+
+    public function test_a_taken_email_creates_no_firm(): void
+    {
+        User::factory()->create(['email' => 'taken@klient.test']);
+
+        Livewire::actingAs($this->admin())
+            ->test(CompanyIndex::class)
+            ->set('newType', CompanyType::LEGAL->value)
+            ->set('newName', 'НЕКОЈ ДООЕЛ')
+            ->set('newEmail', 'taken@klient.test')
+            ->call('addCompany')
+            ->assertHasErrors('newEmail');
+
+        $this->assertDatabaseMissing('companies', ['name' => 'НЕКОЈ ДООЕЛ']);
     }
 }

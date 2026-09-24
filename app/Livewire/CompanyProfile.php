@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Company;
+use App\Models\PayrollCode;
 use App\Rules\ValidEmbg;
 use App\Support\CompanyTabs;
 use App\Support\Payroll\MpinObvrznik;
@@ -58,11 +59,27 @@ class CompanyProfile extends Component
 
     public string $editDirectorName = '';
 
+    public string $editDirectorEmbg = '';
+
     public string $editDirectorPhone = '';
 
     public string $editDirectorEmail = '';
 
     public bool $editIsVatRegistered = true;
+
+    public bool $editUsesForeignCurrency = false;
+
+    public string $editPayrollObligationCode = '';
+
+    public string $editPayrollAuthorizedPerson = '';
+
+    public string $editPayrollPhonePrefix = '';
+
+    public string $editPayrollPhone = '';
+
+    public string $editPayrollMobile = '';
+
+    public string $editPayrollMunicipalityCode = '';
 
     public array $bankAccounts = [];
 
@@ -80,6 +97,11 @@ class CompanyProfile extends Component
     {
         Gate::authorize('view', $company);
         $this->company = $company;
+
+        // Нова фирма се отвора веднаш во уредување (?uredi=1).
+        if (request()->boolean('uredi') && auth()->user()->can('update', $company)) {
+            $this->startEdit();
+        }
     }
 
     public function startEdit(): void
@@ -103,9 +125,17 @@ class CompanyProfile extends Component
         $this->editPostalCode = (string) $this->company->postal_code;
         $this->editCity = (string) $this->company->city;
         $this->editDirectorName = (string) $this->company->director_name;
+        $this->editDirectorEmbg = (string) $this->company->director_embg;
         $this->editDirectorPhone = (string) $this->company->director_phone;
         $this->editDirectorEmail = (string) $this->company->director_email;
         $this->editIsVatRegistered = $this->company->is_vat_registered;
+        $this->editUsesForeignCurrency = $this->company->uses_foreign_currency;
+        $this->editPayrollObligationCode = (string) $this->company->payroll_obligation_code;
+        $this->editPayrollAuthorizedPerson = (string) $this->company->payroll_authorized_person;
+        $this->editPayrollPhonePrefix = (string) $this->company->payroll_phone_prefix;
+        $this->editPayrollPhone = (string) $this->company->payroll_phone;
+        $this->editPayrollMobile = (string) $this->company->payroll_mobile;
+        $this->editPayrollMunicipalityCode = (string) $this->company->payroll_municipality_code;
 
         $existing = $this->company->bankAccounts()->get();
         $this->bankAccounts = $existing->isEmpty()
@@ -237,9 +267,17 @@ class CompanyProfile extends Component
             'editPostalCode' => 'nullable|string|max:20',
             'editCity' => 'nullable|string|max:255',
             'editDirectorName' => 'nullable|string|max:255',
+            'editDirectorEmbg' => ['nullable', 'max:13', new ValidEmbg],
             'editDirectorPhone' => 'nullable|string|max:255',
             'editDirectorEmail' => 'nullable|email|max:255',
             'editIsVatRegistered' => 'boolean',
+            'editUsesForeignCurrency' => 'boolean',
+            'editPayrollObligationCode' => ['nullable', 'string', 'max:16', $this->codeRule('vid_obvrska')],
+            'editPayrollAuthorizedPerson' => 'nullable|string|max:255',
+            'editPayrollPhonePrefix' => 'nullable|string|max:8',
+            'editPayrollPhone' => 'nullable|string|max:32',
+            'editPayrollMobile' => 'nullable|string|max:32',
+            'editPayrollMunicipalityCode' => ['nullable', 'string', 'max:16', $this->codeRule('opstina')],
             'bankAccounts' => 'array|max:5',
             'bankAccounts.*.bank_name' => 'nullable|string|max:255',
             'bankAccounts.*.account_number' => 'nullable|string|max:255',
@@ -276,6 +314,7 @@ class CompanyProfile extends Component
                 'city' => $validated['editCity'] ?: null,
                 'logo_position' => $validated['editLogoPosition'],
                 'invoice_footer_note' => $validated['editInvoiceFooterNote'] ?: null,
+                'uses_foreign_currency' => $validated['editUsesForeignCurrency'],
             ];
 
             // ЕМБГ е поле на физичко лице, како што ЕДБ и НКД се полиња на
@@ -308,8 +347,15 @@ class CompanyProfile extends Component
                 $companyData['nkd_code'] = $validated['editNkdCode'] ?: null;
                 $companyData['nkd_name'] = $validated['editNkdName'] ?: null;
                 $companyData['director_name'] = $validated['editDirectorName'] ?: null;
+                $companyData['director_embg'] = $validated['editDirectorEmbg'] ?: null;
                 $companyData['director_phone'] = $validated['editDirectorPhone'] ?: null;
                 $companyData['director_email'] = $validated['editDirectorEmail'] ?: null;
+                $companyData['payroll_obligation_code'] = $validated['editPayrollObligationCode'] ?: null;
+                $companyData['payroll_authorized_person'] = $validated['editPayrollAuthorizedPerson'] ?: null;
+                $companyData['payroll_phone_prefix'] = $validated['editPayrollPhonePrefix'] ?: null;
+                $companyData['payroll_phone'] = $validated['editPayrollPhone'] ?: null;
+                $companyData['payroll_mobile'] = $validated['editPayrollMobile'] ?: null;
+                $companyData['payroll_municipality_code'] = $validated['editPayrollMunicipalityCode'] ?: null;
                 $companyData['efaktura_credential_mode'] = $validated['editEfakturaMode'];
 
                 if ($validated['editEfakturaMode'] === Company::EFAKTURA_MODE_OWN) {
@@ -336,8 +382,9 @@ class CompanyProfile extends Component
                 $this->company->bankAccounts()->create([
                     'bank_name' => $row['bank_name'] ?: null,
                     'account_number' => $row['account_number'] ?: null,
-                    'iban' => $row['iban'] ?? null ?: null,
-                    'swift' => $row['swift'] ?? null ?: null,
+                    // IBAN/SWIFT важат само за девизно работење.
+                    'iban' => $validated['editUsesForeignCurrency'] ? ($row['iban'] ?? null ?: null) : null,
+                    'swift' => $validated['editUsesForeignCurrency'] ? ($row['swift'] ?? null ?: null) : null,
                     'position' => $index,
                 ]);
             }
@@ -352,9 +399,26 @@ class CompanyProfile extends Component
         $this->editing = false;
     }
 
+    /**
+     * Шифра од шифрарник: се проверува само кога шифрарникот е вчитан. Додека
+     * нема ниту еден запис од тој вид, полето не може да се одбие.
+     */
+    private function codeRule(string $type): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail) use ($type) {
+            $known = PayrollCode::where('type', $type);
+
+            if ($value !== null && $value !== '' && $known->exists() && ! $known->where('code', $value)->exists()) {
+                $fail('Непозната шифра.');
+            }
+        };
+    }
+
     public function render()
     {
         return view('livewire.company-profile', [
+            'municipalities' => PayrollCode::ofType('opstina'),
+            'obligations' => PayrollCode::ofType('vid_obvrska'),
             'tabs' => CompanyTabs::for(auth()->user(), $this->company, 'companies.profile'),
         ]);
     }

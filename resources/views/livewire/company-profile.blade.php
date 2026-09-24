@@ -126,17 +126,6 @@
                         @endif
                         @if ($company->type->isLegal())
                             <div>
-                                <x-input-label for="editMpinObvrznikCode" value="Вид обврзник (МПИН)" />
-                                <select id="editMpinObvrznikCode" wire:model="editMpinObvrznikCode"
-                                        class="border-gray-300 focus:border-brand focus:ring-brand rounded-lg shadow-sm transition duration-150 ease-in-out w-full text-sm">
-                                    <option value="">— не е одредено —</option>
-                                    @foreach (\App\Support\Payroll\MpinObvrznik::cases() as $case)
-                                        <option value="{{ $case->value }}">{{ $case->value }} — {{ $case->label() }}</option>
-                                    @endforeach
-                                </select>
-                                @error('editMpinObvrznikCode') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                            </div>
-                            <div>
                                 <x-input-label for="editRegistrationNumber" value="ЕМБС" />
                                 <x-text-input id="editRegistrationNumber" wire:model="editRegistrationNumber" class="w-full" />
                             </div>
@@ -188,6 +177,11 @@
                                 <x-text-input id="editDirectorName" wire:model="editDirectorName" class="w-full" />
                             </div>
                             <div>
+                                <x-input-label for="editDirectorEmbg" value="Управител - ЕМБГ" />
+                                <x-text-input id="editDirectorEmbg" wire:model="editDirectorEmbg" class="w-full" />
+                                @error('editDirectorEmbg') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
                                 <x-input-label for="editDirectorPhone" value="Управител - телефон" />
                                 <x-text-input id="editDirectorPhone" wire:model="editDirectorPhone" class="w-full" />
                             </div>
@@ -196,34 +190,36 @@
                                 <x-text-input id="editDirectorEmail" wire:model="editDirectorEmail" class="w-full" />
                                 @error('editDirectorEmail') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                             </div>
-                            <div class="flex items-center gap-2 pb-2">
-                                <input type="checkbox" id="editIsVatRegistered" wire:model="editIsVatRegistered">
-                                <label for="editIsVatRegistered" class="text-sm">Во ДДВ систем</label>
-                            </div>
                         @endif
                     </div>
 
                     <div>
-                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Трансакциски сметки (до 5)</h3>
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Жиро сметки (до 5)</h3>
+                        <label class="flex items-center gap-2 text-sm mb-3">
+                            <input type="checkbox" wire:model.live="editUsesForeignCurrency">
+                            Девизно работење
+                        </label>
                         <div class="space-y-2">
                             @foreach ($bankAccounts as $index => $row)
                                 <div class="flex flex-wrap gap-3 items-end" wire:key="bank-{{ $index }}">
                                     <div>
-                                        <x-input-label for="bank_name_{{ $index }}" value="Банка" />
+                                        <x-input-label for="bank_name_{{ $index }}" value="Назив на банка" />
                                         <x-text-input id="bank_name_{{ $index }}" wire:model="bankAccounts.{{ $index }}.bank_name" class="w-48" />
                                     </div>
                                     <div>
-                                        <x-input-label for="account_number_{{ $index }}" value="Сметка (IBAN)" />
+                                        <x-input-label for="account_number_{{ $index }}" value="Број на сметка" />
                                         <x-text-input id="account_number_{{ $index }}" wire:model.live.blur="bankAccounts.{{ $index }}.account_number" class="w-64" />
                                     </div>
-                                    <div>
-                                        <x-input-label for="iban_{{ $index }}" value="IBAN (за странство)" />
-                                        <x-text-input id="iban_{{ $index }}" wire:model="bankAccounts.{{ $index }}.iban" class="w-64" />
-                                    </div>
-                                    <div>
-                                        <x-input-label for="swift_{{ $index }}" value="SWIFT/BIC" />
-                                        <x-text-input id="swift_{{ $index }}" wire:model="bankAccounts.{{ $index }}.swift" class="w-40" />
-                                    </div>
+                                    @if ($editUsesForeignCurrency)
+                                        <div>
+                                            <x-input-label for="iban_{{ $index }}" value="IBAN" />
+                                            <x-text-input id="iban_{{ $index }}" wire:model="bankAccounts.{{ $index }}.iban" class="w-64" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="swift_{{ $index }}" value="SWIFT/BIC" />
+                                            <x-text-input id="swift_{{ $index }}" wire:model="bankAccounts.{{ $index }}.swift" class="w-40" />
+                                        </div>
+                                    @endif
                                 </div>
                             @endforeach
                         </div>
@@ -257,28 +253,74 @@
                     </div>
 
                     @if ($company->type->isLegal())
-                        <div>
-                            <h3 class="text-sm font-semibold text-gray-700 mb-2">е-Фактура акредитиви</h3>
-                            <div class="flex gap-4 mb-3">
-                                <label class="inline-flex items-center gap-2">
-                                    <input type="radio" wire:model="editEfakturaMode" value="firm">
-                                    <span>Користи го фирменото</span>
-                                </label>
-                                <label class="inline-flex items-center gap-2">
-                                    <input type="radio" wire:model="editEfakturaMode" value="own">
-                                    <span>Сопствени акредитиви</span>
-                                </label>
-                            </div>
-
-                            @if ($editEfakturaMode === 'own')
-                                <div>
-                                    <label class="block text-sm text-gray-600 mb-1">X-EUJP-ID</label>
-                                    <input type="text" wire:model="editEfakturaEujpId" class="w-full rounded-lg border-gray-300">
-                                    @error('editEfakturaEujpId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                                    <p class="text-xs text-gray-500 mt-1">Потпишувачкиот уред (USB токен) се регистрира одделно, погоре на страницата — не преку овој формулар.</p>
+                        <div class="space-y-3">
+                            <label class="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                                <input type="checkbox" id="editIsVatRegistered" wire:model.live="editIsVatRegistered">
+                                Во ДДВ систем (ДДВ обврзник)
+                            </label>
+                            @if ($editIsVatRegistered)
+                                <p class="text-sm text-gray-600">ДДВ број: <span class="font-medium">{{ $editTaxId !== '' ? 'МК'.$editTaxId : 'се формира од ЕДБ' }}</span></p>
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-700 mb-2">е-Фактура акредитиви</h3>
+                                <div class="flex gap-4 mb-3">
+                                    <label class="inline-flex items-center gap-2">
+                                        <input type="radio" wire:model="editEfakturaMode" value="firm">
+                                        <span>Користи го фирменото</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-2">
+                                        <input type="radio" wire:model="editEfakturaMode" value="own">
+                                        <span>Сопствени акредитиви</span>
+                                    </label>
                                 </div>
+
+                                @if ($editEfakturaMode === 'own')
+                                    <div>
+                                        <label class="block text-sm text-gray-600 mb-1">X-EUJP-ID</label>
+                                        <input type="text" wire:model="editEfakturaEujpId" class="w-full rounded-lg border-gray-300">
+                                        @error('editEfakturaEujpId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                        <p class="text-xs text-gray-500 mt-1">Потпишувачкиот уред (USB токен) се регистрира одделно, погоре на страницата — не преку овој формулар.</p>
+                                    </div>
+                                @endif
+                            </div>
                             @endif
                         </div>
+
+                        @if ($company->uses_payroll)
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-700 mb-2">Податоци за плата</h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <x-input-label for="editMpinObvrznikCode" value="Вид обврзник (МПИН)" />
+                                        <select id="editMpinObvrznikCode" wire:model="editMpinObvrznikCode"
+                                                class="border-gray-300 focus:border-brand focus:ring-brand rounded-lg shadow-sm transition duration-150 ease-in-out w-full text-sm">
+                                            <option value="">— не е одредено —</option>
+                                            @foreach (\App\Support\Payroll\MpinObvrznik::cases() as $case)
+                                                <option value="{{ $case->value }}">{{ $case->value }} — {{ $case->label() }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('editMpinObvrznikCode') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                    </div>
+                                    <x-code-picker model="editPayrollObligationCode" label="Вид на обврска" :options="$obligations" />
+                                    <div>
+                                        <x-input-label for="editPayrollAuthorizedPerson" value="Овластено лице" />
+                                        <x-text-input id="editPayrollAuthorizedPerson" wire:model="editPayrollAuthorizedPerson" class="w-full" />
+                                    </div>
+                                    <div>
+                                        <x-input-label for="editPayrollPhonePrefix" value="Префикс за телефон во градот" />
+                                        <x-text-input id="editPayrollPhonePrefix" wire:model="editPayrollPhonePrefix" class="w-24" placeholder="02" />
+                                    </div>
+                                    <div>
+                                        <x-input-label for="editPayrollPhone" value="Телефонски број" />
+                                        <x-text-input id="editPayrollPhone" wire:model="editPayrollPhone" class="w-full" />
+                                    </div>
+                                    <div>
+                                        <x-input-label for="editPayrollMobile" value="Мобилен број" />
+                                        <x-text-input id="editPayrollMobile" wire:model="editPayrollMobile" class="w-full" />
+                                    </div>
+                                    <x-code-picker model="editPayrollMunicipalityCode" label="Општина" :options="$municipalities" />
+                                </div>
+                            </div>
+                        @endif
                     @endif
 
                     <div>

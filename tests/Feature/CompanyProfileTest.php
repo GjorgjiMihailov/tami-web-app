@@ -323,4 +323,82 @@ class CompanyProfileTest extends TestCase
             ->call('startEdit')
             ->assertSet('editLogoPosition', 'left');
     }
+
+    private function admin(): User
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        return $admin;
+    }
+
+    public function test_the_extended_fields_are_saved(): void
+    {
+        $company = Company::factory()->create();
+        $this->actingAs($this->admin());
+
+        Livewire::test(CompanyProfile::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('editDirectorEmbg', '3101980455019')
+            ->set('editUsesForeignCurrency', true)
+            ->set('bankAccounts.0.bank_name', 'Стопанска')
+            ->set('bankAccounts.0.account_number', '200000000000000')
+            ->set('bankAccounts.0.iban', 'MK07200000000000000')
+            ->set('bankAccounts.0.swift', 'STOBMK2X')
+            ->set('editPayrollAuthorizedPerson', 'Ана Анеска')
+            ->set('editPayrollPhonePrefix', '02')
+            ->set('editPayrollPhone', '3111222')
+            ->set('editPayrollMobile', '070111222')
+            ->set('editPayrollMunicipalityCode', '183')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $company->refresh();
+        $this->assertSame('3101980455019', $company->director_embg);
+        $this->assertTrue($company->uses_foreign_currency);
+        $this->assertSame('Ана Анеска', $company->payroll_authorized_person);
+        $this->assertSame('183', $company->payroll_municipality_code);
+        $this->assertSame('STOBMK2X', $company->bankAccounts()->first()->swift);
+    }
+
+    public function test_without_foreign_currency_iban_and_swift_are_dropped(): void
+    {
+        $company = Company::factory()->create();
+        $this->actingAs($this->admin());
+
+        Livewire::test(CompanyProfile::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('editUsesForeignCurrency', false)
+            ->set('bankAccounts.0.bank_name', 'Стопанска')
+            ->set('bankAccounts.0.iban', 'MK07200000000000000')
+            ->set('bankAccounts.0.swift', 'STOBMK2X')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $row = $company->bankAccounts()->first();
+        $this->assertNull($row->iban);
+        $this->assertNull($row->swift);
+    }
+
+    public function test_an_unknown_municipality_code_is_rejected(): void
+    {
+        $company = Company::factory()->create();
+        $this->actingAs($this->admin());
+
+        Livewire::test(CompanyProfile::class, ['company' => $company])
+            ->call('startEdit')
+            ->set('editPayrollMunicipalityCode', '99999')
+            ->call('save')
+            ->assertHasErrors('editPayrollMunicipalityCode');
+    }
+
+    public function test_the_profile_opens_in_edit_mode_from_the_uredi_link(): void
+    {
+        $company = Company::factory()->create();
+        $this->actingAs($this->admin());
+
+        $this->get(route('companies.profile', $company).'?uredi=1')
+            ->assertOk()
+            ->assertSee('Девизно работење');
+    }
 }

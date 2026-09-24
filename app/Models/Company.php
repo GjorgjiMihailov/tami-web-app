@@ -30,7 +30,7 @@ class Company extends Model
     protected $fillable = [
         'name', 'short_name', 'tax_id', 'embg', 'mpin_obvrznik_code', 'registration_number', 'nkd_code', 'nkd_name',
         'email', 'phone', 'address', 'street_address', 'street_number', 'postal_code', 'city',
-        'website', 'director_name', 'director_phone', 'director_email',
+        'website', 'director_name', 'director_embg', 'director_phone', 'director_email',
         'logo_path', 'logo_position', 'is_vat_registered', 'invoice_footer_note',
         'efaktura_credential_mode', 'efaktura_eujp_id', 'efaktura_firm_access_status',
         'efaktura_firm_access_decided_by', 'efaktura_firm_access_decided_at',
@@ -38,6 +38,8 @@ class Company extends Model
         'efaktura_token_not_before', 'efaktura_token_not_after', 'efaktura_token_registered_at',
         'efaktura_purchase_last_checked_at', 'type',
         'uses_material', 'uses_stock', 'uses_payroll', 'uses_finance',
+        'uses_foreign_currency', 'payroll_obligation_code', 'payroll_authorized_person',
+        'payroll_phone_prefix', 'payroll_phone', 'payroll_mobile', 'payroll_municipality_code',
         'invoice_number_prefix', 'invoice_number_include_year', 'invoice_number_year_first',
         'invoice_number_year_digits', 'invoice_number_separator', 'invoice_number_padding',
     ];
@@ -55,6 +57,7 @@ class Company extends Model
         'uses_stock' => true,
         'uses_payroll' => true,
         'uses_finance' => true,
+        'uses_foreign_currency' => false,
         'invoice_number_include_year' => true,
         'invoice_number_year_first' => true,
         'invoice_number_year_digits' => 4,
@@ -70,6 +73,7 @@ class Company extends Model
             'uses_stock' => 'boolean',
             'uses_payroll' => 'boolean',
             'uses_finance' => 'boolean',
+            'uses_foreign_currency' => 'boolean',
             'invoice_number_include_year' => 'boolean',
             'invoice_number_year_first' => 'boolean',
             'invoice_number_year_digits' => 'integer',
