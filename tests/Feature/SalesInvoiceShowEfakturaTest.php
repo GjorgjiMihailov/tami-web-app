@@ -98,6 +98,47 @@ class SalesInvoiceShowEfakturaTest extends TestCase
             ->assertDontSee('Потпиши и испрати до УЈП');
     }
 
+    /** Клиент во свој режим без запишан токен го гледа советот, но никогаш копчето. */
+    public function test_own_mode_client_without_a_token_sees_the_register_device_hint_but_no_button(): void
+    {
+        $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN, 'efaktura_eujp_id' => 'EUJP-1']);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => '2026-03-01']);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        Livewire::actingAs($client)
+            ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->assertSee('Регистрирај потпишувачки уред за оваа компанија')
+            ->assertDontSee('Потпиши и испрати до УЈП');
+    }
+
+    public function test_firm_mode_client_does_not_see_the_register_device_hint(): void
+    {
+        $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => '2026-03-01']);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        Livewire::actingAs($client)
+            ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->assertDontSee('Регистрирај потпишувачки уред за оваа компанија');
+    }
+
+    public function test_freelancer_client_without_a_token_does_not_see_the_register_device_hint(): void
+    {
+        $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN, 'efaktura_eujp_id' => 'EUJP-1']);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => '2026-03-01']);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('freelancer_client');
+
+        Livewire::actingAs($client)
+            ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->assertDontSee('Регистрирај потпишувачки уред за оваа компанија');
+    }
+
     public function test_sign_and_send_button_visible_for_an_assigned_accountant_with_an_own_token(): void
     {
         $company = Company::factory()->create([
