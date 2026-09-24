@@ -185,4 +185,60 @@ class CompanyProfileSigningDeviceTest extends TestCase
 
         $this->assertNull($company->fresh()->efaktura_token_serial_number);
     }
+
+    public function test_a_serial_number_longer_than_100_characters_is_rejected(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $company = Company::factory()->create();
+
+        Livewire::actingAs($admin)
+            ->test(CompanyProfile::class, ['company' => $company])
+            ->call('registerSigningDevice', str_repeat('A', 101), 'CN=Test Company', '2025-01-01T00:00:00Z', '2027-01-01T00:00:00Z')
+            ->assertHasErrors('signingDevice');
+
+        $this->assertNull($company->fresh()->efaktura_token_serial_number);
+    }
+
+    public function test_a_serial_number_with_a_control_character_is_rejected(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $company = Company::factory()->create();
+
+        Livewire::actingAs($admin)
+            ->test(CompanyProfile::class, ['company' => $company])
+            ->call('registerSigningDevice', "1A2B\r\n3C", 'CN=Test Company', '2025-01-01T00:00:00Z', '2027-01-01T00:00:00Z')
+            ->assertHasErrors('signingDevice');
+
+        $this->assertNull($company->fresh()->efaktura_token_serial_number);
+    }
+
+    public function test_a_colon_separated_serial_number_is_accepted(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $company = Company::factory()->create();
+
+        Livewire::actingAs($admin)
+            ->test(CompanyProfile::class, ['company' => $company])
+            ->call('registerSigningDevice', '1A:2B:3C', 'CN=Test Company', '2025-01-01T00:00:00Z', '2027-01-01T00:00:00Z')
+            ->assertHasNoErrors();
+
+        $this->assertSame('1A:2B:3C', $company->fresh()->efaktura_token_serial_number);
+    }
+
+    public function test_a_serial_number_of_exactly_100_characters_is_accepted(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $company = Company::factory()->create();
+
+        Livewire::actingAs($admin)
+            ->test(CompanyProfile::class, ['company' => $company])
+            ->call('registerSigningDevice', str_repeat('A', 100), 'CN=Test Company', '2025-01-01T00:00:00Z', '2027-01-01T00:00:00Z')
+            ->assertHasNoErrors();
+
+        $this->assertSame(str_repeat('A', 100), $company->fresh()->efaktura_token_serial_number);
+    }
 }

@@ -173,6 +173,14 @@ class CompanyProfile extends Component
             return;
         }
 
+        // Сериски број подолг од 100 знаци или со контролен знак (CR/LF...) не е валиден:
+        // првиот не влегува во колоната, вториот го одбива HTTP-клиентот во заглавието X-SERIAL-NUMBER.
+        if (mb_strlen($serialNumber) > 100 || preg_match('/[\x00-\x1F\x7F]/', $serialNumber)) {
+            $this->addError('signingDevice', 'Сериски број од токенот не е валиден.');
+
+            return;
+        }
+
         try {
             $notBeforeParsed = Carbon::parse($notBefore);
             $notAfterParsed = Carbon::parse($notAfter);
