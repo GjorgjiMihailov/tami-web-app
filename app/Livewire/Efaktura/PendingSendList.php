@@ -46,7 +46,7 @@ class PendingSendList extends Component
                 // стандардна вредност not_sent, па „непратена" не е null.
                 ->where('efaktura_status', '!=', 'sent')
                 ->where('currency', 'MKD')
-                ->with(['company', 'partner'])
+                ->with(['company', 'partner', 'lines'])
                 ->orderBy('invoice_date')
                 ->orderBy('id')
                 ->get(),

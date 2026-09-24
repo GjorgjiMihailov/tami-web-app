@@ -9,6 +9,7 @@ use App\Models\SalesInvoice;
 use App\Models\User;
 use App\Support\CompanyType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -87,6 +88,28 @@ class EfakturaPendingSendListTest extends TestCase
         Livewire::actingAs($this->userWithRole('admin'))->test(PendingSendList::class)
             ->assertViewHas('invoices', fn ($list) => $list->pluck('id')->all() === [$failed->id])
             ->assertSee('Неуспешен обид');
+    }
+
+    public function test_the_lines_are_eager_loaded_so_the_totals_do_not_query_per_row(): void
+    {
+        $company = Company::factory()->create();
+        $this->invoice($company);
+        $this->invoice($company);
+        $this->invoice($company);
+
+        $linesQueries = 0;
+        DB::listen(function ($query) use (&$linesQueries) {
+            if (str_contains($query->sql, 'sales_invoice_lines')) {
+                $linesQueries++;
+            }
+        });
+
+        Livewire::actingAs($this->userWithRole('admin'))->test(PendingSendList::class)
+            ->assertViewHas('invoices', fn ($list) => $list->count() === 3
+                && $list->every(fn ($invoice) => $invoice->relationLoaded('lines')));
+
+        // Еден заеднички упит за сите редови, не по еден за секоја фактура.
+        $this->assertSame(1, $linesQueries);
     }
 
     public function test_the_oldest_invoice_comes_first(): void
