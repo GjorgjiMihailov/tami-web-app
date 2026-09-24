@@ -7,6 +7,7 @@ use App\Models\IncomingEfakturaDocument;
 use App\Services\Efaktura\EfakturaJwsService;
 use App\Services\Efaktura\IncomingPurchaseInvoiceBuilder;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
@@ -14,9 +15,13 @@ use Illuminate\Support\Str;
 
 class EfakturaIncomingAcceptController extends Controller
 {
-    public function signingInput(Request $request, Company $company, IncomingEfakturaDocument $incomingEfakturaDocument, EfakturaJwsService $jwsService)
+    public function signingInput(Request $request, Company $company, IncomingEfakturaDocument $incomingEfakturaDocument, EfakturaJwsService $jwsService, IncomingPurchaseInvoiceBuilder $builder)
     {
         $this->authorizeDecision($company, $incomingEfakturaDocument);
+
+        if ($refusal = $this->refuseIfAlreadyEntered($company, $incomingEfakturaDocument, $builder)) {
+            return $refusal;
+        }
 
         $validated = $request->validate(['certificateBase64' => 'required|string']);
 
@@ -40,6 +45,10 @@ class EfakturaIncomingAcceptController extends Controller
     public function store(Request $request, Company $company, IncomingEfakturaDocument $incomingEfakturaDocument, EfakturaJwsService $jwsService, IncomingPurchaseInvoiceBuilder $builder)
     {
         $this->authorizeDecision($company, $incomingEfakturaDocument);
+
+        if ($refusal = $this->refuseIfAlreadyEntered($company, $incomingEfakturaDocument, $builder)) {
+            return $refusal;
+        }
 
         $validated = $request->validate(['token' => 'required|string', 'signature' => 'required|string']);
 
@@ -68,6 +77,23 @@ class EfakturaIncomingAcceptController extends Controller
         ]);
 
         return response()->json(['status' => 'accepted', 'purchaseInvoiceId' => $invoice->id]);
+    }
+
+    /**
+     * Ако клиентот веќе ја внел оваа влезна фактура (ист добавувач, ист број), се
+     * одбива ПРЕД да се јави на УЈП: прифаќањето кај УЈП не се враќа, а вметнувањето
+     * тука би паднало на уникатниот индекс и апликацијата и УЈП би се разидиле.
+     */
+    private function refuseIfAlreadyEntered(Company $company, IncomingEfakturaDocument $document, IncomingPurchaseInvoiceBuilder $builder): ?JsonResponse
+    {
+        if (! $builder->duplicateOf($company, $document->payload_json)) {
+            return null;
+        }
+
+        return response()->json([
+            'error' => 'already_entered',
+            'message' => 'Влезна фактура со истиот број од овој добавувач веќе е внесена — отворете ја и споредете ја пред да ја прифатите.',
+        ], 422);
     }
 
     private function authorizeDecision(Company $company, IncomingEfakturaDocument $incomingEfakturaDocument): void

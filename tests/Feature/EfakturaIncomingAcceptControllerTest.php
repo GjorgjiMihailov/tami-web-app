@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Company;
 use App\Models\IncomingEfakturaDocument;
+use App\Models\Partner;
+use App\Models\PurchaseInvoice;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -77,6 +79,65 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
             'efaktura_eujp_id' => 'EUJP-1',
             'efaktura_token_serial_number' => null,
         ]);
+    }
+
+    private const DUPLICATE_MESSAGE = 'Влезна фактура со истиот број од овој добавувач веќе е внесена — отворете ја и споредете ја пред да ја прифатите.';
+
+    private function existingPurchaseInvoice(Company $company, string $sellerTaxId, string $number): PurchaseInvoice
+    {
+        $partner = Partner::factory()->for($company)->create(['tax_id' => $sellerTaxId]);
+
+        return PurchaseInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'supplier_invoice_number' => $number,
+        ]);
+    }
+
+    public function test_signing_input_and_store_refuse_when_the_client_already_entered_that_invoice(): void
+    {
+        Http::fake();
+        $company = $this->makeOwnModeCompany();
+        $document = $this->makeUndecidedDocument($company);
+        // Ист ЕДБ, но втипкан со МК-префикс — истата нормализација како кај builder-от.
+        $this->existingPurchaseInvoice($company, 'MK4030009998887', 'SUP-1');
+        $client = $this->clientOf($company);
+
+        $this->actingAs($client)->postJson(
+            route('incoming-efaktura.accept.signing-input', [$company, $document]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertStatus(422)->assertJsonFragment(['message' => self::DUPLICATE_MESSAGE]);
+
+        $this->actingAs($client)->postJson(
+            route('incoming-efaktura.accept', [$company, $document]),
+            ['token' => 'whatever', 'signature' => 'ZmFrZS1zaWc']
+        )->assertStatus(422)->assertJsonFragment(['message' => self::DUPLICATE_MESSAGE]);
+
+        Http::assertNothingSent();
+        $this->assertNull($document->fresh()->decision);
+    }
+
+    public function test_the_same_number_from_a_different_seller_does_not_block(): void
+    {
+        $company = $this->makeOwnModeCompany();
+        $document = $this->makeUndecidedDocument($company);
+        $this->existingPurchaseInvoice($company, '4030001112223', 'SUP-1');
+
+        $this->actingAs($this->clientOf($company))->postJson(
+            route('incoming-efaktura.accept.signing-input', [$company, $document]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertOk();
+    }
+
+    public function test_the_same_seller_and_number_in_another_company_does_not_block(): void
+    {
+        $company = $this->makeOwnModeCompany();
+        $document = $this->makeUndecidedDocument($company);
+        $this->existingPurchaseInvoice($this->makeOwnModeCompany(), '4030009998887', 'SUP-1');
+
+        $this->actingAs($this->clientOf($company))->postJson(
+            route('incoming-efaktura.accept.signing-input', [$company, $document]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->assertOk();
     }
 
     public function test_signing_input_returns_a_token(): void

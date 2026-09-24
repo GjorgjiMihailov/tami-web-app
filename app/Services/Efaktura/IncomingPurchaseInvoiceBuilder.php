@@ -40,22 +40,50 @@ class IncomingPurchaseInvoiceBuilder
         });
     }
 
-    private function findOrCreatePartner(Company $company, array $seller): Partner
+    /**
+     * Веќе внесена влезна фактура на оваа фирма што одговара на дојдената е-фактура:
+     * истиот добавувач (ЕДБ, со истата нормализација како findOrCreatePartner) и
+     * истиот број на фактурата на добавувачот. Само ја бара — не спојува и не поврзува.
+     */
+    public function duplicateOf(Company $company, array $payload): ?PurchaseInvoice
+    {
+        $document = $payload['document'];
+        $partner = $this->findPartnerByTaxId($company, $document['seller']);
+
+        if (! $partner) {
+            return null;
+        }
+
+        return PurchaseInvoice::where('company_id', $company->id)
+            ->where('partner_id', $partner->id)
+            ->where('supplier_invoice_number', $document['header']['docNumber'])
+            ->first();
+    }
+
+    private function normalizeTaxId(?string $taxId): string
     {
         // Strip a leading MK/МК typed directly into the УЈП-supplied tax id, same normalization
         // EfakturaDocumentBuilder::buildParty() applies for outgoing invoices — a supplier's own
         // registry data can carry the same dirty-data pattern this app already hit once.
-        $incomingTaxId = preg_replace('/^(mk|мк)/iu', '', (string) ($seller['sellerTin'] ?? ''));
+        return preg_replace('/^(mk|мк)/iu', '', (string) ($taxId ?? ''));
+    }
+
+    private function findPartnerByTaxId(Company $company, array $seller): ?Partner
+    {
+        $incomingTaxId = $this->normalizeTaxId($seller['sellerTin'] ?? null);
 
         // Check for existing partners, normalizing stored tax_ids as well to handle dirty data.
         // Query only needed columns (id, tax_id); Eloquent lazy-loads others on access if needed.
         // Null-guard the tax_id since partners.tax_id is nullable (e.g., walk-in records).
-        $partner = Partner::where('company_id', $company->id)->select('id', 'tax_id')->get()
-            ->first(function ($p) use ($incomingTaxId) {
-                $storedNormalized = preg_replace('/^(mk|мк)/iu', '', (string) ($p->tax_id ?? ''));
+        return Partner::where('company_id', $company->id)->select('id', 'tax_id')->get()
+            ->first(fn ($p) => $this->normalizeTaxId($p->tax_id) === $incomingTaxId);
+    }
 
-                return $storedNormalized === $incomingTaxId;
-            });
+    private function findOrCreatePartner(Company $company, array $seller): Partner
+    {
+        $incomingTaxId = $this->normalizeTaxId($seller['sellerTin'] ?? null);
+
+        $partner = $this->findPartnerByTaxId($company, $seller);
 
         if ($partner) {
             return $partner;
