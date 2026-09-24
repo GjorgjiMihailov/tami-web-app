@@ -2,7 +2,7 @@
     <div class="flex items-center justify-between mb-4">
         <h1 class="text-2xl font-bold text-gray-800">Влезни фактури — {{ $company->name }}</h1>
         <div class="flex items-center gap-3">
-            @if ($company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN)
+            @if ($company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN && auth()->user()->can('update', $company))
                 <button type="button" @click="run()" :disabled="busy" class="border border-brand text-brand px-3 py-1.5 rounded-md text-sm disabled:opacity-50">
                     <span x-show="!busy">Провери за е-Фактури</span>
                     <span x-show="busy" x-text="statusText"></span>
@@ -15,7 +15,7 @@
     <p x-show="error" x-text="error" class="text-red-600 text-sm mb-3"></p>
     <p x-show="result" x-text="result" class="text-green-700 text-sm mb-3"></p>
 
-    @if ($company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN)
+    @if ($company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN && auth()->user()->can('update', $company))
         <p class="text-sm text-gray-500 mb-4">
             Последна проверка за е-Фактури:
             {{ $company->efaktura_purchase_last_checked_at ? \App\Support\Format::date($company->efaktura_purchase_last_checked_at) : 'никогаш' }}
@@ -50,7 +50,7 @@
                         </td>
                         <td class="py-1 px-3">
                             @if ($document->decision === null)
-                                @if ($company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN)
+                                @if ($company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN && auth()->user()->can('update', $company))
                                     <div x-data="incomingEfakturaAccept({{ $document->id }})" class="inline-block mr-2 align-top">
                                         <button type="button" @click="run()" :disabled="busy" class="text-brand hover:underline disabled:opacity-50">
                                             <span x-show="!busy">Прифати</span>
@@ -124,7 +124,7 @@
                         @if ($invoice->incomingEfakturaDocument)
                             @if ($invoice->incomingEfakturaDocument->efaktura_pdf_path)
                                 <a href="{{ route('incoming-efaktura.pdf.download', [$company, $invoice->incomingEfakturaDocument]) }}" class="text-brand hover:underline">Преземи ПДФ</a>
-                            @elseif ($company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN)
+                            @elseif ($company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN && auth()->user()->can('update', $company))
                                 <div x-data="incomingEfakturaPdfFetch({{ $invoice->incomingEfakturaDocument->id }})" class="inline-block">
                                     <button type="button" @click="run()" :disabled="busy" class="text-brand hover:underline disabled:opacity-50">
                                         <span x-show="!busy">Преземи ПДФ</span>

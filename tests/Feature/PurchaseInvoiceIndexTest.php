@@ -21,6 +21,8 @@ class PurchaseInvoiceIndexTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('admin');
+        Role::findOrCreate('accountant');
+        Role::findOrCreate('internal_client');
     }
 
     public function test_it_lists_the_companys_purchase_invoices(): void
@@ -226,5 +228,85 @@ class PurchaseInvoiceIndexTest extends TestCase
 
         Livewire::test(PurchaseInvoiceIndex::class, ['company' => $company])
             ->assertSee('Стар Добавувач');
+    }
+
+    private function ownModeCompanyWithToken(): Company
+    {
+        return Company::factory()->create([
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'EUJP-1',
+            'efaktura_token_serial_number' => '1A2B3C',
+        ]);
+    }
+
+    private function userWithRole(string $role, Company $company): User
+    {
+        $user = User::factory()->create(['company_id' => $role === 'internal_client' ? $company->id : null]);
+        $user->assignRole($role);
+        if ($role === 'accountant') {
+            $company->accountants()->attach($user);
+        }
+
+        return $user;
+    }
+
+    public function test_an_internal_client_does_not_see_the_incoming_discovery_button(): void
+    {
+        $company = $this->ownModeCompanyWithToken();
+        $client = $this->userWithRole('internal_client', $company);
+
+        Livewire::actingAs($client)->test(PurchaseInvoiceIndex::class, ['company' => $company])
+            ->assertDontSee('Провери за е-Фактури')
+            ->assertDontSee('Последна проверка за е-Фактури');
+    }
+
+    public function test_an_internal_client_does_not_see_accept_and_reject_for_a_pending_document(): void
+    {
+        $company = $this->ownModeCompanyWithToken();
+        IncomingEfakturaDocument::factory()->for($company)->create(['decision' => null, 'seller_name' => 'Тест Добавувач ДООЕЛ']);
+        $client = $this->userWithRole('internal_client', $company);
+
+        Livewire::actingAs($client)->test(PurchaseInvoiceIndex::class, ['company' => $company])
+            ->assertSee('Тест Добавувач ДООЕЛ')
+            ->assertDontSee('Прифати')
+            ->assertDontSee('Одбиј');
+    }
+
+    public function test_an_internal_client_does_not_see_the_incoming_pdf_fetch_control(): void
+    {
+        $company = $this->ownModeCompanyWithToken();
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id]);
+        IncomingEfakturaDocument::factory()->for($company)->create([
+            'decision' => IncomingEfakturaDocument::DECISION_ACCEPTED,
+            'purchase_invoice_id' => $invoice->id,
+            'efaktura_pdf_path' => null,
+        ]);
+        $client = $this->userWithRole('internal_client', $company);
+
+        Livewire::actingAs($client)->test(PurchaseInvoiceIndex::class, ['company' => $company])
+            ->assertDontSee('incomingEfakturaPdfFetch(', false);
+    }
+
+    public function test_admin_and_assigned_accountant_still_see_the_incoming_controls(): void
+    {
+        $company = $this->ownModeCompanyWithToken();
+        IncomingEfakturaDocument::factory()->for($company)->create(['decision' => null]);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id]);
+        IncomingEfakturaDocument::factory()->for($company)->create([
+            'decision' => IncomingEfakturaDocument::DECISION_ACCEPTED,
+            'purchase_invoice_id' => $invoice->id,
+            'efaktura_pdf_path' => null,
+        ]);
+
+        foreach (['admin', 'accountant'] as $role) {
+            $user = $this->userWithRole($role, $company);
+            Livewire::actingAs($user)->test(PurchaseInvoiceIndex::class, ['company' => $company])
+                ->assertSee('Провери за е-Фактури')
+                ->assertSee('Прифати')
+                ->assertSee('Одбиј')
+                ->assertSee('incomingEfakturaPdfFetch(', false);
+        }
     }
 }
