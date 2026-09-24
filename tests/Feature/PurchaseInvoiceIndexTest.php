@@ -250,31 +250,10 @@ class PurchaseInvoiceIndexTest extends TestCase
         return $user;
     }
 
-    public function test_an_internal_client_does_not_see_the_incoming_discovery_button(): void
+    /** Сите четири контроли за влезни е-Фактури: копче, последна проверка, Прифати/Одбиј, влезен ПДФ. */
+    private function incomingControlsFor(User $user, Company $company): \Livewire\Features\SupportTesting\Testable
     {
-        $company = $this->ownModeCompanyWithToken();
-        $client = $this->userWithRole('internal_client', $company);
-
-        Livewire::actingAs($client)->test(PurchaseInvoiceIndex::class, ['company' => $company])
-            ->assertDontSee('Провери за е-Фактури')
-            ->assertDontSee('Последна проверка за е-Фактури');
-    }
-
-    public function test_an_internal_client_does_not_see_accept_and_reject_for_a_pending_document(): void
-    {
-        $company = $this->ownModeCompanyWithToken();
         IncomingEfakturaDocument::factory()->for($company)->create(['decision' => null, 'seller_name' => 'Тест Добавувач ДООЕЛ']);
-        $client = $this->userWithRole('internal_client', $company);
-
-        Livewire::actingAs($client)->test(PurchaseInvoiceIndex::class, ['company' => $company])
-            ->assertSee('Тест Добавувач ДООЕЛ')
-            ->assertDontSee('Прифати')
-            ->assertDontSee('Одбиј');
-    }
-
-    public function test_an_internal_client_does_not_see_the_incoming_pdf_fetch_control(): void
-    {
-        $company = $this->ownModeCompanyWithToken();
         $partner = Partner::factory()->for($company)->create();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id]);
         IncomingEfakturaDocument::factory()->for($company)->create([
@@ -282,9 +261,68 @@ class PurchaseInvoiceIndexTest extends TestCase
             'purchase_invoice_id' => $invoice->id,
             'efaktura_pdf_path' => null,
         ]);
+
+        return Livewire::actingAs($user)->test(PurchaseInvoiceIndex::class, ['company' => $company]);
+    }
+
+    private function assertControlsVisible($component): void
+    {
+        $component->assertSee('Провери за е-Фактури')
+            ->assertSee('Последна проверка за е-Фактури')
+            ->assertSee('Прифати')
+            ->assertSee('Одбиј')
+            ->assertSee('incomingEfakturaPdfFetch(', false);
+    }
+
+    public function test_an_internal_client_with_a_registered_token_sees_the_incoming_controls(): void
+    {
+        $company = $this->ownModeCompanyWithToken();
         $client = $this->userWithRole('internal_client', $company);
 
-        Livewire::actingAs($client)->test(PurchaseInvoiceIndex::class, ['company' => $company])
+        $this->assertControlsVisible($this->incomingControlsFor($client, $company));
+    }
+
+    public function test_an_internal_client_without_a_token_does_not_see_the_incoming_controls(): void
+    {
+        $company = $this->ownModeCompanyWithToken();
+        $company->update(['efaktura_token_serial_number' => null]);
+        $client = $this->userWithRole('internal_client', $company);
+
+        $this->incomingControlsFor($client, $company)
+            ->assertDontSee('Провери за е-Фактури')
+            ->assertDontSee('Последна проверка за е-Фактури')
+            ->assertSee('Тест Добавувач ДООЕЛ')
+            ->assertDontSee('Прифати')
+            ->assertDontSee('Одбиј')
+            ->assertDontSee('incomingEfakturaPdfFetch(', false);
+    }
+
+    public function test_an_internal_client_of_a_firm_mode_company_does_not_see_the_incoming_controls(): void
+    {
+        $company = $this->ownModeCompanyWithToken();
+        $company->update(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
+        $client = $this->userWithRole('internal_client', $company);
+
+        $this->incomingControlsFor($client, $company)
+            ->assertDontSee('Провери за е-Фактури')
+            ->assertDontSee('Последна проверка за е-Фактури')
+            ->assertDontSee('Прифати')
+            ->assertDontSee('Одбиј')
+            ->assertDontSee('incomingEfakturaPdfFetch(', false);
+    }
+
+    public function test_a_freelancer_client_does_not_see_the_incoming_controls(): void
+    {
+        Role::findOrCreate('freelancer_client');
+        $company = $this->ownModeCompanyWithToken();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('freelancer_client');
+
+        $this->incomingControlsFor($client, $company)
+            ->assertDontSee('Провери за е-Фактури')
+            ->assertDontSee('Последна проверка за е-Фактури')
+            ->assertDontSee('Прифати')
+            ->assertDontSee('Одбиј')
             ->assertDontSee('incomingEfakturaPdfFetch(', false);
     }
 
