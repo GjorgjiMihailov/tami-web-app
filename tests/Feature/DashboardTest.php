@@ -192,7 +192,7 @@ class DashboardTest extends TestCase
         $this->get(route('dashboard'))->assertRedirect(route('login'));
     }
 
-    public function test_zero_company_user_can_escape_to_companies_index(): void
+    public function test_zero_company_admin_can_escape_to_clients_index(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('admin');
@@ -200,6 +200,6 @@ class DashboardTest extends TestCase
 
         $this->get(route('dashboard'))
             ->assertOk()
-            ->assertSeeHtml(route('companies.index'));
+            ->assertSeeHtml(route('clients.index'));
     }
 }

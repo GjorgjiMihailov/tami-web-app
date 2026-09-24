@@ -7,6 +7,17 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            @if (auth()->user()->hasRole('admin'))
+                <x-card padding="p-4 sm:p-8">
+                    <div class="max-w-xl">
+                        <h3 class="text-lg font-medium text-gray-900">Системски поставки</h3>
+                        <p class="mt-1 text-sm text-gray-600">Барања од клиенти за пристап до е-Фактура.</p>
+                        <a href="{{ route('efaktura.access-requests') }}" wire:navigate
+                           class="mt-3 inline-block text-sm text-brand hover:underline">е-Фактура барања</a>
+                    </div>
+                </x-card>
+            @endif
+
             <x-card padding="p-4 sm:p-8">
                 <div class="max-w-xl">
                     <livewire:profile.update-profile-information-form />

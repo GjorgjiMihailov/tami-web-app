@@ -17,6 +17,7 @@ class SidebarAppBrandingTest extends TestCase
         parent::setUp();
 
         Role::findOrCreate('admin');
+        Role::findOrCreate('accountant');
     }
 
     public function test_the_sidebar_names_the_app_it_is_in(): void
@@ -52,7 +53,8 @@ class SidebarAppBrandingTest extends TestCase
     {
         $company = Company::factory()->create();
         $admin = User::factory()->create();
-        $admin->assignRole('admin');
+        $admin->assignRole('accountant');
+        $company->accountants()->attach($admin);
 
         $this->actingAs($admin)->get(route('sales-invoices.index', $company))->assertDontSee('743 обрасци');
         $this->actingAs($admin)->get(route('companies.dashboard', $company))->assertSee('743 обрасци');

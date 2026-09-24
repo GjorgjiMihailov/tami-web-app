@@ -106,6 +106,12 @@ Route::domain(PortalApp::PORTAL->domain())->group(function () {
         Route::get('/companies', CompanyIndex::class)->name('companies.index');
     });
 
+    // Клиенти на админот: еден список и по една страница за внес на секој вид профил.
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/klienti', \App\Livewire\ClientIndex::class)->name('clients.index');
+        Route::get('/klienti/nov/{kind}', \App\Livewire\ClientCreate::class)->name('clients.create');
+    });
+
     // Array-callable form (not bare class-string) for the same reason noted
     // below for the accounting.* group: avoids an eager method_exists() check
     // at route registration time.

@@ -26,15 +26,21 @@
                    class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'dashboard' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
                     Почетна
                 </a>
-                <a href="{{ route('companies.index') }}" wire:navigate
-                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'companies.index' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
-                    Фирми
+                <a href="{{ route('clients.index') }}" wire:navigate
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ str_starts_with($currentRoute, 'clients.') ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
+                    Клиенти
+                </a>
+                <a href="{{ route('profile') }}" wire:navigate
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ in_array($currentRoute, ['profile', 'efaktura.access-requests'], true) ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
+                    Поставки
                 </a>
             @endif
 
             {{-- Работниот список ги собира обрасците од сите клиенти, па стои тука
-                 горе со глобалните врски, а не во менито на една фирма. --}}
-            @if (auth()->check() && auth()->user()->hasAnyRole(['admin', 'accountant']))
+                 горе со глобалните врски, а не во менито на една фирма. Админот
+                 не работи сметководство — за него менито е само Почетна,
+                 Клиенти и Поставки. --}}
+            @if (auth()->check() && auth()->user()->hasRole('accountant') && ! auth()->user()->hasRole('admin'))
                 <a href="{{ route('form743.worklist') }}" wire:navigate
                    class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'form743.worklist' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
                     743 обрасци

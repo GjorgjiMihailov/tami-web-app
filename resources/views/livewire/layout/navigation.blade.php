@@ -181,9 +181,9 @@ new class extends Component
                  таблата на фирмата во контекст — а ако нема фирма во контекст,
                  нема каде смислено да се прати, па линкот отсуствува. --}}
             @if (auth()->user()->hasRole('admin'))
-                <a href="{{ route('companies.index') }}"
+                <a href="{{ route('clients.index') }}"
                    class="block px-3 py-2 mt-2 rounded-lg text-sm text-gray-600 border-t border-sand hover:bg-gray-50 press">
-                    Портал — фирми и поставки
+                    Портал — клиенти и поставки
                 </a>
             @elseif ($company !== null)
                 <a href="{{ route('companies.dashboard', $company) }}"

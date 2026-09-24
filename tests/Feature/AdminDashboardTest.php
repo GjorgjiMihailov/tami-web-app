@@ -53,14 +53,12 @@ class AdminDashboardTest extends TestCase
             ->assertDontSee('Solo Ltd');
     }
 
-    public function test_it_has_the_two_quick_buttons(): void
+    public function test_the_creation_buttons_live_on_the_clients_page_not_the_dashboard(): void
     {
         $this->actingAs($this->userWithRole('admin'))
             ->get(route('dashboard'))
-            ->assertSee('Нова фирма')
-            ->assertSee('Нова сметка на канцеларија')
-            ->assertSeeHtml(route('companies.index'))
-            ->assertSeeHtml(route('companies.office'));
+            ->assertDontSee('Нова фирма')
+            ->assertDontSee('Нова сметка на канцеларија');
     }
 
     public function test_an_admin_is_never_sent_into_a_company_even_when_only_one_exists(): void

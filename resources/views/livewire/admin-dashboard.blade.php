@@ -4,20 +4,8 @@
         $where = fn ($user) => $user->company?->name ?? 'Канцеларија';
     @endphp
 
-    <div class="flex flex-wrap items-center justify-between gap-3 mb-1">
-        <h1 class="text-2xl font-bold text-gray-800">Табло</h1>
-        <div class="flex flex-wrap gap-2">
-            <a href="{{ route('companies.index') }}" wire:navigate
-               class="inline-flex items-center px-4 py-2 bg-brand rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:opacity-90">
-                Нова фирма
-            </a>
-            <a href="{{ route('companies.office') }}" wire:navigate
-               class="inline-flex items-center px-4 py-2 bg-brand rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:opacity-90">
-                Нова сметка на канцеларија
-            </a>
-        </div>
-    </div>
-    <p class="text-sm text-gray-500 mb-6">Преглед на системот. Фирма се отвора од „Фирми".</p>
+    <h1 class="text-2xl font-bold text-gray-800 mb-1">Табло</h1>
+    <p class="text-sm text-gray-500 mb-6">Преглед на системот. Профили се создаваат и отвораат од „Клиенти".</p>
 
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         <x-card>
@@ -48,7 +36,7 @@
     <x-card class="mb-6">
         <h2 class="font-semibold text-gray-700 mb-2">Сметководители и лимити</h2>
         @if ($accountants->isEmpty())
-            <p class="text-sm text-gray-500">Нема сметководители. Отворете сметка на „Нова сметка на канцеларија".</p>
+            <p class="text-sm text-gray-500">Нема сметководители. Создадете го првиот од „Клиенти".</p>
         @else
             <table class="w-full text-sm">
                 <thead class="text-left text-gray-500">
