@@ -17,6 +17,12 @@
         </a>
     </div>
 
+    <x-invite-link-card :link="$inviteLink" :name="$invitedName" :mail-sent="$inviteMailSent" />
+    @if ($profileError)
+        <p class="mb-4 text-sm text-red-600">{{ $profileError }}</p>
+    @endif
+    <x-profile-delete-card :deleting="$deleting" />
+
     <x-card>
         @if ($accountants->isEmpty() && $companies->isEmpty())
             <p class="text-sm text-gray-500">Сè уште нема профили. Создади го првиот со копчињата погоре.</p>
@@ -25,11 +31,16 @@
                 @foreach ($accountants as $accountant)
                     <li class="py-3" wire:key="acc-{{ $accountant->id }}">
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="font-medium text-gray-800">{{ $accountant->firm_name ?: $accountant->name }}</span>
+                            <a href="{{ route('clients.accountant', $accountant) }}" wire:navigate
+                               class="font-medium text-brand hover:underline">{{ $accountant->firm_name ?: $accountant->name }}</a>
                             <x-badge status="active">Сметководител</x-badge>
                             @if ($accountant->accessStatus() !== 'active')
                                 <x-badge status="pending">{{ $accountant->accessStatus() === 'invited' ? 'Поканет' : 'Не е активен' }}</x-badge>
                             @endif
+                            <span class="ms-auto flex gap-3 text-xs">
+                                <button type="button" wire:click="resetLink({{ $accountant->id }})" class="text-brand hover:underline">Линк за нова лозинка</button>
+                                <button type="button" wire:click="requestDelete('accountant', {{ $accountant->id }})" class="text-red-600 hover:underline">Избриши</button>
+                            </span>
                         </div>
                         <p class="text-sm text-gray-500 mt-0.5">
                             @if ($accountant->firm_name)
@@ -57,6 +68,12 @@
                             @if ($account && $account->accessStatus() !== 'active')
                                 <x-badge status="pending">{{ $account->accessStatus() === 'invited' ? 'Поканет' : 'Не е активен' }}</x-badge>
                             @endif
+                            <span class="ms-auto flex gap-3 text-xs">
+                                @if ($account)
+                                    <button type="button" wire:click="resetLink({{ $account->id }})" class="text-brand hover:underline">Линк за нова лозинка</button>
+                                @endif
+                                <button type="button" wire:click="requestDelete('company', {{ $company->id }})" class="text-red-600 hover:underline">Избриши</button>
+                            </span>
                         </div>
                         <p class="text-sm text-gray-500 mt-0.5">
                             @if ($company->accountants->isEmpty())

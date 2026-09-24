@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\ManagesClientProfiles;
 use App\Models\Company;
 use App\Models\User;
 use Livewire\Attributes\Layout;
@@ -18,6 +19,8 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class ClientIndex extends Component
 {
+    use ManagesClientProfiles;
+
     public function mount(): void
     {
         abort_unless(auth()->user()->hasRole('admin'), 403);
@@ -26,7 +29,7 @@ class ClientIndex extends Component
     public function render()
     {
         $accountants = User::role('accountant')
-            ->with(['assignedCompanies' => fn ($query) => $query->orderBy('name')])
+            ->with(['latestInvitation', 'assignedCompanies' => fn ($query) => $query->orderBy('name')])
             ->orderBy('name')
             ->get();
 
@@ -39,7 +42,8 @@ class ClientIndex extends Component
 
         // Една сметка по фирма е нормален случај; ако ги има повеќе, се
         // покажува најстарата (онаа што фирмата ја отворила).
-        $accounts = User::whereIn('company_id', $companies->pluck('id'))
+        $accounts = User::with('latestInvitation')
+            ->whereIn('company_id', $companies->pluck('id'))
             ->orderBy('id')
             ->get()
             ->unique('company_id')

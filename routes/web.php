@@ -110,6 +110,7 @@ Route::domain(PortalApp::PORTAL->domain())->group(function () {
     Route::middleware(['auth'])->group(function () {
         Route::get('/klienti', \App\Livewire\ClientIndex::class)->name('clients.index');
         Route::get('/klienti/nov/{kind}', \App\Livewire\ClientCreate::class)->name('clients.create');
+        Route::get('/klienti/smetkovoditel/{user}', \App\Livewire\ClientAccountantShow::class)->name('clients.accountant');
     });
 
     // Array-callable form (not bare class-string) for the same reason noted
