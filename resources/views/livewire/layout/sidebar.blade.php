@@ -39,6 +39,10 @@
                    class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'form743.worklist' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
                     743 обрасци
                 </a>
+                <a href="{{ route('efaktura.pending') }}" wire:navigate
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'efaktura.pending' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
+                    е-Фактури на чекање
+                </a>
             @endif
         @endif
 

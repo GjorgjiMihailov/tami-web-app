@@ -41,6 +41,7 @@ use App\Livewire\CompanyUsers;
 use App\Livewire\Costs\OtherCostIndex;
 use App\Livewire\Dashboard;
 use App\Livewire\DocumentIndex;
+use App\Livewire\Efaktura\PendingSendList;
 use App\Livewire\EfakturaAccessRequests;
 use App\Livewire\EmployeeForm;
 use App\Livewire\EmployeeIndex;
@@ -125,6 +126,8 @@ Route::domain(PortalApp::PORTAL->domain())->group(function () {
     // Работниот список е на канцеларијата и ги собира обрасците од сите клиенти,
     // па намерно стои надвор од `companies/{company}`.
     Route::middleware(['auth'])->get('/743-obrasci', [Form743Worklist::class, '__invoke'])->name('form743.worklist');
+    // Работен список на канцеларијата (низ сите клиенти), по угледот на 743 обрасците.
+    Route::middleware(['auth'])->get('/efaktura/na-cekanje', [PendingSendList::class, '__invoke'])->name('efaktura.pending');
 
     // form743.download е преземање датотека, не сметководствен екран — работниот
     // список погоре го линкува од порталот, каде секој сметководител/админ смее
