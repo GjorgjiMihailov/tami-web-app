@@ -394,4 +394,22 @@ class SidebarTest extends TestCase
         $this->assertStringContainsString(route('inventory.items.index', $company), $updatedHtml);
         $this->assertStringContainsString(route('documents.index', $company), $updatedHtml);
     }
+
+    public function test_the_brand_link_leads_to_the_portal_from_every_app(): void
+    {
+        $company = Company::factory()->create();
+        $this->actingAs($this->admin());
+
+        foreach ([
+            route('sales-invoices.index', $company),
+            route('inventory.items.index', $company),
+        ] as $url) {
+            $html = $this->get($url)->assertOk()->getContent();
+
+            $this->assertMatchesRegularExpression(
+                '#<a href="'.preg_quote(route('dashboard'), '#').'"\s+class="block leading-tight">#',
+                $html,
+            );
+        }
+    }
 }

@@ -4,7 +4,7 @@
         {{-- Двата реда се два одделни јазли намерно: Livewire му врзува
              коментари-маркери на текст што е сечен со @if, па заедничка линија
              со услов среде неа би се распаднала при освежување. --}}
-        <a href="{{ $brandUrl }}" wire:navigate class="block leading-tight">
+        <a href="{{ $brandUrl }}" @if ($this->app() === \App\Support\PortalApp::PORTAL) wire:navigate @endif class="block leading-tight">
             <span class="block font-bold text-sm {{ $this->app()->accent() }}">{{ $this->app()->sidebarName() }}</span>
             <span class="block italic text-[11px] text-rail-muted">{{ $this->app()->sidebarTagline() }}</span>
         </a>

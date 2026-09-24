@@ -53,9 +53,9 @@ class Sidebar extends Component
         $app = PortalApp::fromHost(request()->getHost()) ?? PortalApp::PORTAL;
         $this->appKey = $app->value;
 
-        $this->brandUrl = $app === PortalApp::PORTAL || ! $this->company
-            ? route('dashboard')
-            : (Menu::landingUrl(auth()->user(), $this->company, $app) ?? route('dashboard'));
+        // Логото секогаш води на порталот (Route::domain() дава апсолутна
+        // адреса), не на првиот екран на тековната апликација.
+        $this->brandUrl = route('dashboard');
 
         if (! $this->company) {
             return;
