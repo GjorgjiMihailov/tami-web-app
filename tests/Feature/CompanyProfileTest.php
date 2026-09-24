@@ -58,7 +58,7 @@ class CompanyProfileTest extends TestCase
             ->assertSee('Alpha Ltd');
     }
 
-    public function test_admin_sees_the_edit_button(): void
+    public function test_admin_sees_the_edit_form_right_away(): void
     {
         $company = Company::factory()->create();
         $admin = User::factory()->create();
@@ -66,7 +66,9 @@ class CompanyProfileTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(CompanyProfile::class, ['company' => $company])
-            ->assertSee('Уреди');
+            ->assertSet('editing', true)
+            ->assertSee('Зачувај')
+            ->assertDontSee('Уреди');
     }
 
     public function test_non_admin_does_not_see_the_edit_button(): void

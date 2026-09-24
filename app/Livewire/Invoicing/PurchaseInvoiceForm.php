@@ -8,6 +8,9 @@ use App\Models\Item;
 use App\Models\Partner;
 use App\Models\PurchaseInvoice;
 use App\Models\Warehouse;
+use App\Services\Invoicing\ScannedInvoice;
+use App\Services\Invoicing\ScannedInvoiceLine;
+use App\Services\Invoicing\ScannedInvoiceReader;
 use App\Support\VatMath;
 use App\Support\WorkingYear;
 use Illuminate\Support\Facades\DB;
@@ -15,10 +18,24 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('layouts.app')]
 class PurchaseInvoiceForm extends Component
 {
+    use WithFileUploads;
+
+    private const MAX_IMAGE_KILOBYTES = 6144;
+
+    public $scanFile = null;
+
+    public bool $scanRead = false;
+
+    public array $scanWarnings = [];
+
+    /** @var array{name: string, tax_id: string}|null */
+    public ?array $suggestedPartner = null;
+
     public Company $company;
 
     public ?PurchaseInvoice $purchaseInvoice = null;
@@ -238,6 +255,218 @@ class PurchaseInvoiceForm extends Component
         $id = $line['item_id'] ?? '';
 
         return $id !== '' && ($types[(int) $id] ?? 'product') === 'product';
+    }
+
+    public function updatedScanFile(): void
+    {
+        $this->scanRead = false;
+        $this->scanWarnings = [];
+        $this->suggestedPartner = null;
+    }
+
+    /** Читањето чини пари, па е само за канцеларијата и само кога има клуч. */
+    public function canReadScans(): bool
+    {
+        return filled(config('services.anthropic.key'))
+            && auth()->user()?->hasAnyRole(['admin', 'accountant']);
+    }
+
+    public function readScan(): void
+    {
+        abort_unless($this->canReadScans(), 403);
+
+        $this->resetErrorBag('scanFile');
+        $this->scanWarnings = [];
+        $this->suggestedPartner = null;
+
+        $this->validate([
+            'scanFile' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+        ]);
+
+        if ($this->scanFile->getMimeType() !== 'application/pdf'
+            && $this->scanFile->getSize() > self::MAX_IMAGE_KILOBYTES * 1024) {
+            $this->addError('scanFile', 'Сликата е преголема — прати помала слика (до 6 МБ) или PDF.');
+
+            return;
+        }
+
+        try {
+            $scanned = app(ScannedInvoiceReader::class)->read($this->scanFile, $this->company);
+        } catch (\Throwable $e) {
+            report($e);
+            $this->addError('scanFile', 'Не можев да ја прочитам фактурата — внеси ја рачно.');
+
+            return;
+        }
+
+        $this->applyScan($scanned);
+        $this->scanRead = true;
+    }
+
+    public function createSuggestedPartner(): void
+    {
+        abort_unless($this->canReadScans(), 403);
+
+        if ($this->suggestedPartner === null) {
+            return;
+        }
+
+        $this->validate([
+            'suggestedPartner.name' => 'required|string|max:255',
+            'suggestedPartner.tax_id' => 'required|string|max:255',
+        ]);
+
+        $partner = Partner::create([
+            'company_id' => $this->company->id,
+            'name' => $this->suggestedPartner['name'],
+            'tax_id' => $this->suggestedPartner['tax_id'],
+        ]);
+
+        $this->partnerId = (string) $partner->id;
+        $this->suggestedPartner = null;
+    }
+
+    private function applyScan(ScannedInvoice $scanned): void
+    {
+        if ($scanned->invoiceCount === 0) {
+            $this->scanWarnings[] = 'Документот не изгледа како фактура — провери дали е качен вистинскиот фајл.';
+        } elseif ($scanned->invoiceCount !== null && $scanned->invoiceCount > 1) {
+            $this->scanWarnings[] = "Фајлот содржи {$scanned->invoiceCount} фактури, а прочитана е само првата. "
+                .'Качи ја секоја фактура како посебен фајл.';
+        }
+
+        // Правилото од излезната, наопаку: тука фирмата мора да е КУПУВАЧ.
+        // ЕДБ на купувачот еднакво на нашето е доказ; инаку одговорот за улогата.
+        $ours = $this->digits((string) $this->company->tax_id);
+        $buyerDigits = $this->digits((string) $scanned->buyerTaxId);
+        $weAreBuyer = ($ours !== '' && $buyerDigits === $ours) || $scanned->ourCompanyRole === 'buyer';
+
+        if (! $weAreBuyer) {
+            if ($scanned->ourCompanyRole === 'seller') {
+                $this->scanWarnings[] = 'Оваа фирма е ПРОДАВАЧ на фактурата — ова е излезна, не влезна фактура. Провери го фајлот.';
+            } elseif ($scanned->ourCompanyRole === 'absent') {
+                $this->scanWarnings[] = 'Оваа фирма не се спомнува на документот — провери дали е качен вистинскиот фајл.';
+            } else {
+                $this->scanWarnings[] = 'Не можев да потврдам дека оваа фирма е купувач на фактурата — провери го фајлот.';
+            }
+        }
+
+        if (filled($scanned->invoiceNumber)) {
+            $this->supplierInvoiceNumber = mb_substr($scanned->invoiceNumber, 0, 255);
+        }
+
+        if (filled($scanned->invoiceDate)) {
+            $this->invoiceDate = $scanned->invoiceDate;
+        }
+
+        if (filled($scanned->dueDate)) {
+            $this->dueDate = $scanned->dueDate;
+        }
+
+        // Добавувач по ЕДБ — точно совпаѓање на цифрите, без погодување по име.
+        $sellerDigits = $this->digits((string) $scanned->sellerTaxId);
+
+        if ($sellerDigits !== '' && $sellerDigits !== $ours) {
+            $partner = Partner::where('company_id', $this->company->id)
+                ->whereNotNull('tax_id')
+                ->get()
+                ->first(fn (Partner $candidate) => $this->digits((string) $candidate->tax_id) === $sellerDigits);
+
+            if ($partner) {
+                $this->partnerId = (string) $partner->id;
+            } elseif (filled($scanned->sellerName)) {
+                $this->suggestedPartner = [
+                    'name' => (string) $scanned->sellerName,
+                    'tax_id' => (string) $scanned->sellerTaxId,
+                ];
+            }
+        }
+
+        if ($scanned->lines === []) {
+            return;
+        }
+
+        $items = Item::where('company_id', $this->company->id)->where('is_active', true)->get();
+
+        $this->lines = array_map(function (ScannedInvoiceLine $line) use ($items) {
+            $description = (string) $line->description;
+            $rate = filled($line->vatRate) ? (string) $line->vatRate : '0.00';
+            $price = filled($line->unitPrice) ? (string) $line->unitPrice : '0';
+
+            // Артикл се врзува само по точно име (без разлика на големи/мали
+            // букви); инаку ставката е слободен текст, а човекот избира: врзи
+            // со постоечки или „Внеси како артикл".
+            $match = $description === '' ? null : $items->first(
+                fn (Item $item) => mb_strtolower(trim($item->name)) === mb_strtolower(trim($description))
+            );
+
+            return [
+                'item_id' => $match ? (string) $match->id : '',
+                'account_id' => '',
+                'description' => $description,
+                'quantity' => filled($line->quantity) ? $line->quantity : '1',
+                'unit_price' => $price,
+                'unit_price_gross' => VatMath::grossFromNet($price, $rate),
+                'price_basis' => 'net',
+                'vat_rate' => $rate,
+                'vat_deductible' => true,
+                'needs_review' => false,
+            ];
+        }, $scanned->lines);
+    }
+
+    /**
+     * Ставка што ја нема во Артикли се внесува како артикл од залиха токму
+     * тука, без да се напушта фактурата. Приемот на залиха потоа го прави
+     * потврдата на фактурата, како и за секој друг артикл.
+     */
+    public function addLineAsItem(int $index): void
+    {
+        Gate::authorize('create', Item::class);
+
+        $line = $this->lines[$index] ?? null;
+
+        if ($line === null || ($line['item_id'] ?? '') !== '') {
+            return;
+        }
+
+        $name = trim((string) ($line['description'] ?? ''));
+
+        if ($name === '') {
+            $this->addError("lines.{$index}.description", 'Впиши опис — тој станува името на артиклот.');
+
+            return;
+        }
+
+        $item = Item::where('company_id', $this->company->id)
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+            ->first();
+
+        if (! $item) {
+            $next = Item::where('company_id', $this->company->id)->count() + 1;
+
+            do {
+                $code = 'A-'.str_pad((string) $next++, 4, '0', STR_PAD_LEFT);
+            } while (Item::where('company_id', $this->company->id)->where('code', $code)->exists());
+
+            $item = Item::create([
+                'company_id' => $this->company->id,
+                'code' => $code,
+                'name' => mb_substr($name, 0, 255),
+                'unit_of_measure' => 'piece',
+                'vat_rate' => is_numeric($line['vat_rate'] ?? null) ? $line['vat_rate'] : '18.00',
+                'type' => 'product',
+                'is_active' => true,
+            ]);
+        }
+
+        $this->lines[$index]['item_id'] = (string) $item->id;
+        $this->lines[$index]['account_id'] = '';
+    }
+
+    private function digits(string $value): string
+    {
+        return preg_replace('/\D+/', '', $value) ?? '';
     }
 
     public function save(): void

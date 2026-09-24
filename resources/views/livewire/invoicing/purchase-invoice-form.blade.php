@@ -19,6 +19,41 @@
         {{ $purchaseInvoice ? 'Измени нацрт влезна фактура' : 'Нова влезна фактура' }} — {{ $company->name }}
     </h1>
 
+    @if ($this->canReadScans() && ! $purchaseInvoice)
+        <x-card class="mb-4">
+            <x-input-label for="scanFile" value="Прикачи скенирана фактура" />
+            <p class="text-xs text-gray-500 mt-1 mb-2">PDF, JPG или PNG, до 10 МБ. Тами ќе ја прочита и ќе ги пополни полињата подолу.</p>
+            <div class="flex items-center gap-3">
+                <input id="scanFile" type="file" wire:model="scanFile" accept=".pdf,.jpg,.jpeg,.png" class="text-sm" />
+                <x-secondary-button type="button" wire:click="readScan" wire:loading.attr="disabled" wire:target="readScan,scanFile">
+                    <span wire:loading.remove wire:target="readScan">Прочитај ја фактурата</span>
+                    <span wire:loading wire:target="readScan">Читам…</span>
+                </x-secondary-button>
+            </div>
+            @error('scanFile') <p class="text-red-600 text-sm mt-2">{{ $message }}</p> @enderror
+        </x-card>
+    @endif
+
+    @if ($scanRead)
+        <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Податоците се прочитани од скен — провери ги пред зачувување. Ставките што ги нема во Артикли
+            имаат копче „Внеси како артикл".
+            @foreach ($scanWarnings as $warning)
+                <p class="mt-1 font-semibold">{{ $warning }}</p>
+            @endforeach
+        </div>
+    @endif
+
+    @if ($suggestedPartner)
+        <div class="mb-4 rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm">
+            <p class="font-semibold text-blue-900">Добавувачот од скенот го нема во шифрарникот.</p>
+            <p class="mt-1 text-blue-900">{{ $suggestedPartner['name'] }} — ЕДБ {{ $suggestedPartner['tax_id'] }}</p>
+            @error('suggestedPartner.name') <p class="mt-1 text-red-600">{{ $message }}</p> @enderror
+            @error('suggestedPartner.tax_id') <p class="mt-1 text-red-600">{{ $message }}</p> @enderror
+            <x-secondary-button type="button" wire:click="createSuggestedPartner" class="mt-2">Создај партнер</x-secondary-button>
+        </div>
+    @endif
+
     <form wire:submit="save" class="space-y-4">
         <x-card>
             <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-4 gap-y-3">
@@ -113,6 +148,11 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                @if (($line['item_id'] ?? '') === '' && trim((string) ($line['description'] ?? '')) !== '')
+                                    <button type="button" wire:click="addLineAsItem({{ $index }})"
+                                        class="text-xs text-brand font-medium hover:underline">+ Внеси како артикл (залиха)</button>
+                                    @error("lines.{$index}.description") <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
+                                @endif
                                 @unless ($rows[$index]['is_stock'])
                                     <select wire:model="lines.{{ $index }}.account_id"
                                         class="w-full border-gray-300 focus:border-brand focus:ring-brand rounded-lg text-sm py-1">

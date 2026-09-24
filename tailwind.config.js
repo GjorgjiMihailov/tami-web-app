@@ -31,11 +31,11 @@ export default {
                 // користат на десетина места во sidebar.blade.php, а Tailwind JIT
                 // бара цела низа — `bg-rail` е читливо, `bg-[#1C1A17]` не е.
                 rail: {
-                    DEFAULT: '#1C1A17',
-                    soft: '#2A2724',
-                    line: '#3A352E',
-                    text: '#C9C2B8',
-                    muted: '#8A8177',
+                    DEFAULT: '#1F2124',
+                    soft: '#2C2F33',
+                    line: '#3C4045',
+                    text: '#C9CDD2',
+                    muted: '#8B9097',
                 },
                 // Преземено збор за збор од tailwind.config.js на financebuddy.mk,
                 // за да бидат јавната страница и порталот едно семејство. Таму

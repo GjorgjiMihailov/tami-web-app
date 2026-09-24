@@ -1,11 +1,6 @@
 <div>
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-800">Профил — {{ $company->name }}</h1>
-        @can('update', $company)
-            @if (! $editing)
-                <button type="button" wire:click="startEdit" class="text-brand hover:underline text-sm">Уреди</button>
-            @endif
-        @endcan
     </div>
 
     <x-tab-strip :tabs="$tabs" />
@@ -330,7 +325,9 @@
 
                     <div class="flex gap-3">
                         <x-primary-button type="submit">Зачувај</x-primary-button>
-                        <button type="button" wire:click="cancelEdit" class="text-sm text-gray-500 hover:underline">Откажи</button>
+                        @if (session('status'))
+                            <span class="text-sm text-green-700 self-center">{{ session('status') }}</span>
+                        @endif
                     </div>
                 </form>
             </x-card>

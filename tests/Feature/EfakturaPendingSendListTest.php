@@ -169,7 +169,7 @@ class EfakturaPendingSendListTest extends TestCase
         $this->get(route('efaktura.pending'))->assertRedirect(route('login'));
     }
 
-    public function test_the_page_opens_for_an_admin_but_the_sidebar_link_is_the_accountants(): void
+    public function test_the_page_opens_for_an_admin_and_the_sidebar_has_no_link_for_either(): void
     {
         $this->actingAs($this->userWithRole('admin'))
             ->get(route('efaktura.pending'))
@@ -179,8 +179,7 @@ class EfakturaPendingSendListTest extends TestCase
         $this->actingAs($this->userWithRole('accountant'))
             ->get(route('efaktura.pending'))
             ->assertOk()
-            ->assertSee('е-Фактури на чекање')
-            ->assertSeeHtml(route('efaktura.pending'));
+            ->assertDontSeeHtml('href="'.route('efaktura.pending').'"');
     }
 
     public function test_a_client_does_not_get_the_sidebar_link(): void

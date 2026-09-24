@@ -98,8 +98,8 @@ class CompanyProfile extends Component
         Gate::authorize('view', $company);
         $this->company = $company;
 
-        // Нова фирма се отвора веднаш во уредување (?uredi=1).
-        if (request()->boolean('uredi') && auth()->user()->can('update', $company)) {
+        // Кој може да ја менува фирмата, форма гледа веднаш — без копче „Уреди".
+        if (auth()->user()->can('update', $company)) {
             $this->startEdit();
         }
     }
@@ -128,8 +128,8 @@ class CompanyProfile extends Component
         $this->editDirectorEmbg = (string) $this->company->director_embg;
         $this->editDirectorPhone = (string) $this->company->director_phone;
         $this->editDirectorEmail = (string) $this->company->director_email;
-        $this->editIsVatRegistered = $this->company->is_vat_registered;
-        $this->editUsesForeignCurrency = $this->company->uses_foreign_currency;
+        $this->editIsVatRegistered = (bool) $this->company->is_vat_registered;
+        $this->editUsesForeignCurrency = (bool) $this->company->uses_foreign_currency;
         $this->editPayrollObligationCode = (string) $this->company->payroll_obligation_code;
         $this->editPayrollAuthorizedPerson = (string) $this->company->payroll_authorized_person;
         $this->editPayrollPhonePrefix = (string) $this->company->payroll_phone_prefix;
@@ -159,7 +159,7 @@ class CompanyProfile extends Component
 
     public function cancelEdit(): void
     {
-        $this->editing = false;
+        $this->startEdit();
     }
 
     /**
@@ -396,7 +396,10 @@ class CompanyProfile extends Component
             }
         });
 
-        $this->editing = false;
+        // Формата останува отворена; се вчитува повторно од зачуваното.
+        $this->company->refresh();
+        $this->startEdit();
+        session()->flash('status', 'Промените се зачувани.');
     }
 
     /**

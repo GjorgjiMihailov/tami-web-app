@@ -49,7 +49,7 @@ class SidebarAppBrandingTest extends TestCase
         $response->assertDontSee('ПРОДАЖБА');
     }
 
-    public function test_the_office_wide_links_show_only_on_the_portal(): void
+    public function test_the_accountant_menu_has_no_office_wide_worklist_links(): void
     {
         $company = Company::factory()->create();
         $admin = User::factory()->create();
@@ -57,6 +57,6 @@ class SidebarAppBrandingTest extends TestCase
         $company->accountants()->attach($admin);
 
         $this->actingAs($admin)->get(route('sales-invoices.index', $company))->assertDontSee('743 обрасци');
-        $this->actingAs($admin)->get(route('companies.dashboard', $company))->assertSee('743 обрасци');
+        $this->actingAs($admin)->get(route('companies.dashboard', $company))->assertDontSee('743 обрасци')->assertDontSee('е-Фактури на чекање');
     }
 }
