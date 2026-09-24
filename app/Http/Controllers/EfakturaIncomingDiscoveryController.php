@@ -249,7 +249,7 @@ class EfakturaIncomingDiscoveryController extends Controller
     private function authorizeDiscovery(Company $company): void
     {
         Gate::authorize('view', $company);
-        abort_unless(auth()->user()->hasAnyRole(['admin', 'accountant']), 403);
+        Gate::authorize('signEfaktura', $company);
         abort_unless(
             $company->efaktura_credential_mode === Company::EFAKTURA_MODE_OWN,
             422,

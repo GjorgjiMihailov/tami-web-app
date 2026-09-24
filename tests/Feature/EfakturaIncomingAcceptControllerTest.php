@@ -19,6 +19,7 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
         parent::setUp();
         Role::findOrCreate('admin');
         Role::findOrCreate('internal_client');
+        Role::findOrCreate('freelancer_client');
     }
 
     private function makeOwnModeCompany(): Company
@@ -51,6 +52,31 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
         $admin->assignRole('admin');
 
         return $admin;
+    }
+
+    private function clientOf(Company $company, string $role = 'internal_client'): User
+    {
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole($role);
+
+        return $client;
+    }
+
+    private function firmModeCompany(): Company
+    {
+        return Company::factory()->create([
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM,
+            'efaktura_firm_access_status' => Company::EFAKTURA_STATUS_APPROVED,
+        ]);
+    }
+
+    private function noTokenCompany(): Company
+    {
+        return Company::factory()->create([
+            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
+            'efaktura_eujp_id' => 'EUJP-1',
+            'efaktura_token_serial_number' => null,
+        ]);
     }
 
     public function test_signing_input_returns_a_token(): void
@@ -112,14 +138,81 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
         $response->assertStatus(422);
     }
 
-    public function test_client_role_is_forbidden(): void
+    public function test_internal_client_with_an_own_token_can_accept_and_gets_a_draft_purchase_invoice(): void
+    {
+        Http::fake(['*' => Http::response(['status' => 'ok'], 200)]);
+        $company = $this->makeOwnModeCompany();
+        $document = $this->makeUndecidedDocument($company);
+        $client = $this->clientOf($company);
+
+        $signingResponse = $this->actingAs($client)->postJson(
+            route('incoming-efaktura.accept.signing-input', [$company, $document]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        );
+        $signingResponse->assertOk()->assertJsonStructure(['token', 'signingInput']);
+
+        $response = $this->actingAs($client)->postJson(
+            route('incoming-efaktura.accept', [$company, $document]),
+            ['token' => $signingResponse->json('token'), 'signature' => 'ZmFrZS1zaWc']
+        );
+
+        $response->assertOk()->assertJsonStructure(['status', 'purchaseInvoiceId']);
+        $document->refresh();
+        $this->assertSame(IncomingEfakturaDocument::DECISION_ACCEPTED, $document->decision);
+        $this->assertSame($client->id, $document->decided_by);
+        $this->assertNotNull($document->purchase_invoice_id);
+        $this->assertSame('draft', $document->purchaseInvoice->status);
+    }
+
+    public function test_internal_client_of_a_firm_mode_company_is_forbidden(): void
+    {
+        $company = $this->firmModeCompany();
+        $document = $this->makeUndecidedDocument($company);
+        $user = $this->clientOf($company);
+
+        $response = $this->actingAs($user)->postJson(
+            route('incoming-efaktura.accept.signing-input', [$company, $document]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        );
+
+        $response->assertStatus(403);
+    }
+
+    public function test_internal_client_without_a_registered_token_is_forbidden(): void
+    {
+        $company = $this->noTokenCompany();
+        $document = $this->makeUndecidedDocument($company);
+        $user = $this->clientOf($company);
+
+        $response = $this->actingAs($user)->postJson(
+            route('incoming-efaktura.accept.signing-input', [$company, $document]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        );
+
+        $response->assertStatus(403);
+    }
+
+    public function test_freelancer_client_is_forbidden(): void
     {
         $company = $this->makeOwnModeCompany();
         $document = $this->makeUndecidedDocument($company);
-        $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('internal_client');
+        $user = $this->clientOf($company, 'freelancer_client');
 
-        $response = $this->actingAs($client)->postJson(
+        $response = $this->actingAs($user)->postJson(
+            route('incoming-efaktura.accept.signing-input', [$company, $document]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        );
+
+        $response->assertStatus(403);
+    }
+
+    public function test_internal_client_of_another_company_is_forbidden(): void
+    {
+        $company = $this->makeOwnModeCompany();
+        $document = $this->makeUndecidedDocument($company);
+        $otherClient = $this->clientOf($this->makeOwnModeCompany());
+
+        $response = $this->actingAs($otherClient)->postJson(
             route('incoming-efaktura.accept.signing-input', [$company, $document]),
             ['certificateBase64' => base64_encode('fake-cert')]
         );
