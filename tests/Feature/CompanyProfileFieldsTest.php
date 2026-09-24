@@ -62,7 +62,8 @@ class CompanyProfileFieldsTest extends TestCase
         Livewire::actingAs($this->admin())
             ->test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
-            ->assertDontSee('ЕМБГ');
+            // Полето за ЕМБГ на самата фирма; „Управител - ЕМБГ" е друго поле.
+            ->assertDontSeeHtml('id="editEmbg"');
     }
 
     public function test_an_individual_profile_does_not_show_the_company_only_fields(): void

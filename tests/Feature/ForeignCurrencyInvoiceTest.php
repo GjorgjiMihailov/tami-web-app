@@ -176,6 +176,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
         Livewire::actingAs($admin)
             ->test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
+            ->set('editUsesForeignCurrency', true)
             ->set('bankAccounts', [[
                 'bank_name' => 'Komercijalna',
                 'account_number' => '300000000000123',
@@ -200,6 +201,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
         Livewire::actingAs($admin)
             ->test(CompanyProfile::class, ['company' => $company])
             ->call('startEdit')
+            ->set('editUsesForeignCurrency', true)
             ->set('bankAccounts', [[
                 'bank_name' => '',
                 'account_number' => '',
