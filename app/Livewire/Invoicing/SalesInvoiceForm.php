@@ -151,6 +151,14 @@ class SalesInvoiceForm extends Component
             $this->invoiceDate = WorkingYear::defaultDate($this->workingYear);
             $this->dueDate = WorkingYear::defaultDate($this->workingYear);
             $this->lines = [$this->emptyLine()];
+
+            // „Нова фактура" од екранот на кооперантот го носи купувачот однапред.
+            // Се бара по фирма — туѓо id од адресата се игнорира.
+            $requested = request()->query('partner');
+            if (is_numeric($requested) && Partner::where('company_id', $company->id)->whereKey((int) $requested)->exists()) {
+                $this->partnerId = (string) (int) $requested;
+                $this->updatedPartnerId($this->partnerId);
+            }
         }
     }
 

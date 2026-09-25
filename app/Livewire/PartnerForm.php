@@ -324,7 +324,7 @@ class PartnerForm extends Component
             return $partner;
         });
 
-        return $this->redirect(route('partners.show', [$this->company, $partner]), navigate: true);
+        return $this->redirect(route('partners.index', [$this->company, 'partner' => $partner->id]), navigate: true);
     }
 
     public function render()

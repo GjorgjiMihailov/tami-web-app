@@ -265,7 +265,7 @@
 
         <div class="flex items-center gap-4">
             <x-primary-button type="submit">Зачувај</x-primary-button>
-            <a href="{{ $partner ? route('partners.show', [$company, $partner]) : route('partners.index', $company) }}" wire:navigate class="text-gray-500 text-sm hover:underline">Откажи</a>
+            <a href="{{ $partner ? route('partners.index', [$company, 'partner' => $partner->id]) : route('partners.index', $company) }}" wire:navigate class="text-gray-500 text-sm hover:underline">Откажи</a>
         </div>
     </form>
 </div>

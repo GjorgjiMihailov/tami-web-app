@@ -40,7 +40,7 @@ class PartnerIndexTest extends TestCase
 
         Livewire::test(PartnerIndex::class, ['company' => $company])
             ->assertSee('Acme DOOEL')
-            ->assertSee('+ Нов кооперант');
+            ->assertSeeHtml(route('partners.create', $company));
     }
 
     public function test_the_partners_page_renders_successfully_over_http(): void
@@ -106,7 +106,7 @@ class PartnerIndexTest extends TestCase
             ->call('save');
 
         $partner = Partner::where('name', 'Бета ДООЕЛ')->first();
-        $component->assertRedirect(route('partners.show', [$company, $partner]));
+        $component->assertRedirect(route('partners.index', [$company, 'partner' => $partner->id]));
     }
 
     public function test_the_form_persists_the_selected_type(): void
@@ -138,10 +138,11 @@ class PartnerIndexTest extends TestCase
     public function test_the_partner_table_has_the_header_and_hover_treatment(): void
     {
         $company = Company::factory()->create();
-        Partner::factory()->for($company)->create(['name' => 'Acme DOOEL']);
+        $partner = Partner::factory()->for($company)->create(['name' => 'Acme DOOEL']);
         $this->admin();
 
         Livewire::test(PartnerIndex::class, ['company' => $company])
+            ->call('select', $partner->id)
             ->assertSee('bg-gray-50', false)
             ->assertSee('hover:bg-orange-50', false);
     }

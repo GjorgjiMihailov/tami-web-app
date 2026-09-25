@@ -13,6 +13,8 @@ use App\Http\Controllers\ItemImportTemplateController;
 use App\Http\Controllers\JournalEntryPdfController;
 use App\Http\Controllers\MpinExportController;
 use App\Http\Controllers\PartnerListPdfController;
+use App\Http\Controllers\PartnerShowRedirectController;
+use App\Http\Controllers\PartnerStatementPdfController;
 use App\Http\Controllers\PayrollRecapPdfController;
 use App\Http\Controllers\PayslipPdfController;
 use App\Http\Controllers\SalesInvoicePdfController;
@@ -64,7 +66,6 @@ use App\Livewire\Invoicing\SalesInvoiceShow;
 use App\Livewire\OfficeUsers;
 use App\Livewire\PartnerForm;
 use App\Livewire\PartnerIndex;
-use App\Livewire\PartnerShow;
 use App\Livewire\Payroll\PayrollRunIndex;
 use App\Livewire\Payroll\PayrollRunShow;
 use App\Livewire\PayrollParameterIndex;
@@ -192,7 +193,9 @@ Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.
         Route::get('/partners/pdf', [PartnerListPdfController::class, '__invoke'])->name('pdf');
         Route::get('/partners/create', [PartnerForm::class, '__invoke'])->name('create');
         Route::get('/partners/{partner}/edit', [PartnerForm::class, '__invoke'])->name('edit');
-        Route::get('/partners/{partner}', [PartnerShow::class, '__invoke'])->name('show');
+        Route::get('/partners/{partner}/statement/pdf', [PartnerStatementPdfController::class, '__invoke'])->name('statement.pdf');
+        // Детали за кооперант живеат во листата (лево список, десно детали) — стар линк ги носи таму.
+        Route::get('/partners/{partner}', [PartnerShowRedirectController::class, '__invoke'])->name('show');
     });
 
     // Array-callable form (not bare class-string) for the same reason as the
