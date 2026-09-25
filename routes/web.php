@@ -62,6 +62,7 @@ use App\Livewire\Invoicing\SalesInvoiceForm;
 use App\Livewire\Invoicing\SalesInvoiceIndex;
 use App\Livewire\Invoicing\SalesInvoiceShow;
 use App\Livewire\OfficeUsers;
+use App\Livewire\PartnerForm;
 use App\Livewire\PartnerIndex;
 use App\Livewire\PartnerShow;
 use App\Livewire\Payroll\PayrollRunIndex;
@@ -189,6 +190,7 @@ Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.
     Route::middleware(['auth'])->prefix('companies/{company}')->name('partners.')->group(function () {
         Route::get('/partners', [PartnerIndex::class, '__invoke'])->name('index');
         Route::get('/partners/pdf', [PartnerListPdfController::class, '__invoke'])->name('pdf');
+        Route::get('/partners/create', [PartnerForm::class, '__invoke'])->name('create');
         Route::get('/partners/{partner}', [PartnerShow::class, '__invoke'])->name('show');
     });
 
