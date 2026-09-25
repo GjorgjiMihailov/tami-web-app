@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\CompanyProfile;
 use App\Livewire\Invoicing\SalesInvoiceForm;
-use App\Livewire\PartnerShow;
+use App\Livewire\PartnerForm;
 use App\Models\Company;
 use App\Models\ExchangeRate;
 use App\Models\JournalEntryLine;
@@ -108,10 +108,9 @@ class ForeignCurrencyInvoiceTest extends TestCase
         $admin->assignRole('admin');
 
         Livewire::actingAs($admin)
-            ->test(PartnerShow::class, ['company' => $company, 'partner' => $partner])
-            ->call('startEdit')
-            ->set('editInvoiceLanguage', 'en')
-            ->set('editCountry', 'Germany')
+            ->test(PartnerForm::class, ['company' => $company, 'partner' => $partner])
+            ->set('invoiceLanguage', 'en')
+            ->set('country', 'Germany')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -127,8 +126,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
         $admin->assignRole('admin');
 
         Livewire::actingAs($admin)
-            ->test(PartnerShow::class, ['company' => $company, 'partner' => $partner])
-            ->call('startEdit')
+            ->test(PartnerForm::class, ['company' => $company, 'partner' => $partner])
             ->assertDontSee('Јазик на фактура');
     }
 
@@ -141,9 +139,8 @@ class ForeignCurrencyInvoiceTest extends TestCase
         $admin->assignRole('admin');
 
         Livewire::actingAs($admin)
-            ->test(PartnerShow::class, ['company' => $company, 'partner' => $partner])
-            ->call('startEdit')
-            ->set('editInvoiceLanguage', 'en')
+            ->test(PartnerForm::class, ['company' => $company, 'partner' => $partner])
+            ->set('invoiceLanguage', 'en')
             ->call('save');
 
         $this->assertSame(InvoiceLanguage::MK, $partner->fresh()->invoice_language);
@@ -158,9 +155,8 @@ class ForeignCurrencyInvoiceTest extends TestCase
         $admin->assignRole('admin');
 
         Livewire::actingAs($admin)
-            ->test(PartnerShow::class, ['company' => $company, 'partner' => $partner])
-            ->call('startEdit')
-            ->set('editCountry', 'Србија')
+            ->test(PartnerForm::class, ['company' => $company, 'partner' => $partner])
+            ->set('country', 'Србија')
             ->call('save')
             ->assertHasNoErrors();
 

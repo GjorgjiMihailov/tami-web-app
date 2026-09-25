@@ -128,7 +128,7 @@
                     <div class="party-box">
                         <h4>{{ $lang->t('buyer') }}</h4>
                         <div><strong>{{ $invoice->partner->name }}</strong></div>
-                        <div class="small muted">{{ $invoice->partner->address }}</div>
+                        <div class="small muted">{{ $invoice->partner->printedAddress() }}</div>
                         @if ($lang === \App\Support\InvoiceLanguage::EN && $invoice->partner->country)
                             <div class="small muted">{{ $invoice->partner->country }}</div>
                         @endif
