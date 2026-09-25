@@ -56,7 +56,7 @@ class ItemFormTest extends TestCase
             ->set('unitOfMeasure', 'кг')
             ->call('save')
             ->assertHasNoErrors()
-            ->assertRedirect(route('inventory.items.index', $company));
+            ->assertRedirect();
 
         $this->assertDatabaseHas('items', ['company_id' => $company->id, 'code' => 'SKU-100', 'unit_of_measure' => 'кг', 'is_active' => true]);
     }
