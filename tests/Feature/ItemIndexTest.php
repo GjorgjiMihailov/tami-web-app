@@ -35,24 +35,6 @@ class ItemIndexTest extends TestCase
             ->assertSee('Widget A');
     }
 
-    public function test_client_can_add_an_item_for_their_own_company(): void
-    {
-        $company = Company::factory()->create();
-        $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('internal_client');
-
-        $this->actingAs($client);
-
-        Livewire::test(ItemIndex::class, ['company' => $company])
-            ->set('newCode', 'SKU-100')
-            ->set('newName', 'Widget B')
-            ->set('newUnitOfMeasure', 'kg')
-            ->call('addItem')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseHas('items', ['company_id' => $company->id, 'code' => 'SKU-100', 'unit_of_measure' => 'kg']);
-    }
-
     public function test_search_filters_by_name_or_code(): void
     {
         $company = Company::factory()->create();
@@ -80,105 +62,31 @@ class ItemIndexTest extends TestCase
             ->assertOk();
     }
 
-    public function test_add_item_form_accepts_the_new_fields(): void
-    {
-        $company = Company::factory()->create();
-        $admin = User::factory()->create();
-        $admin->assignRole('admin');
-        $this->actingAs($admin);
-
-        Livewire::test(ItemIndex::class, ['company' => $company])
-            ->set('newCode', 'SKU-200')
-            ->set('newName', 'Service Item')
-            ->set('newUnitOfMeasure', 'hour')
-            ->set('newSellingPrice', '150.00')
-            ->set('newType', 'service')
-            ->set('newIsMadeInMk', true)
-            ->set('newBarcode', '3800000000024')
-            ->call('addItem')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseHas('items', [
-            'company_id' => $company->id,
-            'code' => 'SKU-200',
-            'selling_price' => '150.00',
-            'type' => 'service',
-            'is_made_in_mk' => true,
-            'barcode' => '3800000000024',
-        ]);
-    }
-
-    public function test_a_duplicate_barcode_is_rejected_on_add(): void
-    {
-        $company = Company::factory()->create();
-        Item::factory()->for($company)->create(['barcode' => '3800000000017']);
-        $admin = User::factory()->create();
-        $admin->assignRole('admin');
-        $this->actingAs($admin);
-
-        Livewire::test(ItemIndex::class, ['company' => $company])
-            ->set('newCode', 'SKU-201')
-            ->set('newName', 'Widget')
-            ->set('newUnitOfMeasure', 'piece')
-            ->set('newBarcode', '3800000000017')
-            ->call('addItem')
-            ->assertHasErrors(['newBarcode']);
-    }
-
-    public function test_editing_an_item_updates_all_fields(): void
-    {
-        $company = Company::factory()->create();
-        $item = Item::factory()->for($company)->create(['name' => 'Old Name', 'type' => 'product']);
-        $admin = User::factory()->create();
-        $admin->assignRole('admin');
-        $this->actingAs($admin);
-
-        Livewire::test(ItemIndex::class, ['company' => $company])
-            ->call('startEditingItem', $item->id)
-            ->assertSet('editName', 'Old Name')
-            ->set('editName', 'New Name')
-            ->set('editSellingPrice', '75.50')
-            ->set('editType', 'service')
-            ->set('editIsMadeInMk', true)
-            ->set('editBarcode', '3800000000031')
-            ->call('updateItem', $item->id)
-            ->assertHasNoErrors();
-
-        $item->refresh();
-        $this->assertSame('New Name', $item->name);
-        $this->assertSame('75.50', (string) $item->selling_price);
-        $this->assertSame('service', $item->type);
-        $this->assertTrue($item->is_made_in_mk);
-        $this->assertSame('3800000000031', $item->barcode);
-    }
-
-    public function test_a_client_can_edit_their_own_companys_item(): void
+    public function test_the_list_links_to_the_new_item_page_and_to_each_items_edit_page(): void
     {
         $company = Company::factory()->create();
         $item = Item::factory()->for($company)->create();
-        $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('internal_client');
-        $this->actingAs($client);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
 
         Livewire::test(ItemIndex::class, ['company' => $company])
-            ->call('startEditingItem', $item->id)
-            ->set('editName', 'Renamed by client')
-            ->call('updateItem', $item->id)
-            ->assertHasNoErrors();
-
-        $this->assertSame('Renamed by client', $item->fresh()->name);
+            ->assertSee('Нов артикл')
+            ->assertSeeHtml(route('inventory.items.create', $company))
+            ->assertSeeHtml(route('inventory.items.edit', [$company, $item]));
     }
 
-    public function test_the_list_shows_type_and_made_in_mk_columns(): void
+    public function test_the_list_shows_type_cost_price_and_made_in_mk_columns(): void
     {
         $company = Company::factory()->create();
-        Item::factory()->for($company)->create(['name' => 'Service X', 'type' => 'service', 'is_made_in_mk' => true]);
+        Item::factory()->for($company)->create(['name' => 'Service X', 'type' => 'service', 'is_made_in_mk' => true, 'cost_price' => '12.50']);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
         Livewire::test(ItemIndex::class, ['company' => $company])
             ->assertSee('Услуга')
+            ->assertSee('Набавна цена')
             ->assertSee('Да');
     }
 
@@ -197,18 +105,17 @@ class ItemIndexTest extends TestCase
             ->assertSee('hover:bg-orange-50', false);
     }
 
-    public function test_the_inline_edit_row_deliberately_has_no_hover_treatment(): void
+    public function test_toggling_active_flips_the_flag(): void
     {
         $company = Company::factory()->create();
-        $item = Item::factory()->for($company)->create();
+        $item = Item::factory()->for($company)->create(['is_active' => true]);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
-
         $this->actingAs($admin);
 
-        // deliberately no row-hover: this row holds a live edit form, not passive data
         Livewire::test(ItemIndex::class, ['company' => $company])
-            ->call('startEditingItem', $item->id)
-            ->assertSeeHtml('<tr wire:key="item-edit-'.$item->id.'">');
+            ->call('toggleActive', $item->id);
+
+        $this->assertFalse($item->fresh()->is_active);
     }
 }

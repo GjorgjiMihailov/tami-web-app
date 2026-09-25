@@ -822,7 +822,9 @@ class SalesInvoiceForm extends Component
         return view('livewire.invoicing.sales-invoice-form', [
             'partners' => Partner::where('company_id', $this->company->id)->orderBy('name')->get(),
             'warehouses' => Warehouse::where('company_id', $this->company->id)->where('is_active', true)->orderBy('name')->get(),
-            'items' => Item::where('company_id', $this->company->id)->where('is_active', true)->orderBy('type')->orderBy('name')->get(),
+            'items' => Item::where('company_id', $this->company->id)->where('is_active', true)
+                ->where(fn ($q) => $q->where('is_sellable', true)->orWhereIn('id', collect($this->lines)->pluck('item_id')->filter()->all()))
+                ->orderBy('type')->orderBy('name')->get(),
             'rows' => $rows,
             'vatRegistered' => $vatRegistered,
             'requiresWarehouse' => collect($rows)->contains(fn ($row) => $row['is_stock']),
