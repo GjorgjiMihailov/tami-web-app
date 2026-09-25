@@ -1,69 +1,55 @@
 <div>
     <div class="flex items-center justify-between mb-4">
         <h1 class="text-2xl font-bold text-gray-800">Кооперанти — {{ $company->name }}</h1>
-        <a href="{{ route('partners.pdf', $company) }}" class="text-brand hover:underline text-sm">Преземи PDF</a>
+        @if ($partners->isNotEmpty())
+            <div class="flex items-center gap-4">
+                <a href="{{ route('partners.pdf', $company) }}" class="text-brand hover:underline text-sm">Преземи PDF</a>
+                @can('create', \App\Models\Partner::class)
+                    <a href="{{ route('partners.create', $company) }}" wire:navigate>
+                        <x-primary-button type="button">+ Нов кооперант</x-primary-button>
+                    </a>
+                @endcan
+            </div>
+        @endif
     </div>
 
-    @can('create', \App\Models\Partner::class)
-        <x-card class="mb-6">
-            <h2 class="font-semibold text-gray-700 mb-2">Додади партнер</h2>
-            <form wire:submit="addPartner" class="flex flex-wrap gap-3 items-end">
-                <div class="flex-1 min-w-[16rem]">
-                    <x-input-label for="newName" value="Назив" />
-                    <x-text-input id="newName" wire:model="newName" class="w-full" />
-                    @error('newName') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                </div>
-                <div>
-                    <x-input-label for="newType" value="Тип" />
-                    <select id="newType" wire:model="newType" class="border-gray-300 rounded-md text-sm">
-                        <option value="legal_entity">{{ \App\Support\Format::partnerType('legal_entity') }}</option>
-                        <option value="individual">{{ \App\Support\Format::partnerType('individual') }}</option>
-                    </select>
-                </div>
-                <div>
-                    <x-input-label for="newTaxId" value="ЕДБ" />
-                    <x-text-input id="newTaxId" wire:model="newTaxId" class="w-40" />
-                </div>
-                <div>
-                    <x-input-label for="newEmail" value="Е-пошта" />
-                    <x-text-input id="newEmail" wire:model="newEmail" class="w-48" />
-                    @error('newEmail') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                </div>
-                <div>
-                    <x-input-label for="newPhone" value="Телефон" />
-                    <x-text-input id="newPhone" wire:model="newPhone" class="w-32" />
-                </div>
-                <div class="flex-1 min-w-[16rem]">
-                    <x-input-label for="newAddress" value="Адреса" />
-                    <x-text-input id="newAddress" wire:model="newAddress" class="w-full" />
-                </div>
-                <x-primary-button type="submit">Додади</x-primary-button>
-            </form>
+    @if ($partners->isEmpty())
+        <x-card class="py-16 text-center">
+            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-50 text-brand" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.118a7.5 7.5 0 0115 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.5-1.632z" />
+                </svg>
+            </div>
+            <h2 class="text-lg font-semibold text-gray-800">Секоја продажба почнува со кооперант</h2>
+            <p class="mt-1 text-sm text-gray-500">Додади ги купувачите и добавувачите на едно место — со ЕДБ, е-пошта, телефон и адреса.</p>
+            @can('create', \App\Models\Partner::class)
+                <a href="{{ route('partners.create', $company) }}" wire:navigate class="mt-6 inline-block">
+                    <x-primary-button type="button">+ Додади нов кооперант</x-primary-button>
+                </a>
+            @endcan
         </x-card>
-    @endcan
-
-    <x-card padding="p-0" class="overflow-hidden">
-    <table class="min-w-full divide-y divide-gray-200">
-        <thead>
-            <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                <th class="py-1 px-3">Назив</th>
-                <th class="py-1 px-3">ЕДБ</th>
-                <th class="py-1 px-3">Е-пошта</th>
-                <th class="py-1 px-3">Телефон</th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-            @forelse ($partners as $partner)
-                <tr class="text-sm hover:bg-orange-50">
-                    <td class="py-1 px-3"><a href="{{ route('partners.show', [$company, $partner]) }}" class="text-brand hover:underline font-medium">{{ $partner->name }}</a></td>
-                    <td class="py-1 px-3">{{ $partner->tax_id }}</td>
-                    <td class="py-1 px-3">{{ $partner->email }}</td>
-                    <td class="py-1 px-3">{{ $partner->phone }}</td>
-                </tr>
-            @empty
-                <tr><td colspan="4" class="py-4 px-3 text-gray-500">Нема додадено партнери.</td></tr>
-            @endforelse
-        </tbody>
-    </table>
-    </x-card>
+    @else
+        <x-card padding="p-0" class="overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr class="text-left text-sm text-gray-500 bg-gray-50">
+                        <th class="py-1 px-3">Назив</th>
+                        <th class="py-1 px-3">ЕДБ</th>
+                        <th class="py-1 px-3">Е-пошта</th>
+                        <th class="py-1 px-3">Телефон</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach ($partners as $partner)
+                        <tr class="text-sm hover:bg-orange-50">
+                            <td class="py-1 px-3"><a href="{{ route('partners.show', [$company, $partner]) }}" class="text-brand hover:underline font-medium">{{ $partner->name }}</a></td>
+                            <td class="py-1 px-3">{{ $partner->tax_id }}</td>
+                            <td class="py-1 px-3">{{ $partner->email }}</td>
+                            <td class="py-1 px-3">{{ $partner->phone }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </x-card>
+    @endif
 </div>

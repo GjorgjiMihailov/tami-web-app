@@ -93,6 +93,7 @@ class PartnerListPdfTest extends TestCase
     public function test_the_partner_index_links_to_the_pdf_download(): void
     {
         $company = Company::factory()->create();
+        \App\Models\Partner::factory()->for($company)->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $this->actingAs($admin);
