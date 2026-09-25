@@ -53,6 +53,20 @@ class Format
         };
     }
 
+    /** Ознака на валута до износ: денарите како „ден", девизите со кодот. */
+    public static function currencyLabel(string $currency): string
+    {
+        return $currency === 'MKD' ? 'ден' : $currency;
+    }
+
+    /** Статус на фактура за приказ: платежниот статус на потврдена, инаку статусот на документот. */
+    public static function documentStatus(string $status): string
+    {
+        return in_array($status, ['paid', 'unpaid', 'partially_paid'], true)
+            ? self::paymentStatus($status)
+            : self::invoiceStatus($status);
+    }
+
     public static function movementType(string $type): string
     {
         return match ($type) {
