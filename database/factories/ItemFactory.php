@@ -22,6 +22,11 @@ class ItemFactory extends Factory
             'type' => 'product',
             'is_made_in_mk' => false,
             'barcode' => null,
+            'description' => null,
+            'cost_price' => null,
+            'purchase_vat_rate' => null,
+            'is_sellable' => true,
+            'is_purchasable' => true,
         ];
     }
 

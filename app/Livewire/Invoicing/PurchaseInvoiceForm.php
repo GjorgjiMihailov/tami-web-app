@@ -161,7 +161,12 @@ class PurchaseInvoiceForm extends Component
         }
 
         $this->lines[$index]['description'] = $item->name;
-        $this->lines[$index]['vat_rate'] = $this->company->is_vat_registered ? (string) $item->vat_rate : '0.00';
+        $this->lines[$index]['vat_rate'] = $this->company->is_vat_registered ? $item->purchaseVatRate() : '0.00';
+
+        if ($item->cost_price !== null) {
+            $this->lines[$index]['unit_price'] = (string) $item->cost_price;
+        }
+
         $this->lines[$index]['price_basis'] = 'net';
         $this->refreshPrices($index);
     }
@@ -592,7 +597,9 @@ class PurchaseInvoiceForm extends Component
         return view('livewire.invoicing.purchase-invoice-form', [
             'partners' => Partner::where('company_id', $this->company->id)->orderBy('name')->get(),
             'warehouses' => Warehouse::where('company_id', $this->company->id)->where('is_active', true)->orderBy('name')->get(),
-            'items' => Item::where('company_id', $this->company->id)->where('is_active', true)->orderBy('type')->orderBy('name')->get(),
+            'items' => Item::where('company_id', $this->company->id)->where('is_active', true)
+                ->where(fn ($q) => $q->where('is_purchasable', true)->orWhereIn('id', collect($this->lines)->pluck('item_id')->filter()->all()))
+                ->orderBy('type')->orderBy('name')->get(),
             'accounts' => Account::where('company_id', $this->company->id)->where('is_active', true)->orderBy('code')->get(),
             'rows' => $rows,
             'vatRegistered' => $vatRegistered,

@@ -47,6 +47,7 @@ use App\Livewire\EmployeeForm;
 use App\Livewire\EmployeeIndex;
 use App\Livewire\FirstClient;
 use App\Livewire\Inventory\ItemBulkImport;
+use App\Livewire\Inventory\ItemForm;
 use App\Livewire\Inventory\ItemIndex;
 use App\Livewire\Inventory\ItemMovementCardReport;
 use App\Livewire\Inventory\StockMovementForm;
@@ -174,6 +175,8 @@ Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.
     Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':stock'])->prefix('companies/{company}')->name('inventory.')->group(function () {
         Route::get('/warehouses', [WarehouseIndex::class, '__invoke'])->name('warehouses.index');
         Route::get('/items', [ItemIndex::class, '__invoke'])->name('items.index');
+        Route::get('/items/create', [ItemForm::class, '__invoke'])->name('items.create');
+        Route::get('/items/{item}/edit', [ItemForm::class, '__invoke'])->name('items.edit');
         Route::get('/items/bulk-import', [ItemBulkImport::class, '__invoke'])->name('items.bulk-import');
         Route::get('/items/bulk-import/template', [ItemImportTemplateController::class, '__invoke'])->name('items.bulk-import.template');
         Route::get('/stock-movements/create/{type}', [StockMovementForm::class, '__invoke'])->name('stock-movements.create');
