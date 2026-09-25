@@ -34,6 +34,11 @@
                    class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ in_array($currentRoute, ['profile', 'efaktura.access-requests'], true) ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
                     Поставки
                 </a>
+            @elseif (auth()->check() && auth()->user()->hasRole('accountant'))
+                <a href="{{ route('companies.index') }}" wire:navigate
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'companies.index' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
+                    Клиенти
+                </a>
             @endif
         @endif
 

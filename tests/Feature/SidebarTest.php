@@ -412,4 +412,21 @@ class SidebarTest extends TestCase
             );
         }
     }
+
+    public function test_an_accountant_gets_a_clients_link_to_the_companies_screen_and_a_client_does_not(): void
+    {
+        $company = Company::factory()->create();
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+        $company->accountants()->attach($accountant);
+
+        Livewire::actingAs($accountant)->test(Sidebar::class)
+            ->assertSee(route('companies.index'), false);
+
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        Livewire::actingAs($client)->test(Sidebar::class)
+            ->assertDontSee(route('companies.index'), false);
+    }
 }

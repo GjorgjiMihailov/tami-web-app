@@ -30,9 +30,7 @@ class CompanyModules extends Component
 
     public function mount(Company $company): void
     {
-        // Админ секогаш. Сметководител — само за фирма на која работи —
-        // истото правило како за профилот (CompanyPolicy::update).
-        Gate::authorize('update', $company);
+        Gate::authorize('manageModules', $company);
 
         $this->company = $company;
         $this->usesMaterial = $company->uses_material;
@@ -43,7 +41,7 @@ class CompanyModules extends Component
 
     public function save(): void
     {
-        Gate::authorize('update', $this->company);
+        Gate::authorize('manageModules', $this->company);
 
         $validated = $this->validate([
             'usesMaterial' => 'boolean',
