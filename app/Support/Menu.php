@@ -25,10 +25,6 @@ class Menu
      * @var array<string, array{label: string, sentence: string}>
      */
     public const SOON_FEATURES = [
-        'profakturi' => [
-            'label' => 'Профактури',
-            'sentence' => 'Овде ќе се издаваат профактури кои подоцна се претвораат во фактури.',
-        ],
         'popis' => [
             'label' => 'Попис',
             'sentence' => 'Овде ќе се прави годишен попис на залихите и ќе се книжат разликите.',
@@ -203,7 +199,7 @@ class Menu
                 'label' => 'ПРОДАЖБА',
                 'items' => [
                     ['label' => 'Излезни фактури', 'url' => route('sales-invoices.index', $company), 'pattern' => 'sales-invoices.*', 'roles' => null, 'module' => CompanyModule::MATERIAL],
-                    self::soon($company, 'profakturi', CompanyModule::MATERIAL),
+                    ['label' => 'Профактури', 'url' => route('proformas.index', $company), 'pattern' => 'proformas.*', 'roles' => null, 'module' => CompanyModule::MATERIAL],
                     // Кооперанти намерно немаат модул: партнерите ги бара и
                     // книжењето, не само фактурирањето. Кога Материјално е
                     // исклучено, оваа ставка останува сама во групата.
@@ -292,6 +288,7 @@ class Menu
                 'label' => 'ПРОДАЖБА',
                 'items' => [
                     ['label' => 'Излезни фактури', 'url' => route('sales-invoices.index', $company), 'pattern' => 'sales-invoices.*', 'roles' => null],
+                    ['label' => 'Профактури', 'url' => route('proformas.index', $company), 'pattern' => 'proformas.*', 'roles' => null],
                     ['label' => 'Кооперанти', 'url' => route('partners.index', $company), 'pattern' => 'partners.*', 'roles' => null],
                 ],
             ],

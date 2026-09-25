@@ -160,7 +160,7 @@ class MenuTest extends TestCase
         $menu = Menu::for($this->userWithRole('internal_client', $company), $company, PortalApp::PRODAZBA);
 
         // Влезни фактури moved out of ПРОДАЖБА into its own ТРОШОЦИ group.
-        $this->assertSame(['Излезни фактури', 'Кооперанти'], $this->itemLabels($menu, 'sales'));
+        $this->assertSame(['Излезни фактури', 'Профактури', 'Кооперанти'], $this->itemLabels($menu, 'sales'));
         // Други трошоци се отвори за клиент во фаза В — фискалните сметки ги
         // качува тој, како и влезните фактури.
         $this->assertSame(['Влезни фактури', 'Други трошоци'], $this->itemLabels($menu, 'costs'));
@@ -354,7 +354,7 @@ class MenuTest extends TestCase
         $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
         $freelancer = $this->userWithRole('freelancer_client', $company);
 
-        $this->assertSame(['Излезни фактури', 'Кооперанти'], $this->itemLabels(Menu::for($freelancer, $company, PortalApp::PRODAZBA), 'sales'));
+        $this->assertSame(['Излезни фактури', 'Профактури', 'Кооперанти'], $this->itemLabels(Menu::for($freelancer, $company, PortalApp::PRODAZBA), 'sales'));
         $this->assertSame(['743 обрасци'], $this->itemLabels(Menu::for($freelancer, $company, PortalApp::FINANSII), 'bank'));
     }
 }

@@ -110,5 +110,15 @@ enum InvoiceLanguage: string
         'signature_receiver' => ['mk' => 'ПРИМИЛ', 'en' => 'RECEIVED BY'],
         'not_vat_registered' => ['mk' => 'Фирмава не е ДДВ обврзник.', 'en' => 'Not registered for VAT.'],
         'seller_country' => ['mk' => 'Северна Македонија', 'en' => 'North Macedonia'],
+        'proforma' => ['mk' => 'ПРОФАКТУРА', 'en' => 'PROFORMA INVOICE'],
+        'proforma_date' => ['mk' => 'Датум на профактура', 'en' => 'Proforma date'],
+        'reference' => ['mk' => 'Референца', 'en' => 'Reference'],
+        'expected_delivery' => ['mk' => 'Очекувана испорака', 'en' => 'Expected delivery'],
+        'payment_terms' => ['mk' => 'Рок на плаќање', 'en' => 'Payment terms'],
+        'on_receipt' => ['mk' => 'По приемот', 'en' => 'Due on receipt'],
+        'days' => ['mk' => 'дена', 'en' => 'days'],
+        'notes' => ['mk' => 'Белешка', 'en' => 'Notes'],
+        'terms' => ['mk' => 'Услови', 'en' => 'Terms & conditions'],
+        'not_a_tax_invoice' => ['mk' => 'Профактурата не е даночна фактура и не служи за книжење.', 'en' => 'This proforma invoice is not a tax invoice.'],
     ];
 }

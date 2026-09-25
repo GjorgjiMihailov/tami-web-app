@@ -57,6 +57,14 @@
         </div>
     @endif
 
+    @error('proformaId')
+        <p class="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ $message }}</p>
+    @enderror
+
+    @if ($proformaId !== '')
+        <p class="mb-4 rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900">Фактурата е пополнета од профактура. Прегледај ја и измени што треба — профактурата се означува како претворена дури кога ќе ја зачуваш фактурата.</p>
+    @endif
+
     <form wire:submit="save" class="space-y-6">
         <x-card class="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
