@@ -11,7 +11,7 @@ class ProformaInvoiceLine extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['proforma_invoice_id', 'item_id', 'description', 'quantity', 'unit_price', 'vat_rate'];
+    protected $fillable = ['proforma_invoice_id', 'item_id', 'description', 'quantity', 'unit_price', 'vat_rate', 'discount_percent'];
 
     protected function casts(): array
     {
@@ -19,6 +19,7 @@ class ProformaInvoiceLine extends Model
             'quantity' => 'decimal:3',
             'unit_price' => 'decimal:2',
             'vat_rate' => 'decimal:2',
+            'discount_percent' => 'decimal:2',
         ];
     }
 
@@ -35,7 +36,7 @@ class ProformaInvoiceLine extends Model
     /** @return array{net: string, vat: string, gross: string} */
     private function amounts(): array
     {
-        return VatMath::lineFromNet((string) $this->quantity, (string) $this->unit_price, (string) $this->vat_rate);
+        return VatMath::lineFromNet((string) $this->quantity, (string) $this->unit_price, (string) $this->vat_rate, (string) $this->discount_percent);
     }
 
     public function lineTotal(): string

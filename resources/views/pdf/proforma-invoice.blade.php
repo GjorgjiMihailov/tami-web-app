@@ -6,6 +6,7 @@
         $partner = $proforma->partner;
         $currency = $proforma->currency;
         $vatRegistered = (bool) $company->is_vat_registered;
+        $hasDiscount = $proforma->lines->contains(fn ($line) => bccomp((string) $line->discount_percent, '0', 2) > 0);
     @endphp
     <style>
         /* dompdf нема flex — сите колони се табели со фиксни широчини. */
@@ -80,6 +81,7 @@
                     <th>{{ $lang->t('description') }}</th>
                     <th class="right">{{ $lang->t('quantity') }}</th>
                     <th class="right">{{ $lang->t('unit_price') }}</th>
+                    @if ($hasDiscount)<th class="right">{{ $lang->t('discount_percent') }}</th>@endif
                     @if ($vatRegistered)<th class="right">{{ $lang->t('vat_percent') }}</th>@endif
                     <th class="right">{{ $lang->t('amount') }}</th>
                 </tr>
@@ -91,6 +93,7 @@
                         <td>{{ $line->description }}</td>
                         <td class="right">{{ rtrim(rtrim(number_format((float) $line->quantity, 3, $lang->value === 'mk' ? ',' : '.', $lang->value === 'mk' ? '.' : ','), '0'), $lang->value === 'mk' ? ',' : '.') }}@if ($line->item) {{ $line->item->unit_of_measure }}@endif</td>
                         <td class="right">{{ $lang->money($line->unit_price, $currency) }}</td>
+                        @if ($hasDiscount)<td class="right">{{ bccomp((string) $line->discount_percent, '0', 2) > 0 ? \App\Support\Format::rate($line->discount_percent) : '' }}</td>@endif
                         @if ($vatRegistered)<td class="right">{{ \App\Support\Format::rate($line->vat_rate) }}</td>@endif
                         <td class="right">{{ $lang->money($line->lineTotal(), $currency) }}</td>
                     </tr>

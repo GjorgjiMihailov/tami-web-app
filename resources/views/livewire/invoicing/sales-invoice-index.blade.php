@@ -2,86 +2,130 @@
     <div class="flex items-center justify-between mb-4">
         <h1 class="text-2xl font-bold text-gray-800">Излезни фактури — {{ $company->name }}</h1>
         <div class="flex items-center gap-3">
-            @if ($company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN && auth()->user()->can('signEfaktura', $company))
-                <button type="button" @click="run()" :disabled="busy" class="border border-brand text-brand px-3 py-1.5 rounded-md text-sm disabled:opacity-50">
-                    <span x-show="!busy">Освежи статуси</span>
-                    <span x-show="busy" x-text="statusText"></span>
-                </button>
-            @endif
-            <a href="{{ route('sales-invoices.create', $company) }}" class="bg-brand text-white px-3 py-1.5 rounded-md text-sm">Нова фактура</a>
+                @if ($company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN && auth()->user()->can('signEfaktura', $company))
+                    <button type="button" @click="run()" :disabled="busy" class="border border-brand text-brand px-3 py-1.5 rounded-md text-sm disabled:opacity-50">
+                        <span x-show="!busy">Освежи статуси</span>
+                        <span x-show="busy" x-text="statusText"></span>
+                    </button>
+                @endif
+                <a href="{{ route('sales-invoices.create', $company) }}" class="bg-brand text-white px-3 py-1.5 rounded-md text-sm">+ Нова фактура</a>
         </div>
     </div>
 
     <p x-show="error" x-text="error" class="text-red-600 text-sm mb-3"></p>
 
-    <div class="mb-4">
-        <select wire:model.live="statusFilter" class="border-gray-300 rounded-md text-sm">
-            <option value="">Сите статуси</option>
-            <option value="draft">Нацрт</option>
-            <option value="confirmed">Потврдена</option>
-            <option value="cancelled">Откажана</option>
-        </select>
-    </div>
+    @if (! $hasInvoices)
+        <x-card class="py-14">
+            <div class="text-center">
+                <h2 class="text-xl font-semibold text-gray-800">Време е да ви платат!</h2>
+                <p class="mt-1 text-sm text-gray-500">Издавањето фактури и наплатата се полесни од кога било. Создадете ја првата фактура.</p>
+                @can('create', \App\Models\SalesInvoice::class)
+                    <a href="{{ route('sales-invoices.create', $company) }}" class="mt-6 inline-block">
+                        <x-primary-button type="button">+ Нова фактура</x-primary-button>
+                    </a>
+                @endcan
+            </div>
 
-    <x-card padding="p-0" class="overflow-hidden">
-    <table class="min-w-full divide-y divide-gray-200">
-        <thead>
-            <tr class="text-left text-sm text-gray-500 bg-gray-50">
-                <th class="py-1 px-3">Број</th>
-                <th class="py-1 px-3">Купувач</th>
-                <th class="py-1 px-3">Датум</th>
-                <th class="py-1 px-3">Статус</th>
-                <th class="py-1 px-3">е-Фактура</th>
-                <th class="py-1 px-3">ПДФ</th>
-                <th class="py-1 px-3">Вкупно</th>
-                <th class="py-1 px-3"></th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-            @forelse ($invoices as $invoice)
-                <tr class="text-sm hover:bg-orange-50">
-                    <td class="py-1 px-3">{{ $invoice->formattedNumber() ?? '—' }}</td>
-                    <td class="py-1 px-3">{{ $invoice->partner->name }}</td>
-                    <td class="py-1 px-3">{{ \App\Support\Format::date($invoice->invoice_date) }}</td>
-                    <td class="py-1 px-3"><x-badge :status="$invoice->status">{{ \App\Support\Format::invoiceStatus($invoice->status) }}</x-badge></td>
-                    <td class="py-1 px-3">
-                        @if ($invoice->efaktura_ujp_status_name)
-                            <x-badge :status="$invoice->isEfakturaAccepted() ? 'active' : 'pending'">{{ $invoice->efaktura_ujp_status_name }}</x-badge>
-                        @elseif ($invoice->efaktura_status === 'sent')
-                            <x-badge status="pending">Испратена</x-badge>
-                        @elseif ($invoice->efaktura_status === 'failed')
-                            <x-badge status="overdue">Не успеа</x-badge>
-                        @else
-                            <span class="text-gray-400">—</span>
-                        @endif
-                    </td>
-                    <td class="py-1 px-3">
-                        @if ($invoice->efaktura_pdf_path)
-                            <a href="{{ route('sales-invoices.efaktura.pdf.download', [$company, $invoice]) }}" class="text-brand hover:underline">Преземи ПДФ</a>
-                        @elseif ($invoice->isEfakturaAccepted() && $company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN && auth()->user()->can('signEfaktura', $company))
-                            <div x-data="efakturaPdfFetch({{ $invoice->id }})">
-                                <button type="button" @click="run()" :disabled="busy" class="text-brand hover:underline disabled:opacity-50">
-                                    <span x-show="!busy">Преземи ПДФ</span>
-                                    <span x-show="busy" x-text="statusText"></span>
-                                </button>
-                                <p x-show="error" x-text="error" class="text-red-600 text-xs mt-1"></p>
-                            </div>
-                        @else
-                            <span class="text-gray-400">—</span>
-                        @endif
-                    </td>
-                    <td class="py-1 px-3">{{ \App\Support\Format::money($invoice->grandTotal(), $invoice->currency === 'MKD' ? 'ден' : $invoice->currency) }}</td>
-                    <td class="py-1 px-3">
-                        <a href="{{ route('sales-invoices.show', [$company, $invoice]) }}" class="text-brand hover:underline">Прегледај</a>
-                    </td>
+            <div class="mt-10 flex flex-wrap items-center justify-center gap-2 text-sm">
+                @foreach (['Нацрт', 'Потврдена', 'Неплатена', 'Делумно платена', 'Платена'] as $step)
+                    <span class="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sky-800">{{ $step }}</span>
+                    @unless ($loop->last) <span class="text-gray-400" aria-hidden="true">→</span> @endunless
+                @endforeach
+            </div>
+
+            <ul class="mt-8 mx-auto max-w-xl space-y-2 text-sm text-gray-700">
+                <li>✓ Направи фактура од профактура или од нула — со рабат по ставка и рок на плаќање.</li>
+                <li>✓ Потврди ја за да добие број и да се книжи, па испрати ја до УЈП преку е-Фактура.</li>
+                <li>✓ Евидентирај ги уплатите и следи што е доспеано.</li>
+            </ul>
+        </x-card>
+    @else
+        <div class="mb-4">
+            <select wire:model.live="statusFilter" aria-label="Филтер" class="border-gray-300 rounded-md text-sm">
+                <option value="">Сите фактури</option>
+                <option value="draft">Нацрти</option>
+                <option value="confirmed">Потврдени</option>
+                <option value="unpaid">Неплатени</option>
+                <option value="overdue">Доспеани</option>
+                <option value="paid">Платени</option>
+                <option value="cancelled">Откажани</option>
+            </select>
+        </div>
+
+        <x-card padding="p-0" class="overflow-hidden">
+        <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead>
+                <tr class="text-left text-sm text-gray-500 bg-gray-50">
+                    <th class="py-1 px-3">Датум</th>
+                    <th class="py-1 px-3">Број</th>
+                    <th class="py-1 px-3">Профактура</th>
+                    <th class="py-1 px-3">Купувач</th>
+                    <th class="py-1 px-3">Статус</th>
+                    <th class="py-1 px-3">Рок</th>
+                    <th class="py-1 px-3 text-right">Износ</th>
+                    <th class="py-1 px-3 text-right">За наплата</th>
+                    <th class="py-1 px-3">е-Фактура</th>
+                    <th class="py-1 px-3">ПДФ</th>
                 </tr>
-            @empty
-                <tr><td colspan="8" class="py-4 px-3 text-gray-500">Нема записи за {{ $workingYear }} — провери дали работиш во вистинската година</td></tr>
-            @endforelse
-        </tbody>
-    </table>
-    </x-card>
-
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                @forelse ($invoices as $invoice)
+                    @php $suffix = $invoice->currency === 'MKD' ? 'ден' : $invoice->currency; @endphp
+                    <tr class="text-sm hover:bg-orange-50">
+                        <td class="py-1 px-3 whitespace-nowrap">{{ \App\Support\Format::date($invoice->invoice_date) }}</td>
+                        <td class="py-1 px-3 whitespace-nowrap">
+                            <a href="{{ route('sales-invoices.show', [$company, $invoice]) }}" class="text-brand hover:underline font-medium">{{ $invoice->formattedNumber() ?? 'Нацрт' }}</a>
+                        </td>
+                        <td class="py-1 px-3 whitespace-nowrap">{{ $invoice->order_number ?: '—' }}</td>
+                        <td class="py-1 px-3">{{ $invoice->partner->name }}</td>
+                        <td class="py-1 px-3 whitespace-nowrap">
+                            @if ($invoice->status === 'confirmed')
+                                <x-badge :status="$invoice->isOverdue() ? 'overdue' : $invoice->paymentStatus()">
+                                    {{ $invoice->isOverdue() ? 'Доспеана' : \App\Support\Format::paymentStatus($invoice->paymentStatus()) }}
+                                </x-badge>
+                            @else
+                                <x-badge :status="$invoice->status">{{ \App\Support\Format::invoiceStatus($invoice->status) }}</x-badge>
+                            @endif
+                        </td>
+                        <td class="py-1 px-3 whitespace-nowrap">{{ \App\Support\Format::date($invoice->due_date) }}</td>
+                        <td class="py-1 px-3 text-right whitespace-nowrap">{{ \App\Support\Format::money($invoice->grandTotal(), $suffix) }}</td>
+                        <td class="py-1 px-3 text-right whitespace-nowrap">{{ $invoice->status === 'confirmed' ? \App\Support\Format::money($invoice->balanceDue(), $suffix) : '—' }}</td>
+                        <td class="py-1 px-3">
+                            @if ($invoice->efaktura_ujp_status_name)
+                                <x-badge :status="$invoice->isEfakturaAccepted() ? 'active' : 'pending'">{{ $invoice->efaktura_ujp_status_name }}</x-badge>
+                            @elseif ($invoice->efaktura_status === 'sent')
+                                <x-badge status="pending">Испратена</x-badge>
+                            @elseif ($invoice->efaktura_status === 'failed')
+                                <x-badge status="overdue">Не успеа</x-badge>
+                            @else
+                                <span class="text-gray-400">—</span>
+                            @endif
+                        </td>
+                        <td class="py-1 px-3">
+                            @if ($invoice->efaktura_pdf_path)
+                                <a href="{{ route('sales-invoices.efaktura.pdf.download', [$company, $invoice]) }}" class="text-brand hover:underline">Преземи ПДФ</a>
+                            @elseif ($invoice->isEfakturaAccepted() && $company->hasEfakturaAccess() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN && auth()->user()->can('signEfaktura', $company))
+                                <div x-data="efakturaPdfFetch({{ $invoice->id }})">
+                                    <button type="button" @click="run()" :disabled="busy" class="text-brand hover:underline disabled:opacity-50">
+                                        <span x-show="!busy">Преземи ПДФ</span>
+                                        <span x-show="busy" x-text="statusText"></span>
+                                    </button>
+                                    <p x-show="error" x-text="error" class="text-red-600 text-xs mt-1"></p>
+                                </div>
+                            @else
+                                <span class="text-gray-400">—</span>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <tr><td colspan="10" class="py-4 px-3 text-gray-500">Нема записи за {{ $workingYear }} — провери дали работиш во вистинската година</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+        </div>
+        </x-card>
+    @endif
     @script
     <script>
         const toBase64Url = (str) => btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');

@@ -149,6 +149,7 @@
                                         <th class="py-1 px-3">Ставка</th>
                                         <th class="py-1 px-3 text-right">Кол.</th>
                                         <th class="py-1 px-3 text-right">Цена</th>
+                                        <th class="py-1 px-3 text-right">Рабат %</th>
                                         <th class="py-1 px-3 text-right">ДДВ %</th>
                                         <th class="py-1 px-3 text-right">Износ</th>
                                     </tr>
@@ -159,6 +160,7 @@
                                             <td class="py-1 px-3">{{ $line->description }}@if ($line->item) <span class="text-gray-400">· {{ $line->item->unit_of_measure }}</span>@endif</td>
                                             <td class="py-1 px-3 text-right">{{ rtrim(rtrim(number_format((float) $line->quantity, 3, ',', '.'), '0'), ',') }}</td>
                                             <td class="py-1 px-3 text-right whitespace-nowrap">{{ \App\Support\Format::money($line->unit_price, $label) }}</td>
+                                            <td class="py-1 px-3 text-right">{{ bccomp((string) $line->discount_percent, '0', 2) > 0 ? \App\Support\Format::rate($line->discount_percent) : '—' }}</td>
                                             <td class="py-1 px-3 text-right">{{ \App\Support\Format::rate($line->vat_rate) }}</td>
                                             <td class="py-1 px-3 text-right whitespace-nowrap">{{ \App\Support\Format::money($line->lineTotal(), $label) }}</td>
                                         </tr>

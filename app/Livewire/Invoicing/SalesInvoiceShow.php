@@ -5,6 +5,7 @@ namespace App\Livewire\Invoicing;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidInvoiceStateException;
 use App\Models\Company;
+use App\Models\ProformaInvoice;
 use App\Models\SalesInvoice;
 use App\Services\Invoicing\SalesInvoiceService;
 use App\Support\WorkingYear;
@@ -120,8 +121,21 @@ class SalesInvoiceShow extends Component
     {
         $invoice = $this->salesInvoice->fresh(['lines.item', 'payments', 'partner']);
 
+        // Левата листа ја покажува работната година, но секогаш ја вклучува и
+        // отворената фактура (може да е од друга година).
+        $sidebar = SalesInvoice::where('company_id', $this->company->id)
+            ->where(fn ($q) => $q
+                ->whereBetween('invoice_date', [WorkingYear::startOf($this->workingYear), WorkingYear::endOf($this->workingYear)])
+                ->orWhere('id', $invoice->id))
+            ->with(['partner:id,name', 'lines', 'payments'])
+            ->orderByDesc('invoice_date')->orderByDesc('id')
+            ->limit(100)
+            ->get();
+
         return view('livewire.invoicing.sales-invoice-show', [
             'invoice' => $invoice,
+            'sidebar' => $sidebar,
+            'proforma' => ProformaInvoice::where('company_id', $this->company->id)->where('sales_invoice_id', $invoice->id)->first(),
         ]);
     }
 }

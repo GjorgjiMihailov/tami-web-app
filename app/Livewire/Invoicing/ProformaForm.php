@@ -87,6 +87,7 @@ class ProformaForm extends Component
             'quantity' => (string) $line->quantity,
             'unit_price' => (string) $line->unit_price,
             'vat_rate' => (string) $line->vat_rate,
+            'discount_percent' => (string) $line->discount_percent,
         ])->all();
 
         if ($this->lines === []) {
@@ -102,6 +103,7 @@ class ProformaForm extends Component
             'quantity' => '1',
             'unit_price' => '0',
             'vat_rate' => $this->company->is_vat_registered ? '18.00' : '0.00',
+            'discount_percent' => '0',
         ];
     }
 
@@ -189,6 +191,7 @@ class ProformaForm extends Component
             'lines.*.quantity' => 'required|numeric|gt:0',
             'lines.*.unit_price' => 'required|numeric|min:0',
             'lines.*.vat_rate' => 'required|numeric|min:0|max:100',
+            'lines.*.discount_percent' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $vatRegistered = (bool) $this->company->is_vat_registered;
@@ -200,6 +203,7 @@ class ProformaForm extends Component
             'unit_price' => $line['unit_price'],
             // Фирма што не е ДДВ обврзник не пресметува ДДВ, без оглед на полето.
             'vat_rate' => $vatRegistered ? $line['vat_rate'] : '0.00',
+            'discount_percent' => filled($line['discount_percent'] ?? null) ? $line['discount_percent'] : 0,
         ])->all();
 
         $attributes = [
@@ -243,7 +247,7 @@ class ProformaForm extends Component
 
         foreach ($this->lines as $index => $line) {
             $rate = $vatRegistered ? (string) ($line['vat_rate'] ?? '0') : '0';
-            $amounts = VatMath::lineFromNet((string) ($line['quantity'] ?? '0'), (string) ($line['unit_price'] ?? '0'), $rate);
+            $amounts = VatMath::lineFromNet((string) ($line['quantity'] ?? '0'), (string) ($line['unit_price'] ?? '0'), $rate, (string) ($line['discount_percent'] ?? '0'));
             $rows[$index] = $amounts;
             $net = bcadd($net, $amounts['net'], 2);
             $vat = bcadd($vat, $amounts['vat'], 2);

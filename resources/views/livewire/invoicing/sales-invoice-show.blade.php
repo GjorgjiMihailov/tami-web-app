@@ -5,7 +5,41 @@
     // девизна фактура — тоа е UI на канцеларијата, не самата фактура.
     $currencySuffix = $invoice->currency === 'MKD' ? 'ден' : $invoice->currency;
 @endphp
-<div>
+<div class="grid gap-4 lg:grid-cols-[22rem_1fr]">
+    {{-- Лева страна: фактурите од работната година --}}
+    <x-card padding="p-0" class="hidden lg:block overflow-hidden self-start">
+        <div class="p-3 border-b border-sand flex items-center justify-between gap-2">
+            <a href="{{ route('sales-invoices.index', $company) }}" wire:navigate class="text-sm font-semibold text-gray-700 hover:underline">← Сите фактури</a>
+            <a href="{{ route('sales-invoices.create', $company) }}" wire:navigate
+               class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-brand text-white text-xl leading-none" title="Нова фактура" aria-label="Нова фактура">+</a>
+        </div>
+        <ul class="divide-y divide-gray-100 max-h-[75vh] overflow-y-auto">
+            @foreach ($sidebar as $row)
+                @php $rowSuffix = $row->currency === 'MKD' ? 'ден' : $row->currency; @endphp
+                <li wire:key="side-{{ $row->id }}">
+                    <a href="{{ route('sales-invoices.show', [$company, $row]) }}" wire:navigate
+                       class="block px-4 py-2 hover:bg-orange-50 {{ $row->id === $invoice->id ? 'bg-orange-50' : '' }}">
+                        <span class="flex items-baseline justify-between gap-3">
+                            <span class="text-sm truncate">{{ $row->partner->name }}</span>
+                            <span class="text-sm whitespace-nowrap">{{ \App\Support\Format::money($row->grandTotal(), $rowSuffix) }}</span>
+                        </span>
+                        <span class="flex items-center justify-between text-xs text-gray-500">
+                            <span>{{ $row->formattedNumber() ?? 'Нацрт' }} · {{ \App\Support\Format::date($row->invoice_date) }}</span>
+                            <span>
+                                @if ($row->status === 'confirmed')
+                                    {{ $row->isOverdue() ? 'Доспеана' : \App\Support\Format::paymentStatus($row->paymentStatus()) }}
+                                @else
+                                    {{ \App\Support\Format::invoiceStatus($row->status) }}
+                                @endif
+                            </span>
+                        </span>
+                    </a>
+                </li>
+            @endforeach
+        </ul>
+    </x-card>
+
+    <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-1">
         {{ $invoice->status === 'confirmed' ? "Фактура бр. {$invoice->formattedNumber()}" : 'Нацрт фактура' }}
     </h1>
@@ -25,6 +59,31 @@
     @error('confirm') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
     @error('cancel') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
 
+    {{-- Што следува --}}
+    @if ($invoice->status === 'draft')
+        <p class="mb-4 rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900">Што следува? Прегледај ја фактурата и потврди ја — тогаш добива број, се книжи и е готова за е-Фактура.</p>
+    @elseif ($invoice->status === 'confirmed' && $invoice->paymentStatus() !== 'paid')
+        <p class="mb-4 rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900">Што следува? Евидентирај ја уплатата чим ќе пристигне — формата „Плаќања“ е подолу.</p>
+    @endif
+
+    <x-card class="mb-4">
+        <dl class="grid gap-y-1 gap-x-6 text-sm sm:grid-cols-[10rem_1fr]">
+            <dt class="text-gray-500">Датум на фактура</dt>
+            <dd>{{ \App\Support\Format::date($invoice->invoice_date) }}</dd>
+            <dt class="text-gray-500">Рок на доспевање</dt>
+            <dd>{{ \App\Support\Format::date($invoice->due_date) }}</dd>
+            @if ($proforma)
+                <dt class="text-gray-500">Профактура</dt>
+                <dd><a href="{{ route('proformas.index', [$company, 'proforma' => $proforma->id]) }}" wire:navigate class="text-brand hover:underline">{{ $proforma->proforma_number_formatted }}</a></dd>
+            @elseif ($invoice->order_number)
+                <dt class="text-gray-500">Профактура / нарачка</dt>
+                <dd>{{ $invoice->order_number }}</dd>
+            @endif
+            <dt class="text-gray-500">Купувач</dt>
+            <dd><a href="{{ route('partners.index', [$company, 'partner' => $invoice->partner_id]) }}" wire:navigate class="text-brand hover:underline">{{ $invoice->partner->name }}</a></dd>
+        </dl>
+    </x-card>
+
     <x-card class="mb-4">
         <table class="min-w-full text-sm">
             <thead>
@@ -32,6 +91,9 @@
                     <th class="py-1">Опис</th>
                     <th class="py-1">Кол.</th>
                     <th class="py-1">Ед. цена</th>
+                    @if ($invoice->lines->contains(fn ($l) => $l->hasDiscount()))
+                        <th class="py-1">Рабат %</th>
+                    @endif
                     <th class="py-1">ДДВ %</th>
                     <th class="py-1">Вкупно за ставка</th>
                 </tr>
@@ -41,7 +103,10 @@
                     <tr class="hover:bg-orange-50">
                         <td class="py-1">{{ $line->description }}</td>
                         <td class="py-1">{{ $line->quantity }}</td>
-                        <td class="py-1">{{ \App\Support\Format::money($line->effectiveUnitPrice(), $currencySuffix, $line->isGrossEntered() ? 4 : 2) }}</td>
+                        <td class="py-1">{{ \App\Support\Format::money($invoice->lines->contains(fn ($l) => $l->hasDiscount()) ? $line->originalUnitPrice() : $line->effectiveUnitPrice(), $currencySuffix, $line->isGrossEntered() ? 4 : 2) }}</td>
+                        @if ($invoice->lines->contains(fn ($l) => $l->hasDiscount()))
+                            <td class="py-1">{{ $line->hasDiscount() ? \App\Support\Format::rate($line->discount_percent) : '' }}</td>
+                        @endif
                         <td class="py-1">{{ $line->vat_rate }}{{ $line->vat_treatment !== 'standard' ? ' ('.\App\Support\Format::vatTreatment($line->vat_treatment).')' : '' }}</td>
                         <td class="py-1">{{ \App\Support\Format::money($line->lineTotal(), $currencySuffix) }}</td>
                     </tr>
@@ -60,6 +125,17 @@
             @endif
         </div>
     </x-card>
+
+    @if ($invoice->notes || $invoice->terms)
+        <x-card class="mb-4 text-sm space-y-3">
+            @if ($invoice->notes)
+                <div><div class="text-xs uppercase tracking-wide text-gray-500">Белешка</div><p class="whitespace-pre-line">{{ $invoice->notes }}</p></div>
+            @endif
+            @if ($invoice->terms)
+                <div><div class="text-xs uppercase tracking-wide text-gray-500">Услови</div><p class="whitespace-pre-line">{{ $invoice->terms }}</p></div>
+            @endif
+        </x-card>
+    @endif
 
     <div class="flex gap-3 mb-4">
         @if ($invoice->status === 'draft')
@@ -220,4 +296,5 @@
     @endif
 
     <livewire:document-manager :documentable="$invoice" />
+    </div>
 </div>

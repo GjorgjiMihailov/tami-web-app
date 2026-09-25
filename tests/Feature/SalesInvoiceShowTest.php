@@ -153,7 +153,9 @@ class SalesInvoiceShowTest extends TestCase
         // the payments table below never gets it, and document-manager's table is
         // empty here (no documents seeded), so its own data-row hover never renders.
         $this->assertSame(2, substr_count($html, 'bg-gray-50'));
-        $this->assertSame(1, substr_count($html, 'hover:bg-orange-50'));
+        // Точно 2: редот во левата листа на фактури (отворената фактура) и редот на ставката.
+        // Табелата со плаќања сè уште нема hover.
+        $this->assertSame(2, substr_count($html, 'hover:bg-orange-50'));
     }
 
     public function test_mark_sent_sets_sent_at(): void

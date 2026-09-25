@@ -64,6 +64,7 @@
                             <th class="py-1 px-3">Артикл / опис</th>
                             <th class="py-1 px-3 text-right">Количина</th>
                             <th class="py-1 px-3 text-right">Цена (нето)</th>
+                            <th class="py-1 px-3 text-right">Рабат %</th>
                             @if ($vatRegistered) <th class="py-1 px-3 text-right">ДДВ %</th> @endif
                             <th class="py-1 px-3 text-right">Износ</th>
                             <th class="py-1 px-3"></th>
@@ -89,6 +90,10 @@
                                 <td class="py-1 px-3 text-right align-top">
                                     <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.unit_price" aria-label="Цена" class="w-28 text-right" />
                                     @error("lines.{$index}.unit_price") <span class="block text-red-600 text-xs">{{ $message }}</span> @enderror
+                                </td>
+                                <td class="py-1 px-3 text-right align-top">
+                                    <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.discount_percent" aria-label="Рабат" class="w-20 text-right" />
+                                    @error("lines.{$index}.discount_percent") <span class="block text-red-600 text-xs">{{ $message }}</span> @enderror
                                 </td>
                                 @if ($vatRegistered)
                                     <td class="py-1 px-3 text-right align-top">
