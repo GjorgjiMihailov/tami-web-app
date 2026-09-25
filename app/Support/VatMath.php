@@ -27,9 +27,9 @@ class VatMath
      *
      * @return array{net: string, vat: string, gross: string}
      */
-    public static function lineFromNet(string $quantity, string $unitNet, string $rate): array
+    public static function lineFromNet(string $quantity, string $unitNet, string $rate, string $discountPercent = '0'): array
     {
-        $net = self::multiply($quantity, $unitNet);
+        $net = self::discounted($quantity, $unitNet, $discountPercent);
         $vat = self::vatAmount($net, $rate);
 
         return ['net' => $net, 'vat' => $vat, 'gross' => bcadd($net, $vat, 2)];
@@ -42,12 +42,32 @@ class VatMath
      *
      * @return array{net: string, vat: string, gross: string}
      */
-    public static function lineFromGross(string $quantity, string $unitGross, string $rate): array
+    public static function lineFromGross(string $quantity, string $unitGross, string $rate, string $discountPercent = '0'): array
     {
-        $gross = self::multiply($quantity, $unitGross);
+        $gross = self::discounted($quantity, $unitGross, $discountPercent);
         $net = self::netFromGross($gross, $rate);
 
         return ['net' => $net, 'vat' => bcsub($gross, $net, 2), 'gross' => $gross];
+    }
+
+    /**
+     * Количина × цена, по рабат. Без рабат тоа е точно multiply() како досега,
+     * па постојните износи не се менуваат ни за стотинка. Со рабат се множи
+     * на работна скала и се заокружува ЕДНАШ — не прво производот па рабатот,
+     * зашто две заокружувања би се разминале со една за стотинка.
+     */
+    public static function discounted(string $quantity, string $unitPrice, string $discountPercent): string
+    {
+        $discount = self::number($discountPercent);
+
+        if (bccomp($discount, '0', self::WORKING_SCALE) <= 0) {
+            return self::multiply($quantity, $unitPrice);
+        }
+
+        $product = bcmul(self::number($quantity), self::number($unitPrice), self::WORKING_SCALE);
+        $factor = bcdiv(bcsub('100', $discount, self::WORKING_SCALE), '100', self::WORKING_SCALE);
+
+        return self::round(bcmul($product, $factor, self::WORKING_SCALE));
     }
 
     /**

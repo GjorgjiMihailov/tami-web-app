@@ -115,6 +115,12 @@ class EfakturaDocumentBuilder
         // децимали во цената (види го примерот 95.2381 подолу).
         $unitPrice = (float) $line->effectiveUnitPrice();
         $lineTotal = (float) $line->lineTotal();
+        // Рабат по ставка: оригиналната цена и износот пред рабатот одат во
+        // „Original", а цената по рабат во „UnitPriceWoVat". Без рабат сите
+        // вредности се исти како порано.
+        $originalUnitPrice = (float) $line->originalUnitPrice();
+        $originalTotal = (float) $line->originalLineTotal();
+        $unitDiscount = round($originalUnitPrice - $unitPrice, 4);
         $vatAmount = (float) $line->vatAmount();
         $vatPercent = EfakturaTaxIndicator::percent($line->vat_treatment, (string) $line->vat_rate);
         $taxIndicator = EfakturaTaxIndicator::code($line->vat_treatment, (string) $line->vat_rate);
@@ -132,13 +138,13 @@ class EfakturaDocumentBuilder
             'docItemDesc' => $line->description ?: $line->item?->name,
             'docItemMUnit' => $line->item?->unit_of_measure ?: 'бр.',
             'docItemQty' => $qty,
-            'docItemUnitOriginalPriceWoVat' => $unitPrice,
-            'docItemUnitDiscountAmount' => 0,
+            'docItemUnitOriginalPriceWoVat' => $originalUnitPrice,
+            'docItemUnitDiscountAmount' => $unitDiscount,
             'docItemUnitPriceWoVat' => $unitPrice,
             'docItemUnitVat' => $unitVatAmount,
             'docItemVat' => $vatPercent,
             'docItemVatGroup' => $taxIndicator,
-            'docItemTotalOriginalPriceWoVat' => $lineTotal,
+            'docItemTotalOriginalPriceWoVat' => $originalTotal,
             'docItemTotalPriceWoVat' => $lineTotal,
             'docItemTotalVat' => $vatAmount,
             'docItemTotalPriceWVat' => round($lineTotal + $vatAmount, 2),

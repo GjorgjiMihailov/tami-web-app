@@ -8,6 +8,9 @@
         $currency = $invoice->currency;
         $logoPosition = ($company->logo_position ?? null) ?: 'left';
         $vatRegistered = (bool) $company->is_vat_registered;
+        // Колоната за рабат се појавува само кога барем една ставка има рабат —
+        // фактура без рабат се печати точно како порано.
+        $hasDiscount = $invoice->lines->contains(fn ($line) => $line->hasDiscount());
         // Only treat the logo as usable when the configured file actually exists on
         // disk — a stale logo_path would otherwise render a broken-image placeholder.
         $logoPath = $company->logo_path
@@ -147,6 +150,9 @@
                     <th>{{ $lang->t('description') }}</th>
                     <th style="width: 42px;">{{ $lang->t('quantity') }}</th>
                     <th style="width: 68px;">{{ $lang->t('unit_price') }}</th>
+                    @if ($hasDiscount)
+                        <th style="width: 48px;">{{ $lang->t('discount_percent') }}</th>
+                    @endif
                     @if ($vatRegistered)
                         <th style="width: 62px;">{{ $lang->t('vat_percent') }}</th>
                         <th style="width: 72px;">{{ $lang->t('vat_amount') }}</th>
@@ -165,7 +171,10 @@
                             @endif
                         </td>
                         <td>{{ $line->quantity }}</td>
-                        <td>{{ $lang->money($line->effectiveUnitPrice(), $currency, $line->isGrossEntered() ? 4 : 2) }}</td>
+                        <td>{{ $lang->money($hasDiscount ? $line->originalUnitPrice() : $line->effectiveUnitPrice(), $currency, $line->isGrossEntered() ? 4 : 2) }}</td>
+                        @if ($hasDiscount)
+                            <td>{{ $line->hasDiscount() ? \App\Support\Format::rate($line->discount_percent) : '' }}</td>
+                        @endif
                         @if ($vatRegistered)
                             <td>{{ $line->vat_rate }}</td>
                             <td>{{ $lang->money($line->vatAmount(), $currency) }}</td>

@@ -40,7 +40,7 @@ class SalesInvoice extends Model
     protected $fillable = [
         'company_id', 'partner_id', 'warehouse_id', 'journal_entry_id',
         'fiscal_year', 'invoice_number', 'invoice_number_formatted', 'invoice_date', 'due_date',
-        'status', 'payment_type_code', 'sent_at', 'notes', 'created_by',
+        'status', 'payment_type_code', 'sent_at', 'notes', 'terms', 'order_number', 'created_by',
         'language', 'currency', 'exchange_rate',
         'efaktura_status', 'efaktura_doc_id', 'efaktura_sent_at', 'efaktura_error',
         'efaktura_ujp_status_code', 'efaktura_ujp_status_name', 'efaktura_pdf_path',

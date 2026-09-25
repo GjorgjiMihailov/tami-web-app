@@ -110,6 +110,7 @@ enum InvoiceLanguage: string
         'signature_receiver' => ['mk' => 'ПРИМИЛ', 'en' => 'RECEIVED BY'],
         'not_vat_registered' => ['mk' => 'Фирмава не е ДДВ обврзник.', 'en' => 'Not registered for VAT.'],
         'seller_country' => ['mk' => 'Северна Македонија', 'en' => 'North Macedonia'],
+        'discount_percent' => ['mk' => 'Рабат %', 'en' => 'Discount %'],
         'proforma' => ['mk' => 'ПРОФАКТУРА', 'en' => 'PROFORMA INVOICE'],
         'proforma_date' => ['mk' => 'Датум на профактура', 'en' => 'Proforma date'],
         'reference' => ['mk' => 'Референца', 'en' => 'Reference'],

@@ -6,6 +6,7 @@ use App\Livewire\Invoicing\SalesInvoiceIndex;
 use App\Models\Company;
 use App\Models\Partner;
 use App\Models\SalesInvoice;
+use App\Models\SalesInvoicePayment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -142,11 +143,81 @@ class SalesInvoiceIndexTest extends TestCase
         $company = Company::factory()->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
+        // Фирмата има фактури, но не во работната година — тогаш се гледа табелата со порака,
+        // не празната состојба за нова фирма.
+        SalesInvoice::factory()->for($company)->create(['invoice_date' => '2019-04-04']);
 
         $this->actingAs($admin);
 
         Livewire::test(SalesInvoiceIndex::class, ['company' => $company])
             ->assertSee('Нема записи за '.now()->year.' — провери дали работиш во вистинската година');
+    }
+
+    public function test_a_company_with_no_invoices_at_all_sees_the_empty_state_and_no_table(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceIndex::class, ['company' => $company])
+            ->assertSee('Време е да ви платат!')
+            ->assertSeeHtml(route('sales-invoices.create', $company))
+            ->assertDontSee('<table', false);
+    }
+
+    public function test_the_table_shows_the_order_number_due_date_and_balance_due(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $partner = Partner::factory()->for($company)->create(['name' => 'Купувач Т']);
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(), 'order_number' => 'ПФ-2026/7',
+            'invoice_number_formatted' => 'ФК-9',
+        ]);
+        $invoice->lines()->create(['description' => 'А', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00', 'vat_treatment' => 'standard']);
+        SalesInvoicePayment::factory()->create(['sales_invoice_id' => $invoice->id, 'amount' => '180.00']);
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceIndex::class, ['company' => $company])
+            ->assertSee('ПФ-2026/7')
+            ->assertSee('ФК-9')
+            ->assertSee('1.180,00 ден')
+            ->assertSee('1.000,00 ден')          // за наплата: 1180 − 180
+            ->assertSee('Делумно платена')
+            ->assertSeeHtml(route('sales-invoices.show', [$company, $invoice]));
+    }
+
+    public function test_the_payment_filters_split_paid_unpaid_and_overdue(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $partner = Partner::factory()->for($company)->create();
+        $make = function (string $number, string $due, ?string $paid) use ($company, $partner) {
+            $invoice = SalesInvoice::factory()->for($company)->create([
+                'partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => now()->toDateString(),
+                'due_date' => $due, 'invoice_number_formatted' => $number,
+            ]);
+            $invoice->lines()->create(['description' => 'А', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0.00', 'vat_treatment' => 'standard']);
+            if ($paid) {
+                SalesInvoicePayment::factory()->create(['sales_invoice_id' => $invoice->id, 'amount' => $paid]);
+            }
+        };
+        $make('ПЛАТЕНА-1', now()->addDays(5)->toDateString(), '100.00');
+        $make('ЧЕКА-2', now()->addDays(5)->toDateString(), null);
+        $make('ДОСПЕАНА-3', now()->subDay()->toDateString(), null);
+        $this->actingAs($admin);
+
+        Livewire::test(SalesInvoiceIndex::class, ['company' => $company])
+            ->set('statusFilter', 'paid')
+            ->assertSee('ПЛАТЕНА-1')->assertDontSee('ЧЕКА-2')->assertDontSee('ДОСПЕАНА-3')
+            ->set('statusFilter', 'unpaid')
+            ->assertSee('ЧЕКА-2')->assertSee('ДОСПЕАНА-3')->assertDontSee('ПЛАТЕНА-1')
+            ->set('statusFilter', 'overdue')
+            ->assertSee('ДОСПЕАНА-3')->assertDontSee('ЧЕКА-2')->assertDontSee('ПЛАТЕНА-1');
     }
 
     public function test_changing_the_working_year_reloads_the_list(): void
