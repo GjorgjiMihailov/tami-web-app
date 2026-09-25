@@ -139,7 +139,9 @@ class ItemForm extends Component
             Item::create($attributes + ['company_id' => $this->company->id, 'is_active' => true]);
         }
 
-        return $this->redirect(route('inventory.items.index', $this->company), navigate: true);
+        $saved = $this->item ?? Item::where('company_id', $this->company->id)->where('code', $this->code)->first();
+
+        return $this->redirect(route('inventory.items.index', [$this->company, 'item' => $saved->id]), navigate: true);
     }
 
     public function render()
