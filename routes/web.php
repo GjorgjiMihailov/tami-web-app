@@ -191,6 +191,7 @@ Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.
         Route::get('/partners', [PartnerIndex::class, '__invoke'])->name('index');
         Route::get('/partners/pdf', [PartnerListPdfController::class, '__invoke'])->name('pdf');
         Route::get('/partners/create', [PartnerForm::class, '__invoke'])->name('create');
+        Route::get('/partners/{partner}/edit', [PartnerForm::class, '__invoke'])->name('edit');
         Route::get('/partners/{partner}', [PartnerShow::class, '__invoke'])->name('show');
     });
 

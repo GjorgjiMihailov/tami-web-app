@@ -5,131 +5,15 @@
             <p class="text-sm text-gray-500">{{ $company->name }}</p>
         </div>
         @can('update', $partner)
-            @if (! $editing)
-                <button type="button" wire:click="startEdit" class="text-brand hover:underline text-sm">Уреди</button>
-            @endif
+            <a href="{{ route('partners.edit', [$company, $partner]) }}" wire:navigate class="text-brand hover:underline text-sm">Уреди</a>
         @endcan
     </div>
 
-    @can('update', $partner)
-        @if ($editing)
-            <x-card class="mb-4">
-                <h2 class="font-semibold text-gray-700 mb-3">Уреди партнер</h2>
-                <form wire:submit="save" class="space-y-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <x-input-label for="editName" value="Назив" />
-                            <x-text-input id="editName" wire:model="editName" class="w-full" />
-                            @error('editName') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                        </div>
-                        <div>
-                            <x-input-label for="editType" value="Тип на партнер" />
-                            <select id="editType" wire:model.live="editType" class="border-gray-300 rounded-md text-sm w-full">
-                                <option value="legal_entity">{{ \App\Support\Format::partnerType('legal_entity') }}</option>
-                                <option value="individual">{{ \App\Support\Format::partnerType('individual') }}</option>
-                            </select>
-                        </div>
-                        <div>
-                            <x-input-label for="editTaxId" value="ЕДБ" />
-                            <x-text-input id="editTaxId" wire:model="editTaxId" class="w-full" />
-                        </div>
-                        <div>
-                            <x-input-label for="editEmail" value="Е-пошта" />
-                            <x-text-input id="editEmail" wire:model="editEmail" class="w-full" />
-                            @error('editEmail') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                        </div>
-                        <div>
-                            <x-input-label for="editPhone" value="Телефон" />
-                            <x-text-input id="editPhone" wire:model="editPhone" class="w-full" />
-                        </div>
-                        <div class="sm:col-span-2">
-                            <x-input-label for="editAddress" value="Адреса" />
-                            <x-text-input id="editAddress" wire:model="editAddress" class="w-full" />
-                        </div>
-                        <div>
-                            <x-input-label for="editStreetAddress" value="Улица (за е-Фактура)" />
-                            <x-text-input id="editStreetAddress" wire:model="editStreetAddress" class="w-full" />
-                        </div>
-                        <div>
-                            <x-input-label for="editStreetNumber" value="Број" />
-                            <x-text-input id="editStreetNumber" wire:model="editStreetNumber" class="w-full" />
-                        </div>
-                        <div>
-                            <x-input-label for="editPostalCode" value="Поштенски број" />
-                            <x-text-input id="editPostalCode" wire:model="editPostalCode" class="w-full" />
-                        </div>
-                        <div>
-                            <x-input-label for="editCity" value="Град" />
-                            <x-text-input id="editCity" wire:model="editCity" class="w-full" />
-                        </div>
-                        <div>
-                            <x-input-label for="editCountry" value="Држава" />
-                            <x-text-input id="editCountry" wire:model="editCountry" class="w-full" />
-                            @error('editCountry') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                        </div>
-                        @if ($company->type->isIndividual())
-                            <div>
-                                <x-input-label for="editInvoiceLanguage" value="Јазик на фактура" />
-                                <select id="editInvoiceLanguage" wire:model="editInvoiceLanguage" class="w-full border-gray-300 rounded-md text-sm">
-                                    @foreach (\App\Support\InvoiceLanguage::cases() as $case)
-                                        <option value="{{ $case->value }}">{{ $case->label() }}</option>
-                                    @endforeach
-                                </select>
-                                @error('editInvoiceLanguage') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                            </div>
-                        @endif
-
-                        @if ($editType === 'legal_entity')
-                            <div>
-                                <x-input-label for="editRegistrationNumber" value="ЕМБС" />
-                                <x-text-input id="editRegistrationNumber" wire:model="editRegistrationNumber" class="w-full" />
-                            </div>
-                            <div>
-                                <x-input-label for="editDirectorName" value="Име на директор" />
-                                <x-text-input id="editDirectorName" wire:model="editDirectorName" class="w-full" />
-                            </div>
-                            <div class="flex items-center gap-2 pb-2">
-                                <input type="checkbox" id="editIsVatRegistered" wire:model.live="editIsVatRegistered">
-                                <label for="editIsVatRegistered" class="text-sm">Обврзник на ДДВ</label>
-                            </div>
-                            @if ($editIsVatRegistered)
-                                <div>
-                                    <x-input-label for="editVatNumber" value="ДДВ-број" />
-                                    <x-text-input id="editVatNumber" wire:model="editVatNumber" class="w-full" />
-                                </div>
-                            @endif
-                        @endif
-                    </div>
-
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Трансакциски сметки (до 5)</h3>
-                        <div class="space-y-2">
-                            @foreach ($bankAccounts as $index => $row)
-                                <div class="flex flex-wrap gap-3 items-end" wire:key="bank-{{ $index }}">
-                                    <div>
-                                        <x-input-label for="bank_name_{{ $index }}" value="Банка" />
-                                        <x-text-input id="bank_name_{{ $index }}" wire:model="bankAccounts.{{ $index }}.bank_name" class="w-48" />
-                                    </div>
-                                    <div>
-                                        <x-input-label for="account_number_{{ $index }}" value="Сметка (IBAN)" />
-                                        <x-text-input id="account_number_{{ $index }}" wire:model.live.blur="bankAccounts.{{ $index }}.account_number" class="w-64" />
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    <div class="flex gap-3">
-                        <x-primary-button type="submit">Зачувај</x-primary-button>
-                        <button type="button" wire:click="cancelEdit" class="text-sm text-gray-500 hover:underline">Откажи</button>
-                    </div>
-                </form>
-            </x-card>
-        @endif
-    @endcan
-
     <x-card class="mb-4 text-sm space-y-1">
         <div>Тип: {{ \App\Support\Format::partnerType($partner->type) }}</div>
+        @if ($partner->contact_first_name || $partner->contact_last_name)
+            <div>Примарен контакт: {{ trim(implode(' ', array_filter([$partner->contact_salutation, $partner->contact_first_name, $partner->contact_last_name]))) }}</div>
+        @endif
         <div>ЕДБ: {{ $partner->tax_id ?? '—' }}</div>
         @if ($partner->type === 'legal_entity')
             <div>ЕМБС: {{ $partner->registration_number ?? '—' }}</div>
@@ -141,7 +25,20 @@
         @endif
         <div>Е-пошта: {{ $partner->email ?? '—' }}</div>
         <div>Телефон: {{ $partner->phone ?? '—' }}</div>
-        <div>Адреса: {{ $partner->address ?? '—' }}</div>
+        @if ($partner->mobile)
+            <div>Мобилен: {{ $partner->mobile }}</div>
+        @endif
+        <div>Адреса: {{ $partner->printedAddress() ?? '—' }}</div>
+        @if ($partner->shipping_street_address || $partner->shipping_city)
+            <div>Адреса за испорака: {{ trim(implode(', ', array_filter([
+                trim($partner->shipping_street_address.' '.$partner->shipping_street_number),
+                trim($partner->shipping_postal_code.' '.$partner->shipping_city),
+                $partner->shipping_country,
+            ]))) }}</div>
+        @endif
+        @if ($partner->payment_terms_days !== null)
+            <div>Рок на плаќање: {{ $partner->payment_terms_days === 0 ? 'По приемот' : $partner->payment_terms_days.' дена' }}</div>
+        @endif
         <div class="pt-2">
             <div class="font-medium">Трансакциски сметки:</div>
             @forelse ($partner->bankAccounts as $bankAccount)
@@ -150,6 +47,14 @@
                 <div>—</div>
             @endforelse
         </div>
+        @if ($partner->contacts->isNotEmpty())
+            <div class="pt-2">
+                <div class="font-medium">Контакт лица:</div>
+                @foreach ($partner->contacts as $contact)
+                    <div>{{ $contact->fullName() }}@if ($contact->email) · {{ $contact->email }}@endif @if ($contact->phone) · {{ $contact->phone }}@endif @if ($contact->mobile) · {{ $contact->mobile }}@endif</div>
+                @endforeach
+            </div>
+        @endif
     </x-card>
 
     <livewire:document-manager :documentable="$partner" />

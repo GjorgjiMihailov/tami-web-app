@@ -262,6 +262,22 @@ class SalesInvoiceForm extends Component
      * Кога се менува валутата, се нуди последниот курс што фирмата го користела
      * за неа. Курсот останува рачен — ова е само понуда, не автоматика.
      */
+    /**
+     * Кога се избере купувач со договорен рок на плаќање, доспевањето се
+     * пресметува од датумот на фактурата. Купувач без рок го остава датумот
+     * како што е — човекот сам го внел.
+     */
+    public function updatedPartnerId(string $value): void
+    {
+        $partner = Partner::where('company_id', $this->company->id)->find($value);
+
+        if ($partner?->payment_terms_days === null || ! filled($this->invoiceDate)) {
+            return;
+        }
+
+        $this->dueDate = Carbon::parse($this->invoiceDate)->addDays($partner->payment_terms_days)->toDateString();
+    }
+
     public function updatedCurrency(string $value): void
     {
         // Livewire ја памети грешката на exchangeRate меѓу барањата — стар
