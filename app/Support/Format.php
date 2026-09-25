@@ -53,6 +53,17 @@ class Format
         };
     }
 
+    public static function proformaStatus(string $status): string
+    {
+        return match ($status) {
+            'draft' => 'Нацрт',
+            'confirmed' => 'Потврдена',
+            'converted' => 'Претворена во фактура',
+            'cancelled' => 'Откажана',
+            default => ucfirst($status),
+        };
+    }
+
     /** Ознака на валута до износ: денарите како „ден", девизите со кодот. */
     public static function currencyLabel(string $currency): string
     {

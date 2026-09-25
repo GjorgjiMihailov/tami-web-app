@@ -22,9 +22,13 @@ use App\Models\Company;
  */
 class InvoiceNumber
 {
-    public static function format(Company $company, int $fiscalYear, int $sequence): string
+    /**
+     * $prefix го заменува префиксот на фактурата — профактурата ја дели целата
+     * останата поставка (година, разделник, должина), а има свој префикс.
+     */
+    public static function format(Company $company, int $fiscalYear, int $sequence, ?string $prefix = null): string
     {
-        $prefix = (string) ($company->invoice_number_prefix ?? '');
+        $prefix ??= (string) ($company->invoice_number_prefix ?? '');
 
         // Горниот праг е одбрана од невалидна вредност во базата, не замена за
         // валидација на екранот. Долен праг нема потреба — str_pad никогаш не

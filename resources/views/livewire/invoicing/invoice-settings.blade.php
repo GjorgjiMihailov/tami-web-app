@@ -1,7 +1,7 @@
 <div>
-    <h1 class="text-2xl font-bold text-gray-800 mb-1">Формат на бројот на фактурата</h1>
+    <h1 class="text-2xl font-bold text-gray-800 mb-1">Формат на бројот на фактурата и профактурата</h1>
     <p class="text-sm text-gray-500 mb-4">
-        Промената важи за фактурите што ќе ги потврдите отсега. Веќе потврдените го задржуваат својот број.
+        Промената важи за фактурите што ќе ги потврдите и профактурите што ќе ги создадете отсега. Веќе издадените го задржуваат својот број.
     </p>
 
     <x-card class="max-w-2xl">
@@ -59,9 +59,22 @@
                 </div>
             </div>
 
-            <div class="bg-gray-50 rounded-lg px-4 py-3">
-                <div class="text-xs uppercase tracking-wide text-gray-500">Вака ќе изгледа</div>
-                <div class="text-xl font-semibold text-gray-800 mt-1">{{ $preview }}</div>
+            <div>
+                <x-input-label for="proformaPrefix" value="Префикс на профактурата (незадолжително)" />
+                <x-text-input id="proformaPrefix" wire:model.live="proformaPrefix" class="w-full md:w-1/2" placeholder="пр. ПФ-" />
+                <p class="text-xs text-gray-500 mt-1">Профактурите имаат своја серија, а годината, разделникот и должината се истите како кај фактурите.</p>
+                @error('proformaPrefix') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+            </div>
+
+            <div class="grid gap-3 md:grid-cols-2">
+                <div class="bg-gray-50 rounded-lg px-4 py-3">
+                    <div class="text-xs uppercase tracking-wide text-gray-500">Фактура</div>
+                    <div class="text-xl font-semibold text-gray-800 mt-1">{{ $preview }}</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg px-4 py-3">
+                    <div class="text-xs uppercase tracking-wide text-gray-500">Профактура</div>
+                    <div class="text-xl font-semibold text-gray-800 mt-1">{{ $proformaPreview }}</div>
+                </div>
             </div>
 
             <div class="flex items-center gap-3">

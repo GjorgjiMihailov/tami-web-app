@@ -26,6 +26,9 @@ class InvoiceSettings extends Component
 
     public string $prefix = '';
 
+    /** Префикс на профактурата — годината, разделникот и должината се исти како кај фактурата. */
+    public string $proformaPrefix = 'ПФ-';
+
     public bool $saved = false;
 
     public function mount(Company $company): void
@@ -39,6 +42,7 @@ class InvoiceSettings extends Component
         $this->separator = $company->invoice_number_separator === '' ? 'none' : (string) $company->invoice_number_separator;
         $this->padding = (int) $company->invoice_number_padding;
         $this->prefix = (string) ($company->invoice_number_prefix ?? '');
+        $this->proformaPrefix = (string) ($company->proforma_number_prefix ?? '');
     }
 
     public function save(): void
@@ -52,6 +56,7 @@ class InvoiceSettings extends Component
             'separator' => 'required|string|in:/,-,.,none',
             'padding' => 'required|integer|min:1|max:6',
             'prefix' => 'nullable|string|max:10',
+            'proformaPrefix' => 'nullable|string|max:10',
         ]);
 
         $this->company->update([
@@ -61,6 +66,7 @@ class InvoiceSettings extends Component
             'invoice_number_separator' => $this->separatorValue(),
             'invoice_number_padding' => $validated['padding'],
             'invoice_number_prefix' => $validated['prefix'] !== '' ? $validated['prefix'] : null,
+            'proforma_number_prefix' => $validated['proformaPrefix'] !== '' ? $validated['proformaPrefix'] : null,
         ]);
 
         $this->saved = true;
@@ -93,6 +99,7 @@ class InvoiceSettings extends Component
     {
         return view('livewire.invoicing.invoice-settings', [
             'preview' => InvoiceNumber::format($this->previewCompany(), (int) now()->year, 1),
+            'proformaPreview' => InvoiceNumber::format($this->previewCompany(), (int) now()->year, 1, $this->proformaPrefix),
         ]);
     }
 }

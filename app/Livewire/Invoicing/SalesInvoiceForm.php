@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Invoicing;
 
+use App\Exceptions\InvalidInvoiceStateException;
 use App\Models\Company;
 use App\Models\Item;
 use App\Models\Partner;
+use App\Models\ProformaInvoice;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceLine;
 use App\Models\Warehouse;
@@ -34,6 +36,13 @@ class SalesInvoiceForm extends Component
     public ?SalesInvoice $salesInvoice = null;
 
     public string $partnerId = '';
+
+    /**
+     * Профактурата од која се претвора оваа фактура ("Претвори во фактура").
+     * Јавно својство, значи менливо од клиентот — секое читање и запишување
+     * поминува низ convertibleProforma() што ја проверува фирмата и статусот.
+     */
+    public string $proformaId = '';
 
     public string $warehouseId = '';
 
@@ -159,7 +168,72 @@ class SalesInvoiceForm extends Component
                 $this->partnerId = (string) (int) $requested;
                 $this->updatedPartnerId($this->partnerId);
             }
+
+            $this->prefillFromProforma();
         }
+    }
+
+    /**
+     * Профактура за претворање: само потврдена профактура на оваа фирма.
+     * Туѓо или веќе претворено id се игнорира.
+     */
+    private function convertibleProforma(): ?ProformaInvoice
+    {
+        if (! is_numeric($this->proformaId)) {
+            return null;
+        }
+
+        return ProformaInvoice::where('company_id', $this->company->id)
+            ->where('status', 'confirmed')
+            ->with('lines')
+            ->find((int) $this->proformaId);
+    }
+
+    /** "Претвори во фактура": формата се отвора пополнета, а сè уште се менува. */
+    private function prefillFromProforma(): void
+    {
+        $requested = request()->query('proforma');
+
+        if (! is_numeric($requested)) {
+            return;
+        }
+
+        $this->proformaId = (string) (int) $requested;
+        $proforma = $this->convertibleProforma();
+
+        if (! $proforma) {
+            $this->proformaId = '';
+
+            return;
+        }
+
+        $this->partnerId = (string) $proforma->partner_id;
+        $this->notes = (string) $proforma->notes;
+
+        // Профактурата може да е девизна само за физичко лице — исто како фактурата.
+        if ($this->company->type->isIndividual() && $proforma->currency !== 'MKD') {
+            $this->currency = $proforma->currency;
+            $this->updatedCurrency($this->currency);
+        }
+
+        if ($proforma->payment_terms_days !== null) {
+            $this->dueDate = Carbon::parse($this->invoiceDate)->addDays($proforma->payment_terms_days)->toDateString();
+        }
+
+        $this->lines = $proforma->lines->map(function ($line) {
+            $rate = $this->company->is_vat_registered ? (string) $line->vat_rate : '0.00';
+
+            return [
+                'item_id' => $line->item_id === null ? '' : (string) $line->item_id,
+                'description' => (string) $line->description,
+                'quantity' => (string) $line->quantity,
+                'unit_price' => (string) $line->unit_price,
+                'unit_price_gross' => VatMath::grossFromNet((string) $line->unit_price, $rate),
+                'price_basis' => 'net',
+                'vat_rate' => $rate,
+                'vat_treatment' => 'standard',
+            ];
+        })->all() ?: [$this->emptyLine()];
     }
 
     protected function emptyLine(): array
@@ -759,53 +833,85 @@ class SalesInvoiceForm extends Component
             return;
         }
 
-        DB::transaction(function () {
-            $invoice = $this->salesInvoice ?? new SalesInvoice([
-                'company_id' => $this->company->id,
-                'status' => 'draft',
-                'created_by' => auth()->id(),
-            ]);
-            $invoice->company_id = $this->company->id;
-            $invoice->partner_id = $this->partnerId;
-            $invoice->warehouse_id = $this->warehouseId ?: null;
-            $invoice->invoice_date = $this->invoiceDate;
-            $invoice->due_date = $this->dueDate;
-            $invoice->notes = $this->notes ?: null;
-            $invoice->invoice_number_formatted = $this->paperNumber ?: null;
-            $invoice->payment_type_code = $this->paymentTypeCode;
-            $invoice->currency = $this->currency;
-            $invoice->exchange_rate = $this->currency === 'MKD' ? '1' : $this->exchangeRate;
+        $convertingProformaId = null;
 
-            // Јазикот се презема од кооперантот на секое зачувување на нацртот,
-            // па промена на купувачот го носи и неговиот јазик. По потврда
-            // фактурата повеќе не поминува одовде и текстот останува замрзнат.
-            $partner = Partner::where('company_id', $this->company->id)->find($this->partnerId);
-            $invoice->language = $this->company->type->isIndividual() && $partner
-                ? $partner->invoice_language
-                : InvoiceLanguage::MK;
+        if (! $this->salesInvoice && $this->proformaId !== '') {
+            $convertingProformaId = $this->convertibleProforma()?->id;
 
-            if (! $invoice->exists) {
-                $invoice->status = 'draft';
-                $invoice->created_by = auth()->id();
+            if ($convertingProformaId === null) {
+                $this->addError('proformaId', 'Профактурата е веќе претворена во фактура или откажана — фактурата не е зачувана.');
+
+                return;
             }
+        }
 
-            $invoice->save();
-            $invoice->lines()->delete();
+        try {
+            DB::transaction(function () use ($convertingProformaId) {
+                // Профактурата се заклучува ПРВА, пред да се создаде фактурата: ако другото
+                // зачувување ја претворило, се фрла грешка пред да остане каква било промена.
+                $lockedProforma = $convertingProformaId === null
+                    ? null
+                    : ProformaInvoice::where('company_id', $this->company->id)->lockForUpdate()->find($convertingProformaId);
 
-            foreach ($this->lines as $line) {
-                $invoice->lines()->create([
-                    'item_id' => $line['item_id'] ?: null,
-                    'description' => $line['description'] ?: null,
-                    'quantity' => $line['quantity'],
-                    'unit_price' => $line['unit_price'],
-                    'unit_price_gross' => ($line['price_basis'] ?? 'net') === 'gross' ? $line['unit_price_gross'] : null,
-                    'vat_rate' => $line['vat_rate'],
-                    'vat_treatment' => $line['vat_treatment'] ?? 'standard',
+                if ($convertingProformaId !== null && $lockedProforma?->status !== 'confirmed') {
+                    throw new InvalidInvoiceStateException('Профактурата е веќе претворена во фактура или откажана.');
+                }
+
+                $invoice = $this->salesInvoice ?? new SalesInvoice([
+                    'company_id' => $this->company->id,
+                    'status' => 'draft',
+                    'created_by' => auth()->id(),
                 ]);
-            }
+                $invoice->company_id = $this->company->id;
+                $invoice->partner_id = $this->partnerId;
+                $invoice->warehouse_id = $this->warehouseId ?: null;
+                $invoice->invoice_date = $this->invoiceDate;
+                $invoice->due_date = $this->dueDate;
+                $invoice->notes = $this->notes ?: null;
+                $invoice->invoice_number_formatted = $this->paperNumber ?: null;
+                $invoice->payment_type_code = $this->paymentTypeCode;
+                $invoice->currency = $this->currency;
+                $invoice->exchange_rate = $this->currency === 'MKD' ? '1' : $this->exchangeRate;
 
-            $this->salesInvoice = $invoice;
-        });
+                // Јазикот се презема од кооперантот на секое зачувување на нацртот,
+                // па промена на купувачот го носи и неговиот јазик. По потврда
+                // фактурата повеќе не поминува одовде и текстот останува замрзнат.
+                $partner = Partner::where('company_id', $this->company->id)->find($this->partnerId);
+                $invoice->language = $this->company->type->isIndividual() && $partner
+                    ? $partner->invoice_language
+                    : InvoiceLanguage::MK;
+
+                if (! $invoice->exists) {
+                    $invoice->status = 'draft';
+                    $invoice->created_by = auth()->id();
+                }
+
+                $invoice->save();
+                $invoice->lines()->delete();
+
+                foreach ($this->lines as $line) {
+                    $invoice->lines()->create([
+                        'item_id' => $line['item_id'] ?: null,
+                        'description' => $line['description'] ?: null,
+                        'quantity' => $line['quantity'],
+                        'unit_price' => $line['unit_price'],
+                        'unit_price_gross' => ($line['price_basis'] ?? 'net') === 'gross' ? $line['unit_price_gross'] : null,
+                        'vat_rate' => $line['vat_rate'],
+                        'vat_treatment' => $line['vat_treatment'] ?? 'standard',
+                    ]);
+                }
+
+                $this->salesInvoice = $invoice;
+
+                // Профактурата се означува како претворена дури сега, кога фактурата е зачувана.
+                $lockedProforma?->update(['status' => 'converted', 'sales_invoice_id' => $invoice->id]);
+            });
+        } catch (InvalidInvoiceStateException $e) {
+            // Другото зачувување ја претвори први — оваа трансакција се врати наназад.
+            $this->addError('proformaId', $e->getMessage().' Фактурата не е зачувана.');
+
+            return;
+        }
 
         // Качувањето оди по трансакцијата намерно: складот е Google Drive, а
         // мрежен повик внатре во отворена трансакција ја држи базата заклучена
