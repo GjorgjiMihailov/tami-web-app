@@ -43,40 +43,7 @@
         @endif
 
         @if ($company)
-            <div class="pt-4 mt-3 border-t border-rail-line">
-                {{-- Both selectors stack their label above the control. A
-                     <select> is as wide as its longest <option>, and real
-                     company names ("ФАЈНЕНС БАДИ ДООЕЛ СКОПЈЕ") are far wider
-                     than the 240px rail — so it needs the full width, plus
-                     min-w-0 to defeat the default min-width:auto that stops a
-                     flex/grid child from shrinking below its content. --}}
-                <div class="px-4 pb-3 space-y-2">
-                    <label class="block text-xs text-rail-muted">
-                        <span class="block mb-1">Фирма</span>
-                        {{-- Менувањето фирма секогаш се враќа на порталната табла.
-                             Новата фирма може да ги нема истите модули, па почетниот
-                             екран на тековната апликација за неа може и да не
-                             постои — таблата е единствената адреса што сигурно
-                             постои за секоја фирма. --}}
-                        <select onchange="if (this.value) window.location.href = this.value"
-                                class="block w-full min-w-0 truncate rounded-lg bg-rail-soft border-rail-line text-sm py-1 text-rail-text focus:border-brand focus:ring-brand">
-                            @foreach ($companyOptions as $option)
-                                <option value="{{ route('companies.dashboard', $option['id']) }}"
-                                        @selected($option['id'] === $company->id)>{{ $option['name'] }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-                    <label class="block text-xs text-rail-muted">
-                        <span class="block mb-1">Година</span>
-                        <select wire:model.live="workingYear"
-                                class="block w-full min-w-0 rounded-lg bg-rail-soft border-rail-line text-sm py-1 text-rail-text focus:border-brand focus:ring-brand">
-                            @foreach ($availableYears as $year)
-                                <option value="{{ $year }}">{{ $year }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-                </div>
-
+            <div class="pt-1">
                 {{-- Таблата стои над групите зашто не е ставка од ниту една
                      група — таа е влезот во целата апликација. Истиот облик
                      како самостојната врска „Документи" на дното. --}}
@@ -142,4 +109,43 @@
             </div>
         @endif
     </nav>
+
+    @if ($company)
+        {{-- Фирма и година живеат најдолу: менито е прво, а изборот се менува ретко. --}}
+        <div class="border-t border-rail-line pt-3">
+                {{-- Both selectors stack their label above the control. A
+                     <select> is as wide as its longest <option>, and real
+                     company names ("ФАЈНЕНС БАДИ ДООЕЛ СКОПЈЕ") are far wider
+                     than the 240px rail — so it needs the full width, plus
+                     min-w-0 to defeat the default min-width:auto that stops a
+                     flex/grid child from shrinking below its content. --}}
+                <div class="px-4 pb-3 space-y-2">
+                    <label class="block text-xs text-rail-muted">
+                        <span class="block mb-1">Фирма</span>
+                        {{-- Менувањето фирма секогаш се враќа на порталната табла.
+                             Новата фирма може да ги нема истите модули, па почетниот
+                             екран на тековната апликација за неа може и да не
+                             постои — таблата е единствената адреса што сигурно
+                             постои за секоја фирма. --}}
+                        <select onchange="if (this.value) window.location.href = this.value"
+                                class="block w-full min-w-0 truncate rounded-lg bg-rail-soft border-rail-line text-sm py-1 text-rail-text focus:border-brand focus:ring-brand">
+                            @foreach ($companyOptions as $option)
+                                <option value="{{ route('companies.dashboard', $option['id']) }}"
+                                        @selected($option['id'] === $company->id)>{{ $option['name'] }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <label class="block text-xs text-rail-muted">
+                        <span class="block mb-1">Година</span>
+                        <select wire:model.live="workingYear"
+                                class="block w-full min-w-0 rounded-lg bg-rail-soft border-rail-line text-sm py-1 text-rail-text focus:border-brand focus:ring-brand">
+                            @foreach ($availableYears as $year)
+                                <option value="{{ $year }}">{{ $year }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                </div>
+
+        </div>
+    @endif
 </div>
