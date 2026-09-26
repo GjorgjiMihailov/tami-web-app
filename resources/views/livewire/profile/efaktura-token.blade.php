@@ -59,6 +59,15 @@
         <a href="{{ asset('downloads/efaktura-bridge/EfakturaBridge.Server.exe') }}" class="text-brand hover:underline text-sm">Преземи локален потпишувач</a>
     </div>
 
+    <div class="mt-3 flex flex-wrap items-center gap-3 text-sm" x-show="bridgeUp" x-cloak>
+        <span :class="unlocked ? 'text-green-700' : 'text-gray-500'" x-text="unlocked ? '🔓 Токенот е отклучен — PIN не се бара додека работиш' : '🔒 Токенот е заклучен — PIN се бара при првото потпишување'"></span>
+        <button type="button" x-show="unlocked" @click="lockToken()" class="inline-flex items-center px-3 py-1 bg-white border border-gray-300 rounded-full text-sm font-semibold text-gray-700 hover:bg-paper">Заклучи го токенот</button>
+    </div>
+    <p class="mt-1 text-xs text-gray-500">
+        PIN-от се внесува еднаш по сесија: потпишувањата што следуваат не го бараат повторно.
+        Токенот се заклучува сам по <span x-text="idleMinutes"></span> мин мирување, кога ќе го затвориш потпишувачот, или со копчето „Заклучи“.
+    </p>
+
     <div x-show="detected" x-cloak class="mt-3 border rounded-lg p-3 bg-gray-50">
         <p class="text-sm">Пронајден: <span x-text="subjectName" class="font-medium"></span></p>
         <p class="text-xs text-gray-500">Сериски бр. <span x-text="serialNumber"></span>, важи до <span x-text="notAfter"></span></p>
@@ -74,12 +83,39 @@
     <script>
         Alpine.data('personalSigningDevice', () => ({
             busy: false,
+            bridgeUp: false,
+            unlocked: false,
+            idleMinutes: 120,
             detected: false,
             error: '',
             serialNumber: '',
             subjectName: '',
             notBefore: '',
             notAfter: '',
+            init() {
+                this.refreshStatus();
+                this._poll = setInterval(() => this.refreshStatus(), 15000);
+            },
+            async refreshStatus() {
+                try {
+                    const res = await fetch('http://127.0.0.1:9847/status');
+                    if (!res.ok) throw new Error('down');
+                    const status = await res.json();
+                    this.bridgeUp = true;
+                    this.unlocked = !!status.unlocked;
+                    this.idleMinutes = status.idleMinutes ?? this.idleMinutes;
+                } catch (e) {
+                    this.bridgeUp = false;
+                    this.unlocked = false;
+                }
+            },
+            async lockToken() {
+                try {
+                    await fetch('http://127.0.0.1:9847/lock', { method: 'POST' });
+                } finally {
+                    await this.refreshStatus();
+                }
+            },
             async check() {
                 this.busy = true; this.error = ''; this.detected = false;
                 try {

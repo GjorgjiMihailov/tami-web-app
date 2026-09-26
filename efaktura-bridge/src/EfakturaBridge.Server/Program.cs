@@ -6,7 +6,10 @@ using EfakturaBridge.Core;
 using EfakturaBridge.Server;
 
 string libraryPath = args.Length > 0 ? args[0] : @"C:\Windows\System32\eTPKCS11.dll";
-IPkcs11SigningService signingService = new Pkcs11SigningService(libraryPath);
+// PIN се внесува еднаш; сесијата се заклучува по толку минути мирување.
+// Може да се смени со променливата EFAKTURA_BRIDGE_IDLE_MINUTES.
+int idleMinutes = int.TryParse(Environment.GetEnvironmentVariable("EFAKTURA_BRIDGE_IDLE_MINUTES"), out int configured) && configured > 0 ? configured : 120;
+IPkcs11SigningService signingService = new Pkcs11SigningService(libraryPath, idleMinutes);
 RequestRouter router = new RequestRouter(signingService);
 
 using HttpListener listener = new HttpListener();
@@ -25,6 +28,7 @@ catch (HttpListenerException ex)
 }
 
 Console.WriteLine("Локалниот мост слуша на http://127.0.0.1:9847 (Ctrl+C за прекин)");
+Console.WriteLine($"PIN-от се внесува еднаш; токенот се заклучува по {idleMinutes} мин мирување или со копчето Заклучи на страницата.");
 
 while (true)
 {

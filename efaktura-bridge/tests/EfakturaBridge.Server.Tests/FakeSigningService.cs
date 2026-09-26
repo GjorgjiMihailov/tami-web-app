@@ -11,6 +11,15 @@ public sealed class FakeSigningService : IPkcs11SigningService
         "1A2B3C", "CN=Test Company", DateTime.UtcNow.AddYears(-1), DateTime.UtcNow.AddYears(1), "ZmFrZS1jZXJ0");
     public byte[] SignatureToReturn { get; set; } = { 9, 9, 9 };
     public byte[]? LastSignedData { get; private set; }
+    public bool IsUnlocked { get; set; }
+    public int IdleMinutes { get; set; } = 120;
+    public int LockCalls { get; private set; }
+
+    public void Lock()
+    {
+        LockCalls++;
+        IsUnlocked = false;
+    }
 
     public CertificateInfo GetCertificateInfo()
     {
