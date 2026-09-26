@@ -125,8 +125,7 @@ class SidebarTest extends TestCase
             // Matched as a complete href: route('companies.index') is "/companies",
             // which is a prefix of every company-scoped URL on the page, so a bare
             // substring check can never pass.
-            ->assertDontSeeHtml('href="'.route('companies.index').'"')
-            ->assertDontSeeHtml(route('efaktura.access-requests'));
+            ->assertDontSeeHtml('href="'.route('companies.index').'"');
 
         // ПЛАТИ И ЧОВЕЧКИ РЕСУРСИ moved to the plata app. Вработени and
         // Плата (МПИН) are open read-only to internal_client; е-ПДД is still

@@ -55,6 +55,8 @@ public sealed class RequestRouter
         {
             ("GET", "/health") => HandleHealth(),
             ("GET", "/certificate") => HandleCertificate(),
+            ("GET", "/status") => HandleStatus(),
+            ("POST", "/lock") => HandleLock(),
             ("POST", "/sign") => HandleSign(request.Body),
             _ => new BridgeResponse { StatusCode = 404, Body = """{"error":"not_found"}""" },
         };
@@ -84,6 +86,20 @@ public sealed class RequestRouter
 
     private static BridgeResponse HandleHealth()
         => new BridgeResponse { StatusCode = 200, Body = """{"status":"ok"}""" };
+
+    /// <summary>Дали токенот е отклучен (PIN-от е веќе внесен во оваа сесија).</summary>
+    private BridgeResponse HandleStatus()
+    {
+        string json = JsonSerializer.Serialize(new { unlocked = _signingService.IsUnlocked, idleMinutes = _signingService.IdleMinutes }, JsonOptions);
+        return new BridgeResponse { StatusCode = 200, Body = json };
+    }
+
+    /// <summary>Рачно заклучување: следното потпишување повторно бара PIN.</summary>
+    private BridgeResponse HandleLock()
+    {
+        _signingService.Lock();
+        return new BridgeResponse { StatusCode = 200, Body = """{"unlocked":false}""" };
+    }
 
     private BridgeResponse HandleCertificate()
     {

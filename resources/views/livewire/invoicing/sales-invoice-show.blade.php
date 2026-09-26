@@ -157,29 +157,17 @@
     </div>
 
     {{-- Блокот го гледа и оној што може само да го запише уредот (клиент без токен), за да го добие советот. --}}
-    @if ($invoice->status === 'confirmed' && (auth()->user()->can('signEfaktura', $company) || auth()->user()->can('manageEfakturaDevice', $company)))
+    @if ($invoice->status === 'confirmed' && auth()->user()->can('workWithEfaktura', $company))
         <div class="mt-4 border-t pt-4" x-data="efakturaSend()">
             @if ($invoice->efaktura_status === 'sent')
                 <x-badge status="active">Испратена до УЈП ({{ optional($invoice->efaktura_sent_at)->format('d.m.Y H:i') }})</x-badge>
             @elseif ($invoice->isForeignCurrency())
                 <p class="text-xs text-gray-500">е-Фактура прима само фактури во денари. Оваа е во {{ $invoice->currency }}, па не може да се прати до УЈП.</p>
-            @elseif (! $company->hasEfakturaAccess() || $company->efaktura_credential_mode !== \App\Models\Company::EFAKTURA_MODE_OWN)
+            @elseif (! auth()->user()->can('signEfaktura', $company))
                 <div class="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900">
-                    <p class="font-semibold">Фактурата не може да се прати до УЈП — недостасува подготовка:</p>
-                    <ul class="mt-1 list-disc ml-5 space-y-0.5">
-                        @if ($company->efaktura_credential_mode !== \App\Models\Company::EFAKTURA_MODE_OWN)
-                            <li>Фирмата е во режим „токен на канцеларијата“, кој уште не е поддржан за праќање. Во профилот избери „Сопствени акредитиви“.</li>
-                        @endif
-                        @if (blank($company->efaktura_eujp_id))
-                            <li>Не е внесен X-EUJP-ID на фирмата.</li>
-                        @endif
-                        @if (blank($company->efaktura_token_serial_number))
-                            <li>Не е регистриран потпишувачки уред (USB токен).</li>
-                        @endif
-                    </ul>
-                    @can('manageEfakturaDevice', $company)
-                        <a href="{{ route('companies.profile', $company) }}" wire:navigate class="mt-2 inline-flex items-center px-3 py-1.5 bg-white border border-amber-300 rounded-full text-sm font-semibold text-amber-900 hover:bg-amber-100">Отвори го профилот на фирмата</a>
-                    @endcan
+                    <p class="font-semibold">Фактурата не може да се прати до УЈП — немаш регистриран токен.</p>
+                    <p class="mt-1">Токенот и е-УЈП ID-то се лични: регистрирај ги во твојот профил. Овластувањето за оваа фирма го даваш во е-УЈП.</p>
+                    <a href="{{ route('profile') }}" wire:navigate class="mt-2 inline-flex items-center px-3 py-1.5 bg-white border border-amber-300 rounded-full text-sm font-semibold text-amber-900 hover:bg-amber-100">Регистрирај го мојот токен</a>
                 </div>
             @else
                 <button type="button" @click="run()" :disabled="busy" class="bg-brand text-white px-3 py-1.5 rounded-md text-sm disabled:opacity-50">
@@ -217,7 +205,7 @@
                         if (!certRes.ok) throw new Error('Не можам да ги прочитам податоците од токенот.');
                         const cert = await certRes.json();
 
-                        if (cert.serialNumber !== @js($company->efaktura_token_serial_number)) {
+                        if (cert.serialNumber !== @js(auth()->user()->efakturaSignerFor($company)?->serialNumber)) {
                             throw new Error('Приклучениот токен не одговара на регистрираниот за оваа компанија.');
                         }
 

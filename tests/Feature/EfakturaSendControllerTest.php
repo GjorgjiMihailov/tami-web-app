@@ -135,7 +135,7 @@ class EfakturaSendControllerTest extends TestCase
             ['certificateBase64' => base64_encode('fake-cert')]
         );
 
-        $response->assertStatus(422);
+        $response->assertStatus(403);
     }
 
     public function test_draft_invoice_is_rejected(): void

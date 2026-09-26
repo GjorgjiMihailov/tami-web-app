@@ -7,6 +7,7 @@ use App\Models\Partner;
 use App\Models\SalesInvoice;
 use App\Services\Efaktura\EfakturaJwsService;
 use App\Support\Base64Url;
+use App\Support\EfakturaSigner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -54,7 +55,7 @@ class EfakturaJwsServiceTest extends TestCase
         ]);
 
         $service = new EfakturaJwsService;
-        $response = $service->send($company, 'header.payload', 'c2ln');
+        $response = $service->send($company, new EfakturaSigner('EUJP-1', '1A2B3C', EfakturaSigner::SOURCE_COMPANY), 'header.payload', 'c2ln');
 
         $this->assertTrue($response->successful());
         Http::assertSent(function ($request) {
@@ -94,7 +95,7 @@ class EfakturaJwsServiceTest extends TestCase
             'tax_id' => '4030001234567', 'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
         ]);
 
-        $response = (new EfakturaJwsService)->sendStatusRefresh($company, 'header.payload', 'c2ln');
+        $response = (new EfakturaJwsService)->sendStatusRefresh($company, new EfakturaSigner('EUJP-1', '1A2B3C', EfakturaSigner::SOURCE_COMPANY), 'header.payload', 'c2ln');
 
         $this->assertTrue($response->successful());
         Http::assertSent(function ($request) {
@@ -116,7 +117,7 @@ class EfakturaJwsServiceTest extends TestCase
             'tax_id' => '4030001234567', 'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
         ]);
 
-        $response = (new EfakturaJwsService)->sendPdfFetch($company, 'header.payload', 'c2ln');
+        $response = (new EfakturaJwsService)->sendPdfFetch($company, new EfakturaSigner('EUJP-1', '1A2B3C', EfakturaSigner::SOURCE_COMPANY), 'header.payload', 'c2ln');
 
         $this->assertTrue($response->successful());
         Http::assertSent(function ($request) {
@@ -136,7 +137,7 @@ class EfakturaJwsServiceTest extends TestCase
             'tax_id' => '4030001234567', 'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
         ]);
 
-        $response = (new EfakturaJwsService)->sendPurchaseInvoiceIds($company, 'header.payload', 'c2ln');
+        $response = (new EfakturaJwsService)->sendPurchaseInvoiceIds($company, new EfakturaSigner('EUJP-1', '1A2B3C', EfakturaSigner::SOURCE_COMPANY), 'header.payload', 'c2ln');
 
         $this->assertTrue($response->successful());
         Http::assertSent(fn ($request) => $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/purchase-invoice/ids');
@@ -149,7 +150,7 @@ class EfakturaJwsServiceTest extends TestCase
             'tax_id' => '4030001234567', 'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
         ]);
 
-        $response = (new EfakturaJwsService)->sendPurchaseInvoicePayloadList($company, 'header.payload', 'c2ln');
+        $response = (new EfakturaJwsService)->sendPurchaseInvoicePayloadList($company, new EfakturaSigner('EUJP-1', '1A2B3C', EfakturaSigner::SOURCE_COMPANY), 'header.payload', 'c2ln');
 
         $this->assertTrue($response->successful());
         Http::assertSent(fn ($request) => $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/purchase-invoice/payload/list');
@@ -162,7 +163,7 @@ class EfakturaJwsServiceTest extends TestCase
             'tax_id' => '4030001234567', 'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
         ]);
 
-        $response = (new EfakturaJwsService)->sendPurchaseInvoiceStatus($company, 'header.payload', 'c2ln');
+        $response = (new EfakturaJwsService)->sendPurchaseInvoiceStatus($company, new EfakturaSigner('EUJP-1', '1A2B3C', EfakturaSigner::SOURCE_COMPANY), 'header.payload', 'c2ln');
 
         $this->assertTrue($response->successful());
         // Confirmed against efakturawiki.ujp.gov.mk 2026-08-07: "current-status" is a single-euid
@@ -177,7 +178,7 @@ class EfakturaJwsServiceTest extends TestCase
             'tax_id' => '4030001234567', 'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
         ]);
 
-        $response = (new EfakturaJwsService)->sendPurchaseInvoiceAcceptReject($company, 'header.payload', 'c2ln');
+        $response = (new EfakturaJwsService)->sendPurchaseInvoiceAcceptReject($company, new EfakturaSigner('EUJP-1', '1A2B3C', EfakturaSigner::SOURCE_COMPANY), 'header.payload', 'c2ln');
 
         $this->assertTrue($response->successful());
         Http::assertSent(fn ($request) => $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/purchase-invoice/accept-reject');
@@ -190,7 +191,7 @@ class EfakturaJwsServiceTest extends TestCase
             'tax_id' => '4030001234567', 'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
         ]);
 
-        $response = (new EfakturaJwsService)->sendPurchaseInvoicePdfFetch($company, 'header.payload', 'c2ln');
+        $response = (new EfakturaJwsService)->sendPurchaseInvoicePdfFetch($company, new EfakturaSigner('EUJP-1', '1A2B3C', EfakturaSigner::SOURCE_COMPANY), 'header.payload', 'c2ln');
 
         $this->assertTrue($response->successful());
         Http::assertSent(fn ($request) => $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/purchase-invoice/pdf');

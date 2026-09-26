@@ -64,7 +64,7 @@ class EfakturaIncomingDiscoveryController extends Controller
         }
 
         try {
-            $response = $jwsService->sendPurchaseInvoiceIds($company, $cached['signing_input'], $validated['signature']);
+            $response = $jwsService->sendPurchaseInvoiceIds($company, $request->user()->efakturaSignerFor($company), $cached['signing_input'], $validated['signature']);
         } catch (ConnectionException $e) {
             return response()->json(['error' => 'ujp_unreachable', 'message' => 'Не можам да се поврзам со серверот на УЈП — провери ја интернет-врската или обиди се подоцна.'], 503);
         }
@@ -119,7 +119,7 @@ class EfakturaIncomingDiscoveryController extends Controller
         }
 
         try {
-            $response = $jwsService->sendPurchaseInvoicePayloadList($company, $cached['signing_input'], $validated['signature']);
+            $response = $jwsService->sendPurchaseInvoicePayloadList($company, $request->user()->efakturaSignerFor($company), $cached['signing_input'], $validated['signature']);
         } catch (ConnectionException $e) {
             return response()->json(['error' => 'ujp_unreachable', 'message' => 'Не можам да се поврзам со серверот на УЈП — провери ја интернет-врската или обиди се подоцна.'], 503);
         }
@@ -208,7 +208,7 @@ class EfakturaIncomingDiscoveryController extends Controller
         }
 
         try {
-            $response = $jwsService->sendPurchaseInvoiceStatus($company, $cached['signing_input'], $validated['signature']);
+            $response = $jwsService->sendPurchaseInvoiceStatus($company, $request->user()->efakturaSignerFor($company), $cached['signing_input'], $validated['signature']);
         } catch (ConnectionException $e) {
             return response()->json(['error' => 'ujp_unreachable', 'message' => 'Не можам да се поврзам со серверот на УЈП — провери ја интернет-врската или обиди се подоцна.'], 503);
         }
@@ -250,10 +250,5 @@ class EfakturaIncomingDiscoveryController extends Controller
     {
         Gate::authorize('view', $company);
         Gate::authorize('signEfaktura', $company);
-        abort_unless(
-            $company->efaktura_credential_mode === Company::EFAKTURA_MODE_OWN,
-            422,
-            'Откривање влезни е-фактури преку фирмениот сертификат сè уште не е поддржано.'
-        );
     }
 }

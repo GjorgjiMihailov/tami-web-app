@@ -59,7 +59,7 @@ class EfakturaStatusController extends Controller
         }
 
         try {
-            $response = $jwsService->sendStatusRefresh($company, $cached['signing_input'], $validated['signature']);
+            $response = $jwsService->sendStatusRefresh($company, $request->user()->efakturaSignerFor($company), $cached['signing_input'], $validated['signature']);
         } catch (ConnectionException $e) {
             return response()->json([
                 'error' => 'ujp_unreachable',
@@ -124,10 +124,5 @@ class EfakturaStatusController extends Controller
     {
         Gate::authorize('view', $company);
         Gate::authorize('signEfaktura', $company);
-        abort_unless(
-            $company->efaktura_credential_mode === Company::EFAKTURA_MODE_OWN,
-            422,
-            'Освежување статус преку фирмениот сертификат сè уште не е поддржано.'
-        );
     }
 }

@@ -110,16 +110,32 @@ class CompanyPolicy
     }
 
     /**
-     * Потпишување и праќање/прием на е-Фактура. Единствено место што одговара
-     * „смее ли овој човек". Клиентот дополнително бара веќе запишан токен
-     * (`hasEfakturaAccess()`); канцеларијата не бара, зашто ја регистрира.
+     * Дали човекот воопшто работи со е-Фактура за оваа фирма: админ,
+     * сметководител на таа фирма, или клиент на својата (правно лице). Ова е „смее да подготви“ — не значи дека може и да
+     * потпише; за тоа мора да има токен (signEfaktura).
      */
-    public function signEfaktura(User $user, Company $company): bool
+    public function workWithEfaktura(User $user, Company $company): bool
     {
         if ($this->update($user, $company)) {
             return true;
         }
 
-        return $this->manageEfakturaDevice($user, $company) && $company->hasEfakturaAccess();
+        // Клиентот — само за својата фирма и само ако е правно лице.
+        return $user->hasRole('internal_client')
+            && $user->visibleCompanies()->whereKey($company->id)->exists()
+            && $company->type->isLegal();
+    }
+
+    /**
+     * Потпишување и праќање/прием на е-Фактура. Единствено место што одговара
+     * „смее ли овој човек“: работи со е-Фактура за оваа фирма И има идентитет
+     * за потпишување — свој регистриран токен со е-УЈП ID (овластувањето за
+     * фирмата се дава во е-УЈП, не кај нас). Постар запис на токен на самата
+     * фирма (режим „свој“) важи додека не се регистрира лично.
+     */
+    public function signEfaktura(User $user, Company $company): bool
+    {
+        return $this->workWithEfaktura($user, $company)
+            && $user->efakturaSignerFor($company) !== null;
     }
 }

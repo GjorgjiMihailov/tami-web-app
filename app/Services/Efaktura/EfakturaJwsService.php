@@ -4,6 +4,7 @@ namespace App\Services\Efaktura;
 
 use App\Models\Company;
 use App\Models\SalesInvoice;
+use App\Support\EfakturaSigner;
 use App\Support\Base64Url;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -73,10 +74,11 @@ class EfakturaJwsService
 
     private const PURCHASE_PDF_PATH = '/einvoice_api/api/v1/documents/purchase-invoice/pdf';
 
-    public function send(Company $company, string $signingInput, string $signatureBase64Url): Response
+    public function send(Company $company, EfakturaSigner $signer, string $signingInput, string $signatureBase64Url): Response
     {
         return $this->postSignedRequest(
             $company,
+            $signer,
             '/JSONReceiver/api/v1/sales-invoices/send',
             $signingInput,
             $signatureBase64Url,
@@ -84,51 +86,53 @@ class EfakturaJwsService
         );
     }
 
-    public function sendStatusRefresh(Company $company, string $signingInput, string $signatureBase64Url): Response
+    public function sendStatusRefresh(Company $company, EfakturaSigner $signer, string $signingInput, string $signatureBase64Url): Response
     {
-        return $this->postSignedRequest($company, self::STATUS_REFRESH_PATH, $signingInput, $signatureBase64Url);
+        return $this->postSignedRequest($company, $signer, self::STATUS_REFRESH_PATH, $signingInput, $signatureBase64Url);
     }
 
-    public function sendPdfFetch(Company $company, string $signingInput, string $signatureBase64Url): Response
+    public function sendPdfFetch(Company $company, EfakturaSigner $signer, string $signingInput, string $signatureBase64Url): Response
     {
-        return $this->postSignedRequest($company, self::PDF_FETCH_PATH, $signingInput, $signatureBase64Url);
+        return $this->postSignedRequest($company, $signer, self::PDF_FETCH_PATH, $signingInput, $signatureBase64Url);
     }
 
-    public function sendPurchaseInvoiceIds(Company $company, string $signingInput, string $signatureBase64Url): Response
+    public function sendPurchaseInvoiceIds(Company $company, EfakturaSigner $signer, string $signingInput, string $signatureBase64Url): Response
     {
-        return $this->postSignedRequest($company, self::PURCHASE_IDS_PATH, $signingInput, $signatureBase64Url);
+        return $this->postSignedRequest($company, $signer, self::PURCHASE_IDS_PATH, $signingInput, $signatureBase64Url);
     }
 
-    public function sendPurchaseInvoicePayloadList(Company $company, string $signingInput, string $signatureBase64Url): Response
+    public function sendPurchaseInvoicePayloadList(Company $company, EfakturaSigner $signer, string $signingInput, string $signatureBase64Url): Response
     {
-        return $this->postSignedRequest($company, self::PURCHASE_PAYLOAD_LIST_PATH, $signingInput, $signatureBase64Url);
+        return $this->postSignedRequest($company, $signer, self::PURCHASE_PAYLOAD_LIST_PATH, $signingInput, $signatureBase64Url);
     }
 
-    public function sendPurchaseInvoiceStatus(Company $company, string $signingInput, string $signatureBase64Url): Response
+    public function sendPurchaseInvoiceStatus(Company $company, EfakturaSigner $signer, string $signingInput, string $signatureBase64Url): Response
     {
-        return $this->postSignedRequest($company, self::PURCHASE_STATUS_PATH, $signingInput, $signatureBase64Url);
+        return $this->postSignedRequest($company, $signer, self::PURCHASE_STATUS_PATH, $signingInput, $signatureBase64Url);
     }
 
-    public function sendPurchaseInvoiceAcceptReject(Company $company, string $signingInput, string $signatureBase64Url): Response
+    public function sendPurchaseInvoiceAcceptReject(Company $company, EfakturaSigner $signer, string $signingInput, string $signatureBase64Url): Response
     {
-        return $this->postSignedRequest($company, self::PURCHASE_ACCEPT_REJECT_PATH, $signingInput, $signatureBase64Url);
+        return $this->postSignedRequest($company, $signer, self::PURCHASE_ACCEPT_REJECT_PATH, $signingInput, $signatureBase64Url);
     }
 
-    public function sendPurchaseInvoicePdfFetch(Company $company, string $signingInput, string $signatureBase64Url): Response
+    public function sendPurchaseInvoicePdfFetch(Company $company, EfakturaSigner $signer, string $signingInput, string $signatureBase64Url): Response
     {
-        return $this->postSignedRequest($company, self::PURCHASE_PDF_PATH, $signingInput, $signatureBase64Url);
+        return $this->postSignedRequest($company, $signer, self::PURCHASE_PDF_PATH, $signingInput, $signatureBase64Url);
     }
 
-    private function postSignedRequest(Company $company, string $path, string $signingInput, string $signatureBase64Url, array $extraHeaders = []): Response
+    private function postSignedRequest(Company $company, EfakturaSigner $signer, string $path, string $signingInput, string $signatureBase64Url, array $extraHeaders = []): Response
     {
         $compact = $signingInput.'.'.$signatureBase64Url;
         $baseUrl = config('services.efaktura.base_url');
         $url = rtrim($baseUrl, '/').$path;
 
         $request = Http::withHeaders(array_merge([
-            'X-EUJP-ID' => $company->efaktura_eujp_id,
+            // Потпишува човекот: неговиот е-УЈП ID и токен. ЕДБ е на фирмата за која се праќа —
+            // овластувањето на човекот за таа фирма се дава во е-УЈП.
+            'X-EUJP-ID' => $signer->eujpId,
             'X-EDB' => $company->tax_id,
-            'X-SERIAL-NUMBER' => $company->efaktura_token_serial_number,
+            'X-SERIAL-NUMBER' => $signer->serialNumber,
         ], $extraHeaders))->timeout(20);
 
         if ($connectTo = config('services.efaktura.connect_to')) {

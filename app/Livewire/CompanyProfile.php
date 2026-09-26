@@ -163,30 +163,8 @@ class CompanyProfile extends Component
     }
 
     /**
-     * е-Фактура бара ЕДБ, што физичко лице нема — табелата „Полиња по тип" во
-     * docs/superpowers/specs/2026-08-21-client-profile-types-design.md.
-     *
-     * Копчето е скриено во профилот на физичко лице, но Livewire метод се вика
-     * преку жица без разлика што е исцртано, па криењето во Blade не е брана.
-     * Чуварот стои сам за себе: не се потпира на тоа со кој режим профилот е
-     * создаден, како што ни создавањето не се потпира на овој чувар.
-     */
-    public function requestFirmEfakturaAccess(): void
-    {
-        Gate::authorize('view', $this->company);
-
-        abort_if($this->company->type->isIndividual(), 403, 'е-Фактура важи само за профил на правно лице.');
-
-        if ($this->company->efaktura_credential_mode !== Company::EFAKTURA_MODE_FIRM) {
-            return;
-        }
-
-        $this->company->update(['efaktura_firm_access_status' => Company::EFAKTURA_STATUS_REQUESTED]);
-    }
-
-    /**
-     * Потпишувачкиот уред служи за е-Фактура, па важи по истото правило како
-     * requestFirmEfakturaAccess() погоре: физичко лице нема ЕДБ и нема што да
+     * Потпишувачкиот уред служи за е-Фактура, па важи по правилото:
+     * физичко лице нема ЕДБ и нема што да
      * потпишува. Картичката е скриена во Blade, но методот е достапен преку
      * жица, па чуварот мора да е тука.
      */

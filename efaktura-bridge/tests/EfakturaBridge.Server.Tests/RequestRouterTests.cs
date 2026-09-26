@@ -354,4 +354,76 @@ public class RequestRouterTests
 
         Assert.Equal(404, response.StatusCode);
     }
+
+    [Fact]
+    public void Status_ReportsWhetherTheTokenIsUnlockedAndTheIdleTimeout()
+    {
+        FakeSigningService fake = new FakeSigningService { IsUnlocked = true, IdleMinutes = 45 };
+        RequestRouter router = CreateRouter(fake);
+
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "GET",
+            Path = "/status",
+            OriginHeader = AllowedOrigin,
+            HostHeader = "127.0.0.1:9847",
+        });
+
+        Assert.Equal(200, response.StatusCode);
+        Assert.Contains("\"unlocked\":true", response.Body);
+        Assert.Contains("\"idleMinutes\":45", response.Body);
+    }
+
+    [Fact]
+    public void Lock_LocksTheTokenAndReportsIt()
+    {
+        FakeSigningService fake = new FakeSigningService { IsUnlocked = true };
+        RequestRouter router = CreateRouter(fake);
+
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "POST",
+            Path = "/lock",
+            OriginHeader = AllowedOrigin,
+            HostHeader = "127.0.0.1:9847",
+        });
+
+        Assert.Equal(200, response.StatusCode);
+        Assert.Contains("\"unlocked\":false", response.Body);
+        Assert.Equal(1, fake.LockCalls);
+        Assert.False(fake.IsUnlocked);
+    }
+
+    [Fact]
+    public void Lock_FromADisallowedOrigin_IsRefusedAndDoesNotLock()
+    {
+        FakeSigningService fake = new FakeSigningService { IsUnlocked = true };
+        RequestRouter router = CreateRouter(fake);
+
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "POST",
+            Path = "/lock",
+            OriginHeader = "https://evil.example",
+            HostHeader = "127.0.0.1:9847",
+        });
+
+        Assert.Equal(403, response.StatusCode);
+        Assert.Equal(0, fake.LockCalls);
+    }
+
+    [Fact]
+    public void Status_FromAWrongHost_IsRefused()
+    {
+        RequestRouter router = CreateRouter();
+
+        BridgeResponse response = router.Handle(new BridgeRequest
+        {
+            Method = "GET",
+            Path = "/status",
+            HostHeader = "evil.example:9847",
+        });
+
+        Assert.Equal(403, response.StatusCode);
+    }
 }

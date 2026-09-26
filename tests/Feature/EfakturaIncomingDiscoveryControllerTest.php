@@ -172,7 +172,7 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
             ['certificateBase64' => base64_encode('fake-cert')]
         );
 
-        $response->assertStatus(422);
+        $response->assertStatus(403);
     }
 
     public function test_internal_client_with_an_own_token_can_discover_incoming_invoices(): void

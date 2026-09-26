@@ -256,6 +256,6 @@ class EfakturaStatusControllerTest extends TestCase
             ['certificateBase64' => base64_encode('fake-cert')]
         );
 
-        $response->assertStatus(422);
+        $response->assertStatus(403);
     }
 }

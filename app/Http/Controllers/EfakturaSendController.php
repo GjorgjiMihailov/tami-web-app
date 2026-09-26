@@ -52,7 +52,7 @@ class EfakturaSendController extends Controller
         }
 
         try {
-            $response = $jwsService->send($company, $cached['signing_input'], $validated['signature']);
+            $response = $jwsService->send($company, $request->user()->efakturaSignerFor($company), $cached['signing_input'], $validated['signature']);
         } catch (ConnectionException $e) {
             $salesInvoice->update(['efaktura_status' => 'failed', 'efaktura_error' => $e->getMessage()]);
 
@@ -92,11 +92,6 @@ class EfakturaSendController extends Controller
             'Фактура во странска валута не може да се испрати до УЈП — е-Фактура прима само денарски износи.'
         );
         abort_if($salesInvoice->efaktura_status === 'sent', 422, 'Оваа фактура е веќе испратена до УЈП.');
-        abort_unless(
-            $company->efaktura_credential_mode === Company::EFAKTURA_MODE_OWN,
-            422,
-            'Праќање на е-Фактура преку фирмениот сертификат сè уште не е поддржано — регистрирај сопствен потпишувачки уред за оваа компанија.'
-        );
     }
 
     private function hasCompleteAddress(Company|Partner $party): bool

@@ -269,7 +269,6 @@ class Menu
                 'label' => 'ПОСТАВКИ',
                 'items' => [
                     ['label' => 'Компанија', 'url' => route('companies.profile', $company), 'pattern' => 'companies.profile', 'roles' => null],
-                    ['label' => 'е-Фактура барања', 'url' => route('efaktura.access-requests'), 'pattern' => 'efaktura.access-requests', 'roles' => ['admin']],
                 ],
             ],
         ];

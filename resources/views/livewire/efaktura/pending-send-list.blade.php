@@ -1,7 +1,7 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-1">е-Фактури што чекаат праќање</h1>
     <p class="text-sm text-gray-500 mb-4">
-        Од апликацијата може да се прати само фактура на фирма со свој токен, и тоа од компјутерот каде е приклучен токенот на таа фирма. Фирмите во режим „канцеларија“ засега не може да праќаат од апликацијата.
+        Фактурите ги праќаш со свој токен и е-УЈП ID (регистрирани во профилот), од компјутерот каде е приклучен токенот. Кај секоја фирма пишува дали можеш да потпишеш за неа. Овластувањето за фирма се дава во е-УЈП.
     </p>
 
     <x-card>
@@ -28,12 +28,10 @@
                         <td class="py-1">{{ $invoice->partner?->name }}</td>
                         <td class="py-1 text-right">{{ \App\Support\Format::money($invoice->grandTotal(), 'ден') }}</td>
                         <td class="py-1">
-                            @if ($company->efaktura_credential_mode !== \App\Models\Company::EFAKTURA_MODE_OWN)
-                                <span class="text-gray-500">Режим „канцеларија“ — праќањето не е поддржано</span>
-                            @elseif ($company->hasEfakturaAccess())
-                                <x-badge status="active">Запишан</x-badge>
+                            @if (auth()->user()->can('signEfaktura', $company))
+                                <x-badge status="active">Можеш да потпишеш</x-badge>
                             @else
-                                <x-badge status="pending">Нема запишан токен</x-badge>
+                                <x-badge status="pending">Немаш регистриран токен</x-badge>
                             @endif
                         </td>
                         <td class="py-1">
