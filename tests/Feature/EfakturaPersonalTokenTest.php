@@ -94,7 +94,7 @@ class EfakturaPersonalTokenTest extends TestCase
         $this->assertFalse($client->can('signEfaktura', $other));
     }
 
-    public function test_a_freelancer_and_an_individual_profile_never_get_e_faktura(): void
+    public function test_a_freelancer_never_gets_e_faktura(): void
     {
         $individual = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
         $freelancer = $this->giveToken($this->user('freelancer_client', ['company_id' => $individual->id]));
@@ -102,7 +102,6 @@ class EfakturaPersonalTokenTest extends TestCase
 
         $this->assertFalse($freelancer->can('signEfaktura', $individual));
         $this->assertFalse($freelancer->can('workWithEfaktura', $individual));
-        $this->assertFalse($admin->can('signEfaktura', $individual));   // физичко лице нема е-Фактура
     }
 
     public function test_the_signer_is_the_users_token_and_the_old_company_token_is_only_a_fallback(): void

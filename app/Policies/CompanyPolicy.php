@@ -110,23 +110,20 @@ class CompanyPolicy
     }
 
     /**
-     * Дали човекот воопшто работи со е-Фактура за оваа фирма: правно лице, и
-     * админ, сметководител на таа фирма, или клиент на својата фирма. Физичко
-     * лице нема е-Фактура. Ова е „смее да подготви“ — не значи дека може и да
+     * Дали човекот воопшто работи со е-Фактура за оваа фирма: админ,
+     * сметководител на таа фирма, или клиент на својата (правно лице). Ова е „смее да подготви“ — не значи дека може и да
      * потпише; за тоа мора да има токен (signEfaktura).
      */
     public function workWithEfaktura(User $user, Company $company): bool
     {
-        if (! $company->type->isLegal()) {
-            return false;
-        }
-
         if ($this->update($user, $company)) {
             return true;
         }
 
+        // Клиентот — само за својата фирма и само ако е правно лице.
         return $user->hasRole('internal_client')
-            && $user->visibleCompanies()->whereKey($company->id)->exists();
+            && $user->visibleCompanies()->whereKey($company->id)->exists()
+            && $company->type->isLegal();
     }
 
     /**

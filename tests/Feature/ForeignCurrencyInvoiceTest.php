@@ -786,7 +786,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'currency' => 'EUR',
             'exchange_rate' => '61.500000',
         ]);
-        $accountant = User::factory()->create();
+        $accountant = User::factory()->create(['efaktura_eujp_id' => 'EUJP-ACC', 'efaktura_token_serial_number' => 'AAA111']);
         $accountant->assignRole('accountant');
         $company->accountants()->attach($accountant);
 
@@ -810,7 +810,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             'currency' => 'USD',
             'exchange_rate' => '56.200000',
         ]);
-        $accountant = User::factory()->create();
+        $accountant = User::factory()->create(['efaktura_eujp_id' => 'EUJP-ACC', 'efaktura_token_serial_number' => 'AAA111']);
         $accountant->assignRole('accountant');
         $company->accountants()->attach($accountant);
 
