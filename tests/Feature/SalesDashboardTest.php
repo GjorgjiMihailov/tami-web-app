@@ -103,7 +103,7 @@ class SalesDashboardTest extends TestCase
             ->get(route('sales-invoices.index', $company))
             ->assertOk()
             ->assertSee('sidebar-board', false)
-            ->assertSee('Табла');
+            ->assertSee('Дома');
     }
 
     public function test_other_apps_have_no_board_link_in_their_sidebar(): void
