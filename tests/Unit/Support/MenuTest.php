@@ -71,7 +71,7 @@ class MenuTest extends TestCase
         $this->assertSame(['Главна книга', 'Извештаи и обрасци', 'Банкарски документи'], $this->itemLabels($financeMenu, 'finance'));
         $this->assertSame(['Контен план'], $this->itemLabels($financeMenu, 'finance-settings'));
 
-        $this->assertSame(['Компанија', 'е-Фактура барања'], $this->itemLabels(Menu::for($admin, $company, PortalApp::PORTAL), 'settings'));
+        $this->assertSame(['Компанија'], $this->itemLabels(Menu::for($admin, $company, PortalApp::PORTAL), 'settings'));
         $this->assertSame(['Фактурирање'], $this->itemLabels(Menu::for($admin, $company, PortalApp::PRODAZBA), 'sales-settings'));
         $this->assertSame(['Параметри за плата'], $this->itemLabels(Menu::for($admin, $company, PortalApp::PLATA), 'payroll-settings'));
     }

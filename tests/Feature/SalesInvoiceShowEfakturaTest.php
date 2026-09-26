@@ -109,11 +109,12 @@ class SalesInvoiceShowEfakturaTest extends TestCase
 
         Livewire::actingAs($client)
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
-            ->assertSee('Не е регистриран потпишувачки уред')
+            ->assertSee('немаш регистриран токен')
+            ->assertSeeHtml(route('profile'))
             ->assertDontSee('Потпиши и испрати до УЈП');
     }
 
-    public function test_firm_mode_client_does_not_see_the_register_device_hint(): void
+    public function test_a_client_without_any_token_is_told_to_register_a_personal_one_whatever_the_old_mode_was(): void
     {
         $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
         $partner = Partner::factory()->for($company)->create();
@@ -123,9 +124,9 @@ class SalesInvoiceShowEfakturaTest extends TestCase
 
         Livewire::actingAs($client)
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
-            ->assertDontSee('недостасува подготовка');
+            ->assertSee('немаш регистриран токен')
+            ->assertDontSee('Потпиши и испрати до УЈП');
     }
-
     public function test_freelancer_client_without_a_token_does_not_see_the_register_device_hint(): void
     {
         $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN, 'efaktura_eujp_id' => 'EUJP-1']);
@@ -136,7 +137,8 @@ class SalesInvoiceShowEfakturaTest extends TestCase
 
         Livewire::actingAs($client)
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
-            ->assertDontSee('недостасува подготовка');
+            ->assertDontSee('немаш регистриран токен')
+            ->assertDontSee('Потпиши и испрати до УЈП');
     }
 
     public function test_sign_and_send_button_visible_for_an_assigned_accountant_with_an_own_token(): void

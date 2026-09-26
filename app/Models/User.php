@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\EfakturaSigner;
 use App\Support\PortalApp;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -44,6 +45,9 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'disabled_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'efaktura_token_not_before' => 'datetime',
+            'efaktura_token_not_after' => 'datetime',
+            'efaktura_token_registered_at' => 'datetime',
             'password' => 'hashed',
             'app_prodazba' => 'boolean',
             'app_finansii' => 'boolean',
@@ -54,6 +58,31 @@ class User extends Authenticatable
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /** Дали корисникот има свој регистриран токен и е-УЈП ID. */
+    public function hasEfakturaToken(): bool
+    {
+        return filled($this->efaktura_eujp_id) && filled($this->efaktura_token_serial_number);
+    }
+
+    /**
+     * Кој идентитет потпишува за оваа фирма. Токенот е на човекот: тој е
+     * овластен во е-УЈП за фирмата, а неговиот е-УЈП ID оди во барањето.
+     * Ако корисникот нема свој токен, важи постариот запис на самата фирма
+     * (режим „свој“) — за да не престанат да работат веќе регистрираните.
+     */
+    public function efakturaSignerFor(Company $company): ?EfakturaSigner
+    {
+        if ($this->hasEfakturaToken()) {
+            return new EfakturaSigner((string) $this->efaktura_eujp_id, (string) $this->efaktura_token_serial_number, EfakturaSigner::SOURCE_USER);
+        }
+
+        if ($company->efaktura_credential_mode === Company::EFAKTURA_MODE_OWN && $company->hasEfakturaAccess()) {
+            return new EfakturaSigner((string) $company->efaktura_eujp_id, (string) $company->efaktura_token_serial_number, EfakturaSigner::SOURCE_COMPANY);
+        }
+
+        return null;
     }
 
     public function assignedCompanies(): BelongsToMany

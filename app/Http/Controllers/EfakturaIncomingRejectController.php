@@ -73,7 +73,7 @@ class EfakturaIncomingRejectController extends Controller
         }
 
         try {
-            $response = $jwsService->sendPurchaseInvoiceAcceptReject($company, $cached['signing_input'], $validated['signature']);
+            $response = $jwsService->sendPurchaseInvoiceAcceptReject($company, $request->user()->efakturaSignerFor($company), $cached['signing_input'], $validated['signature']);
         } catch (ConnectionException $e) {
             return response()->json(['error' => 'ujp_unreachable', 'message' => 'Не можам да се поврзам со серверот на УЈП — провери ја интернет-врската или обиди се подоцна.'], 503);
         }
@@ -98,11 +98,6 @@ class EfakturaIncomingRejectController extends Controller
         Gate::authorize('view', $company);
         abort_if($incomingEfakturaDocument->company_id !== $company->id, 404);
         Gate::authorize('signEfaktura', $company);
-        abort_unless(
-            $company->efaktura_credential_mode === Company::EFAKTURA_MODE_OWN,
-            422,
-            'Одбивање влезна е-фактура преку фирмениот сертификат сè уште не е поддржано.'
-        );
         abort_if($incomingEfakturaDocument->decision !== null, 422, 'Веќе е одлучено за оваа фактура.');
     }
 }

@@ -7,13 +7,10 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            @if (auth()->user()->hasRole('admin'))
+            @if (auth()->user()->hasAnyRole(['admin', 'accountant', 'internal_client']))
                 <x-card padding="p-4 sm:p-8">
                     <div class="max-w-xl">
-                        <h3 class="text-lg font-medium text-gray-900">Системски поставки</h3>
-                        <p class="mt-1 text-sm text-gray-600">Барања од клиенти за пристап до е-Фактура.</p>
-                        <a href="{{ route('efaktura.access-requests') }}" wire:navigate
-                           class="mt-3 inline-block text-sm text-brand hover:underline">е-Фактура барања</a>
+                        <livewire:profile.efaktura-token />
                     </div>
                 </x-card>
             @endif

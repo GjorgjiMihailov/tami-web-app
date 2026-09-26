@@ -5,24 +5,6 @@
 
     <x-tab-strip :tabs="$tabs" />
 
-    @if ($company->type->isLegal() && $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_FIRM)
-        <x-card class="mb-6">
-            <h3 class="text-sm font-semibold text-gray-700 mb-2">е-Фактура пристап</h3>
-            @if (in_array($company->efaktura_firm_access_status, [
-                    \App\Models\Company::EFAKTURA_STATUS_NONE,
-                    \App\Models\Company::EFAKTURA_STATUS_REJECTED,
-                ]))
-                <button wire:click="requestFirmEfakturaAccess" type="button" class="rounded-full bg-brand text-white px-4 py-2 text-sm">
-                    Побарај користење на фирмениот сертификат
-                </button>
-            @elseif ($company->efaktura_firm_access_status === \App\Models\Company::EFAKTURA_STATUS_REQUESTED)
-                <x-badge status="pending">Чека одобрување</x-badge>
-            @elseif ($company->efaktura_firm_access_status === \App\Models\Company::EFAKTURA_STATUS_APPROVED)
-                <x-badge status="active">Одобрено</x-badge>
-            @endif
-        </x-card>
-    @endif
-
     @if ($company->type->isLegal() && auth()->user()->can('manageEfakturaDevice', $company))
         <x-card class="mb-6" x-data="signingDeviceRegistration()">
             <h3 class="text-sm font-semibold text-gray-700 mb-2">Потпишувачки уред (USB токен)</h3>
@@ -33,21 +15,11 @@
                 $tokenExpiresSoon = $tokenExpiresAt && ! $tokenExpired && $tokenExpiresAt->lte(now()->addDays(30));
             @endphp
 
-            <ul class="text-sm mb-3 space-y-0.5">
-                <li class="{{ $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN ? 'text-green-700' : 'text-amber-700' }}">
-                    {{ $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN ? '✓' : '✗' }} Режим: сопствени акредитиви
-                    @if ($company->efaktura_credential_mode !== \App\Models\Company::EFAKTURA_MODE_OWN)
-                        <span class="text-gray-500">— токенот на канцеларијата уште не е поддржан за праќање; во „Уреди“ избери „Сопствени акредитиви“.</span>
-                    @endif
-                </li>
-                <li class="{{ filled($company->efaktura_eujp_id) ? 'text-green-700' : 'text-amber-700' }}">
-                    {{ filled($company->efaktura_eujp_id) ? '✓' : '✗' }} X-EUJP-ID
-                </li>
-                <li class="{{ $company->efaktura_token_serial_number && ! $tokenExpired ? 'text-green-700' : 'text-amber-700' }}">
-                    {{ $company->efaktura_token_serial_number && ! $tokenExpired ? '✓' : '✗' }} Потпишувачки уред (сертификат)
-                </li>
-            </ul>
-
+            <p class="text-sm text-gray-600 mb-3">
+                е-Фактури потпишува најавениот корисник со <strong>свој</strong> токен и е-УЈП ID —
+                регистрирај ги во <a href="{{ route('profile') }}" wire:navigate class="text-brand hover:underline">твојот профил</a>.
+                Овластувањето за оваа фирма се дава во е-УЈП. Записот подолу е постар и важи само како резерва за корисник без свој токен.
+            </p>
             @if ($tokenExpired)
                 <p class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">Регистрираниот сертификат е истечен ({{ $tokenExpiresAt->format('d.m.Y') }}). Приклучи го новиот токен и кликни „Ажурирај сертификат“.</p>
             @elseif ($tokenExpiresSoon)

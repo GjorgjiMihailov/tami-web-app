@@ -46,44 +46,35 @@ class EfakturaReadinessScreensTest extends TestCase
 
     // ---- Излезна фактура: зошто нема копче ----
 
-    public function test_a_firm_mode_company_is_told_that_office_token_mode_cannot_send_and_gets_a_profile_link(): void
+    public function test_an_accountant_without_a_personal_token_is_told_to_register_one_and_gets_a_profile_link(): void
     {
-        $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
+        $company = Company::factory()->create();
         $invoice = $this->confirmedInvoice($company);
         $accountant = $this->accountantFor($company);
 
         Livewire::actingAs($accountant)
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
-            ->assertSee('недостасува подготовка')
-            ->assertSee('токен на канцеларијата')
-            ->assertSeeHtml(route('companies.profile', $company))
+            ->assertSee('немаш регистриран токен')
+            ->assertSeeHtml(route('profile'))
             ->assertDontSee('Потпиши и испрати до УЈП');
     }
-
-    public function test_an_own_mode_company_lists_exactly_what_is_missing(): void
+    public function test_the_personal_token_needs_both_the_token_and_the_eujp_id(): void
     {
-        $company = Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => null,
-            'efaktura_token_serial_number' => null,
-        ]);
+        $company = Company::factory()->create();
         $invoice = $this->confirmedInvoice($company);
         $accountant = $this->accountantFor($company);
 
-        Livewire::actingAs($accountant)
+        $accountant->forceFill(['efaktura_token_serial_number' => '1A2B3C'])->save();
+        Livewire::actingAs($accountant->fresh())
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
-            ->assertSee('Не е внесен X-EUJP-ID')
-            ->assertSee('Не е регистриран потпишувачки уред')
-            ->assertDontSee('токен на канцеларијата');
+            ->assertSee('немаш регистриран токен');
 
-        $company->update(['efaktura_eujp_id' => 'EUJP-1']);
-
-        Livewire::actingAs($accountant)
-            ->test(SalesInvoiceShow::class, ['company' => $company->fresh(), 'salesInvoice' => $invoice])
-            ->assertDontSee('Не е внесен X-EUJP-ID')
-            ->assertSee('Не е регистриран потпишувачки уред');
+        $accountant->forceFill(['efaktura_eujp_id' => 'EUJP-9'])->save();
+        Livewire::actingAs($accountant->fresh())
+            ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->assertSee('Потпиши и испрати до УЈП')
+            ->assertDontSee('немаш регистриран токен');
     }
-
     public function test_a_fully_prepared_own_mode_company_shows_the_send_button_and_no_warning(): void
     {
         $company = Company::factory()->create([
@@ -97,7 +88,7 @@ class EfakturaReadinessScreensTest extends TestCase
         Livewire::actingAs($accountant)
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
             ->assertSee('Потпиши и испрати до УЈП')
-            ->assertDontSee('недостасува подготовка');
+            ->assertDontSee('немаш регистриран токен');
     }
 
     // ---- Профил на фирма: сертификат ----
@@ -118,18 +109,17 @@ class EfakturaReadinessScreensTest extends TestCase
             ->assertDontSee('Регистрирај токен');
     }
 
-    public function test_the_profile_shows_the_readiness_checklist(): void
+    public function test_the_company_profile_points_to_the_personal_token_and_no_longer_offers_the_office_certificate(): void
     {
         $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
         $accountant = $this->accountantFor($company);
 
         Livewire::actingAs($accountant)->test(CompanyProfile::class, ['company' => $company])
-            ->assertSee('Режим: сопствени акредитиви')
-            ->assertSee('токенот на канцеларијата уште не е поддржан')
-            ->assertSee('X-EUJP-ID')
-            ->assertSee('Потпишувачки уред (сертификат)');
+            ->assertSee('потпишува најавениот корисник со')
+            ->assertSeeHtml(route('profile'))
+            ->assertDontSee('Побарај користење на фирмениот сертификат')
+            ->assertDontSee('токен на канцеларијата');
     }
-
     public function test_an_expired_certificate_is_flagged_and_one_expiring_soon_is_warned_about(): void
     {
         $company = Company::factory()->create([

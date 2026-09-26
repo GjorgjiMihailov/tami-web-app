@@ -135,25 +135,23 @@ class EfakturaPendingSendListTest extends TestCase
             ->assertViewHas('invoices', fn ($list) => $list->pluck('id')->all() === [$mineInvoice->id]);
     }
 
-    public function test_it_says_what_kind_of_token_each_company_has(): void
+    public function test_it_says_whether_the_signed_in_user_can_sign_for_each_company(): void
     {
-        $withToken = Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => '1A2B3C',
-        ]);
-        $withoutToken = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN]);
-        $officeToken = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
-        foreach ([$withToken, $withoutToken, $officeToken] as $company) {
-            $this->invoice($company);
-        }
+        $company = Company::factory()->create();
+        $this->invoice($company);
 
-        Livewire::actingAs($this->userWithRole('admin'))->test(PendingSendList::class)
-            ->assertSee('Запишан')
-            ->assertSee('Нема запишан токен')
-            ->assertSee('Режим „канцеларија“ — праќањето не е поддржано');
+        // Без свој токен: не може да потпише.
+        $admin = $this->userWithRole('admin');
+        Livewire::actingAs($admin)->test(PendingSendList::class)
+            ->assertSee('Немаш регистриран токен')
+            ->assertDontSee('Можеш да потпишеш');
+
+        // Со свој токен и е-УЈП ID: може, за секоја фирма.
+        $admin->forceFill(['efaktura_eujp_id' => 'EUJP-9', 'efaktura_token_serial_number' => '1A2B3C'])->save();
+        Livewire::actingAs($admin->fresh())->test(PendingSendList::class)
+            ->assertSee('Можеш да потпишеш')
+            ->assertDontSee('Немаш регистриран токен');
     }
-
     public function test_clients_and_freelancers_are_refused(): void
     {
         $company = Company::factory()->create();

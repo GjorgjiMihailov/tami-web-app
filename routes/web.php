@@ -47,7 +47,6 @@ use App\Livewire\Costs\OtherCostIndex;
 use App\Livewire\Dashboard;
 use App\Livewire\DocumentIndex;
 use App\Livewire\Efaktura\PendingSendList;
-use App\Livewire\EfakturaAccessRequests;
 use App\Livewire\EmployeeForm;
 use App\Livewire\EmployeeIndex;
 use App\Livewire\FirstClient;
@@ -122,7 +121,6 @@ Route::domain(PortalApp::PORTAL->domain())->group(function () {
     // Array-callable form (not bare class-string) for the same reason noted
     // below for the accounting.* group: avoids an eager method_exists() check
     // at route registration time.
-    Route::middleware(['auth'])->get('/efaktura/access-requests', [EfakturaAccessRequests::class, '__invoke'])->name('efaktura.access-requests');
 
     // Мора да стои пред групата `companies/{company}`, инаку 'office' би бил фатен
     // како фирма.

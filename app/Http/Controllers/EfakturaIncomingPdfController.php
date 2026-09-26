@@ -48,7 +48,7 @@ class EfakturaIncomingPdfController extends Controller
         }
 
         try {
-            $response = $jwsService->sendPurchaseInvoicePdfFetch($company, $cached['signing_input'], $validated['signature']);
+            $response = $jwsService->sendPurchaseInvoicePdfFetch($company, $request->user()->efakturaSignerFor($company), $cached['signing_input'], $validated['signature']);
         } catch (ConnectionException $e) {
             return response()->json(['error' => 'ujp_unreachable', 'message' => 'Не можам да се поврзам со серверот на УЈП — провери ја интернет-врската или обиди се подоцна.'], 503);
         }
@@ -85,11 +85,6 @@ class EfakturaIncomingPdfController extends Controller
         Gate::authorize('view', $company);
         abort_if($incomingEfakturaDocument->company_id !== $company->id, 404);
         Gate::authorize('signEfaktura', $company);
-        abort_unless(
-            $company->efaktura_credential_mode === Company::EFAKTURA_MODE_OWN,
-            422,
-            'Преземање официјален ПДФ преку фирмениот сертификат сè уште не е поддржано.'
-        );
         abort_if($incomingEfakturaDocument->efaktura_pdf_path && Storage::disk('local')->exists($incomingEfakturaDocument->efaktura_pdf_path), 422, 'ПДФ-от е веќе преземен.');
         abort_unless($incomingEfakturaDocument->decision === IncomingEfakturaDocument::DECISION_ACCEPTED, 422, 'Фактурата сè уште не е прифатена.');
     }
