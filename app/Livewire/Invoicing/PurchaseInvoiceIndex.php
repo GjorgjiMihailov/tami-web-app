@@ -31,11 +31,21 @@ class PurchaseInvoiceIndex extends Component
     {
         $invoices = PurchaseInvoice::where('company_id', $this->company->id)
             ->whereBetween('invoice_date', [$this->workingYearStart(), $this->workingYearEnd()])
-            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
+            ->when(in_array($this->statusFilter, ['draft', 'confirmed', 'cancelled'], true), fn ($q) => $q->where('status', $this->statusFilter))
+            ->when(in_array($this->statusFilter, ['unpaid', 'overdue', 'paid'], true), fn ($q) => $q->where('status', 'confirmed'))
             ->with(['partner', 'lines', 'payments', 'incomingEfakturaDocument'])
             ->orderByDesc('invoice_date')
             ->orderByDesc('id')
             ->get();
+
+        // Платежните филтри зависат од плаќањата, па се применуваат врз потврдените.
+        // „Неплатени“ ги вклучува и делумно платените — сè што уште чека плаќање.
+        $invoices = match ($this->statusFilter) {
+            'paid' => $invoices->filter(fn (PurchaseInvoice $invoice) => $invoice->paymentStatus() === 'paid'),
+            'unpaid' => $invoices->filter(fn (PurchaseInvoice $invoice) => in_array($invoice->paymentStatus(), ['unpaid', 'partially_paid'], true)),
+            'overdue' => $invoices->filter(fn (PurchaseInvoice $invoice) => $invoice->isOverdue()),
+            default => $invoices,
+        };
 
         // Deliberately NOT year-scoped. This is the undecided-work inbox, not a
         // record list; hiding a pending document because of the year selector
@@ -53,8 +63,11 @@ class PurchaseInvoiceIndex extends Component
             ->get();
 
         return view('livewire.invoicing.purchase-invoice-index', [
-            'invoices' => $invoices,
+            'invoices' => $invoices->values(),
             'pendingDocuments' => $pendingDocuments,
+            // Празната состојба само за фирма без ниту една влезна фактура (во ниту една
+            // година) и без неодлучени е-Фактури; во празна ГОДИНА се гледа табелата.
+            'hasInvoices' => PurchaseInvoice::where('company_id', $this->company->id)->exists(),
         ]);
     }
 }

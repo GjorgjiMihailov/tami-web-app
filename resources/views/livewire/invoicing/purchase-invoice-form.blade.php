@@ -5,7 +5,7 @@
     // Имињата се долги намерно. Blade не ја затвора променливата на `@foreach`,
     // па кратко име како `$label` го презапишува некоја јамка подолу во истиот
     // фајл и ознаките излегуваат со class="последната вредност од јамката".
-    $lineGridClass = 'md:grid md:grid-cols-[minmax(10rem,1.4fr)_minmax(8rem,1.8fr)_4rem_6.5rem_6.5rem_4.5rem_6.5rem_6.5rem_6.5rem_4rem_2rem] md:gap-x-2 md:items-start';
+    $lineGridClass = 'md:grid md:grid-cols-[minmax(10rem,1.4fr)_minmax(8rem,1.8fr)_4rem_6.5rem_6.5rem_4.5rem_4.5rem_6.5rem_6.5rem_6.5rem_4rem_2rem] md:gap-x-2 md:items-start';
     $lineNumberClass = 'text-right tabular-nums';
     $lineLabelClass = 'block text-[11px] font-medium text-stone md:hidden';
     // Почеток на групата „за ставката" — тенка линија што му помага на окото
@@ -54,18 +54,38 @@
         </div>
     @endif
 
+    @error('confirm')
+        <p class="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ $message }}</p>
+    @enderror
+
     <form wire:submit="save" class="space-y-4">
         <x-card>
             <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-4 gap-y-3">
                 <div class="sm:col-span-2 xl:col-span-1">
                     <x-input-label for="partnerId" value="Добавувач" />
-                    <select id="partnerId" wire:model="partnerId" class="w-full border-gray-300 focus:border-brand focus:ring-brand rounded-lg text-sm">
+                    <select id="partnerId" wire:model.live="partnerId" class="w-full border-gray-300 focus:border-brand focus:ring-brand rounded-lg text-sm">
                         <option value="">Изберете добавувач</option>
                         @foreach ($partners as $partner)
                             <option value="{{ $partner->id }}">{{ $partner->name }}</option>
                         @endforeach
                     </select>
                     @error('partnerId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                    <a href="{{ route('partners.create', $company) }}" wire:navigate class="text-brand text-xs hover:underline">+ Нов кооперант</a>
+
+                    @if ($partnerInfo)
+                        <div class="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600 space-y-0.5">
+                            <div>
+                                <span class="font-semibold uppercase tracking-wide text-gray-500">Адреса:</span>
+                                {{ $partnerInfo['partner']->printedAddress() ?? 'нема внесена адреса' }}
+                            </div>
+                            @if ($partnerInfo['partner']->email)
+                                <div>{{ $partnerInfo['partner']->email }}</div>
+                            @endif
+                            @if (bccomp($partnerInfo['payables'], '0', 2) > 0)
+                                <div>Му должиме: <strong>{{ \App\Support\Format::money($partnerInfo['payables']) }}</strong></div>
+                            @endif
+                        </div>
+                    @endif
                 </div>
                 <div>
                     <x-input-label for="supplierInvoiceNumber" value="Број на фактура од добавувач" />
@@ -73,9 +93,23 @@
                     @error('supplierInvoiceNumber') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <div>
+                    <x-input-label for="orderNumber" value="Број на нарачка" />
+                    <x-text-input id="orderNumber" wire:model="orderNumber" class="w-full" />
+                    @error('orderNumber') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                </div>
+                <div>
                     <x-input-label for="invoiceDate" value="Датум на фактура" />
                     <x-text-input id="invoiceDate" type="date" wire:model="invoiceDate" class="w-full" />
                     @error('invoiceDate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                </div>
+                <div>
+                    <x-input-label for="paymentTermsDays" value="Рок на плаќање" />
+                    <select id="paymentTermsDays" wire:model.live="paymentTermsDays" class="w-full border-gray-300 focus:border-brand focus:ring-brand rounded-lg text-sm">
+                        <option value="">Рачно</option>
+                        @foreach (\App\Models\Partner::PAYMENT_TERMS as $days)
+                            <option value="{{ $days }}">{{ $days === 0 ? 'По приемот' : "{$days} дена" }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div>
                     <x-input-label for="dueDate" value="Датум на доспевање" />
@@ -108,10 +142,10 @@
             </div>
 
             <div class="overflow-x-auto">
-                <div class="md:min-w-[68rem]">
+                <div class="md:min-w-[73rem]">
                     <div class="{{ $lineGridClass }} hidden px-4 pt-2 text-[10px] font-semibold uppercase tracking-wider text-stone/70">
                         <div class="md:col-span-3"></div>
-                        <div class="md:col-span-3 text-center">По единица</div>
+                        <div class="md:col-span-4 text-center">По единица</div>
                         <div class="md:col-span-3 text-center {{ $lineGroupEdge }}">За ставката</div>
                         <div class="md:col-span-2"></div>
                     </div>
@@ -123,6 +157,7 @@
                         <div class="text-right">Без ДДВ</div>
                         <div class="text-right">{{ $vatRegistered ? 'Со ДДВ' : '—' }}</div>
                         <div class="text-right">ДДВ %</div>
+                        <div class="text-right">Рабат %</div>
                         <div class="text-right {{ $lineGroupEdge }}">ДДВ</div>
                         <div class="text-right">Без ДДВ</div>
                         <div class="text-right">Со ДДВ</div>
@@ -195,6 +230,12 @@
                                 @error("lines.{$index}.vat_rate") <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
                             </div>
 
+                            <div>
+                                <span class="{{ $lineLabelClass }}">Рабат %</span>
+                                <x-text-input wire:model.live.debounce.400ms="lines.{{ $index }}.discount_percent" class="w-full text-sm py-1 {{ $lineNumberClass }}" />
+                                @error("lines.{$index}.discount_percent") <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
                             <div class="flex justify-between md:block {{ $lineGroupEdge }}">
                                 <span class="{{ $lineLabelClass }}">Износ ДДВ</span>
                                 <span class="text-stone {{ $lineDerivedClass }}">{{ \App\Support\Format::money($rows[$index]['vat'], '') }}</span>
@@ -258,12 +299,15 @@
         </x-card>
 
         <x-card>
-            <x-input-label for="notes" value="Забелешки" />
+            <x-input-label for="notes" value="Белешка" />
+            <p class="text-xs text-gray-500">Внатрешна белешка — не се печати.</p>
             <textarea id="notes" wire:model="notes" rows="2" class="w-full border-gray-300 focus:border-brand focus:ring-brand rounded-lg text-sm"></textarea>
         </x-card>
 
         <div class="flex items-center gap-3">
-            <x-primary-button type="submit">Зачувај нацрт</x-primary-button>
+            <x-secondary-button type="button" wire:click="save">Зачувај како нацрт</x-secondary-button>
+            <x-primary-button type="button" wire:click="saveAndConfirm" wire:loading.attr="disabled">Зачувај и потврди</x-primary-button>
+            <a href="{{ $purchaseInvoice ? route('purchase-invoices.show', [$company, $purchaseInvoice]) : route('purchase-invoices.index', $company) }}" wire:navigate class="text-gray-500 text-sm hover:underline">Откажи</a>
             <span wire:loading class="text-sm text-stone">Пресметувам…</span>
         </div>
     </form>

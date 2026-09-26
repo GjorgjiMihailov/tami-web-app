@@ -11,7 +11,7 @@ class PurchaseInvoiceLine extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['purchase_invoice_id', 'item_id', 'account_id', 'stock_movement_id', 'description', 'quantity', 'unit_price', 'unit_price_gross', 'vat_rate', 'vat_deductible', 'needs_review'];
+    protected $fillable = ['purchase_invoice_id', 'item_id', 'account_id', 'stock_movement_id', 'description', 'quantity', 'unit_price', 'unit_price_gross', 'vat_rate', 'discount_percent', 'vat_deductible', 'needs_review'];
 
     protected function casts(): array
     {
@@ -20,6 +20,7 @@ class PurchaseInvoiceLine extends Model
             'unit_price' => 'decimal:2',
             'unit_price_gross' => 'decimal:2',
             'vat_rate' => 'decimal:2',
+            'discount_percent' => 'decimal:2',
             'vat_deductible' => 'boolean',
             'needs_review' => 'boolean',
         ];
@@ -57,11 +58,30 @@ class PurchaseInvoiceLine extends Model
     /**
      * @return array{net: string, vat: string, gross: string}
      */
-    private function amounts(): array
+    private function amounts(?string $discount = null): array
     {
+        $discount ??= (string) $this->discount_percent;
+
         return $this->isGrossEntered()
-            ? VatMath::lineFromGross((string) $this->quantity, (string) $this->unit_price_gross, (string) $this->vat_rate)
-            : VatMath::lineFromNet((string) $this->quantity, (string) $this->unit_price, (string) $this->vat_rate);
+            ? VatMath::lineFromGross((string) $this->quantity, (string) $this->unit_price_gross, (string) $this->vat_rate, $discount)
+            : VatMath::lineFromNet((string) $this->quantity, (string) $this->unit_price, (string) $this->vat_rate, $discount);
+    }
+
+    public function hasDiscount(): bool
+    {
+        return bccomp((string) $this->discount_percent, '0', 2) > 0;
+    }
+
+    /** Основицата на ставката пред рабатот. */
+    public function originalLineTotal(): string
+    {
+        return $this->amounts('0')['net'];
+    }
+
+    /** Колку рабат е одбиен од основицата на ставката. */
+    public function discountAmount(): string
+    {
+        return bcsub($this->originalLineTotal(), $this->lineTotal(), 2);
     }
 
     public function lineTotal(): string
@@ -85,8 +105,16 @@ class PurchaseInvoiceLine extends Model
      */
     public function effectiveUnitPrice(): string
     {
-        return $this->isGrossEntered()
+        return ($this->isGrossEntered() || $this->hasDiscount())
             ? VatMath::unitPriceFromNetTotal($this->lineTotal(), (string) $this->quantity)
+            : (string) $this->unit_price;
+    }
+
+    /** Нето цената по единица пред рабатот. */
+    public function originalUnitPrice(): string
+    {
+        return $this->isGrossEntered()
+            ? VatMath::unitPriceFromNetTotal($this->originalLineTotal(), (string) $this->quantity)
             : (string) $this->unit_price;
     }
 }

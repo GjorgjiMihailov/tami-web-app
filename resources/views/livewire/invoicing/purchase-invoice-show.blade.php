@@ -1,4 +1,37 @@
-<div>
+<div class="grid gap-4 lg:grid-cols-[22rem_1fr]">
+    {{-- Лева страна: влезните фактури од работната година --}}
+    <x-card padding="p-0" class="hidden lg:block overflow-hidden self-start">
+        <div class="p-3 border-b border-sand flex items-center justify-between gap-2">
+            <a href="{{ route('purchase-invoices.index', $company) }}" wire:navigate class="text-sm font-semibold text-gray-700 hover:underline">← Сите влезни фактури</a>
+            <a href="{{ route('purchase-invoices.create', $company) }}" wire:navigate
+               class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-brand text-white text-xl leading-none" title="Нова влезна фактура" aria-label="Нова влезна фактура">+</a>
+        </div>
+        <ul class="divide-y divide-gray-100 max-h-[75vh] overflow-y-auto">
+            @foreach ($sidebar as $row)
+                <li wire:key="side-{{ $row->id }}">
+                    <a href="{{ route('purchase-invoices.show', [$company, $row]) }}" wire:navigate
+                       class="block px-4 py-2 hover:bg-orange-50 {{ $row->id === $invoice->id ? 'bg-orange-50' : '' }}">
+                        <span class="flex items-baseline justify-between gap-3">
+                            <span class="text-sm truncate">{{ $row->partner->name }}</span>
+                            <span class="text-sm whitespace-nowrap">{{ \App\Support\Format::money($row->grandTotal()) }}</span>
+                        </span>
+                        <span class="flex items-center justify-between text-xs text-gray-500">
+                            <span>{{ $row->supplier_invoice_number }} · {{ \App\Support\Format::date($row->invoice_date) }}</span>
+                            <span class="{{ $row->status === 'confirmed' && $row->isOverdue() ? 'text-red-600' : '' }}">
+                                @if ($row->status === 'confirmed')
+                                    {{ $row->isOverdue() ? 'Доспеана пред '.$row->daysOverdue().' '.($row->daysOverdue() === 1 ? 'ден' : 'дена') : \App\Support\Format::paymentStatus($row->paymentStatus()) }}
+                                @else
+                                    {{ \App\Support\Format::invoiceStatus($row->status) }}
+                                @endif
+                            </span>
+                        </span>
+                    </a>
+                </li>
+            @endforeach
+        </ul>
+    </x-card>
+
+    <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-1">
         Влезна фактура — {{ $invoice->partner->name }} #{{ $invoice->supplier_invoice_number }}
     </h1>
@@ -17,6 +50,30 @@
     @error('confirm') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
     @error('cancel') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
 
+    {{-- Што следува --}}
+    @if ($invoice->status === 'draft')
+        <p class="mb-4 rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900">Што следува? Прегледај ја фактурата и потврди ја — тогаш се книжи и (за артикли од залиха) влегува во залиха.</p>
+    @elseif ($invoice->status === 'confirmed' && $invoice->isOverdue())
+        <p class="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Што следува? Фактурата е доспеана пред {{ $invoice->daysOverdue() }} {{ $invoice->daysOverdue() === 1 ? 'ден' : 'дена' }}. Евидентирај го плаќањето кога ќе го направиш.</p>
+    @elseif ($invoice->status === 'confirmed' && $invoice->paymentStatus() !== 'paid')
+        <p class="mb-4 rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900">Што следува? Евидентирај го плаќањето кога ќе го направиш — формата „Плаќања“ е подолу.</p>
+    @endif
+
+    <x-card class="mb-4">
+        <dl class="grid gap-y-1 gap-x-6 text-sm sm:grid-cols-[10rem_1fr]">
+            <dt class="text-gray-500">Датум на фактура</dt>
+            <dd>{{ \App\Support\Format::date($invoice->invoice_date) }}</dd>
+            <dt class="text-gray-500">Рок на доспевање</dt>
+            <dd>{{ \App\Support\Format::date($invoice->due_date) }}</dd>
+            @if ($invoice->order_number)
+                <dt class="text-gray-500">Нарачка</dt>
+                <dd>{{ $invoice->order_number }}</dd>
+            @endif
+            <dt class="text-gray-500">Добавувач</dt>
+            <dd><a href="{{ route('partners.index', [$company, 'partner' => $invoice->partner_id]) }}" wire:navigate class="text-brand hover:underline">{{ $invoice->partner->name }}</a></dd>
+        </dl>
+    </x-card>
+
     <x-card class="mb-4">
         <table class="min-w-full text-sm">
             <thead>
@@ -25,6 +82,9 @@
                     <th class="py-1">Артикл/Сметка</th>
                     <th class="py-1">Кол.</th>
                     <th class="py-1">Ед. цена</th>
+                    @if ($invoice->lines->contains(fn ($l) => $l->hasDiscount()))
+                        <th class="py-1">Рабат %</th>
+                    @endif
                     <th class="py-1">ДДВ %</th>
                     <th class="py-1">Вкупно за ставка</th>
                 </tr>
@@ -35,7 +95,10 @@
                         <td class="py-1">{{ $line->description }}</td>
                         <td class="py-1">{{ $line->item?->name ?? $line->account?->code.' — '.$line->account?->name }}</td>
                         <td class="py-1">{{ $line->quantity }}</td>
-                        <td class="py-1">{{ \App\Support\Format::money($line->effectiveUnitPrice(), 'ден', $line->isGrossEntered() ? 4 : 2) }}</td>
+                        <td class="py-1">{{ \App\Support\Format::money($invoice->lines->contains(fn ($l) => $l->hasDiscount()) ? $line->originalUnitPrice() : $line->effectiveUnitPrice(), 'ден', $line->isGrossEntered() ? 4 : 2) }}</td>
+                        @if ($invoice->lines->contains(fn ($l) => $l->hasDiscount()))
+                            <td class="py-1">{{ $line->hasDiscount() ? \App\Support\Format::rate($line->discount_percent) : '' }}</td>
+                        @endif
                         <td class="py-1">
                             {{ $line->vat_rate }}{{ $line->vat_deductible ? '' : ' (не се одбива)' }}
                             @if ($line->needs_review)
@@ -107,4 +170,5 @@
     @endif
 
     <livewire:document-manager :documentable="$invoice" />
+    </div>
 </div>

@@ -48,6 +48,16 @@ trait HasInvoiceTotals
         return 'partially_paid';
     }
 
+    /** Колку дена е задоцнета доспеаната фактура (0 ако не е доспеана). */
+    public function daysOverdue(): int
+    {
+        if (! $this->isOverdue()) {
+            return 0;
+        }
+
+        return (int) abs(now()->startOfDay()->diffInDays($this->due_date->copy()->startOfDay()));
+    }
+
     public function isOverdue(): bool
     {
         return in_array($this->paymentStatus(), ['unpaid', 'partially_paid'], true)
