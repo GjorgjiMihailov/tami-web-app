@@ -80,23 +80,26 @@
                             <button type="button" wire:click="closeDetail" class="text-gray-500 hover:text-gray-700 text-xl leading-none lg:hidden" aria-label="Назад">×</button>
                         </div>
 
-                        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-sand py-2 mb-4 text-sm">
+                        <div class="flex flex-wrap items-center gap-2 mb-4">
                             @can('update', $selected)
                                 @if ($selected->isOpen())
-                                    <a href="{{ route('proformas.edit', [$company, $selected]) }}" wire:navigate class="text-brand hover:underline">Уреди</a>
+                                    <a href="{{ route('proformas.edit', [$company, $selected]) }}" wire:navigate class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full font-semibold text-sm text-gray-700 shadow-sm hover:bg-paper focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition">Уреди</a>
                                 @endif
                             @endcan
-                            <a href="{{ route('proformas.pdf', [$company, $selected]) }}" class="text-brand hover:underline">Преземи PDF</a>
+                            <a href="{{ route('proformas.pdf', [$company, $selected]) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full font-semibold text-sm text-gray-700 shadow-sm hover:bg-paper focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v11m0 0l-4-4m4 4l4-4" /></svg>
+                                Преземи PDF
+                            </a>
                             @can('update', $selected)
                                 @if ($selected->status === 'draft')
-                                    <button type="button" wire:click="markConfirmed({{ $selected->id }})" class="text-brand hover:underline">Означи како потврдена</button>
+                                    <button type="button" wire:click="markConfirmed({{ $selected->id }})" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full font-semibold text-sm text-gray-700 shadow-sm hover:bg-paper focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition">Означи како потврдена</button>
                                 @endif
                                 @if ($selected->status === 'confirmed')
                                     <a href="{{ route('sales-invoices.create', [$company, 'proforma' => $selected->id]) }}" wire:navigate
-                                       class="rounded-lg bg-brand px-3 py-1 text-white hover:opacity-90">Претвори во фактура</a>
+                                       class="inline-flex items-center gap-2 px-4 py-2 bg-brand border border-transparent rounded-full font-semibold text-sm text-white shadow-sm hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition">Претвори во фактура</a>
                                 @endif
                                 @if ($selected->isOpen())
-                                    <button type="button" wire:click="cancelProforma({{ $selected->id }})" wire:confirm="Да ја откажам профактурата?" class="ml-auto text-red-600 hover:underline">Откажи ја</button>
+                                    <button type="button" wire:click="cancelProforma({{ $selected->id }})" wire:confirm="Да ја откажам профактурата?" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 rounded-full font-semibold text-sm text-red-600 shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 transition sm:ml-auto">Откажи ја</button>
                                 @endif
                             @endcan
                         </div>

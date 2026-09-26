@@ -137,18 +137,21 @@
         </x-card>
     @endif
 
-    <div class="flex gap-3 mb-4">
+    <div class="flex flex-wrap items-center gap-2 mb-4">
         @if ($invoice->status === 'draft')
-            <a href="{{ route('sales-invoices.edit', [$company, $invoice]) }}" class="text-brand hover:underline text-sm">Измени</a>
-            <button type="button" wire:click="confirm" class="bg-brand text-white px-3 py-1.5 rounded-md text-sm">Потврди</button>
+            <a href="{{ route('sales-invoices.edit', [$company, $invoice]) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full font-semibold text-sm text-gray-700 shadow-sm hover:bg-paper focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition">Измени</a>
+            <button type="button" wire:click="confirm" class="inline-flex items-center gap-2 px-4 py-2 bg-brand border border-transparent rounded-full font-semibold text-sm text-white shadow-sm hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition">Потврди</button>
         @endif
         @if ($invoice->status === 'confirmed')
-            <a href="{{ route('sales-invoices.pdf', [$company, $invoice]) }}" class="text-brand hover:underline text-sm">Преземи PDF</a>
+            <a href="{{ route('sales-invoices.pdf', [$company, $invoice]) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full font-semibold text-sm text-gray-700 shadow-sm hover:bg-paper focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v11m0 0l-4-4m4 4l4-4" /></svg>
+                Преземи PDF
+            </a>
             @if (! $invoice->sent_at)
-                <button type="button" wire:click="markSent" class="text-brand hover:underline text-sm">Означи како испратена</button>
+                <button type="button" wire:click="markSent" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full font-semibold text-sm text-gray-700 shadow-sm hover:bg-paper focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition">Означи како испратена</button>
             @endif
             @if ($invoice->payments->isEmpty())
-                <button type="button" wire:click="cancel" class="text-red-600 hover:underline text-sm">Откажи фактура</button>
+                <button type="button" wire:click="cancel" wire:confirm="Да ја откажам фактурата? Книжењето ќе се сторнира." class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 rounded-full font-semibold text-sm text-red-600 shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 transition sm:ml-auto">Откажи фактура</button>
             @endif
         @endif
     </div>
