@@ -138,6 +138,35 @@ class SidebarTest extends TestCase
             ->assertDontSee('е-ПДД');
     }
 
+    public function test_the_menu_starts_with_home_and_the_company_and_year_selectors_are_at_the_bottom(): void
+    {
+        $company = Company::factory()->create(['name' => 'Фирма За Редослед']);
+        $this->actingAs($this->admin());
+
+        $response = $this->get(route('sales-invoices.index', $company));
+        $response->assertOk();
+        $sidebar = $this->extractSidebarHtml($response->getContent());
+
+        $home = strpos($sidebar, 'sidebar-board');
+        $firstGroup = strpos($sidebar, 'data-group=');
+        $lastGroup = strrpos($sidebar, 'data-group=');
+        $companyLabel = strpos($sidebar, '>Фирма</span>');
+        $yearLabel = strpos($sidebar, '>Година</span>');
+        $navEnd = strpos($sidebar, '</nav>');
+
+        $this->assertNotFalse($home);
+        $this->assertNotFalse($firstGroup);
+        $this->assertNotFalse($companyLabel);
+        $this->assertNotFalse($yearLabel);
+
+        // „Дома“ е прва под логото, пред сите групи.
+        $this->assertLessThan($firstGroup, $home);
+        // Изборот на фирма и година е по целото мени — и надвор од самиот <nav>.
+        $this->assertGreaterThan($lastGroup, $companyLabel);
+        $this->assertGreaterThan($navEnd, $companyLabel);
+        $this->assertGreaterThan($companyLabel, $yearLabel);
+    }
+
     public function test_the_group_matching_the_current_route_auto_expands(): void
     {
         $company = Company::factory()->create();
