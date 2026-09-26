@@ -4,7 +4,7 @@
         $where = fn ($user) => $user->company?->name ?? 'Канцеларија';
     @endphp
 
-    <h1 class="text-2xl font-bold text-gray-800 mb-1">Табло</h1>
+    <h1 class="text-2xl font-bold text-gray-800 mb-1">Дома</h1>
     <p class="text-sm text-gray-500 mb-6">Преглед на системот. Профили се создаваат и отвораат од „Клиенти".</p>
 
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">

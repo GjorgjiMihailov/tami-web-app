@@ -24,7 +24,7 @@
             @if (auth()->check() && auth()->user()->hasRole('admin'))
                 <a href="{{ route('dashboard') }}" wire:navigate
                    class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'dashboard' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
-                    Почетна
+                    Дома
                 </a>
                 <a href="{{ route('clients.index') }}" wire:navigate
                    class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ str_starts_with($currentRoute, 'clients.') ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
@@ -87,7 +87,7 @@
                 @if ($boardUrl !== '')
                     <a href="{{ $boardUrl }}" wire:navigate
                        class="sidebar-board block px-4 py-2 mb-1 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'prodazba.dashboard' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
-                        Табла
+                        Дома
                     </a>
                 @endif
 

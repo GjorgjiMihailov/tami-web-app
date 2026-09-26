@@ -48,7 +48,7 @@ class AdminDashboardTest extends TestCase
         $this->actingAs($this->userWithRole('admin'))
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('Табло')
+            ->assertSee('Дома')
             ->assertDontSee('Изберете фирма')
             ->assertDontSee('Solo Ltd');
     }
