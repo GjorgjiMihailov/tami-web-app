@@ -164,7 +164,23 @@
             @elseif ($invoice->isForeignCurrency())
                 <p class="text-xs text-gray-500">е-Фактура прима само фактури во денари. Оваа е во {{ $invoice->currency }}, па не може да се прати до УЈП.</p>
             @elseif (! $company->hasEfakturaAccess() || $company->efaktura_credential_mode !== \App\Models\Company::EFAKTURA_MODE_OWN)
-                <p class="text-xs text-gray-500">Регистрирај потпишувачки уред за оваа компанија (Профил на фирма) за да можеш да праќаш е-Фактура.</p>
+                <div class="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900">
+                    <p class="font-semibold">Фактурата не може да се прати до УЈП — недостасува подготовка:</p>
+                    <ul class="mt-1 list-disc ml-5 space-y-0.5">
+                        @if ($company->efaktura_credential_mode !== \App\Models\Company::EFAKTURA_MODE_OWN)
+                            <li>Фирмата е во режим „токен на канцеларијата“, кој уште не е поддржан за праќање. Во профилот избери „Сопствени акредитиви“.</li>
+                        @endif
+                        @if (blank($company->efaktura_eujp_id))
+                            <li>Не е внесен X-EUJP-ID на фирмата.</li>
+                        @endif
+                        @if (blank($company->efaktura_token_serial_number))
+                            <li>Не е регистриран потпишувачки уред (USB токен).</li>
+                        @endif
+                    </ul>
+                    @can('manageEfakturaDevice', $company)
+                        <a href="{{ route('companies.profile', $company) }}" wire:navigate class="mt-2 inline-flex items-center px-3 py-1.5 bg-white border border-amber-300 rounded-full text-sm font-semibold text-amber-900 hover:bg-amber-100">Отвори го профилот на фирмата</a>
+                    @endcan
+                </div>
             @else
                 <button type="button" @click="run()" :disabled="busy" class="bg-brand text-white px-3 py-1.5 rounded-md text-sm disabled:opacity-50">
                     <span x-show="!busy">Потпиши и испрати до УЈП</span>

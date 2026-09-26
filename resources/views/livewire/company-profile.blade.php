@@ -27,6 +27,33 @@
         <x-card class="mb-6" x-data="signingDeviceRegistration()">
             <h3 class="text-sm font-semibold text-gray-700 mb-2">Потпишувачки уред (USB токен)</h3>
 
+            @php
+                $tokenExpiresAt = $company->efaktura_token_not_after;
+                $tokenExpired = $tokenExpiresAt && $tokenExpiresAt->isPast();
+                $tokenExpiresSoon = $tokenExpiresAt && ! $tokenExpired && $tokenExpiresAt->lte(now()->addDays(30));
+            @endphp
+
+            <ul class="text-sm mb-3 space-y-0.5">
+                <li class="{{ $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN ? 'text-green-700' : 'text-amber-700' }}">
+                    {{ $company->efaktura_credential_mode === \App\Models\Company::EFAKTURA_MODE_OWN ? '✓' : '✗' }} Режим: сопствени акредитиви
+                    @if ($company->efaktura_credential_mode !== \App\Models\Company::EFAKTURA_MODE_OWN)
+                        <span class="text-gray-500">— токенот на канцеларијата уште не е поддржан за праќање; во „Уреди“ избери „Сопствени акредитиви“.</span>
+                    @endif
+                </li>
+                <li class="{{ filled($company->efaktura_eujp_id) ? 'text-green-700' : 'text-amber-700' }}">
+                    {{ filled($company->efaktura_eujp_id) ? '✓' : '✗' }} X-EUJP-ID
+                </li>
+                <li class="{{ $company->efaktura_token_serial_number && ! $tokenExpired ? 'text-green-700' : 'text-amber-700' }}">
+                    {{ $company->efaktura_token_serial_number && ! $tokenExpired ? '✓' : '✗' }} Потпишувачки уред (сертификат)
+                </li>
+            </ul>
+
+            @if ($tokenExpired)
+                <p class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">Регистрираниот сертификат е истечен ({{ $tokenExpiresAt->format('d.m.Y') }}). Приклучи го новиот токен и кликни „Ажурирај сертификат“.</p>
+            @elseif ($tokenExpiresSoon)
+                <p class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Сертификатот истекува на {{ $tokenExpiresAt->format('d.m.Y') }}. Кога ќе добиеш нов, кликни „Ажурирај сертификат“.</p>
+            @endif
+
             @if ($company->efaktura_token_serial_number)
                 <p class="text-sm text-gray-600 mb-1">Регистриран: <span class="font-medium">{{ $company->efaktura_token_subject_name }}</span> (сериски бр. {{ $company->efaktura_token_serial_number }})</p>
                 <p class="text-xs text-gray-500 mb-3">Важи до {{ optional($company->efaktura_token_not_after)->format('d.m.Y') }}</p>
@@ -36,7 +63,7 @@
 
             <div class="flex items-center gap-3">
                 <button type="button" @click="check()" :disabled="busy" class="rounded-full bg-gray-100 text-gray-700 px-4 py-2 text-sm disabled:opacity-50">
-                    <span x-show="!busy">Провери токен</span>
+                    <span x-show="!busy">{{ $company->efaktura_token_serial_number ? 'Ажурирај сертификат' : 'Регистрирај токен' }}</span>
                     <span x-show="busy">Читам...</span>
                 </button>
                 <a href="{{ asset('downloads/efaktura-bridge/EfakturaBridge.Server.exe') }}" class="text-brand hover:underline text-sm">Преземи локален потпишувач</a>
@@ -45,7 +72,7 @@
             <div x-show="detected" class="mt-3 border rounded-lg p-3 bg-gray-50">
                 <p class="text-sm">Пронајден: <span x-text="subjectName" class="font-medium"></span></p>
                 <p class="text-xs text-gray-500">Сериски бр. <span x-text="serialNumber"></span>, важи до <span x-text="notAfter"></span></p>
-                <button type="button" @click="confirmRegister()" class="mt-2 rounded-full bg-brand text-white px-4 py-1.5 text-sm">Потврди — ова е точниот уред</button>
+                <button type="button" @click="confirmRegister()" class="mt-2 rounded-full bg-brand text-white px-4 py-1.5 text-sm">{{ $company->efaktura_token_serial_number ? 'Потврди — замени го регистрираниот уред' : 'Потврди — ова е точниот уред' }}</button>
             </div>
 
             <p x-show="error" x-text="error" class="text-red-600 text-sm mt-2"></p>

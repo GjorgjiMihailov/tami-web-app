@@ -109,7 +109,7 @@ class SalesInvoiceShowEfakturaTest extends TestCase
 
         Livewire::actingAs($client)
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
-            ->assertSee('Регистрирај потпишувачки уред за оваа компанија')
+            ->assertSee('Не е регистриран потпишувачки уред')
             ->assertDontSee('Потпиши и испрати до УЈП');
     }
 
@@ -123,7 +123,7 @@ class SalesInvoiceShowEfakturaTest extends TestCase
 
         Livewire::actingAs($client)
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
-            ->assertDontSee('Регистрирај потпишувачки уред за оваа компанија');
+            ->assertDontSee('недостасува подготовка');
     }
 
     public function test_freelancer_client_without_a_token_does_not_see_the_register_device_hint(): void
@@ -136,7 +136,7 @@ class SalesInvoiceShowEfakturaTest extends TestCase
 
         Livewire::actingAs($client)
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
-            ->assertDontSee('Регистрирај потпишувачки уред за оваа компанија');
+            ->assertDontSee('недостасува подготовка');
     }
 
     public function test_sign_and_send_button_visible_for_an_assigned_accountant_with_an_own_token(): void
