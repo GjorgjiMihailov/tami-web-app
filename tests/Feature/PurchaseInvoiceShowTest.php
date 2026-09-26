@@ -97,7 +97,8 @@ class PurchaseInvoiceShowTest extends TestCase
         // the payments table below never gets it, and document-manager's table is
         // empty here (no documents seeded), so its own data-row hover never renders.
         $this->assertSame(2, substr_count($html, 'bg-gray-50'));
-        $this->assertSame(1, substr_count($html, 'hover:bg-orange-50'));
+        // Точно 2: редот во левата листа (отворената фактура) и редот на ставката; плаќањата немаат hover.
+        $this->assertSame(2, substr_count($html, 'hover:bg-orange-50'));
     }
 
     public function test_an_invoice_from_another_year_is_flagged_but_still_opens(): void

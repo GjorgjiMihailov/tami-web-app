@@ -27,7 +27,7 @@
                             <span>{{ $row->formattedNumber() ?? 'Нацрт' }} · {{ \App\Support\Format::date($row->invoice_date) }}</span>
                             <span>
                                 @if ($row->status === 'confirmed')
-                                    {{ $row->isOverdue() ? 'Доспеана' : \App\Support\Format::paymentStatus($row->paymentStatus()) }}
+                                    {{ $row->isOverdue() ? 'Доспеана пред '.$row->daysOverdue().' '.($row->daysOverdue() === 1 ? 'ден' : 'дена') : \App\Support\Format::paymentStatus($row->paymentStatus()) }}
                                 @else
                                     {{ \App\Support\Format::invoiceStatus($row->status) }}
                                 @endif

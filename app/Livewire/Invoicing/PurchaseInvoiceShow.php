@@ -97,8 +97,20 @@ class PurchaseInvoiceShow extends Component
     {
         $invoice = $this->purchaseInvoice->fresh(['lines.item', 'lines.account', 'payments', 'partner']);
 
+        // Левата листа ја покажува работната година, но секогаш ја вклучува и
+        // отворената фактура (може да е од друга година).
+        $sidebar = \App\Models\PurchaseInvoice::where('company_id', $this->company->id)
+            ->where(fn ($q) => $q
+                ->whereBetween('invoice_date', [\App\Support\WorkingYear::startOf($this->workingYear), \App\Support\WorkingYear::endOf($this->workingYear)])
+                ->orWhere('id', $invoice->id))
+            ->with(['partner:id,name', 'lines', 'payments'])
+            ->orderByDesc('invoice_date')->orderByDesc('id')
+            ->limit(100)
+            ->get();
+
         return view('livewire.invoicing.purchase-invoice-show', [
             'invoice' => $invoice,
+            'sidebar' => $sidebar,
         ]);
     }
 }

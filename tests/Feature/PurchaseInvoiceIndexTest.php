@@ -190,6 +190,9 @@ class PurchaseInvoiceIndexTest extends TestCase
         $company = Company::factory()->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
+        // Фирмата има влезни фактури, но не во работната година — тогаш се гледа табелата со порака,
+        // не празната состојба за нова фирма.
+        PurchaseInvoice::factory()->for($company)->create(['invoice_date' => '2019-04-04']);
 
         $this->actingAs($admin);
 

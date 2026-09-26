@@ -82,7 +82,7 @@
                         <td class="py-1 px-3 whitespace-nowrap">
                             @if ($invoice->status === 'confirmed')
                                 <x-badge :status="$invoice->isOverdue() ? 'overdue' : $invoice->paymentStatus()">
-                                    {{ $invoice->isOverdue() ? 'Доспеана' : \App\Support\Format::paymentStatus($invoice->paymentStatus()) }}
+                                    {{ $invoice->isOverdue() ? 'Доспеана пред '.$invoice->daysOverdue().' '.($invoice->daysOverdue() === 1 ? 'ден' : 'дена') : \App\Support\Format::paymentStatus($invoice->paymentStatus()) }}
                                 </x-badge>
                             @else
                                 <x-badge :status="$invoice->status">{{ \App\Support\Format::invoiceStatus($invoice->status) }}</x-badge>

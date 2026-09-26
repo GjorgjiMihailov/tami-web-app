@@ -2,17 +2,22 @@
 
 namespace App\Livewire\Invoicing;
 
+use App\Exceptions\InsufficientStockException;
+use App\Exceptions\InvalidInvoiceStateException;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\Item;
 use App\Models\Partner;
 use App\Models\PurchaseInvoice;
 use App\Models\Warehouse;
+use App\Services\Invoicing\PurchaseInvoiceService;
 use App\Services\Invoicing\ScannedInvoice;
 use App\Services\Invoicing\ScannedInvoiceLine;
 use App\Services\Invoicing\ScannedInvoiceReader;
+use App\Services\PartnerInsights;
 use App\Support\VatMath;
 use App\Support\WorkingYear;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -52,6 +57,12 @@ class PurchaseInvoiceForm extends Component
 
     public string $notes = '';
 
+    /** Број на нарачка (кај нас или кај добавувачот). */
+    public string $orderNumber = '';
+
+    /** Помошно поле: рокот на плаќање ја пресметува датата на доспевање. Не се чува. */
+    public string $paymentTermsDays = '';
+
     public array $lines = [];
 
     public int $workingYear = 0;
@@ -84,6 +95,7 @@ class PurchaseInvoiceForm extends Component
             $this->invoiceDate = $purchaseInvoice->invoice_date->toDateString();
             $this->dueDate = $purchaseInvoice->due_date->toDateString();
             $this->notes = (string) $purchaseInvoice->notes;
+            $this->orderNumber = (string) $purchaseInvoice->order_number;
             $this->lines = $purchaseInvoice->lines->map(fn ($line) => [
                 'item_id' => $line->item_id === null ? '' : (string) $line->item_id,
                 'account_id' => $line->account_id === null ? '' : (string) $line->account_id,
@@ -101,6 +113,7 @@ class PurchaseInvoiceForm extends Component
                     : VatMath::grossFromNet((string) $line->unit_price, (string) $line->vat_rate),
                 'price_basis' => $line->isGrossEntered() ? 'gross' : 'net',
                 'vat_rate' => (string) $line->vat_rate,
+                'discount_percent' => (string) $line->discount_percent,
                 'vat_deductible' => $line->vat_deductible,
                 'needs_review' => $line->needs_review,
             ])->toArray();
@@ -124,6 +137,7 @@ class PurchaseInvoiceForm extends Component
             'unit_price_gross' => VatMath::grossFromNet('0', $rate),
             'price_basis' => 'net',
             'vat_rate' => $rate,
+            'discount_percent' => '0',
             'vat_deductible' => true,
             'needs_review' => false,
         ];
@@ -226,9 +240,11 @@ class PurchaseInvoiceForm extends Component
         $quantity = (string) ($line['quantity'] ?? '0');
         $rate = $vatRegistered ? (string) ($line['vat_rate'] ?? '0') : '0';
 
+        $discount = (string) ($line['discount_percent'] ?? '0');
+
         return ($line['price_basis'] ?? 'net') === 'gross'
-            ? VatMath::lineFromGross($quantity, (string) ($line['unit_price_gross'] ?? '0'), $rate)
-            : VatMath::lineFromNet($quantity, (string) ($line['unit_price'] ?? '0'), $rate);
+            ? VatMath::lineFromGross($quantity, (string) ($line['unit_price_gross'] ?? '0'), $rate, $discount)
+            : VatMath::lineFromNet($quantity, (string) ($line['unit_price'] ?? '0'), $rate, $discount);
     }
 
     /**
@@ -414,6 +430,7 @@ class PurchaseInvoiceForm extends Component
                 'unit_price_gross' => VatMath::grossFromNet($price, $rate),
                 'price_basis' => 'net',
                 'vat_rate' => $rate,
+                'discount_percent' => '0',
                 'vat_deductible' => true,
                 'needs_review' => false,
             ];
@@ -458,7 +475,7 @@ class PurchaseInvoiceForm extends Component
                 'company_id' => $this->company->id,
                 'code' => $code,
                 'name' => mb_substr($name, 0, 255),
-                'unit_of_measure' => 'piece',
+                'unit_of_measure' => 'бр.',
                 'vat_rate' => is_numeric($line['vat_rate'] ?? null) ? $line['vat_rate'] : '18.00',
                 'type' => 'product',
                 'is_active' => true,
@@ -474,7 +491,10 @@ class PurchaseInvoiceForm extends Component
         return preg_replace('/\D+/', '', $value) ?? '';
     }
 
-    public function save(): void
+    /**
+     * Зачувува влезната фактура како нацрт. Враќа дали успеало — грешките се веќе на екранот.
+     */
+    private function persist(): bool
     {
         Gate::authorize($this->purchaseInvoice ? 'update' : 'create', $this->purchaseInvoice ?? PurchaseInvoice::class);
 
@@ -501,6 +521,8 @@ class PurchaseInvoiceForm extends Component
             'lines.*.unit_price_gross' => 'nullable|numeric|min:0',
             'lines.*.price_basis' => 'nullable|in:net,gross',
             'lines.*.vat_rate' => 'required|numeric|min:0|max:100',
+            'lines.*.discount_percent' => 'nullable|numeric|min:0|max:100',
+            'orderNumber' => 'nullable|string|max:100',
         ]);
 
         $types = $this->itemTypes();
@@ -512,7 +534,7 @@ class PurchaseInvoiceForm extends Component
                     'Секоја ставка што не е артикл од залиха мора да содржи сметка за трошок.'
                 );
 
-                return;
+                return false;
             }
         }
 
@@ -521,7 +543,7 @@ class PurchaseInvoiceForm extends Component
         if ($hasStockLines && $this->warehouseId === '') {
             $this->addError('warehouseId', 'Потребен е магацин кога некоја ставка содржи артикл од залиха.');
 
-            return;
+            return false;
         }
 
         DB::transaction(function () use ($types) {
@@ -537,6 +559,7 @@ class PurchaseInvoiceForm extends Component
             $invoice->invoice_date = $this->invoiceDate;
             $invoice->due_date = $this->dueDate;
             $invoice->notes = $this->notes ?: null;
+            $invoice->order_number = $this->orderNumber ?: null;
 
             if (! $invoice->exists) {
                 $invoice->status = 'draft';
@@ -559,6 +582,7 @@ class PurchaseInvoiceForm extends Component
                     // стариот начин и ништо во пресметката не се менува.
                     'unit_price_gross' => ($line['price_basis'] ?? 'net') === 'gross' ? $line['unit_price_gross'] : null,
                     'vat_rate' => $line['vat_rate'],
+                    'discount_percent' => filled($line['discount_percent'] ?? null) ? $line['discount_percent'] : 0,
                     'vat_deductible' => $line['vat_deductible'] ?? true,
                     'needs_review' => $line['needs_review'] ?? false,
                 ]);
@@ -567,7 +591,91 @@ class PurchaseInvoiceForm extends Component
             $this->purchaseInvoice = $invoice;
         });
 
+        return true;
+    }
+
+    /** Зачувај како нацрт. */
+    public function save(): void
+    {
+        if ($this->persist()) {
+            $this->redirect(route('purchase-invoices.show', [$this->company, $this->purchaseInvoice]));
+        }
+    }
+
+    /**
+     * Зачувај и потврди: нацртот се зачувува, па се потврдува (книжење,
+     * залиха). Ако потврдата не успее, нацртот останува зачуван и грешката се
+     * гледа на формата — фактурата не се губи.
+     */
+    public function saveAndConfirm(PurchaseInvoiceService $service): void
+    {
+        if (! $this->persist()) {
+            return;
+        }
+
+        try {
+            $service->confirm($this->purchaseInvoice, auth()->id());
+        } catch (InsufficientStockException|InvalidInvoiceStateException $e) {
+            $this->addError('confirm', $e->getMessage().' Фактурата е зачувана како нацрт.');
+
+            return;
+        }
+
         $this->redirect(route('purchase-invoices.show', [$this->company, $this->purchaseInvoice]));
+    }
+
+    /** Избран добавувач со договорен рок го полни рокот на плаќање. */
+    public function updatedPartnerId(string $value): void
+    {
+        $partner = Partner::where('company_id', $this->company->id)->find($value);
+
+        if ($partner?->payment_terms_days === null) {
+            return;
+        }
+
+        $this->paymentTermsDays = (string) $partner->payment_terms_days;
+        $this->applyPaymentTerms();
+    }
+
+    /** Избран рок на плаќање ја поставува датата на доспевање од датумот на фактурата. */
+    public function updatedPaymentTermsDays(string $value): void
+    {
+        $this->applyPaymentTerms();
+    }
+
+    /** Со промена на датумот на фактурата, избраниот рок го носи и доспевањето. */
+    public function updatedInvoiceDate(string $value): void
+    {
+        $this->applyPaymentTerms();
+    }
+
+    private function applyPaymentTerms(): void
+    {
+        if (! is_numeric($this->paymentTermsDays) || ! filled($this->invoiceDate)) {
+            return;
+        }
+
+        try {
+            $this->dueDate = Carbon::parse($this->invoiceDate)->addDays((int) $this->paymentTermsDays)->toDateString();
+        } catch (\Throwable) {
+            // Невалиден датум: валидацијата при зачувување го фаќа.
+        }
+    }
+
+    /**
+     * Кратка информација за избраниот добавувач: адреса, е-пошта и колку му должиме.
+     *
+     * @return array{partner: Partner, payables: string}|null
+     */
+    private function partnerInfo(): ?array
+    {
+        if (! is_numeric($this->partnerId)) {
+            return null;
+        }
+
+        $partner = Partner::where('company_id', $this->company->id)->find((int) $this->partnerId);
+
+        return $partner ? ['partner' => $partner, 'payables' => PartnerInsights::payables($partner)] : null;
     }
 
     public function render()
@@ -602,6 +710,7 @@ class PurchaseInvoiceForm extends Component
                 ->orderBy('type')->orderBy('name')->get(),
             'accounts' => Account::where('company_id', $this->company->id)->where('is_active', true)->orderBy('code')->get(),
             'rows' => $rows,
+            'partnerInfo' => $this->partnerInfo(),
             'vatRegistered' => $vatRegistered,
             'requiresWarehouse' => collect($rows)->contains(fn ($row) => $row['is_stock']),
             'totals' => [
