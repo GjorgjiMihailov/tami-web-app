@@ -7,8 +7,27 @@
 }
 
 /*
+ * The sidebar's own height is always capped to the viewport and scrolls
+ * internally — it never stretches to match a tall page (the flex row's
+ * default align-items: stretch would otherwise make it as tall as the main
+ * content column, e.g. a dashboard full of cards). Without this, the
+ * company/year picker pinned at the bottom of the sidebar ends up far below
+ * the fold on any page taller than one screen, which is exactly the bug the
+ * user reported after it was moved there. `position: sticky` keeps it parked
+ * at the top of the viewport as the page scrolls, at every width — the mobile
+ * media query below only changes it to a fixed off-canvas drawer.
+ */
+.app-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+/*
  * Below lg the sidebar is an off-canvas drawer; at lg and up it stays the
- * ordinary in-flow column it has always been (no rule applies there at all).
+ * ordinary in-flow column it has always been, just capped to the viewport by
+ * the rule above.
  *
  * Written as plain CSS rather than Tailwind utilities on purpose: the open and
  * closed states are both `transform` utilities, so toggling them by class would
