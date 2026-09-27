@@ -7,10 +7,8 @@ use App\Models\PayrollCode;
 use App\Rules\ValidEmbg;
 use App\Support\CompanyTabs;
 use App\Support\Payroll\MpinObvrznik;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -89,10 +87,6 @@ class CompanyProfile extends Component
 
     public $newLogo = null;
 
-    public string $editEfakturaMode = 'firm';
-
-    public string $editEfakturaEujpId = '';
-
     public function mount(Company $company): void
     {
         Gate::authorize('view', $company);
@@ -151,60 +145,12 @@ class CompanyProfile extends Component
         $this->editInvoiceFooterNote = (string) $this->company->invoice_footer_note;
         $this->newLogo = null;
 
-        $this->editEfakturaMode = $this->company->efaktura_credential_mode;
-        $this->editEfakturaEujpId = (string) $this->company->efaktura_eujp_id;
-
         $this->editing = true;
     }
 
     public function cancelEdit(): void
     {
         $this->startEdit();
-    }
-
-    /**
-     * Потпишувачкиот уред служи за е-Фактура, па важи по правилото:
-     * физичко лице нема ЕДБ и нема што да
-     * потпишува. Картичката е скриена во Blade, но методот е достапен преку
-     * жица, па чуварот мора да е тука.
-     */
-    public function registerSigningDevice(string $serialNumber, string $subjectName, string $notBefore, string $notAfter): void
-    {
-        // Livewire не го повторува mount() при дејство, па правото се проверува тука.
-        Gate::authorize('manageEfakturaDevice', $this->company);
-
-        abort_if($this->company->type->isIndividual(), 403, 'Потпишувачки уред се регистрира само на профил на правно лице.');
-
-        if (blank($serialNumber)) {
-            $this->addError('signingDevice', 'Не е добиен сериски број од токенот.');
-
-            return;
-        }
-
-        // Сериски број подолг од 100 знаци или со контролен знак (CR/LF...) не е валиден:
-        // првиот не влегува во колоната, вториот го одбива HTTP-клиентот во заглавието X-SERIAL-NUMBER.
-        if (mb_strlen($serialNumber) > 100 || preg_match('/[\x00-\x1F\x7F]/', $serialNumber)) {
-            $this->addError('signingDevice', 'Сериски број од токенот не е валиден.');
-
-            return;
-        }
-
-        try {
-            $notBeforeParsed = Carbon::parse($notBefore);
-            $notAfterParsed = Carbon::parse($notAfter);
-        } catch (\Exception) {
-            $this->addError('signingDevice', 'Датумите од сертификатот не можат да се прочитаат.');
-
-            return;
-        }
-
-        $this->company->update([
-            'efaktura_token_serial_number' => $serialNumber,
-            'efaktura_token_subject_name' => Str::limit($subjectName, 250, ''),
-            'efaktura_token_not_before' => $notBeforeParsed,
-            'efaktura_token_not_after' => $notAfterParsed,
-            'efaktura_token_registered_at' => now(),
-        ]);
     }
 
     public function updated(string $name, $value): void
@@ -264,19 +210,9 @@ class CompanyProfile extends Component
             'editLogoPosition' => ['required', Rule::in(['left', 'center', 'right'])],
             'editInvoiceFooterNote' => 'nullable|string|max:2000',
             'newLogo' => 'nullable|image|max:25600',
-            'editEfakturaMode' => ['required', Rule::in([
-                Company::EFAKTURA_MODE_OWN, Company::EFAKTURA_MODE_FIRM,
-            ])],
-            'editEfakturaEujpId' => 'nullable|string|max:100',
         ]);
 
         $isLegal = $this->company->type->isLegal();
-
-        if ($isLegal && $validated['editEfakturaMode'] === Company::EFAKTURA_MODE_OWN && blank($validated['editEfakturaEujpId'])) {
-            $this->addError('editEfakturaEujpId', 'X-EUJP-ID е задолжителен за сопствен е-Фактура пристап.');
-
-            return;
-        }
 
         DB::transaction(function () use ($validated, $isLegal) {
             $companyData = [
@@ -311,13 +247,12 @@ class CompanyProfile extends Component
             }
 
             // Полињата подолу важат само за правно лице (ДДВ обврзник, МПИН
-            // обврзник, матичен број, НКД, директор, е-Фактура). Формата секогаш
-            // испраќа некоја вредност за нив — вклучително стандардни вредности
-            // како "firm" за е-Фактура режим или true за ДДВ обврзник — иако тие
-            // полиња се скриени во формата за физичко лице. Затоа не смее да се
-            // запишуваат безусловно: физичко лице нема ЕДБ, па режим на
-            // е-Фактура и слично се бесмислени за него, а секое зачувување на
-            // профилот (дури и на несврзано поле) би ги презапишало на секогаш.
+            // обврзник, матичен број, НКД, директор). Формата секогаш испраќа
+            // некоја вредност за нив — вклучително стандардни вредности како
+            // true за ДДВ обврзник — иако тие полиња се скриени во формата за
+            // физичко лице. Затоа не смее да се запишуваат безусловно:
+            // физичко лице нема ЕДБ, па секое зачувување на профилот (дури и
+            // на несврзано поле) би ги презапишало на секогаш.
             if ($isLegal) {
                 $companyData['is_vat_registered'] = $validated['editIsVatRegistered'];
                 $companyData['mpin_obvrznik_code'] = $validated['editMpinObvrznikCode'] ?: null;
@@ -334,15 +269,6 @@ class CompanyProfile extends Component
                 $companyData['payroll_phone'] = $validated['editPayrollPhone'] ?: null;
                 $companyData['payroll_mobile'] = $validated['editPayrollMobile'] ?: null;
                 $companyData['payroll_municipality_code'] = $validated['editPayrollMunicipalityCode'] ?: null;
-                $companyData['efaktura_credential_mode'] = $validated['editEfakturaMode'];
-
-                if ($validated['editEfakturaMode'] === Company::EFAKTURA_MODE_OWN) {
-                    if (filled($validated['editEfakturaEujpId'])) {
-                        $companyData['efaktura_eujp_id'] = $validated['editEfakturaEujpId'];
-                    }
-                } else {
-                    $companyData['efaktura_eujp_id'] = null;
-                }
             }
 
             $this->company->update($companyData);

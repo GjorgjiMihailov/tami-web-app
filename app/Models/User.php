@@ -69,20 +69,15 @@ class User extends Authenticatable
     /**
      * Кој идентитет потпишува за оваа фирма. Токенот е на човекот: тој е
      * овластен во е-УЈП за фирмата, а неговиот е-УЈП ID оди во барањето.
-     * Ако корисникот нема свој токен, важи постариот запис на самата фирма
-     * (режим „свој“) — за да не престанат да работат веќе регистрираните.
+     * Токен на канцеларијата не постои — без свој токен нема кој да потпише.
      */
     public function efakturaSignerFor(Company $company): ?EfakturaSigner
     {
-        if ($this->hasEfakturaToken()) {
-            return new EfakturaSigner((string) $this->efaktura_eujp_id, (string) $this->efaktura_token_serial_number, EfakturaSigner::SOURCE_USER);
+        if (! $this->hasEfakturaToken()) {
+            return null;
         }
 
-        if ($company->efaktura_credential_mode === Company::EFAKTURA_MODE_OWN && $company->hasEfakturaAccess()) {
-            return new EfakturaSigner((string) $company->efaktura_eujp_id, (string) $company->efaktura_token_serial_number, EfakturaSigner::SOURCE_COMPANY);
-        }
-
-        return null;
+        return new EfakturaSigner((string) $this->efaktura_eujp_id, (string) $this->efaktura_token_serial_number, EfakturaSigner::SOURCE_USER);
     }
 
     public function assignedCompanies(): BelongsToMany

@@ -24,14 +24,9 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
         Role::findOrCreate('freelancer_client');
     }
 
-    private function makeOwnModeCompany(): Company
+    private function company(): Company
     {
-        return Company::factory()->create([
-            'tax_id' => '4030001234567',
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => '1A2B3C',
-        ]);
+        return Company::factory()->create(['tax_id' => '4030001234567']);
     }
 
     private function makeUndecidedDocument(Company $company): IncomingEfakturaDocument
@@ -48,12 +43,20 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
         ]);
     }
 
+    /** Токенот е личен — на човекот што потпишува, не на фирмата. */
+    private function giveToken(User $user): User
+    {
+        $user->forceFill(['efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C'])->save();
+
+        return $user->fresh();
+    }
+
     private function admin(): User
     {
         $admin = User::factory()->create();
         $admin->assignRole('admin');
 
-        return $admin;
+        return $this->giveToken($admin);
     }
 
     private function clientOf(Company $company, string $role = 'internal_client'): User
@@ -62,23 +65,6 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
         $client->assignRole($role);
 
         return $client;
-    }
-
-    private function firmModeCompany(): Company
-    {
-        return Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM,
-            'efaktura_firm_access_status' => Company::EFAKTURA_STATUS_APPROVED,
-        ]);
-    }
-
-    private function noTokenCompany(): Company
-    {
-        return Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => null,
-        ]);
     }
 
     private const DUPLICATE_MESSAGE = 'Влезна фактура со истиот број од овој добавувач веќе е внесена — отворете ја и споредете ја пред да ја прифатите.';
@@ -96,11 +82,11 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
     public function test_signing_input_and_store_refuse_when_the_client_already_entered_that_invoice(): void
     {
         Http::fake();
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = $this->makeUndecidedDocument($company);
         // Ист ЕДБ, но втипкан со МК-префикс — истата нормализација како кај builder-от.
         $this->existingPurchaseInvoice($company, 'MK4030009998887', 'SUP-1');
-        $client = $this->clientOf($company);
+        $client = $this->giveToken($this->clientOf($company));
 
         $this->actingAs($client)->postJson(
             route('incoming-efaktura.accept.signing-input', [$company, $document]),
@@ -118,11 +104,11 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
 
     public function test_the_same_number_from_a_different_seller_does_not_block(): void
     {
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = $this->makeUndecidedDocument($company);
         $this->existingPurchaseInvoice($company, '4030001112223', 'SUP-1');
 
-        $this->actingAs($this->clientOf($company))->postJson(
+        $this->actingAs($this->giveToken($this->clientOf($company)))->postJson(
             route('incoming-efaktura.accept.signing-input', [$company, $document]),
             ['certificateBase64' => base64_encode('fake-cert')]
         )->assertOk();
@@ -130,11 +116,11 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
 
     public function test_the_same_seller_and_number_in_another_company_does_not_block(): void
     {
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = $this->makeUndecidedDocument($company);
-        $this->existingPurchaseInvoice($this->makeOwnModeCompany(), '4030009998887', 'SUP-1');
+        $this->existingPurchaseInvoice($this->company(), '4030009998887', 'SUP-1');
 
-        $this->actingAs($this->clientOf($company))->postJson(
+        $this->actingAs($this->giveToken($this->clientOf($company)))->postJson(
             route('incoming-efaktura.accept.signing-input', [$company, $document]),
             ['certificateBase64' => base64_encode('fake-cert')]
         )->assertOk();
@@ -142,7 +128,7 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
 
     public function test_signing_input_returns_a_token(): void
     {
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = $this->makeUndecidedDocument($company);
 
         $response = $this->actingAs($this->admin())->postJson(
@@ -156,7 +142,7 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
     public function test_store_creates_a_draft_purchase_invoice_and_marks_the_document_accepted(): void
     {
         Http::fake(['*' => Http::response(['status' => 'ok'], 200)]);
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = $this->makeUndecidedDocument($company);
         $admin = $this->admin();
 
@@ -181,7 +167,7 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
     public function test_store_returns_422_when_already_decided(): void
     {
         Http::fake(['*' => Http::response(['status' => 'ok'], 200)]);
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = $this->makeUndecidedDocument($company);
         $admin = $this->admin();
 
@@ -202,9 +188,9 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
     public function test_internal_client_with_an_own_token_can_accept_and_gets_a_draft_purchase_invoice(): void
     {
         Http::fake(['*' => Http::response(['status' => 'ok'], 200)]);
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = $this->makeUndecidedDocument($company);
-        $client = $this->clientOf($company);
+        $client = $this->giveToken($this->clientOf($company));
 
         $signingResponse = $this->actingAs($client)->postJson(
             route('incoming-efaktura.accept.signing-input', [$company, $document]),
@@ -225,23 +211,9 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
         $this->assertSame('draft', $document->purchaseInvoice->status);
     }
 
-    public function test_internal_client_of_a_firm_mode_company_is_forbidden(): void
-    {
-        $company = $this->firmModeCompany();
-        $document = $this->makeUndecidedDocument($company);
-        $user = $this->clientOf($company);
-
-        $response = $this->actingAs($user)->postJson(
-            route('incoming-efaktura.accept.signing-input', [$company, $document]),
-            ['certificateBase64' => base64_encode('fake-cert')]
-        );
-
-        $response->assertStatus(403);
-    }
-
     public function test_internal_client_without_a_registered_token_is_forbidden(): void
     {
-        $company = $this->noTokenCompany();
+        $company = $this->company();
         $document = $this->makeUndecidedDocument($company);
         $user = $this->clientOf($company);
 
@@ -255,9 +227,9 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
 
     public function test_freelancer_client_is_forbidden(): void
     {
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = $this->makeUndecidedDocument($company);
-        $user = $this->clientOf($company, 'freelancer_client');
+        $user = $this->giveToken($this->clientOf($company, 'freelancer_client'));
 
         $response = $this->actingAs($user)->postJson(
             route('incoming-efaktura.accept.signing-input', [$company, $document]),
@@ -269,9 +241,9 @@ class EfakturaIncomingAcceptControllerTest extends TestCase
 
     public function test_internal_client_of_another_company_is_forbidden(): void
     {
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = $this->makeUndecidedDocument($company);
-        $otherClient = $this->clientOf($this->makeOwnModeCompany());
+        $otherClient = $this->giveToken($this->clientOf($this->company()));
 
         $response = $this->actingAs($otherClient)->postJson(
             route('incoming-efaktura.accept.signing-input', [$company, $document]),

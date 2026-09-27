@@ -43,7 +43,6 @@ class CompanyCreator
             'uses_stock' => true,
             'uses_payroll' => true,
             'uses_finance' => true,
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM,
         ]);
 
         // Сметководител што создава фирма мора веднаш да ја гледа — инаку

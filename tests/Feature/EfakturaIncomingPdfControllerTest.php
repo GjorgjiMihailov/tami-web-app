@@ -24,14 +24,17 @@ class EfakturaIncomingPdfControllerTest extends TestCase
         Storage::fake('local');
     }
 
-    private function makeOwnModeCompany(): Company
+    private function company(): Company
     {
-        return Company::factory()->create([
-            'tax_id' => '4030001234567',
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => '1A2B3C',
-        ]);
+        return Company::factory()->create(['tax_id' => '4030001234567']);
+    }
+
+    /** Токенот е личен — на човекот што потпишува, не на фирмата. */
+    private function giveToken(User $user): User
+    {
+        $user->forceFill(['efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C'])->save();
+
+        return $user->fresh();
     }
 
     private function admin(): User
@@ -39,7 +42,7 @@ class EfakturaIncomingPdfControllerTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
 
-        return $admin;
+        return $this->giveToken($admin);
     }
 
     private function clientOf(Company $company, string $role = 'internal_client'): User
@@ -50,26 +53,9 @@ class EfakturaIncomingPdfControllerTest extends TestCase
         return $client;
     }
 
-    private function firmModeCompany(): Company
-    {
-        return Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM,
-            'efaktura_firm_access_status' => Company::EFAKTURA_STATUS_APPROVED,
-        ]);
-    }
-
-    private function noTokenCompany(): Company
-    {
-        return Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => null,
-        ]);
-    }
-
     public function test_signing_input_returns_a_token_for_an_accepted_document(): void
     {
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = IncomingEfakturaDocument::factory()->for($company)->create(['decision' => IncomingEfakturaDocument::DECISION_ACCEPTED]);
 
         $response = $this->actingAs($this->admin())->postJson(
@@ -82,7 +68,7 @@ class EfakturaIncomingPdfControllerTest extends TestCase
 
     public function test_signing_input_rejects_a_document_not_yet_accepted(): void
     {
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = IncomingEfakturaDocument::factory()->for($company)->create(['decision' => null]);
 
         $response = $this->actingAs($this->admin())->postJson(
@@ -96,7 +82,7 @@ class EfakturaIncomingPdfControllerTest extends TestCase
     public function test_store_saves_the_pdf_and_download_serves_it(): void
     {
         Http::fake(['*' => Http::response(['pdfBase64' => base64_encode('fake-pdf-bytes')], 200)]);
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = IncomingEfakturaDocument::factory()->for($company)->create([
             'decision' => IncomingEfakturaDocument::DECISION_ACCEPTED,
             'doc_number' => 'SUP-1',
@@ -130,9 +116,9 @@ class EfakturaIncomingPdfControllerTest extends TestCase
     public function test_internal_client_with_an_own_token_can_fetch_and_store_the_official_pdf(): void
     {
         Http::fake(['*' => Http::response(['pdfBase64' => base64_encode('fake-pdf-bytes')], 200)]);
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = IncomingEfakturaDocument::factory()->for($company)->create(['decision' => IncomingEfakturaDocument::DECISION_ACCEPTED]);
-        $client = $this->clientOf($company);
+        $client = $this->giveToken($this->clientOf($company));
 
         $signingResponse = $this->actingAs($client)->postJson(
             route('incoming-efaktura.pdf.signing-input', [$company, $document]),
@@ -150,23 +136,9 @@ class EfakturaIncomingPdfControllerTest extends TestCase
         $this->assertSame('fake-pdf-bytes', Storage::disk('local')->get($document->fresh()->efaktura_pdf_path));
     }
 
-    public function test_internal_client_of_a_firm_mode_company_is_forbidden(): void
-    {
-        $company = $this->firmModeCompany();
-        $document = IncomingEfakturaDocument::factory()->for($company)->create(['decision' => IncomingEfakturaDocument::DECISION_ACCEPTED]);
-        $user = $this->clientOf($company);
-
-        $response = $this->actingAs($user)->postJson(
-            route('incoming-efaktura.pdf.signing-input', [$company, $document]),
-            ['certificateBase64' => base64_encode('fake-cert')]
-        );
-
-        $response->assertStatus(403);
-    }
-
     public function test_internal_client_without_a_registered_token_is_forbidden(): void
     {
-        $company = $this->noTokenCompany();
+        $company = $this->company();
         $document = IncomingEfakturaDocument::factory()->for($company)->create(['decision' => IncomingEfakturaDocument::DECISION_ACCEPTED]);
         $user = $this->clientOf($company);
 
@@ -180,9 +152,9 @@ class EfakturaIncomingPdfControllerTest extends TestCase
 
     public function test_freelancer_client_is_forbidden(): void
     {
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = IncomingEfakturaDocument::factory()->for($company)->create(['decision' => IncomingEfakturaDocument::DECISION_ACCEPTED]);
-        $user = $this->clientOf($company, 'freelancer_client');
+        $user = $this->giveToken($this->clientOf($company, 'freelancer_client'));
 
         $response = $this->actingAs($user)->postJson(
             route('incoming-efaktura.pdf.signing-input', [$company, $document]),
@@ -194,9 +166,9 @@ class EfakturaIncomingPdfControllerTest extends TestCase
 
     public function test_internal_client_of_another_company_is_forbidden(): void
     {
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = IncomingEfakturaDocument::factory()->for($company)->create(['decision' => IncomingEfakturaDocument::DECISION_ACCEPTED]);
-        $otherClient = $this->clientOf($this->makeOwnModeCompany());
+        $otherClient = $this->giveToken($this->clientOf($this->company()));
 
         $response = $this->actingAs($otherClient)->postJson(
             route('incoming-efaktura.pdf.signing-input', [$company, $document]),

@@ -259,11 +259,7 @@ class SalesInvoiceShowTest extends TestCase
         // Серверот и онака одбива со 422 (EfakturaSendController), но само
         // откако корисникот веќе го приклучил токенот. Копчето треба воопшто
         // да не се прикаже за девизна фактура.
-        $company = Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'eujp-1',
-            'efaktura_token_serial_number' => 'serial-1',
-        ]);
+        $company = Company::factory()->create();
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
         $invoice = SalesInvoice::factory()->for($company)->create([
@@ -278,8 +274,9 @@ class SalesInvoiceShowTest extends TestCase
         $entry = JournalEntry::factory()->for($company)->create();
         $invoice->update(['journal_entry_id' => $entry->id]);
         $admin = User::factory()->create();
+        $admin->forceFill(['efaktura_eujp_id' => 'eujp-1', 'efaktura_token_serial_number' => 'serial-1'])->save();
         $admin->assignRole('admin');
-        $this->actingAs($admin);
+        $this->actingAs($admin->fresh());
 
         $html = Livewire::test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])->html();
 

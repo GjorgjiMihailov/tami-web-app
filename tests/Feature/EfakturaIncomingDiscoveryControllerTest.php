@@ -22,14 +22,17 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
         Role::findOrCreate('freelancer_client');
     }
 
-    private function makeOwnModeCompany(): Company
+    private function company(): Company
     {
-        return Company::factory()->create([
-            'tax_id' => '4030001234567',
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => '1A2B3C',
-        ]);
+        return Company::factory()->create(['tax_id' => '4030001234567']);
+    }
+
+    /** Токенот е личен — на човекот што потпишува, не на фирмата. */
+    private function giveToken(User $user): User
+    {
+        $user->forceFill(['efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C'])->save();
+
+        return $user->fresh();
     }
 
     private function admin(): User
@@ -37,7 +40,7 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
 
-        return $admin;
+        return $this->giveToken($admin);
     }
 
     private function clientOf(Company $company, string $role = 'internal_client'): User
@@ -48,26 +51,9 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
         return $client;
     }
 
-    private function firmModeCompany(): Company
-    {
-        return Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM,
-            'efaktura_firm_access_status' => Company::EFAKTURA_STATUS_APPROVED,
-        ]);
-    }
-
-    private function noTokenCompany(): Company
-    {
-        return Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => null,
-        ]);
-    }
-
     public function test_ids_signing_input_returns_a_token(): void
     {
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
 
         $response = $this->actingAs($this->admin())->postJson(
             route('incoming-efaktura.discover.ids.signing-input', $company),
@@ -80,7 +66,7 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
     public function test_ids_returns_only_new_euids_and_does_not_advance_watermark(): void
     {
         Http::fake(['*' => Http::response(['euids' => ['euid-1', 'euid-2']], 200)]);
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         IncomingEfakturaDocument::factory()->for($company)->create(['euid' => 'euid-1']);
 
         $signingResponse = $this->actingAs($this->admin())->postJson(
@@ -117,7 +103,7 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
         Http::fake(['*' => Http::response(['invoices' => [
             ['euid' => 'euid-2', 'payload' => $payloadJson],
         ]], 200)]);
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
 
         $signingResponse = $this->actingAs($this->admin())->postJson(
             route('incoming-efaktura.discover.payload.signing-input', $company),
@@ -142,7 +128,7 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
         Http::fake(['*' => Http::response(['invoices' => [
             ['euid' => 'euid-1', 'statusCode' => '01', 'statusName' => 'Испратена (Нова)'],
         ]], 200)]);
-        $company = $this->makeOwnModeCompany();
+        $company = $this->company();
         $document = IncomingEfakturaDocument::factory()->for($company)->create(['euid' => 'euid-1', 'status_code' => null]);
 
         $signingResponse = $this->actingAs($this->admin())->postJson(
@@ -163,11 +149,13 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
         $this->assertSame('2026-08-06', $company->fresh()->efaktura_purchase_last_checked_at->toDateString());
     }
 
-    public function test_firm_mode_company_is_rejected(): void
+    public function test_an_admin_without_a_personal_token_is_rejected(): void
     {
-        $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
+        $company = $this->company();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
 
-        $response = $this->actingAs($this->admin())->postJson(
+        $response = $this->actingAs($admin)->postJson(
             route('incoming-efaktura.discover.ids.signing-input', $company),
             ['certificateBase64' => base64_encode('fake-cert')]
         );
@@ -178,8 +166,8 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
     public function test_internal_client_with_an_own_token_can_discover_incoming_invoices(): void
     {
         Http::fake(['*' => Http::response(['euids' => ['euid-1', 'euid-2']], 200)]);
-        $company = $this->makeOwnModeCompany();
-        $client = $this->clientOf($company);
+        $company = $this->company();
+        $client = $this->giveToken($this->clientOf($company));
 
         $signingResponse = $this->actingAs($client)->postJson(
             route('incoming-efaktura.discover.ids.signing-input', $company),
@@ -195,22 +183,9 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
         $response->assertOk()->assertJson(['newEuids' => ['euid-1', 'euid-2']]);
     }
 
-    public function test_internal_client_of_a_firm_mode_company_is_forbidden(): void
-    {
-        $company = $this->firmModeCompany();
-        $user = $this->clientOf($company);
-
-        $response = $this->actingAs($user)->postJson(
-            route('incoming-efaktura.discover.ids.signing-input', $company),
-            ['certificateBase64' => base64_encode('fake-cert')]
-        );
-
-        $response->assertStatus(403);
-    }
-
     public function test_internal_client_without_a_registered_token_is_forbidden(): void
     {
-        $company = $this->noTokenCompany();
+        $company = $this->company();
         $user = $this->clientOf($company);
 
         $response = $this->actingAs($user)->postJson(
@@ -223,8 +198,8 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
 
     public function test_freelancer_client_is_forbidden(): void
     {
-        $company = $this->makeOwnModeCompany();
-        $user = $this->clientOf($company, 'freelancer_client');
+        $company = $this->company();
+        $user = $this->giveToken($this->clientOf($company, 'freelancer_client'));
 
         $response = $this->actingAs($user)->postJson(
             route('incoming-efaktura.discover.ids.signing-input', $company),
@@ -236,8 +211,8 @@ class EfakturaIncomingDiscoveryControllerTest extends TestCase
 
     public function test_internal_client_of_another_company_is_forbidden(): void
     {
-        $company = $this->makeOwnModeCompany();
-        $otherClient = $this->clientOf($this->makeOwnModeCompany());
+        $company = $this->company();
+        $otherClient = $this->giveToken($this->clientOf($this->company()));
 
         $response = $this->actingAs($otherClient)->postJson(
             route('incoming-efaktura.discover.ids.signing-input', $company),

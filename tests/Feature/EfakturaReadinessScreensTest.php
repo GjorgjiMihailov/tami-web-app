@@ -75,66 +75,32 @@ class EfakturaReadinessScreensTest extends TestCase
             ->assertSee('Потпиши и испрати до УЈП')
             ->assertDontSee('немаш регистриран токен');
     }
-    public function test_a_fully_prepared_own_mode_company_shows_the_send_button_and_no_warning(): void
+    public function test_an_accountant_with_a_personal_token_shows_the_send_button_and_no_warning(): void
     {
-        $company = Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => '1A2B3C',
-        ]);
+        $company = Company::factory()->create();
         $invoice = $this->confirmedInvoice($company);
         $accountant = $this->accountantFor($company);
+        $accountant->forceFill(['efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C'])->save();
 
-        Livewire::actingAs($accountant)
+        Livewire::actingAs($accountant->fresh())
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
             ->assertSee('Потпиши и испрати до УЈП')
             ->assertDontSee('немаш регистриран токен');
     }
 
-    // ---- Профил на фирма: сертификат ----
+    // ---- Профил на фирма: токенот е личен, не на фирмата ----
 
-    public function test_an_accountant_sees_the_register_button_first_and_update_certificate_after_registering(): void
+    public function test_the_company_profile_points_to_the_personal_token_and_offers_no_device_registration(): void
     {
         $company = Company::factory()->create();
-        $accountant = $this->accountantFor($company);
-
-        $component = Livewire::actingAs($accountant)->test(CompanyProfile::class, ['company' => $company]);
-        $component->assertSee('Регистрирај токен')->assertDontSee('Ажурирај сертификат');
-
-        $component->call('registerSigningDevice', '1A2B3C', 'CN=Test Company', '2025-01-01T00:00:00Z', now()->addYear()->toIso8601String());
-
-        Livewire::actingAs($accountant)->test(CompanyProfile::class, ['company' => $company->fresh()])
-            ->assertSee('Ажурирај сертификат')
-            ->assertSee('замени го регистрираниот уред')
-            ->assertDontSee('Регистрирај токен');
-    }
-
-    public function test_the_company_profile_points_to_the_personal_token_and_no_longer_offers_the_office_certificate(): void
-    {
-        $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
         $accountant = $this->accountantFor($company);
 
         Livewire::actingAs($accountant)->test(CompanyProfile::class, ['company' => $company])
             ->assertSee('потпишува најавениот корисник со')
             ->assertSeeHtml(route('profile'))
             ->assertDontSee('Побарај користење на фирмениот сертификат')
-            ->assertDontSee('токен на канцеларијата');
-    }
-    public function test_an_expired_certificate_is_flagged_and_one_expiring_soon_is_warned_about(): void
-    {
-        $company = Company::factory()->create([
-            'efaktura_token_serial_number' => '1A2B3C',
-            'efaktura_token_not_after' => now()->subDay(),
-        ]);
-        $accountant = $this->accountantFor($company);
-
-        Livewire::actingAs($accountant)->test(CompanyProfile::class, ['company' => $company])
-            ->assertSee('Регистрираниот сертификат е истечен');
-
-        $company->update(['efaktura_token_not_after' => now()->addDays(10)]);
-
-        Livewire::actingAs($accountant)->test(CompanyProfile::class, ['company' => $company->fresh()])
-            ->assertSee('Сертификатот истекува на')
-            ->assertDontSee('е истечен');
+            ->assertDontSee('токен на канцеларијата')
+            ->assertDontSee('Потпишувачки уред')
+            ->assertDontSee('Регистрирај токен');
     }
 }

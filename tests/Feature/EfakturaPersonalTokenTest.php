@@ -104,29 +104,19 @@ class EfakturaPersonalTokenTest extends TestCase
         $this->assertFalse($freelancer->can('workWithEfaktura', $individual));
     }
 
-    public function test_the_signer_is_the_users_token_and_the_old_company_token_is_only_a_fallback(): void
+    public function test_the_signer_is_always_the_users_own_token_never_the_company(): void
     {
-        $company = Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-FIRMA',
-            'efaktura_token_serial_number' => 'FIRMA-SN',
-        ]);
+        $company = Company::factory()->create();
         $accountant = $this->user('accountant');
 
-        // Без свој токен: важи постариот запис на фирмата.
-        $fallback = $accountant->efakturaSignerFor($company);
-        $this->assertSame('EUJP-FIRMA', $fallback->eujpId);
-        $this->assertSame(EfakturaSigner::SOURCE_COMPANY, $fallback->source);
+        // Без свој токен: нема идентитет — токен на фирмата не постои.
+        $this->assertNull($accountant->efakturaSignerFor($company));
 
-        // Со свој токен: тој има предност.
+        // Со свој токен: тој потпишува.
         $own = $this->giveToken($accountant)->efakturaSignerFor($company);
         $this->assertSame('EUJP-ACC', $own->eujpId);
         $this->assertSame('AAA111', $own->serialNumber);
         $this->assertSame(EfakturaSigner::SOURCE_USER, $own->source);
-
-        // Фирма во режим „канцеларија“ без свој токен на корисникот: нема идентитет.
-        $firm = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
-        $this->assertNull($this->user('accountant')->efakturaSignerFor($firm));
     }
 
     // ---- Заглавија кон УЈП ----
@@ -134,10 +124,7 @@ class EfakturaPersonalTokenTest extends TestCase
     public function test_the_request_carries_the_signers_eujp_id_and_serial_and_the_companys_edb(): void
     {
         Http::fake(['*' => Http::response(['ok' => true], 200)]);
-        $company = Company::factory()->create([
-            'tax_id' => '4030001234567',
-            'efaktura_eujp_id' => 'EUJP-FIRMA', 'efaktura_token_serial_number' => 'FIRMA-SN',
-        ]);
+        $company = Company::factory()->create(['tax_id' => '4030001234567']);
         $signer = new EfakturaSigner('EUJP-SMETKOVODITEL', 'TOKEN-SN', EfakturaSigner::SOURCE_USER);
 
         (new EfakturaJwsService)->send($company, $signer, 'header.payload', 'c2ln');

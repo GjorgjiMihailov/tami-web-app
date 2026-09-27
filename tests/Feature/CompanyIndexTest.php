@@ -343,29 +343,6 @@ class CompanyIndexTest extends TestCase
         $this->assertTrue(Company::where('name', 'ТЕСТ ДООЕЛ')->first()->is_vat_registered);
     }
 
-    /**
-     * Режимот на е-Фактура акредитиви е NOT NULL колона со default 'firm'.
-     * За физичко лице тој поим не важи (е-Фактура бара ЕДБ), но вредноста
-     * сепак се запишува изречно за да не зависи ниту еден профил од default
-     * на базата. Она што мора да важи е дека новосоздадено физичко лице нема
-     * пристап до е-Фактура.
-     */
-    public function test_a_new_individual_profile_has_no_efaktura_access(): void
-    {
-        $this->actAsAdmin();
-
-        Livewire::test(CompanyIndex::class)
-            ->set('newName', 'Ана Анастасова')
-            ->set('newType', 'individual')
-            ->set('newEmail', 'k'.uniqid().'@klient.test')
-            ->call('addCompany')
-            ->assertHasNoErrors();
-
-        $company = Company::where('name', 'Ана Анастасова')->first();
-
-        $this->assertFalse($company->hasEfakturaAccess());
-        $this->assertSame(Company::EFAKTURA_STATUS_NONE, $company->efaktura_firm_access_status);
-    }
 
     public function test_the_form_asks_an_individual_for_an_embg_and_not_for_an_edb(): void
     {

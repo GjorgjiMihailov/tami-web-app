@@ -47,7 +47,6 @@ class CompanyCreatorTest extends TestCase
         $this->assertTrue($company->uses_stock);
         $this->assertTrue($company->uses_payroll);
         $this->assertTrue($company->uses_finance);
-        $this->assertSame(Company::EFAKTURA_MODE_FIRM, $company->efaktura_credential_mode);
     }
 
     public function test_an_accountant_actor_is_attached_as_the_companys_accountant(): void

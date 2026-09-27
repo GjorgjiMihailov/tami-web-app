@@ -25,13 +25,18 @@ class EfakturaSendControllerTest extends TestCase
         Role::findOrCreate('freelancer_client');
     }
 
-    private function makeConfirmedOwnModeInvoice(): array
+    /** Токенот е личен — на човекот што потпишува, не на фирмата. */
+    private function giveToken(User $user): User
+    {
+        $user->forceFill(['efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C'])->save();
+
+        return $user->fresh();
+    }
+
+    private function makeConfirmedInvoice(): array
     {
         $company = Company::factory()->create([
             'tax_id' => '4030001234567',
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => '1A2B3C',
             'street_address' => 'Мајка Тереза', 'street_number' => '12',
             'postal_code' => '1000', 'city' => 'Скопје',
         ]);
@@ -50,8 +55,8 @@ class EfakturaSendControllerTest extends TestCase
 
     public function test_signing_input_returns_token_and_signing_input(): void
     {
-        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
-        $admin = User::factory()->create();
+        [$company, $invoice] = $this->makeConfirmedInvoice();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $response = $this->actingAs($admin)->postJson(
@@ -65,8 +70,8 @@ class EfakturaSendControllerTest extends TestCase
     public function test_send_completes_and_marks_invoice_sent(): void
     {
         Http::fake(['*' => Http::response(['status' => 'ok'], 200)]);
-        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
-        $admin = User::factory()->create();
+        [$company, $invoice] = $this->makeConfirmedInvoice();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $signingResponse = $this->actingAs($admin)->postJson(
@@ -86,8 +91,8 @@ class EfakturaSendControllerTest extends TestCase
 
     public function test_send_with_expired_token_returns_410(): void
     {
-        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
-        $admin = User::factory()->create();
+        [$company, $invoice] = $this->makeConfirmedInvoice();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $response = $this->actingAs($admin)->postJson(
@@ -101,8 +106,8 @@ class EfakturaSendControllerTest extends TestCase
     public function test_send_when_ujp_rejects_marks_invoice_failed(): void
     {
         Http::fake(['*' => Http::response(['error' => 'invalid signature'], 400)]);
-        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
-        $admin = User::factory()->create();
+        [$company, $invoice] = $this->makeConfirmedInvoice();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $signingResponse = $this->actingAs($admin)->postJson(
@@ -120,13 +125,9 @@ class EfakturaSendControllerTest extends TestCase
         $this->assertNotNull($invoice->fresh()->efaktura_error);
     }
 
-    public function test_firm_mode_company_is_rejected_with_clear_message(): void
+    public function test_an_admin_without_a_personal_token_is_rejected_with_clear_message(): void
     {
-        $company = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
-        $partner = Partner::factory()->for($company)->create();
-        $invoice = SalesInvoice::factory()->for($company)->create([
-            'partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => '2026-03-01',
-        ]);
+        [$company, $invoice] = $this->makeConfirmedInvoice();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
 
@@ -140,15 +141,12 @@ class EfakturaSendControllerTest extends TestCase
 
     public function test_draft_invoice_is_rejected(): void
     {
-        $company = Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C',
-        ]);
+        $company = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
         $invoice = SalesInvoice::factory()->for($company)->create([
             'partner_id' => $partner->id, 'status' => 'draft', 'invoice_date' => '2026-03-01',
         ]);
-        $admin = User::factory()->create();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $response = $this->actingAs($admin)->postJson(
@@ -166,8 +164,8 @@ class EfakturaSendControllerTest extends TestCase
                 'cURL error 28: Connection timeout after 10001 ms for https://efakturatest.ujp.gov.mk/JSONReceiver/api/v1/sales-invoices/send'
             );
         });
-        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
-        $admin = User::factory()->create();
+        [$company, $invoice] = $this->makeConfirmedInvoice();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $signingResponse = $this->actingAs($admin)->postJson(
@@ -188,8 +186,8 @@ class EfakturaSendControllerTest extends TestCase
     public function test_an_internal_client_with_an_own_token_can_get_a_signing_input_and_send(): void
     {
         Http::fake(['*' => Http::response(['euid' => 'euid-9'], 200)]);
-        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
-        $client = User::factory()->create(['company_id' => $company->id]);
+        [$company, $invoice] = $this->makeConfirmedInvoice();
+        $client = $this->giveToken(User::factory()->create(['company_id' => $company->id]));
         $client->assignRole('internal_client');
 
         $signing = $this->actingAs($client)->postJson(
@@ -205,10 +203,9 @@ class EfakturaSendControllerTest extends TestCase
         $this->assertSame('sent', $invoice->fresh()->efaktura_status);
     }
 
-    public function test_an_internal_client_of_a_firm_mode_company_is_forbidden_as_json(): void
+    public function test_an_internal_client_without_a_personal_token_is_forbidden_as_json(): void
     {
-        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
-        $company->update(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
+        [$company, $invoice] = $this->makeConfirmedInvoice();
         $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('internal_client');
 
@@ -225,9 +222,9 @@ class EfakturaSendControllerTest extends TestCase
 
     public function test_an_internal_client_cannot_send_for_another_company(): void
     {
-        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
+        [$company, $invoice] = $this->makeConfirmedInvoice();
         $otherCompany = Company::factory()->create();
-        $client = User::factory()->create(['company_id' => $otherCompany->id]);
+        $client = $this->giveToken(User::factory()->create(['company_id' => $otherCompany->id]));
         $client->assignRole('internal_client');
 
         $this->actingAs($client)->postJson(
@@ -238,8 +235,7 @@ class EfakturaSendControllerTest extends TestCase
 
     public function test_an_internal_client_cannot_send_before_registering_a_token(): void
     {
-        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
-        $company->update(['efaktura_token_serial_number' => null]);
+        [$company, $invoice] = $this->makeConfirmedInvoice();
         $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('internal_client');
 
@@ -251,8 +247,8 @@ class EfakturaSendControllerTest extends TestCase
 
     public function test_a_freelancer_client_cannot_use_efaktura(): void
     {
-        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
-        $freelancer = User::factory()->create(['company_id' => $company->id]);
+        [$company, $invoice] = $this->makeConfirmedInvoice();
+        $freelancer = $this->giveToken(User::factory()->create(['company_id' => $company->id]));
         $freelancer->assignRole('freelancer_client');
 
         $this->actingAs($freelancer)->postJson(
@@ -263,9 +259,9 @@ class EfakturaSendControllerTest extends TestCase
 
     public function test_second_send_attempt_on_already_sent_invoice_is_rejected(): void
     {
-        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
+        [$company, $invoice] = $this->makeConfirmedInvoice();
         $invoice->update(['efaktura_status' => 'sent', 'efaktura_sent_at' => now()]);
-        $admin = User::factory()->create();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $response = $this->actingAs($admin)->postJson(
@@ -279,8 +275,8 @@ class EfakturaSendControllerTest extends TestCase
     public function test_efaktura_doc_id_is_populated_from_ujp_response(): void
     {
         Http::fake(['*' => Http::response(['euid' => '019b8d43-7840-7433-b358-08891b53605c', 'message' => 'Фактура успешно зачувана'], 200)]);
-        [$company, $invoice] = $this->makeConfirmedOwnModeInvoice();
-        $admin = User::factory()->create();
+        [$company, $invoice] = $this->makeConfirmedInvoice();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $signingResponse = $this->actingAs($admin)->postJson(
@@ -301,9 +297,6 @@ class EfakturaSendControllerTest extends TestCase
     {
         $company = Company::factory()->create([
             'tax_id' => '4030001234567',
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => '1A2B3C',
             'street_address' => null, 'street_number' => null,
             'postal_code' => null, 'city' => null,
         ]);
@@ -316,7 +309,7 @@ class EfakturaSendControllerTest extends TestCase
             'invoice_date' => '2026-03-01', 'status' => 'confirmed',
         ]);
         $invoice->lines()->create(['description' => 'A', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00', 'vat_treatment' => 'standard']);
-        $admin = User::factory()->create();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $response = $this->actingAs($admin)->postJson(
@@ -331,9 +324,6 @@ class EfakturaSendControllerTest extends TestCase
     {
         $company = Company::factory()->create([
             'tax_id' => '4030001234567',
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => '1A2B3C',
             'street_address' => 'Мајка Тереза', 'street_number' => '12',
             'postal_code' => '1000', 'city' => 'Скопје',
         ]);
@@ -346,7 +336,7 @@ class EfakturaSendControllerTest extends TestCase
             'invoice_date' => '2026-03-01', 'status' => 'confirmed',
         ]);
         $invoice->lines()->create(['description' => 'A', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '18.00', 'vat_treatment' => 'standard']);
-        $admin = User::factory()->create();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $response = $this->actingAs($admin)->postJson(

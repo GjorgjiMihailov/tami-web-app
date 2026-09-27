@@ -7,7 +7,6 @@ use App\Support\CompanyType;
 use App\Support\Payroll\MpinObvrznik;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -15,27 +14,11 @@ class Company extends Model
 {
     use HasFactory;
 
-    public const EFAKTURA_MODE_OWN = 'own';
-
-    public const EFAKTURA_MODE_FIRM = 'firm';
-
-    public const EFAKTURA_STATUS_NONE = 'none';
-
-    public const EFAKTURA_STATUS_REQUESTED = 'requested';
-
-    public const EFAKTURA_STATUS_APPROVED = 'approved';
-
-    public const EFAKTURA_STATUS_REJECTED = 'rejected';
-
     protected $fillable = [
         'name', 'short_name', 'tax_id', 'embg', 'mpin_obvrznik_code', 'registration_number', 'nkd_code', 'nkd_name',
         'email', 'phone', 'address', 'street_address', 'street_number', 'postal_code', 'city',
         'website', 'director_name', 'director_embg', 'director_phone', 'director_email',
         'logo_path', 'logo_position', 'is_vat_registered', 'invoice_footer_note',
-        'efaktura_credential_mode', 'efaktura_eujp_id', 'efaktura_firm_access_status',
-        'efaktura_firm_access_decided_by', 'efaktura_firm_access_decided_at',
-        'efaktura_token_serial_number', 'efaktura_token_subject_name',
-        'efaktura_token_not_before', 'efaktura_token_not_after', 'efaktura_token_registered_at',
         'efaktura_purchase_last_checked_at', 'type',
         'uses_material', 'uses_stock', 'uses_payroll', 'uses_finance',
         'uses_foreign_currency', 'payroll_obligation_code', 'payroll_authorized_person',
@@ -81,9 +64,6 @@ class Company extends Model
             'invoice_number_padding' => 'integer',
             'mpin_obvrznik_code' => MpinObvrznik::class,
             'type' => CompanyType::class,
-            'efaktura_token_not_before' => 'datetime',
-            'efaktura_token_not_after' => 'datetime',
-            'efaktura_token_registered_at' => 'datetime',
             'efaktura_purchase_last_checked_at' => 'datetime',
         ];
     }
@@ -111,20 +91,6 @@ class Company extends Model
     public function form743s(): HasMany
     {
         return $this->hasMany(Form743::class);
-    }
-
-    public function decidedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'efaktura_firm_access_decided_by');
-    }
-
-    public function hasEfakturaAccess(): bool
-    {
-        if ($this->efaktura_credential_mode === self::EFAKTURA_MODE_OWN) {
-            return filled($this->efaktura_eujp_id) && filled($this->efaktura_token_serial_number);
-        }
-
-        return $this->efaktura_firm_access_status === self::EFAKTURA_STATUS_APPROVED;
     }
 
     /**

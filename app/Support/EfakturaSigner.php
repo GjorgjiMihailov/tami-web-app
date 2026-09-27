@@ -10,9 +10,6 @@ final class EfakturaSigner
 {
     public const SOURCE_USER = 'user';
 
-    /** Постар запис: токен запишан на самата фирма (пред токенот да се врзе за корисник). */
-    public const SOURCE_COMPANY = 'company';
-
     public function __construct(
         public readonly string $eujpId,
         public readonly string $serialNumber,

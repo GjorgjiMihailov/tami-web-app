@@ -770,7 +770,6 @@ class ForeignCurrencyInvoiceTest extends TestCase
         // заклучено копче.
         $company = Company::factory()->create([
             'type' => 'individual',
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
             // Комплетна адреса — инаку `hasCompleteAddress()` фаќа 422 порано
             // и тестот не би ја докажал валутната проверка воопшто.
             'street_address' => 'Мајка Тереза', 'street_number' => '12',
@@ -799,10 +798,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
 
     public function test_a_foreign_currency_invoice_cannot_be_sent_either(): void
     {
-        $company = Company::factory()->create([
-            'type' => 'individual',
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-        ]);
+        $company = Company::factory()->create(['type' => 'individual']);
         $partner = Partner::factory()->for($company)->create();
         $invoice = SalesInvoice::factory()->for($company)->create([
             'partner_id' => $partner->id,

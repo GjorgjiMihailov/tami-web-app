@@ -26,14 +26,17 @@ class EfakturaPdfControllerTest extends TestCase
         Storage::fake('local');
     }
 
+    /** Токенот е личен — на човекот што потпишува, не на фирмата. */
+    private function giveToken(User $user): User
+    {
+        $user->forceFill(['efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C'])->save();
+
+        return $user->fresh();
+    }
+
     private function makeAcceptedInvoice(): array
     {
-        $company = Company::factory()->create([
-            'tax_id' => '4030001234567',
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => '1A2B3C',
-        ]);
+        $company = Company::factory()->create(['tax_id' => '4030001234567']);
         $partner = Partner::factory()->for($company)->create();
         $invoice = SalesInvoice::factory()->for($company)->create([
             'partner_id' => $partner->id, 'fiscal_year' => 2026, 'invoice_number' => 1,
@@ -48,7 +51,7 @@ class EfakturaPdfControllerTest extends TestCase
     public function test_signing_input_returns_token_for_an_accepted_invoice(): void
     {
         [$company, $invoice] = $this->makeAcceptedInvoice();
-        $admin = User::factory()->create();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $response = $this->actingAs($admin)->postJson(
@@ -62,7 +65,7 @@ class EfakturaPdfControllerTest extends TestCase
     public function test_an_internal_client_with_an_own_token_can_get_a_pdf_signing_input(): void
     {
         [$company, $invoice] = $this->makeAcceptedInvoice();
-        $client = User::factory()->create(['company_id' => $company->id]);
+        $client = $this->giveToken(User::factory()->create(['company_id' => $company->id]));
         $client->assignRole('internal_client');
 
         $this->actingAs($client)->postJson(
@@ -71,24 +74,11 @@ class EfakturaPdfControllerTest extends TestCase
         )->assertOk()->assertJsonStructure(['token', 'signingInput']);
     }
 
-    public function test_an_internal_client_of_a_firm_mode_company_cannot_get_a_pdf_signing_input(): void
-    {
-        [$company, $invoice] = $this->makeAcceptedInvoice();
-        $company->update(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
-        $client = User::factory()->create(['company_id' => $company->id]);
-        $client->assignRole('internal_client');
-
-        $this->actingAs($client)->postJson(
-            route('sales-invoices.efaktura.pdf.signing-input', [$company, $invoice]),
-            ['certificateBase64' => base64_encode('fake-cert')]
-        )->assertStatus(403);
-    }
-
     public function test_an_internal_client_cannot_get_a_pdf_signing_input_for_another_company(): void
     {
         [$company, $invoice] = $this->makeAcceptedInvoice();
         $otherCompany = Company::factory()->create();
-        $client = User::factory()->create(['company_id' => $otherCompany->id]);
+        $client = $this->giveToken(User::factory()->create(['company_id' => $otherCompany->id]));
         $client->assignRole('internal_client');
 
         $this->actingAs($client)->postJson(
@@ -100,7 +90,7 @@ class EfakturaPdfControllerTest extends TestCase
     public function test_a_freelancer_client_cannot_get_a_pdf_signing_input(): void
     {
         [$company, $invoice] = $this->makeAcceptedInvoice();
-        $freelancer = User::factory()->create(['company_id' => $company->id]);
+        $freelancer = $this->giveToken(User::factory()->create(['company_id' => $company->id]));
         $freelancer->assignRole('freelancer_client');
 
         $this->actingAs($freelancer)->postJson(
@@ -112,7 +102,6 @@ class EfakturaPdfControllerTest extends TestCase
     public function test_an_internal_client_without_a_registered_token_cannot_get_a_pdf_signing_input(): void
     {
         [$company, $invoice] = $this->makeAcceptedInvoice();
-        $company->update(['efaktura_token_serial_number' => null]);
         $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('internal_client');
 
@@ -126,7 +115,7 @@ class EfakturaPdfControllerTest extends TestCase
     {
         [$company, $invoice] = $this->makeAcceptedInvoice();
         $invoice->update(['efaktura_ujp_status_code' => null, 'efaktura_ujp_status_name' => null]);
-        $admin = User::factory()->create();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $response = $this->actingAs($admin)->postJson(
@@ -141,7 +130,7 @@ class EfakturaPdfControllerTest extends TestCase
     {
         Http::fake(['*' => Http::response(['pdfBase64' => base64_encode('%PDF-fake-bytes')], 200)]);
         [$company, $invoice] = $this->makeAcceptedInvoice();
-        $admin = User::factory()->create();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $signingResponse = $this->actingAs($admin)->postJson(
@@ -166,7 +155,7 @@ class EfakturaPdfControllerTest extends TestCase
         $path = "efaktura-pdfs/{$company->id}/{$invoice->id}.pdf";
         Storage::disk('local')->put($path, '%PDF-fake-bytes');
         $invoice->update(['efaktura_pdf_path' => $path]);
-        $admin = User::factory()->create();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $response = $this->actingAs($admin)->postJson(
@@ -183,7 +172,7 @@ class EfakturaPdfControllerTest extends TestCase
         // DB column points at a path but no file was ever written there (lost/deleted file) —
         // this must be self-healing, not a permanent dead-end (see Finding 2 fix).
         $invoice->update(['efaktura_pdf_path' => "efaktura-pdfs/{$company->id}/{$invoice->id}.pdf"]);
-        $admin = User::factory()->create();
+        $admin = $this->giveToken(User::factory()->create());
         $admin->assignRole('admin');
 
         $response = $this->actingAs($admin)->postJson(

@@ -5,89 +5,15 @@
 
     <x-tab-strip :tabs="$tabs" />
 
-    @if ($company->type->isLegal() && auth()->user()->can('manageEfakturaDevice', $company))
-        <x-card class="mb-6" x-data="signingDeviceRegistration()">
-            <h3 class="text-sm font-semibold text-gray-700 mb-2">Потпишувачки уред (USB токен)</h3>
-
-            @php
-                $tokenExpiresAt = $company->efaktura_token_not_after;
-                $tokenExpired = $tokenExpiresAt && $tokenExpiresAt->isPast();
-                $tokenExpiresSoon = $tokenExpiresAt && ! $tokenExpired && $tokenExpiresAt->lte(now()->addDays(30));
-            @endphp
-
-            <p class="text-sm text-gray-600 mb-3">
-                е-Фактури потпишува најавениот корисник со <strong>свој</strong> токен и е-УЈП ID —
-                регистрирај ги во <a href="{{ route('profile') }}" wire:navigate class="text-brand hover:underline">твојот профил</a>.
-                Овластувањето за оваа фирма се дава во е-УЈП. Записот подолу е постар и важи само како резерва за корисник без свој токен.
+    @if ($company->type->isLegal())
+        <x-card class="mb-6">
+            <h3 class="text-sm font-semibold text-gray-700 mb-1">е-Фактура</h3>
+            <p class="text-sm text-gray-600">
+                е-Фактури потпишува најавениот корисник со <strong>свој</strong> токен и е-УЈП ID.
+                Токенот се регистрира и ажурира во <a href="{{ route('profile') }}" wire:navigate class="text-brand hover:underline">твојот профил</a> —
+                овластувањето за оваа фирма се дава во е-УЈП, не тука.
             </p>
-            @if ($tokenExpired)
-                <p class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">Регистрираниот сертификат е истечен ({{ $tokenExpiresAt->format('d.m.Y') }}). Приклучи го новиот токен и кликни „Ажурирај сертификат“.</p>
-            @elseif ($tokenExpiresSoon)
-                <p class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Сертификатот истекува на {{ $tokenExpiresAt->format('d.m.Y') }}. Кога ќе добиеш нов, кликни „Ажурирај сертификат“.</p>
-            @endif
-
-            @if ($company->efaktura_token_serial_number)
-                <p class="text-sm text-gray-600 mb-1">Регистриран: <span class="font-medium">{{ $company->efaktura_token_subject_name }}</span> (сериски бр. {{ $company->efaktura_token_serial_number }})</p>
-                <p class="text-xs text-gray-500 mb-3">Важи до {{ optional($company->efaktura_token_not_after)->format('d.m.Y') }}</p>
-            @else
-                <p class="text-sm text-gray-500 mb-3">Нема регистриран потпишувачки уред за оваа компанија.</p>
-            @endif
-
-            <div class="flex items-center gap-3">
-                <button type="button" @click="check()" :disabled="busy" class="rounded-full bg-gray-100 text-gray-700 px-4 py-2 text-sm disabled:opacity-50">
-                    <span x-show="!busy">{{ $company->efaktura_token_serial_number ? 'Ажурирај сертификат' : 'Регистрирај токен' }}</span>
-                    <span x-show="busy">Читам...</span>
-                </button>
-                <a href="{{ asset('downloads/efaktura-bridge/EfakturaBridge.Server.exe') }}" class="text-brand hover:underline text-sm">Преземи локален потпишувач</a>
-            </div>
-
-            <div x-show="detected" class="mt-3 border rounded-lg p-3 bg-gray-50">
-                <p class="text-sm">Пронајден: <span x-text="subjectName" class="font-medium"></span></p>
-                <p class="text-xs text-gray-500">Сериски бр. <span x-text="serialNumber"></span>, важи до <span x-text="notAfter"></span></p>
-                <button type="button" @click="confirmRegister()" class="mt-2 rounded-full bg-brand text-white px-4 py-1.5 text-sm">{{ $company->efaktura_token_serial_number ? 'Потврди — замени го регистрираниот уред' : 'Потврди — ова е точниот уред' }}</button>
-            </div>
-
-            <p x-show="error" x-text="error" class="text-red-600 text-sm mt-2"></p>
         </x-card>
-
-        @script
-        <script>
-            Alpine.data('signingDeviceRegistration', () => ({
-                busy: false,
-                detected: false,
-                error: '',
-                serialNumber: '',
-                subjectName: '',
-                notBefore: '',
-                notAfter: '',
-                async check() {
-                    this.busy = true; this.error = ''; this.detected = false;
-                    try {
-                        const health = await fetch('http://127.0.0.1:9847/health').catch(() => null);
-                        if (!health || !health.ok) {
-                            throw new Error('Локалниот потпишувач не работи. Стартувај го (преземи го копчето погоре) и обиди се повторно.');
-                        }
-                        const certRes = await fetch('http://127.0.0.1:9847/certificate');
-                        if (!certRes.ok) throw new Error('Не можам да ги прочитам податоците од токенот — провери дали е приклучен.');
-                        const cert = await certRes.json();
-                        this.serialNumber = cert.serialNumber;
-                        this.subjectName = cert.subjectName;
-                        this.notBefore = cert.notBefore;
-                        this.notAfter = cert.notAfter;
-                        this.detected = true;
-                    } catch (e) {
-                        this.error = e.message;
-                    } finally {
-                        this.busy = false;
-                    }
-                },
-                async confirmRegister() {
-                    await $wire.registerSigningDevice(this.serialNumber, this.subjectName, this.notBefore, this.notAfter);
-                    this.detected = false;
-                },
-            }));
-        </script>
-        @endscript
     @endif
 
     @can('update', $company)
@@ -254,28 +180,6 @@
                             </label>
                             @if ($editIsVatRegistered)
                                 <p class="text-sm text-gray-600">ДДВ број: <span class="font-medium">{{ $editTaxId !== '' ? 'МК'.$editTaxId : 'се формира од ЕДБ' }}</span></p>
-                            <div>
-                                <h3 class="text-sm font-semibold text-gray-700 mb-2">е-Фактура акредитиви</h3>
-                                <div class="flex gap-4 mb-3">
-                                    <label class="inline-flex items-center gap-2">
-                                        <input type="radio" wire:model="editEfakturaMode" value="firm">
-                                        <span>Користи го фирменото</span>
-                                    </label>
-                                    <label class="inline-flex items-center gap-2">
-                                        <input type="radio" wire:model="editEfakturaMode" value="own">
-                                        <span>Сопствени акредитиви</span>
-                                    </label>
-                                </div>
-
-                                @if ($editEfakturaMode === 'own')
-                                    <div>
-                                        <label class="block text-sm text-gray-600 mb-1">X-EUJP-ID</label>
-                                        <input type="text" wire:model="editEfakturaEujpId" class="w-full rounded-lg border-gray-300">
-                                        @error('editEfakturaEujpId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                                        <p class="text-xs text-gray-500 mt-1">Потпишувачкиот уред (USB токен) се регистрира одделно, погоре на страницата — не преку овој формулар.</p>
-                                    </div>
-                                @endif
-                            </div>
                             @endif
                         </div>
 

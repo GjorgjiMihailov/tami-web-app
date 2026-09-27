@@ -237,37 +237,37 @@ class SalesInvoiceIndexTest extends TestCase
             ->assertSee('Купувач 2024');
     }
 
+    /** Токенот е личен — на човекот што потпишува, не на фирмата. */
+    private function giveToken(User $user): User
+    {
+        $user->forceFill(['efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C'])->save();
+
+        return $user->fresh();
+    }
+
     public function test_the_refresh_statuses_button_follows_the_sign_right_for_an_internal_client(): void
     {
-        $own = Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => '1A2B3C',
-        ]);
-        $ownClient = User::factory()->create(['company_id' => $own->id]);
+        $own = Company::factory()->create();
+        $ownClient = $this->giveToken(User::factory()->create(['company_id' => $own->id]));
         $ownClient->assignRole('internal_client');
-        $firm = Company::factory()->create(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
-        $firmClient = User::factory()->create(['company_id' => $firm->id]);
-        $firmClient->assignRole('internal_client');
+        $noToken = Company::factory()->create();
+        $noTokenClient = User::factory()->create(['company_id' => $noToken->id]);
+        $noTokenClient->assignRole('internal_client');
 
         Livewire::actingAs($ownClient)
             ->test(SalesInvoiceIndex::class, ['company' => $own])
             ->assertSee('Освежи статуси');
 
-        Livewire::actingAs($firmClient)
-            ->test(SalesInvoiceIndex::class, ['company' => $firm])
+        Livewire::actingAs($noTokenClient)
+            ->test(SalesInvoiceIndex::class, ['company' => $noToken])
             ->assertDontSee('Освежи статуси');
     }
 
-    /** Свој режим + токен, но гледачот нема право да потпишува: контролите мора да се скриени. */
+    /** Личен токен, но гледачот нема право да потпишува: контролите мора да се скриени. */
     public function test_the_refresh_button_is_hidden_for_a_freelancer_client_even_with_an_own_token(): void
     {
-        $company = Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => '1A2B3C',
-        ]);
-        $client = User::factory()->create(['company_id' => $company->id]);
+        $company = Company::factory()->create();
+        $client = $this->giveToken(User::factory()->create(['company_id' => $company->id]));
         $client->assignRole('freelancer_client');
 
         Livewire::actingAs($client)
@@ -277,19 +277,15 @@ class SalesInvoiceIndexTest extends TestCase
 
     public function test_the_pdf_fetch_control_is_hidden_for_a_freelancer_client_but_shown_to_an_internal_client(): void
     {
-        $company = Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => '1A2B3C',
-        ]);
+        $company = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
         SalesInvoice::factory()->for($company)->create([
             'partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => '2026-03-01',
             'efaktura_ujp_status_code' => '03', 'efaktura_ujp_status_name' => 'Прифатена',
         ]);
-        $freelancer = User::factory()->create(['company_id' => $company->id]);
+        $freelancer = $this->giveToken(User::factory()->create(['company_id' => $company->id]));
         $freelancer->assignRole('freelancer_client');
-        $internal = User::factory()->create(['company_id' => $company->id]);
+        $internal = $this->giveToken(User::factory()->create(['company_id' => $company->id]));
         $internal->assignRole('internal_client');
 
         Livewire::actingAs($internal)

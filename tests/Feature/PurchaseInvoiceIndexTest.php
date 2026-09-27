@@ -233,13 +233,12 @@ class PurchaseInvoiceIndexTest extends TestCase
             ->assertSee('Стар Добавувач');
     }
 
-    private function ownModeCompanyWithToken(): Company
+    /** Токенот е личен — на човекот што потпишува, не на фирмата. */
+    private function giveToken(User $user): User
     {
-        return Company::factory()->create([
-            'efaktura_credential_mode' => Company::EFAKTURA_MODE_OWN,
-            'efaktura_eujp_id' => 'EUJP-1',
-            'efaktura_token_serial_number' => '1A2B3C',
-        ]);
+        $user->forceFill(['efaktura_eujp_id' => 'EUJP-1', 'efaktura_token_serial_number' => '1A2B3C'])->save();
+
+        return $user->fresh();
     }
 
     private function userWithRole(string $role, Company $company): User
@@ -279,16 +278,15 @@ class PurchaseInvoiceIndexTest extends TestCase
 
     public function test_an_internal_client_with_a_registered_token_sees_the_incoming_controls(): void
     {
-        $company = $this->ownModeCompanyWithToken();
-        $client = $this->userWithRole('internal_client', $company);
+        $company = Company::factory()->create();
+        $client = $this->giveToken($this->userWithRole('internal_client', $company));
 
         $this->assertControlsVisible($this->incomingControlsFor($client, $company));
     }
 
     public function test_an_internal_client_without_a_token_does_not_see_the_incoming_controls(): void
     {
-        $company = $this->ownModeCompanyWithToken();
-        $company->update(['efaktura_token_serial_number' => null]);
+        $company = Company::factory()->create();
         $client = $this->userWithRole('internal_client', $company);
 
         $this->incomingControlsFor($client, $company)
@@ -300,25 +298,11 @@ class PurchaseInvoiceIndexTest extends TestCase
             ->assertDontSee('incomingEfakturaPdfFetch(', false);
     }
 
-    public function test_an_internal_client_of_a_firm_mode_company_does_not_see_the_incoming_controls(): void
-    {
-        $company = $this->ownModeCompanyWithToken();
-        $company->update(['efaktura_credential_mode' => Company::EFAKTURA_MODE_FIRM]);
-        $client = $this->userWithRole('internal_client', $company);
-
-        $this->incomingControlsFor($client, $company)
-            ->assertDontSee('Провери за е-Фактури')
-            ->assertDontSee('Последна проверка за е-Фактури')
-            ->assertDontSee('Прифати')
-            ->assertDontSee('Одбиј')
-            ->assertDontSee('incomingEfakturaPdfFetch(', false);
-    }
-
     public function test_a_freelancer_client_does_not_see_the_incoming_controls(): void
     {
         Role::findOrCreate('freelancer_client');
-        $company = $this->ownModeCompanyWithToken();
-        $client = User::factory()->create(['company_id' => $company->id]);
+        $company = Company::factory()->create();
+        $client = $this->giveToken(User::factory()->create(['company_id' => $company->id]));
         $client->assignRole('freelancer_client');
 
         $this->incomingControlsFor($client, $company)
@@ -331,7 +315,7 @@ class PurchaseInvoiceIndexTest extends TestCase
 
     public function test_admin_and_assigned_accountant_still_see_the_incoming_controls(): void
     {
-        $company = $this->ownModeCompanyWithToken();
+        $company = Company::factory()->create();
         IncomingEfakturaDocument::factory()->for($company)->create(['decision' => null]);
         $partner = Partner::factory()->for($company)->create();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id]);
@@ -342,7 +326,7 @@ class PurchaseInvoiceIndexTest extends TestCase
         ]);
 
         foreach (['admin', 'accountant'] as $role) {
-            $user = $this->userWithRole($role, $company);
+            $user = $this->giveToken($this->userWithRole($role, $company));
             Livewire::actingAs($user)->test(PurchaseInvoiceIndex::class, ['company' => $company])
                 ->assertSee('Провери за е-Фактури')
                 ->assertSee('Прифати')
