@@ -46,17 +46,21 @@ class Dashboard extends Component
             return null;
         }
 
-        // Сметководител што сè уште нема ниту еден клиент нема каде да отиде:
-        // екранот „Изберете фирма" би му понудил само врска што за него враќа
-        // 403. Го праќаме да го внесе првиот.
-        if ($user->hasRole('accountant') && ! $user->visibleCompanies()->exists()) {
-            return $this->redirect(route('onboarding.first-client'));
+        // Сметководител секогаш слета на порталот, никогаш право во фирма —
+        // таму горе бира со кого работи. Единствен исклучок: со уште ниту
+        // еден клиент нема каде да отиде (екранот „Изберете фирма" би му
+        // понудил само врска што за него враќа 403), па го праќаме да го
+        // внесе првиот.
+        if ($user->hasRole('accountant')) {
+            return $user->visibleCompanies()->exists()
+                ? null
+                : $this->redirect(route('onboarding.first-client'));
         }
 
+        // Клиент работи со точно една фирма (својата) — таму нема што да се
+        // бира, па автоматски влегува.
         $target = $this->companyToOpen($user);
 
-        // No target means an accountant with several companies and nothing
-        // remembered — fall through and render the choice screen below.
         return $target ? $this->redirect(route('companies.dashboard', $target)) : null;
     }
 
@@ -88,8 +92,12 @@ class Dashboard extends Component
         }
 
         $companies = $user->visibleCompanies()->orderBy('name')->get();
+        $lastCompanyId = CurrentCompany::lastFor($user);
 
-        return view('livewire.dashboard', ['companies' => $companies]);
+        return view('livewire.dashboard', [
+            'companies' => $companies,
+            'lastCompany' => $lastCompanyId ? $companies->firstWhere('id', $lastCompanyId) : null,
+        ]);
     }
 
     /**

@@ -52,16 +52,20 @@ class DashboardTest extends TestCase
             ->assertRedirect(route('onboarding.first-client'));
     }
 
-    public function test_an_accountant_with_one_company_is_sent_into_it(): void
+    public function test_an_accountant_with_one_company_stays_on_the_portal_and_sees_it_in_the_picker(): void
     {
-        $company = Company::factory()->create();
+        // Порано ова автоматски прескокнуваше право во фирмата — сопственикот
+        // одлучи сметководителот секогаш прво слета на порталот, дури и со
+        // само една фирма, за менито секогаш да покажува избор горе.
+        $company = Company::factory()->create(['name' => 'Solo Ltd']);
         $accountant = User::factory()->create();
         $accountant->assignRole('accountant');
         $company->accountants()->attach($accountant);
 
         $this->actingAs($accountant)
             ->get(route('dashboard'))
-            ->assertRedirect(route('companies.dashboard', $company));
+            ->assertOk()
+            ->assertSee('Solo Ltd');
     }
 
     public function test_an_accountant_with_several_companies_gets_a_choice_screen(): void
@@ -80,7 +84,7 @@ class DashboardTest extends TestCase
             ->assertSee('Втора Фирма');
     }
 
-    public function test_an_accountant_returns_to_the_company_they_last_had_open(): void
+    public function test_an_accountant_sees_the_company_they_last_had_open_highlighted_but_is_not_redirected(): void
     {
         $first = Company::factory()->create(['name' => 'Прва Фирма']);
         $second = Company::factory()->create(['name' => 'Втора Фирма']);
@@ -92,12 +96,15 @@ class DashboardTest extends TestCase
         $this->actingAs($accountant);
         $this->get(route('companies.dashboard', $second))->assertOk();
 
-        $this->get(route('dashboard'))->assertRedirect(route('companies.dashboard', $second));
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Продолжи')
+            ->assertSee('Втора Фирма');
     }
 
     public function test_a_remembered_company_that_is_no_longer_visible_is_ignored(): void
     {
-        $mine = Company::factory()->create();
+        $mine = Company::factory()->create(['name' => 'Мојата Фирма']);
         $other = Company::factory()->create();
         $accountant = User::factory()->create();
         $accountant->assignRole('accountant');
@@ -106,7 +113,10 @@ class DashboardTest extends TestCase
         $this->actingAs($accountant);
         session([CurrentCompany::sessionKey($accountant->id) => $other->id]);
 
-        $this->get(route('dashboard'))->assertRedirect(route('companies.dashboard', $mine));
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee('Продолжи')
+            ->assertSee('Мојата Фирма');
     }
 
     private function accountantWithTwoCompanies(): array
