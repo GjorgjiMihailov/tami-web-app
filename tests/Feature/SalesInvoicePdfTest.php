@@ -190,8 +190,10 @@ class SalesInvoicePdfTest extends TestCase
 
         $this->assertStringContainsString('Fajnens Badi DOOEL', $html);
         $this->assertStringContainsString('ul. Primer 1, Skopje', $html);
-        $this->assertStringContainsString('ЕДБ: MK4032000000000', $html);
-        $this->assertStringContainsString('ЕМБС: 7654321', $html);
+        // Издавачот сега е листа назив:вредност (одделни ќелии), не сплескан
+        // на еден ред — ЕДБ/ЕМБС се проверуваат како лабела + вредност.
+        $this->assertMatchesRegularExpression('/info-label">ЕДБ:<\/td>\s*<td>MK4032000000000<\/td>/', $html);
+        $this->assertMatchesRegularExpression('/info-label">ЕМБС:<\/td>\s*<td>7654321<\/td>/', $html);
         $this->assertStringContainsString('070123456', $html);
         $this->assertStringContainsString('info@primer.mk', $html);
         $this->assertStringContainsString('ABV Trgovija DOO', $html);

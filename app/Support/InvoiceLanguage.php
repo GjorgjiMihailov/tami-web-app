@@ -121,5 +121,13 @@ enum InvoiceLanguage: string
         'notes' => ['mk' => 'Белешка', 'en' => 'Notes'],
         'terms' => ['mk' => 'Услови', 'en' => 'Terms & conditions'],
         'not_a_tax_invoice' => ['mk' => 'Профактурата не е даночна фактура и не служи за книжење.', 'en' => 'This proforma invoice is not a tax invoice.'],
+        'address' => ['mk' => 'адреса', 'en' => 'Address'],
+        'phone' => ['mk' => 'тел.', 'en' => 'Phone'],
+        'email' => ['mk' => 'e-mail', 'en' => 'Email'],
+        'website' => ['mk' => 'веб', 'en' => 'Website'],
+        'code' => ['mk' => 'Шифра', 'en' => 'Code'],
+        'unit' => ['mk' => 'Ед.', 'en' => 'Unit'],
+        'unit_price_with_vat' => ['mk' => 'Цена со ДДВ', 'en' => 'Unit price incl. VAT'],
+        'vat_base' => ['mk' => 'основица', 'en' => 'base'],
     ];
 }
