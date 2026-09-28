@@ -201,7 +201,7 @@
                     <a href="{{ route('profile') }}" wire:navigate class="mt-2 inline-flex items-center px-3 py-1.5 bg-white border border-amber-300 rounded-full text-sm font-semibold text-amber-900 hover:bg-amber-100">Регистрирај го мојот токен</a>
                 </div>
             @else
-                <button type="button" @click="run()" :disabled="busy" class="bg-brand text-white px-3 py-1.5 rounded-md text-sm disabled:opacity-50">
+                <button type="button" @click="run()" :disabled="busy" class="inline-flex items-center gap-2 px-4 py-2 bg-brand border border-transparent rounded-full font-semibold text-sm text-white shadow-sm hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition disabled:opacity-50">
                     <span x-show="!busy">Потпиши и испрати до УЈП</span>
                     <span x-show="busy" x-text="statusText"></span>
                 </button>
