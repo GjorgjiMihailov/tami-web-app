@@ -94,8 +94,33 @@
                 <div class="grid gap-3 md:grid-cols-[12rem_1fr] items-center max-w-3xl">
                     <label for="taxId" class="text-sm text-gray-700">ЕДБ</label>
                     <div>
-                        <x-text-input id="taxId" wire:model="taxId" class="w-full max-w-sm" />
+                        <div class="flex items-center gap-2">
+                            <x-text-input id="taxId" wire:model="taxId" class="w-full max-w-sm" />
+                            @if ($type === 'legal_entity')
+                                <x-secondary-button type="button" wire:click="checkUjp" wire:loading.attr="disabled" wire:target="checkUjp">
+                                    <span wire:loading.remove wire:target="checkUjp">Провери во УЈП</span>
+                                    <span wire:loading wire:target="checkUjp">Се проверува…</span>
+                                </x-secondary-button>
+                            @endif
+                        </div>
                         @error('taxId') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+
+                        @if ($ujpLookupError)
+                            <p class="text-red-600 text-sm mt-1">{{ $ujpLookupError }}</p>
+                        @endif
+
+                        @if ($ujpLookup)
+                            <div class="mt-2 text-sm bg-orange-50 border border-orange-200 rounded-md p-2 space-y-1">
+                                <p><span class="text-gray-600">УЈП име:</span> {{ $ujpLookup['name'] }}
+                                    <button type="button" wire:click="applyUjpName" class="text-brand underline ml-1">Примени</button>
+                                </p>
+                                @if ($ujpLookup['street'] || $ujpLookup['city'])
+                                    <p><span class="text-gray-600">УЈП адреса:</span> {{ $ujpLookup['street'] }} {{ $ujpLookup['number'] }}, {{ $ujpLookup['zip'] }} {{ $ujpLookup['city'] }}
+                                        <button type="button" wire:click="applyUjpAddress" class="text-brand underline ml-1">Примени</button>
+                                    </p>
+                                @endif
+                            </div>
+                        @endif
                     </div>
 
                     @if ($type === 'legal_entity')

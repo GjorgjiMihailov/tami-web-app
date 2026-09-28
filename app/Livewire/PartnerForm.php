@@ -4,6 +4,8 @@ namespace App\Livewire;
 
 use App\Models\Company;
 use App\Models\Partner;
+use App\Services\Efaktura\EfakturaJwsService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -77,6 +79,11 @@ class PartnerForm extends Component
 
     // Контакт лица
     public array $contacts = [];
+
+    // Предлог од УЈП, по клик на „Провери во УЈП"
+    public ?array $ujpLookup = null;
+
+    public ?string $ujpLookupError = null;
 
     public function mount(Company $company, ?Partner $partner = null): void
     {
@@ -174,6 +181,76 @@ class PartnerForm extends Component
         $this->shippingStreetNumber = $this->streetNumber;
         $this->shippingPostalCode = $this->postalCode;
         $this->shippingCity = $this->city;
+    }
+
+    /**
+     * Го бара службеното име/адреса на фирмата со ова ЕДБ директно од базата на УЈП
+     * (истата база спрема која УЈП ги одбива е-Фактурите со погрешно име на купувач/продавач).
+     */
+    public function checkUjp(): void
+    {
+        $this->ujpLookup = null;
+        $this->ujpLookupError = null;
+
+        $taxNumber = trim($this->taxId);
+
+        if ($taxNumber === '') {
+            $this->ujpLookupError = 'Внеси прво ЕДБ.';
+
+            return;
+        }
+
+        $signer = Auth::user()->efakturaSignerFor($this->company);
+
+        if ($signer === null) {
+            $this->ujpLookupError = 'Немаш регистриран е-Фактура токен на твојот профил — провери во профилот.';
+
+            return;
+        }
+
+        try {
+            $response = app(EfakturaJwsService::class)->lookupCompany($this->company, $signer, $taxNumber);
+        } catch (\Throwable) {
+            $this->ujpLookupError = 'Проверката не успеа — обиди се повторно.';
+
+            return;
+        }
+
+        $data = $response->json();
+
+        if (! $response->successful() || ($data['success'] ?? false) !== true || empty($data['company'])) {
+            $this->ujpLookupError = $data['errorStatus']['errorMessage'] ?? 'УЈП не врати податоци за ова ЕДБ.';
+
+            return;
+        }
+
+        $company = $data['company'];
+        $address = $company['address'] ?? [];
+
+        $this->ujpLookup = [
+            'name' => (string) ($company['name'] ?? ''),
+            'street' => (string) ($address['street'] ?? ''),
+            'number' => (string) ($address['number'] ?? ''),
+            'city' => (string) ($address['city'] ?? ''),
+            'zip' => (string) ($address['zip'] ?? ''),
+        ];
+    }
+
+    public function applyUjpName(): void
+    {
+        if ($this->ujpLookup) {
+            $this->name = $this->ujpLookup['name'];
+        }
+    }
+
+    public function applyUjpAddress(): void
+    {
+        if ($this->ujpLookup) {
+            $this->streetAddress = $this->ujpLookup['street'];
+            $this->streetNumber = $this->ujpLookup['number'];
+            $this->city = $this->ujpLookup['city'];
+            $this->postalCode = $this->ujpLookup['zip'];
+        }
     }
 
     public function updated(string $name, $value): void

@@ -196,4 +196,26 @@ class EfakturaJwsServiceTest extends TestCase
         $this->assertTrue($response->successful());
         Http::assertSent(fn ($request) => $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/documents/purchase-invoice/pdf');
     }
+
+    public function test_lookup_company_gets_the_companies_reference_endpoint_with_no_signature(): void
+    {
+        Http::fake(['*' => Http::response([
+            'success' => true,
+            'company' => ['name' => 'ТЈ ПРОСПОРТС ДООЕЛ УВОЗ-ИЗВОЗ СКОПЈЕ', 'address' => ['street' => 'ул. Прва', 'number' => '5', 'city' => 'Скопје', 'zip' => '1000']],
+        ], 200)]);
+        $company = Company::factory()->create([
+            'tax_id' => '4030001234567',
+        ]);
+
+        $response = (new EfakturaJwsService)->lookupCompany($company, new EfakturaSigner('EUJP-1', '1A2B3C', EfakturaSigner::SOURCE_USER), '4001235555678');
+
+        $this->assertTrue($response->successful());
+        Http::assertSent(function ($request) {
+            return $request->url() === rtrim(config('services.efaktura.base_url'), '/').'/einvoice_api/api/v1/companies/4001235555678'
+                && $request->method() === 'GET'
+                && $request->hasHeader('X-EUJP-ID', 'EUJP-1')
+                && $request->hasHeader('X-EDB', '4030001234567')
+                && ! $request->hasHeader('X-SERIAL-NUMBER');
+        });
+    }
 }

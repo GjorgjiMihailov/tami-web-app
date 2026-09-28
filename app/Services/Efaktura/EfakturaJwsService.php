@@ -74,6 +74,24 @@ class EfakturaJwsService
 
     private const PURCHASE_PDF_PATH = '/einvoice_api/api/v1/documents/purchase-invoice/pdf';
 
+    // Reference read-only call (api-documentation-public7.pdf, "GET /api/v1/companies/{tax_number}")
+    // — needs only X-EUJP-ID/X-EDB headers, no JWS signature, unlike everything else in this class.
+    private const COMPANY_LOOKUP_PATH = '/einvoice_api/api/v1/companies/%s';
+
+    /** Го бара службеното име/адреса на фирма со дадено ЕДБ директно од базата на УЈП. */
+    public function lookupCompany(Company $company, EfakturaSigner $signer, string $taxNumber): Response
+    {
+        $baseUrl = config('services.efaktura.base_url');
+        $url = rtrim($baseUrl, '/').sprintf(self::COMPANY_LOOKUP_PATH, $taxNumber);
+
+        $request = $this->withConnectTo(Http::withHeaders([
+            'X-EUJP-ID' => $signer->eujpId,
+            'X-EDB' => $company->tax_id,
+        ])->timeout(20));
+
+        return $request->get($url);
+    }
+
     public function send(Company $company, EfakturaSigner $signer, string $signingInput, string $signatureBase64Url): Response
     {
         return $this->postSignedRequest(
@@ -127,21 +145,26 @@ class EfakturaJwsService
         $baseUrl = config('services.efaktura.base_url');
         $url = rtrim($baseUrl, '/').$path;
 
-        $request = Http::withHeaders(array_merge([
+        $request = $this->withConnectTo(Http::withHeaders(array_merge([
             // Потпишува човекот: неговиот е-УЈП ID и токен. ЕДБ е на фирмата за која се праќа —
             // овластувањето на човекот за таа фирма се дава во е-УЈП.
             'X-EUJP-ID' => $signer->eujpId,
             'X-EDB' => $company->tax_id,
             'X-SERIAL-NUMBER' => $signer->serialNumber,
-        ], $extraHeaders))->timeout(20);
-
-        if ($connectTo = config('services.efaktura.connect_to')) {
-            $request = $request->withOptions(['curl' => [CURLOPT_CONNECT_TO => [$connectTo]]]);
-        }
+        ], $extraHeaders))->timeout(20));
 
         return $request->post($url, [
             'requestTimestamp' => now()->timezone('Europe/Skopje')->format('Y-m-d\TH:i:s'),
             'jws' => $compact,
         ]);
+    }
+
+    private function withConnectTo(\Illuminate\Http\Client\PendingRequest $request): \Illuminate\Http\Client\PendingRequest
+    {
+        if ($connectTo = config('services.efaktura.connect_to')) {
+            return $request->withOptions(['curl' => [CURLOPT_CONNECT_TO => [$connectTo]]]);
+        }
+
+        return $request;
     }
 }
