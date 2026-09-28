@@ -5,8 +5,10 @@ namespace App\Livewire;
 use App\Models\Company;
 use App\Models\PayrollCode;
 use App\Rules\ValidEmbg;
+use App\Services\Efaktura\EfakturaJwsService;
 use App\Support\CompanyTabs;
 use App\Support\Payroll\MpinObvrznik;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -87,6 +89,11 @@ class CompanyProfile extends Component
 
     public $newLogo = null;
 
+    // Предлог од УЈП, по клик на „Провери во УЈП"
+    public ?array $ujpLookup = null;
+
+    public ?string $ujpLookupError = null;
+
     public function mount(Company $company): void
     {
         Gate::authorize('view', $company);
@@ -145,12 +152,88 @@ class CompanyProfile extends Component
         $this->editInvoiceFooterNote = (string) $this->company->invoice_footer_note;
         $this->newLogo = null;
 
+        $this->ujpLookup = null;
+        $this->ujpLookupError = null;
+
         $this->editing = true;
     }
 
     public function cancelEdit(): void
     {
         $this->startEdit();
+    }
+
+    /**
+     * Го бара службеното име/адреса на самата фирма (продавач на е-Фактурите)
+     * директно од базата на УЈП — истата база спрема која УЈП одбива фактури
+     * со погрешно име/град за продавачот (E10002/E10004).
+     */
+    public function checkUjp(): void
+    {
+        Gate::authorize('update', $this->company);
+
+        $this->ujpLookup = null;
+        $this->ujpLookupError = null;
+
+        $taxNumber = trim($this->company->tax_id ?? '');
+
+        if ($taxNumber === '') {
+            $this->ujpLookupError = 'Фирмата нема зачувано ЕДБ.';
+
+            return;
+        }
+
+        $signer = Auth::user()->efakturaSignerFor($this->company);
+
+        if ($signer === null) {
+            $this->ujpLookupError = 'Немаш регистриран е-Фактура токен на твојот профил — провери во профилот.';
+
+            return;
+        }
+
+        try {
+            $response = app(EfakturaJwsService::class)->lookupCompany($this->company, $signer, $taxNumber);
+        } catch (\Throwable) {
+            $this->ujpLookupError = 'Проверката не успеа — обиди се повторно.';
+
+            return;
+        }
+
+        $data = $response->json();
+
+        if (! $response->successful() || ($data['success'] ?? false) !== true || empty($data['company'])) {
+            $this->ujpLookupError = $data['errorStatus']['errorMessage'] ?? 'УЈП не врати податоци за ова ЕДБ.';
+
+            return;
+        }
+
+        $company = $data['company'];
+        $address = $company['address'] ?? [];
+
+        $this->ujpLookup = [
+            'name' => (string) ($company['name'] ?? ''),
+            'street' => (string) ($address['street'] ?? ''),
+            'number' => (string) ($address['number'] ?? ''),
+            'city' => (string) ($address['city'] ?? ''),
+            'zip' => (string) ($address['zip'] ?? ''),
+        ];
+    }
+
+    public function applyUjpName(): void
+    {
+        if ($this->ujpLookup) {
+            $this->editName = $this->ujpLookup['name'];
+        }
+    }
+
+    public function applyUjpAddress(): void
+    {
+        if ($this->ujpLookup) {
+            $this->editStreetAddress = $this->ujpLookup['street'];
+            $this->editStreetNumber = $this->ujpLookup['number'];
+            $this->editCity = $this->ujpLookup['city'];
+            $this->editPostalCode = $this->ujpLookup['zip'];
+        }
     }
 
     public function updated(string $name, $value): void

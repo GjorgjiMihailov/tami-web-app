@@ -34,7 +34,33 @@
                         @if ($company->type->isLegal())
                             <div>
                                 <x-input-label for="editTaxId" value="ЕДБ" />
-                                <x-text-input id="editTaxId" wire:model="editTaxId" class="w-full" />
+                                <div class="flex items-center gap-2">
+                                    <x-text-input id="editTaxId" wire:model="editTaxId" class="w-full" />
+                                    <x-secondary-button type="button" wire:click="checkUjp" wire:loading.attr="disabled" wire:target="checkUjp" class="whitespace-nowrap">
+                                        <span wire:loading.remove wire:target="checkUjp">Провери во УЈП</span>
+                                        <span wire:loading wire:target="checkUjp">Се проверува…</span>
+                                    </x-secondary-button>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($ujpLookupError || $ujpLookup)
+                            <div class="sm:col-span-2">
+                                @if ($ujpLookupError)
+                                    <p class="text-red-600 text-sm">{{ $ujpLookupError }}</p>
+                                @endif
+                                @if ($ujpLookup)
+                                    <div class="text-sm bg-orange-50 border border-orange-200 rounded-md p-2 space-y-1">
+                                        <p><span class="text-gray-600">УЈП име:</span> {{ $ujpLookup['name'] }}
+                                            <button type="button" wire:click="applyUjpName" class="text-brand underline ml-1">Примени</button>
+                                        </p>
+                                        @if ($ujpLookup['street'] || $ujpLookup['city'])
+                                            <p><span class="text-gray-600">УЈП адреса:</span> {{ $ujpLookup['street'] }} {{ $ujpLookup['number'] }}, {{ $ujpLookup['zip'] }} {{ $ujpLookup['city'] }}
+                                                <button type="button" wire:click="applyUjpAddress" class="text-brand underline ml-1">Примени</button>
+                                            </p>
+                                        @endif
+                                    </div>
+                                @endif
                             </div>
                         @endif
                         @if ($company->type->isIndividual())
