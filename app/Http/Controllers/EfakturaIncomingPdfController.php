@@ -75,7 +75,11 @@ class EfakturaIncomingPdfController extends Controller
         abort_if($incomingEfakturaDocument->company_id !== $company->id, 404);
         abort_unless($incomingEfakturaDocument->efaktura_pdf_path && Storage::disk('local')->exists($incomingEfakturaDocument->efaktura_pdf_path), 404);
 
-        $filename = "vlezna-faktura-{$incomingEfakturaDocument->doc_number}.pdf";
+        // doc_number е бројот на продавачот, слободен текст — знаено содржи „/" (на пр.
+        // „2/2026"), што Symfony го одбива во Content-Disposition името (InvalidArgumentException,
+        // производствена грешка 2026-09-28). Истото чистење како кај излезните фактури.
+        $slug = preg_replace('/[^\p{L}\p{N}-]+/u', '-', (string) $incomingEfakturaDocument->doc_number);
+        $filename = "vlezna-faktura-{$slug}.pdf";
 
         return Storage::disk('local')->download($incomingEfakturaDocument->efaktura_pdf_path, $filename);
     }

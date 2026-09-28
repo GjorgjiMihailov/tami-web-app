@@ -113,6 +113,33 @@ class EfakturaIncomingPdfControllerTest extends TestCase
         $this->assertStringContainsString('vlezna-faktura-SUP-1.pdf', $downloadResponse->headers->get('Content-Disposition'));
     }
 
+    /** Продукциска грешка 2026-09-28: doc_number со „/" (на пр. „2/2026") паѓаше на 500. */
+    public function test_download_sanitizes_a_doc_number_containing_a_slash(): void
+    {
+        Http::fake(['*' => Http::response(['pdfBase64' => base64_encode('fake-pdf-bytes')], 200)]);
+        $company = $this->company();
+        $document = IncomingEfakturaDocument::factory()->for($company)->create([
+            'decision' => IncomingEfakturaDocument::DECISION_ACCEPTED,
+            'doc_number' => '2/2026',
+        ]);
+        $admin = $this->admin();
+
+        $signingResponse = $this->actingAs($admin)->postJson(
+            route('incoming-efaktura.pdf.signing-input', [$company, $document]),
+            ['certificateBase64' => base64_encode('fake-cert')]
+        )->json();
+
+        $this->actingAs($admin)->postJson(
+            route('incoming-efaktura.pdf.store', [$company, $document]),
+            ['token' => $signingResponse['token'], 'signature' => 'ZmFrZS1zaWc']
+        )->assertOk();
+
+        $downloadResponse = $this->actingAs($admin)->get(route('incoming-efaktura.pdf.download', [$company, $document]));
+
+        $downloadResponse->assertOk();
+        $this->assertStringContainsString('vlezna-faktura-2-2026.pdf', $downloadResponse->headers->get('Content-Disposition'));
+    }
+
     public function test_internal_client_with_an_own_token_can_fetch_and_store_the_official_pdf(): void
     {
         Http::fake(['*' => Http::response(['pdfBase64' => base64_encode('fake-pdf-bytes')], 200)]);
