@@ -159,4 +159,57 @@ class SalesInvoiceShowEfakturaTest extends TestCase
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
             ->assertDontSee('Потпиши и испрати до УЈП');
     }
+
+    public function test_already_downloaded_pdf_shows_a_direct_download_link(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => '2026-03-01',
+            'efaktura_status' => 'sent', 'efaktura_sent_at' => now(), 'efaktura_pdf_path' => 'efaktura-pdfs/1/1.pdf',
+        ]);
+        $admin = $this->giveToken(User::factory()->create());
+        $admin->assignRole('admin');
+
+        Livewire::actingAs($admin)
+            ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->assertSeeHtml(route('sales-invoices.efaktura.pdf.download', [$company, $invoice]))
+            ->assertSee('Преземи ПДФ');
+    }
+
+    public function test_accepted_invoice_without_a_stored_pdf_shows_the_fetch_button(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => '2026-03-01',
+            'efaktura_status' => 'sent', 'efaktura_sent_at' => now(),
+            'efaktura_ujp_status_code' => '03', 'efaktura_ujp_status_name' => 'Прифатена',
+        ]);
+        $admin = $this->giveToken(User::factory()->create());
+        $admin->assignRole('admin');
+
+        Livewire::actingAs($admin)
+            ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->assertSee('Прифатена')
+            ->assertSee('Преземи ПДФ')
+            ->assertDontSeeHtml(route('sales-invoices.efaktura.pdf.download', [$company, $invoice]));
+    }
+
+    /** Не е прифатена и нема ПДФ: копчето за преземање не се прикажува воопшто. */
+    public function test_sent_but_not_yet_accepted_invoice_shows_no_pdf_button(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id, 'status' => 'confirmed', 'invoice_date' => '2026-03-01',
+            'efaktura_status' => 'sent', 'efaktura_sent_at' => now(),
+        ]);
+        $admin = $this->giveToken(User::factory()->create());
+        $admin->assignRole('admin');
+
+        Livewire::actingAs($admin)
+            ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->assertDontSee('Преземи ПДФ');
+    }
 }

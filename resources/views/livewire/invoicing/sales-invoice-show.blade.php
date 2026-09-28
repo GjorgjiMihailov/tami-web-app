@@ -161,6 +161,23 @@
         <div class="mt-4 border-t pt-4" x-data="efakturaSend()">
             @if ($invoice->efaktura_status === 'sent')
                 <x-badge status="active">Испратена до УЈП ({{ optional($invoice->efaktura_sent_at)->format('d.m.Y H:i') }})</x-badge>
+                @if ($invoice->efaktura_ujp_status_name)
+                    <x-badge :status="$invoice->isEfakturaAccepted() ? 'active' : 'pending'" class="ml-1">{{ $invoice->efaktura_ujp_status_name }}</x-badge>
+                @endif
+
+                <div class="mt-2">
+                    @if ($invoice->efaktura_pdf_path)
+                        <a href="{{ route('sales-invoices.efaktura.pdf.download', [$company, $invoice]) }}" class="text-brand hover:underline text-sm">Преземи ПДФ</a>
+                    @elseif ($invoice->isEfakturaAccepted() && auth()->user()->can('signEfaktura', $company))
+                        <div x-data="efakturaPdfFetch()">
+                            <button type="button" @click="run()" :disabled="busy" class="text-brand hover:underline disabled:opacity-50 text-sm">
+                                <span x-show="!busy">Преземи ПДФ</span>
+                                <span x-show="busy" x-text="statusText"></span>
+                            </button>
+                            <p x-show="error" x-text="error" class="text-red-600 text-xs mt-1"></p>
+                        </div>
+                    @endif
+                </div>
             @elseif ($invoice->isForeignCurrency())
                 <p class="text-xs text-gray-500">е-Фактура прима само фактури во денари. Оваа е во {{ $invoice->currency }}, па не може да се прати до УЈП.</p>
             @elseif (! auth()->user()->can('signEfaktura', $company))
@@ -252,6 +269,78 @@
 
                         this.success = true;
                         setTimeout(() => window.location.reload(), 1500);
+                    } catch (e) {
+                        this.error = e.message;
+                    } finally {
+                        this.busy = false;
+                    }
+                },
+            }));
+
+            Alpine.data('efakturaPdfFetch', () => ({
+                busy: false,
+                error: '',
+                statusText: '',
+                async run() {
+                    this.busy = true; this.error = '';
+                    try {
+                        this.statusText = 'Проверувам мост...';
+                        const health = await fetch('http://127.0.0.1:9847/health').catch(() => null);
+                        if (!health || !health.ok) {
+                            throw new Error('Локалниот потпишувач не работи. Стартувај го и обиди се повторно.');
+                        }
+
+                        this.statusText = 'Читам токен...';
+                        const certRes = await fetch('http://127.0.0.1:9847/certificate');
+                        if (!certRes.ok) throw new Error('Не можам да ги прочитам податоците од токенот.');
+                        const cert = await certRes.json();
+
+                        if (cert.serialNumber !== @js(auth()->user()->efakturaSignerFor($company)?->serialNumber)) {
+                            throw new Error('Приклучениот токен не одговара на регистрираниот за оваа компанија.');
+                        }
+
+                        this.statusText = 'Подготвувам текст за потпишување...';
+                        const signingRes = await fetch(@js(route('sales-invoices.efaktura.pdf.signing-input', [$company, $invoice])), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({ certificateBase64: cert.certificateBase64 }),
+                        });
+                        if (!signingRes.ok) {
+                            const errorBody = await signingRes.json().catch(() => null);
+                            throw new Error(errorBody?.message ?? errorBody?.error ?? 'Серверот не можеше да го подготви текстот за потпишување.');
+                        }
+                        const { token, signingInput } = await signingRes.json();
+
+                        this.statusText = 'Потпишувам (проверете го прозорецот на SafeNet)...';
+                        const signRes = await fetch('http://127.0.0.1:9847/sign', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ data: toBase64Url(signingInput) }),
+                        });
+                        if (!signRes.ok) throw new Error('Потпишувањето не успеа — провери го PIN-от на токенот.');
+                        const { signature } = await signRes.json();
+
+                        this.statusText = 'Преземам ПДФ...';
+                        const storeRes = await fetch(@js(route('sales-invoices.efaktura.pdf.store', [$company, $invoice])), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({ token, signature }),
+                        });
+                        if (!storeRes.ok) {
+                            const storeBody = await storeRes.json().catch(() => null);
+                            const message = storeBody?.error === 'ujp_rejected'
+                                ? `УЈП го одби барањето: ${storeBody.body}`
+                                : (storeBody?.message ?? storeBody?.error ?? 'Преземањето не успеа.');
+                            throw new Error(message);
+                        }
+
+                        window.location.reload();
                     } catch (e) {
                         this.error = e.message;
                     } finally {
