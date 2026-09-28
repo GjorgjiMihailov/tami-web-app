@@ -200,19 +200,29 @@ class SalesInvoiceService
         });
     }
 
-    public function cancel(SalesInvoice $invoice, int $userId): SalesInvoice
+    /**
+     * Целосно бришење на фактура — нацрт или потврдена. Потврдена фактура прво
+     * го сторнира книжењето и залихата (истата логика што порано ја правеше
+     * „Откажи"), но записот potoa целосно се брише, не остава „откажана"
+     * фактура зад себе. Сопственикот изречно го избра ова однесување.
+     */
+    public function delete(SalesInvoice $invoice, int $userId): void
     {
-        if ($invoice->status !== 'confirmed') {
-            throw new InvalidInvoiceStateException("Фактура #{$invoice->id} не е потврдена и не може да се откаже.");
+        if (! in_array($invoice->status, ['draft', 'confirmed'], true)) {
+            throw new InvalidInvoiceStateException("Фактура #{$invoice->id} не може да се избрише од оваа состојба.");
+        }
+
+        if ($invoice->isEfakturaLocked()) {
+            throw new InvalidInvoiceStateException('Фактура испратена и прифатена преку е-Фактура не може да се брише.');
         }
 
         if ($invoice->payments()->exists()) {
-            throw new InvalidInvoiceStateException('Фактура со евидентирани плаќања не може да се откаже.');
+            throw new InvalidInvoiceStateException('Фактура со евидентирани плаќања не може да се избрише.');
         }
 
-        $invoice->loadMissing(['lines.item', 'lines.stockMovement', 'journalEntry.lines', 'warehouse', 'company']);
+        $invoice->loadMissing(['lines.item', 'lines.stockMovement', 'journalEntry', 'warehouse']);
 
-        return DB::transaction(function () use ($invoice, $userId) {
+        DB::transaction(function () use ($invoice, $userId) {
             foreach ($invoice->lines as $line) {
                 if ($line->item_id === null || $line->stockMovement === null) {
                     continue;
@@ -228,28 +238,67 @@ class SalesInvoiceService
                 );
             }
 
-            $reversal = JournalEntry::create([
-                'company_id' => $invoice->company_id,
-                'journal_group_id' => $this->systemJournalGroup($invoice->company)->id,
-                'entry_date' => now()->toDateString(),
-                'description' => "Reversal of invoice {$invoice->formattedNumber()}",
-                'created_by' => $userId,
-            ]);
+            // Прво се брише фактурата (таа покажува кон книжењето со journal_entry_id,
+            // не обратно), па дури потоа книжењето — инаку странскиот клуч пука.
+            $journalEntry = $invoice->journalEntry;
+            $invoice->delete();
+            $journalEntry?->delete();
+        });
+    }
 
-            foreach ($invoice->journalEntry->lines as $originalLine) {
-                $reversal->lines()->create([
-                    'account_id' => $originalLine->account_id,
-                    'partner_id' => $originalLine->partner_id,
-                    'description' => 'Reversal: '.$originalLine->description,
-                    'line_date' => $reversal->entry_date,
-                    'debit' => $originalLine->credit,
-                    'credit' => $originalLine->debit,
+    /**
+     * Го менува испечатениот број на фактура (нацрт или потврдена), освен ако
+     * е испратена и прифатена преку е-Фактура. На потврдена фактура го
+     * ажурира и текстот во веќе книжените ставки (истиот стар број) за
+     * главната книга да остане усогласена со новиот број.
+     */
+    public function changeNumber(SalesInvoice $invoice, string $newFormattedNumber, int $userId): SalesInvoice
+    {
+        if (! in_array($invoice->status, ['draft', 'confirmed'], true)) {
+            throw new InvalidInvoiceStateException("Фактура #{$invoice->id} не може да го смени бројот од оваа состојба.");
+        }
+
+        if ($invoice->isEfakturaLocked()) {
+            throw new InvalidInvoiceStateException('Фактура испратена и прифатена преку е-Фактура не може да го смени бројот.');
+        }
+
+        $newFormattedNumber = trim($newFormattedNumber);
+
+        if ($newFormattedNumber === '') {
+            throw new InvalidInvoiceStateException('Бројот не може да биде празен.');
+        }
+
+        $query = SalesInvoice::where('company_id', $invoice->company_id)
+            ->whereKeyNot($invoice->id)
+            ->where('invoice_number_formatted', $newFormattedNumber);
+
+        $query = $invoice->status === 'confirmed'
+            ? $query->where('fiscal_year', $invoice->fiscal_year)
+            : $query->whereYear('invoice_date', $invoice->invoice_date->year);
+
+        if ($query->exists()) {
+            throw new InvalidInvoiceStateException("Веќе постои фактура со број {$newFormattedNumber} во таа година.");
+        }
+
+        return DB::transaction(function () use ($invoice, $newFormattedNumber) {
+            $oldFormattedNumber = $invoice->invoice_number_formatted;
+            $invoice->update(['invoice_number_formatted' => $newFormattedNumber]);
+
+            if ($invoice->journal_entry_id !== null && filled($oldFormattedNumber)) {
+                $invoice->loadMissing('journalEntry.lines');
+                $oldLabel = 'Invoice '.$oldFormattedNumber;
+                $newLabel = 'Invoice '.$newFormattedNumber;
+
+                $invoice->journalEntry->update([
+                    'description' => str_replace($oldLabel, $newLabel, $invoice->journalEntry->description),
                 ]);
+
+                foreach ($invoice->journalEntry->lines as $line) {
+                    $line->update(['description' => str_replace($oldLabel, $newLabel, $line->description)]);
+                }
             }
 
-            $invoice->update(['status' => 'cancelled']);
-
-            return $invoice->fresh(['lines', 'payments']);
+            return $invoice->fresh();
         });
     }
 

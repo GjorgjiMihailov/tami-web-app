@@ -32,9 +32,22 @@
     </x-card>
 
     <div>
-    <h1 class="text-2xl font-bold text-gray-800 mb-1">
-        Влезна фактура — {{ $invoice->partner->name }} #{{ $invoice->supplier_invoice_number }}
-    </h1>
+    @if ($editingNumber)
+        <form wire:submit="changeNumber" class="flex items-center gap-2 mb-1">
+            <span class="text-sm text-gray-500">Влезна фактура — {{ $invoice->partner->name }} #</span>
+            <input type="text" wire:model="newNumber" class="border-gray-300 rounded-md text-sm w-40" autofocus>
+            <button type="submit" class="text-sm text-brand font-semibold">Зачувај</button>
+            <button type="button" wire:click="cancelEditingNumber" class="text-sm text-gray-500 hover:underline">Откажи</button>
+        </form>
+        @error('newNumber') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
+    @else
+        <h1 class="text-2xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+            Влезна фактура — {{ $invoice->partner->name }} #{{ $invoice->supplier_invoice_number }}
+            @if (in_array($invoice->status, ['draft', 'confirmed']))
+                <button type="button" wire:click="startEditingNumber" class="text-xs font-normal text-brand hover:underline" title="Смени број">Смени број</button>
+            @endif
+        </h1>
+    @endif
     <p class="text-sm text-gray-500 mb-4 flex items-center gap-2">
         <x-badge :status="$invoice->status">{{ \App\Support\Format::invoiceStatus($invoice->status) }}</x-badge>
         @if ($invoice->status === 'confirmed')
@@ -48,7 +61,7 @@
     </p>
 
     @error('confirm') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
-    @error('cancel') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
+    @error('delete') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
 
     {{-- Што следува --}}
     @if ($invoice->status === 'draft')
@@ -125,8 +138,8 @@
             <a href="{{ route('purchase-invoices.edit', [$company, $invoice]) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full font-semibold text-sm text-gray-700 shadow-sm hover:bg-paper focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition">Измени</a>
             <button type="button" wire:click="confirm" class="inline-flex items-center gap-2 px-4 py-2 bg-brand border border-transparent rounded-full font-semibold text-sm text-white shadow-sm hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition">Потврди</button>
         @endif
-        @if ($invoice->status === 'confirmed' && $invoice->payments->isEmpty())
-            <button type="button" wire:click="cancel" wire:confirm="Да ја откажам фактурата? Книжењето ќе се сторнира." class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 rounded-full font-semibold text-sm text-red-600 shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 transition sm:ml-auto">Откажи фактура</button>
+        @if (in_array($invoice->status, ['draft', 'confirmed']) && $invoice->payments->isEmpty())
+            <button type="button" wire:click="delete" wire:confirm="Да ја избришам трајно оваа влезна фактура? {{ $invoice->status === 'confirmed' ? 'Книжењето и залихата ќе се сторнираат, а записот целосно ќе исчезне.' : '' }} Ова не може да се врати." class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 rounded-full font-semibold text-sm text-red-600 shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 transition sm:ml-auto">Избриши фактура</button>
         @endif
     </div>
 

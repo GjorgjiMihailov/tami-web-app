@@ -52,7 +52,7 @@ class PurchaseInvoiceShowTest extends TestCase
         $this->assertSame('confirmed', $invoice->fresh()->status);
     }
 
-    public function test_cancel_action_is_available_only_when_unpaid(): void
+    public function test_delete_action_is_available_only_when_unpaid(): void
     {
         $company = Company::factory()->create();
         $this->seedAccounts($company);
@@ -69,10 +69,10 @@ class PurchaseInvoiceShowTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(PurchaseInvoiceShow::class, ['company' => $company, 'purchaseInvoice' => $invoice])
-            ->call('cancel')
+            ->call('delete')
             ->assertHasNoErrors();
 
-        $this->assertSame('cancelled', $invoice->fresh()->status);
+        $this->assertDatabaseMissing('purchase_invoices', ['id' => $invoice->id]);
     }
 
     public function test_the_line_items_table_gets_the_hover_treatment_but_the_payments_table_does_not(): void

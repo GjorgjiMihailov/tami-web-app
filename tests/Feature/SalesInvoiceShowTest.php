@@ -75,7 +75,7 @@ class SalesInvoiceShowTest extends TestCase
         $this->assertSame('draft', $invoice->fresh()->status);
     }
 
-    public function test_recording_a_payment_and_cancel_button_is_hidden_once_paid(): void
+    public function test_recording_a_payment_hides_the_delete_button(): void
     {
         $company = Company::factory()->create();
         $this->seedAccounts($company);
@@ -94,7 +94,7 @@ class SalesInvoiceShowTest extends TestCase
             ->set('paymentMethod', 'bank')
             ->call('recordPayment')
             ->assertHasNoErrors()
-            ->assertDontSee('Cancel invoice');
+            ->assertDontSee('Избриши фактура');
 
         $this->assertDatabaseHas('sales_invoice_payments', ['sales_invoice_id' => $invoice->id, 'amount' => '100.00']);
     }

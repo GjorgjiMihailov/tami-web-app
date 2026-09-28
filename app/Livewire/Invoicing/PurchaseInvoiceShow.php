@@ -27,6 +27,10 @@ class PurchaseInvoiceShow extends Component
 
     public int $workingYear = 0;
 
+    public bool $editingNumber = false;
+
+    public string $newNumber = '';
+
     public function mount(Company $company, PurchaseInvoice $purchaseInvoice): void
     {
         Gate::authorize('view', $purchaseInvoice);
@@ -56,18 +60,48 @@ class PurchaseInvoiceShow extends Component
         $this->purchaseInvoice->refresh();
     }
 
-    public function cancel(PurchaseInvoiceService $service): void
+    public function delete(PurchaseInvoiceService $service)
     {
         Gate::authorize('update', $this->purchaseInvoice);
 
         try {
-            $service->cancel($this->purchaseInvoice, auth()->id());
+            $service->delete($this->purchaseInvoice, auth()->id());
         } catch (InvalidInvoiceStateException $e) {
-            $this->addError('cancel', $e->getMessage());
+            $this->addError('delete', $e->getMessage());
 
             return;
         }
 
+        return $this->redirect(route('purchase-invoices.index', $this->company), navigate: true);
+    }
+
+    public function startEditingNumber(): void
+    {
+        Gate::authorize('update', $this->purchaseInvoice);
+
+        $this->newNumber = (string) $this->purchaseInvoice->supplier_invoice_number;
+        $this->editingNumber = true;
+    }
+
+    public function cancelEditingNumber(): void
+    {
+        $this->editingNumber = false;
+        $this->resetErrorBag('newNumber');
+    }
+
+    public function changeNumber(PurchaseInvoiceService $service): void
+    {
+        Gate::authorize('update', $this->purchaseInvoice);
+
+        try {
+            $service->changeSupplierNumber($this->purchaseInvoice, $this->newNumber, auth()->id());
+        } catch (InvalidInvoiceStateException $e) {
+            $this->addError('newNumber', $e->getMessage());
+
+            return;
+        }
+
+        $this->editingNumber = false;
         $this->purchaseInvoice->refresh();
     }
 

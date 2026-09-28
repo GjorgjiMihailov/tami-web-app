@@ -384,7 +384,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $this->assertNull($lines->firstWhere('account_id', $this->accountId($company, '130')));
     }
 
-    public function test_cancelling_issues_stock_only_for_product_lines(): void
+    public function test_deleting_issues_stock_only_for_product_lines(): void
     {
         $company = Company::factory()->create();
         $this->seedAccounts($company);
@@ -404,7 +404,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $invoice->lines()->create(['item_id' => $service->id, 'account_id' => $expenseAccount->id, 'description' => $service->name, 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
 
         $this->service->confirm($invoice->fresh(), $user->id);
-        $this->service->cancel($invoice->fresh(), $user->id);
+        $this->service->delete($invoice->fresh(), $user->id);
 
         $this->assertSame(0, StockMovement::where('item_id', $service->id)->count());
         $this->assertSame(2, StockMovement::where('item_id', $product->id)->count());
@@ -424,7 +424,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $this->service->confirm($invoice->fresh(), $user->id);
     }
 
-    public function test_cancelling_a_confirmed_invoice_reverses_gl_and_stock(): void
+    public function test_deleting_a_confirmed_invoice_reverses_stock_and_removes_everything(): void
     {
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $this->seedAccounts($company);
@@ -436,31 +436,26 @@ class PurchaseInvoiceServiceTest extends TestCase
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'warehouse_id' => $warehouse->id, 'invoice_date' => '2026-03-01']);
         $invoice->lines()->create(['item_id' => $item->id, 'description' => $item->name, 'quantity' => '10', 'unit_price' => '50.00', 'vat_rate' => '18.00']);
         $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+        $journalEntryId = $confirmed->journal_entry_id;
 
-        $cancelled = $this->service->cancel($confirmed, $user->id);
+        $this->service->delete($confirmed, $user->id);
 
-        $this->assertSame('cancelled', $cancelled->status);
         $this->assertSame('0.000', (string) StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->quantity_on_hand);
-
-        $reversal = JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines')->first();
-        $this->assertNotNull($reversal);
-
-        $originalTotalDebit = $confirmed->journalEntry->lines->sum('debit');
-        $reversalTotalCredit = $reversal->lines->sum('credit');
-        $this->assertSame((string) $originalTotalDebit, (string) $reversalTotalCredit);
+        $this->assertDatabaseMissing('purchase_invoices', ['id' => $confirmed->id]);
+        $this->assertDatabaseMissing('journal_entries', ['id' => $journalEntryId]);
     }
 
-    public function test_cancelling_a_draft_invoice_throws(): void
+    public function test_deleting_a_draft_invoice_removes_it_without_a_journal_entry(): void
     {
         $invoice = PurchaseInvoice::factory()->create(['status' => 'draft']);
         $user = User::factory()->create();
 
-        $this->expectException(InvalidInvoiceStateException::class);
+        $this->service->delete($invoice, $user->id);
 
-        $this->service->cancel($invoice, $user->id);
+        $this->assertDatabaseMissing('purchase_invoices', ['id' => $invoice->id]);
     }
 
-    public function test_cancelling_an_invoice_with_a_payment_throws(): void
+    public function test_deleting_an_invoice_with_a_payment_throws(): void
     {
         $company = Company::factory()->create();
         $this->seedAccounts($company);
@@ -483,10 +478,10 @@ class PurchaseInvoiceServiceTest extends TestCase
 
         $this->expectException(InvalidInvoiceStateException::class);
 
-        $this->service->cancel($confirmed->fresh(), $user->id);
+        $this->service->delete($confirmed->fresh(), $user->id);
     }
 
-    public function test_cancelling_throws_a_clear_error_when_received_stock_was_already_used_elsewhere(): void
+    public function test_deleting_throws_a_clear_error_when_received_stock_was_already_used_elsewhere(): void
     {
         $company = Company::factory()->create();
         $this->seedAccounts($company);
@@ -504,7 +499,27 @@ class PurchaseInvoiceServiceTest extends TestCase
 
         $this->expectException(InvalidInvoiceStateException::class);
 
-        $this->service->cancel($confirmed->fresh(), $user->id);
+        $this->service->delete($confirmed->fresh(), $user->id);
+    }
+
+    public function test_change_supplier_number_updates_the_number_and_journal_entry_labels(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $user = User::factory()->create();
+        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01', 'supplier_invoice_number' => 'OLD-1']);
+        $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+
+        $changed = $this->service->changeSupplierNumber($confirmed, 'NEW-2', $user->id);
+
+        $this->assertSame('NEW-2', $changed->supplier_invoice_number);
+        $entry = $changed->journalEntry()->with('lines')->first();
+        $this->assertStringContainsString('NEW-2', $entry->description);
+        $this->assertStringNotContainsString('OLD-1', $entry->description);
+        $entry->lines->each(fn ($line) => $this->assertStringContainsString('NEW-2', $line->description));
     }
 
     public function test_recording_a_payment_posts_ap_debit_and_bank_credit(): void
@@ -633,27 +648,6 @@ class PurchaseInvoiceServiceTest extends TestCase
         $entry->lines->each(function ($line) use ($entry) {
             $this->assertNotNull($line->line_date);
             $this->assertSame($entry->entry_date->toDateString(), $line->line_date->toDateString());
-        });
-    }
-
-    public function test_cancelling_a_confirmed_invoice_gives_reversal_lines_a_non_null_line_date_matching_the_reversal_entry(): void
-    {
-        $company = Company::factory()->create(['is_vat_registered' => true]);
-        $this->seedAccounts($company);
-        $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
-        $user = User::factory()->create();
-        $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
-        $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Consulting', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00']);
-        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
-
-        $cancelled = $this->service->cancel($confirmed, $user->id);
-
-        $reversal = $cancelled->fresh()->journalEntry()->with('lines')->first();
-        $this->assertGreaterThan(0, $reversal->lines->count());
-        $reversal->lines->each(function ($line) use ($reversal) {
-            $this->assertNotNull($line->line_date);
-            $this->assertSame($reversal->entry_date->toDateString(), $line->line_date->toDateString());
         });
     }
 

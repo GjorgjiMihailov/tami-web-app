@@ -29,6 +29,10 @@ class SalesInvoiceShow extends Component
 
     public int $workingYear = 0;
 
+    public bool $editingNumber = false;
+
+    public string $newNumber = '';
+
     public function mount(Company $company, SalesInvoice $salesInvoice): void
     {
         Gate::authorize('view', $salesInvoice);
@@ -67,18 +71,48 @@ class SalesInvoiceShow extends Component
         $this->salesInvoice->refresh();
     }
 
-    public function cancel(SalesInvoiceService $service): void
+    public function delete(SalesInvoiceService $service)
     {
         Gate::authorize('update', $this->salesInvoice);
 
         try {
-            $service->cancel($this->salesInvoice, auth()->id());
+            $service->delete($this->salesInvoice, auth()->id());
         } catch (InvalidInvoiceStateException $e) {
-            $this->addError('cancel', $e->getMessage());
+            $this->addError('delete', $e->getMessage());
 
             return;
         }
 
+        return $this->redirect(route('sales-invoices.index', $this->company), navigate: true);
+    }
+
+    public function startEditingNumber(): void
+    {
+        Gate::authorize('update', $this->salesInvoice);
+
+        $this->newNumber = (string) $this->salesInvoice->formattedNumber();
+        $this->editingNumber = true;
+    }
+
+    public function cancelEditingNumber(): void
+    {
+        $this->editingNumber = false;
+        $this->resetErrorBag('newNumber');
+    }
+
+    public function changeNumber(SalesInvoiceService $service): void
+    {
+        Gate::authorize('update', $this->salesInvoice);
+
+        try {
+            $service->changeNumber($this->salesInvoice, $this->newNumber, auth()->id());
+        } catch (InvalidInvoiceStateException $e) {
+            $this->addError('newNumber', $e->getMessage());
+
+            return;
+        }
+
+        $this->editingNumber = false;
         $this->salesInvoice->refresh();
     }
 

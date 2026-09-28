@@ -96,6 +96,15 @@ class SalesInvoice extends Model
         return in_array($this->efaktura_ujp_status_code, self::EFAKTURA_ACCEPTED_STATUS_CODES, true);
     }
 
+    /**
+     * Испратена и прифатена преку е-Фактура — бројот и записот веќе се дел
+     * од официјална размена со УЈП, па не смеат да се менуваат/бришат овде.
+     */
+    public function isEfakturaLocked(): bool
+    {
+        return $this->efaktura_status === 'sent' && $this->isEfakturaAccepted();
+    }
+
     /** Дали фактурата е во странска валута, т.е. дали курсот воопшто значи нешто. */
     public function isForeignCurrency(): bool
     {
