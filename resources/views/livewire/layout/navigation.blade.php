@@ -3,7 +3,9 @@
 use App\Livewire\Actions\Logout;
 use App\Models\Company;
 use App\Support\AppSwitcher;
+use App\Support\Menu;
 use App\Support\PortalApp;
+use App\Support\WorkingYear;
 use Livewire\Volt\Component;
 
 new class extends Component
@@ -15,13 +17,26 @@ new class extends Component
 
     public ?Company $company = null;
 
+    public string $moduleLabel = '';
+
+    public string $moduleUrl = '';
+
+    public int $workingYear = 0;
+
     public function mount(): void
     {
         $company = request()->route('company');
         $this->company = $company instanceof Company ? $company : null;
 
-        $this->currentApp = (PortalApp::fromHost(request()->getHost()) ?? PortalApp::PORTAL)->value;
+        $app = PortalApp::fromHost(request()->getHost()) ?? PortalApp::PORTAL;
+        $this->currentApp = $app->value;
         $this->apps = AppSwitcher::for(auth()->user(), $this->company);
+        $this->moduleLabel = $app->label();
+
+        if ($this->company) {
+            $this->workingYear = WorkingYear::for($this->company);
+            $this->moduleUrl = Menu::landingUrl(auth()->user(), $this->company, $app) ?? '';
+        }
     }
 
     /**
@@ -49,6 +64,20 @@ new class extends Component
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
             </button>
+
+            {{-- Каде си: модул · фирма · година. Секогаш видливо, не само на
+                 таблата — за да не мора да се гледа во дното на темната лента
+                 за да се потврди во која фирма/година се работи. --}}
+            @if ($company)
+                <a href="{{ $moduleUrl ?: '#' }}" @if ($moduleUrl) wire:navigate @endif
+                   class="me-auto hidden lg:inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-100 press">
+                    {{ $moduleLabel }}
+                    <span class="text-gray-300 font-normal">·</span>
+                    <span class="font-normal text-gray-500">{{ $company->name }}</span>
+                    <span class="text-gray-300 font-normal">·</span>
+                    <span class="font-normal text-gray-500">{{ $workingYear }}</span>
+                </a>
+            @endif
 
             @if ($apps !== [])
                 <button type="button" @click="appsOpen = true"
