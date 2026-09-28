@@ -457,4 +457,15 @@ class SidebarTest extends TestCase
         Livewire::actingAs($client)->test(Sidebar::class)
             ->assertDontSee(route('companies.index'), false);
     }
+
+    /** Сметководителот немаше начин да стигне до сопствениот профил (за токенот) пред избор на фирма. */
+    public function test_an_accountant_gets_a_profile_settings_link_in_the_top_level_sidebar(): void
+    {
+        $accountant = User::factory()->create();
+        $accountant->assignRole('accountant');
+
+        Livewire::actingAs($accountant)->test(Sidebar::class)
+            ->assertSee('Подесувања на профил')
+            ->assertSee(route('profile'), false);
+    }
 }

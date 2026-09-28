@@ -47,6 +47,10 @@
                    class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'efaktura.incoming-all' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
                     Влезни е-Фактури
                 </a>
+                <a href="{{ route('profile') }}" wire:navigate
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ in_array($currentRoute, ['profile'], true) ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
+                    Подесувања на профил
+                </a>
             @endif
         @endif
 
