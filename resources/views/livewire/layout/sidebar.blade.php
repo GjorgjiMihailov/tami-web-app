@@ -4,9 +4,8 @@
         {{-- Двата реда се два одделни јазли намерно: Livewire му врзува
              коментари-маркери на текст што е сечен со @if, па заедничка линија
              со услов среде неа би се распаднала при освежување. --}}
-        <a href="{{ $brandUrl }}" @if ($this->app() === \App\Support\PortalApp::PORTAL) wire:navigate @endif class="block leading-tight">
-            <span class="block font-bold text-sm {{ $this->app()->accent() }}">{{ $this->app()->sidebarName() }}</span>
-            <span class="block italic text-[11px] text-rail-muted">{{ $this->app()->sidebarTagline() }}</span>
+        <a href="{{ $brandUrl }}" @if ($this->app() === \App\Support\PortalApp::PORTAL) wire:navigate @endif class="inline-flex items-center h-9 px-3 rounded-lg bg-white">
+            <img src="{{ asset('images/financebuddy-logo.png') }}" alt="FinanceBuddy.mk" class="h-5 w-auto">
         </a>
         <button type="button" @click="sidebarOpen = false"
                 aria-label="Затвори мени"
