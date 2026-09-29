@@ -20,7 +20,7 @@ class SidebarAppBrandingTest extends TestCase
         Role::findOrCreate('accountant');
     }
 
-    public function test_the_sidebar_names_the_app_it_is_in(): void
+    public function test_the_sidebar_shows_the_brand_logo_and_the_top_bar_names_the_app(): void
     {
         $company = Company::factory()->create();
         $admin = User::factory()->create();
@@ -29,8 +29,10 @@ class SidebarAppBrandingTest extends TestCase
         $response = $this->actingAs($admin)->get(route('payroll-runs.index', $company));
 
         $response->assertOk();
-        $response->assertSee('ПЛАТИ');
-        $response->assertSee('ТАМИ - FinanceBuddy App');
+        // Логото на FinanceBuddy.mk стои на врвот на sidebar-от на секој екран.
+        $response->assertSee('FinanceBuddy.mk');
+        // Која апликација си ја гледаш сега го кажува горната лента, не sidebar-от.
+        $response->assertSee('Плати');
     }
 
     public function test_the_portal_keeps_the_plain_name(): void
