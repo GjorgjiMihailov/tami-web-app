@@ -25,6 +25,7 @@ class Company extends Model
         'payroll_phone_prefix', 'payroll_phone', 'payroll_mobile', 'payroll_municipality_code',
         'invoice_number_prefix', 'invoice_number_include_year', 'invoice_number_year_first',
         'invoice_number_year_digits', 'invoice_number_separator', 'invoice_number_padding', 'proforma_number_prefix',
+        'delivery_note_number_prefix',
     ];
 
     /**
@@ -47,6 +48,7 @@ class Company extends Model
         'invoice_number_separator' => '/',
         'invoice_number_padding' => 1,
         'proforma_number_prefix' => 'ПФ-',
+        'delivery_note_number_prefix' => 'ИСП-',
     ];
 
     protected function casts(): array
