@@ -66,7 +66,14 @@
                 @error('proformaPrefix') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
 
-            <div class="grid gap-3 md:grid-cols-2">
+            <div>
+                <x-input-label for="deliveryNotePrefix" value="Префикс на испратницата (незадолжително)" />
+                <x-text-input id="deliveryNotePrefix" wire:model.live="deliveryNotePrefix" class="w-full md:w-1/2" placeholder="пр. ИСП-" />
+                <p class="text-xs text-gray-500 mt-1">Испратниците имаат своја серија, а годината, разделникот и должината се истите како кај фактурите.</p>
+                @error('deliveryNotePrefix') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+            </div>
+
+            <div class="grid gap-3 md:grid-cols-3">
                 <div class="bg-gray-50 rounded-lg px-4 py-3">
                     <div class="text-xs uppercase tracking-wide text-gray-500">Фактура</div>
                     <div class="text-xl font-semibold text-gray-800 mt-1">{{ $preview }}</div>
@@ -74,6 +81,10 @@
                 <div class="bg-gray-50 rounded-lg px-4 py-3">
                     <div class="text-xs uppercase tracking-wide text-gray-500">Профактура</div>
                     <div class="text-xl font-semibold text-gray-800 mt-1">{{ $proformaPreview }}</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg px-4 py-3">
+                    <div class="text-xs uppercase tracking-wide text-gray-500">Испратница</div>
+                    <div class="text-xl font-semibold text-gray-800 mt-1">{{ $deliveryNotePreview }}</div>
                 </div>
             </div>
 

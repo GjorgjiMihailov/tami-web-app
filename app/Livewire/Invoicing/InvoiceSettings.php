@@ -29,6 +29,9 @@ class InvoiceSettings extends Component
     /** Префикс на профактурата — годината, разделникот и должината се исти како кај фактурата. */
     public string $proformaPrefix = 'ПФ-';
 
+    /** Префикс на испратницата — иста логика како профактурата. */
+    public string $deliveryNotePrefix = 'ИСП-';
+
     public bool $saved = false;
 
     public function mount(Company $company): void
@@ -43,6 +46,7 @@ class InvoiceSettings extends Component
         $this->padding = (int) $company->invoice_number_padding;
         $this->prefix = (string) ($company->invoice_number_prefix ?? '');
         $this->proformaPrefix = (string) ($company->proforma_number_prefix ?? '');
+        $this->deliveryNotePrefix = (string) ($company->delivery_note_number_prefix ?? '');
     }
 
     public function save(): void
@@ -57,6 +61,7 @@ class InvoiceSettings extends Component
             'padding' => 'required|integer|min:1|max:6',
             'prefix' => 'nullable|string|max:10',
             'proformaPrefix' => 'nullable|string|max:10',
+            'deliveryNotePrefix' => 'nullable|string|max:10',
         ]);
 
         $this->company->update([
@@ -67,6 +72,7 @@ class InvoiceSettings extends Component
             'invoice_number_padding' => $validated['padding'],
             'invoice_number_prefix' => $validated['prefix'] !== '' ? $validated['prefix'] : null,
             'proforma_number_prefix' => $validated['proformaPrefix'] !== '' ? $validated['proformaPrefix'] : null,
+            'delivery_note_number_prefix' => $validated['deliveryNotePrefix'] !== '' ? $validated['deliveryNotePrefix'] : null,
         ]);
 
         $this->saved = true;
@@ -100,6 +106,7 @@ class InvoiceSettings extends Component
         return view('livewire.invoicing.invoice-settings', [
             'preview' => InvoiceNumber::format($this->previewCompany(), (int) now()->year, 1),
             'proformaPreview' => InvoiceNumber::format($this->previewCompany(), (int) now()->year, 1, $this->proformaPrefix),
+            'deliveryNotePreview' => InvoiceNumber::format($this->previewCompany(), (int) now()->year, 1, $this->deliveryNotePrefix),
         ]);
     }
 }

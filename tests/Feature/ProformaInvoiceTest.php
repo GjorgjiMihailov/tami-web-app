@@ -556,4 +556,19 @@ class ProformaInvoiceTest extends TestCase
             ->call('select', $draft->id)
             ->assertDontSeeHtml(route('proformas.delivery-note', [$company, $draft]));
     }
+
+    public function test_the_invoice_settings_screen_edits_the_delivery_note_prefix_and_previews_it(): void
+    {
+        $company = Company::factory()->create();
+        $this->admin();
+
+        Livewire::test(InvoiceSettings::class, ['company' => $company])
+            ->assertSet('deliveryNotePrefix', 'ИСП-')
+            ->set('deliveryNotePrefix', 'ISP-')
+            ->assertSee('ISP-'.now()->year.'/1')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('ISP-', $company->fresh()->delivery_note_number_prefix);
+    }
 }
