@@ -26,10 +26,12 @@ return new class extends Migration
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 
-            $table->unique(['company_id', 'fiscal_year', 'delivery_note_number']);
+            // Имиња на индекси дадени рачно — MySQL одбива идентификатор над 64
+            // знаци, а автоматското име на првиот индекс го минува тој праг.
+            $table->unique(['company_id', 'fiscal_year', 'delivery_note_number'], 'delivery_notes_company_year_number_unique');
             // Спречува втора испратница за истиот извор — секое второ барање
             // мора да ја врати постојната наместо да создаде нова.
-            $table->unique(['deliverable_type', 'deliverable_id']);
+            $table->unique(['deliverable_type', 'deliverable_id'], 'delivery_notes_deliverable_unique');
         });
     }
 
