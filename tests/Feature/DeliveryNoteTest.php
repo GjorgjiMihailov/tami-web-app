@@ -9,6 +9,7 @@ use App\Models\Partner;
 use App\Models\ProformaInvoice;
 use App\Models\ProformaInvoiceLine;
 use App\Models\SalesInvoice;
+use App\Models\SalesInvoiceLine;
 use App\Models\User;
 use App\Services\Invoicing\DeliveryNoteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -150,5 +151,68 @@ class DeliveryNoteTest extends TestCase
         $this->assertStringContainsString('ПРИМИЛ', $html);
         $this->assertStringNotContainsString('999.00', $html);
         $this->assertStringNotContainsString('ДДВ', $html);
+    }
+
+    // ---- Рути и PDF-преземање ----
+
+    public function test_the_proforma_delivery_note_route_downloads_a_pdf_and_is_idempotent(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $proforma = ProformaInvoice::factory()->create(['company_id' => $company->id, 'partner_id' => $partner->id, 'status' => 'confirmed']);
+        ProformaInvoiceLine::factory()->create(['proforma_invoice_id' => $proforma->id]);
+        $this->admin();
+
+        $first = $this->get(route('proformas.delivery-note', [$company, $proforma]));
+        $first->assertOk();
+        $this->assertStringStartsWith('%PDF-', $first->getContent());
+
+        $this->get(route('proformas.delivery-note', [$company, $proforma]))->assertOk();
+
+        $this->assertSame(1, DeliveryNote::count());
+    }
+
+    public function test_a_draft_proforma_refuses_a_delivery_note_over_http(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $draft = ProformaInvoice::factory()->create(['company_id' => $company->id, 'partner_id' => $partner->id, 'status' => 'draft']);
+        $this->admin();
+
+        $this->get(route('proformas.delivery-note', [$company, $draft]))->assertForbidden();
+    }
+
+    public function test_a_proforma_delivery_note_of_another_company_is_404_under_this_company(): void
+    {
+        $company = Company::factory()->create();
+        $other = Company::factory()->create();
+        $otherPartner = Partner::factory()->for($other)->create();
+        $foreign = ProformaInvoice::factory()->create(['company_id' => $other->id, 'partner_id' => $otherPartner->id, 'status' => 'confirmed']);
+        $this->admin();
+
+        $this->get(route('proformas.delivery-note', [$company, $foreign]))->assertNotFound();
+    }
+
+    public function test_the_sales_invoice_delivery_note_route_downloads_a_pdf(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->create(['company_id' => $company->id, 'partner_id' => $partner->id, 'status' => 'confirmed', 'fiscal_year' => now()->year, 'invoice_number' => 5]);
+        SalesInvoiceLine::factory()->create(['sales_invoice_id' => $invoice->id]);
+        $this->admin();
+
+        $response = $this->get(route('sales-invoices.delivery-note', [$company, $invoice]));
+        $response->assertOk();
+        $this->assertStringStartsWith('%PDF-', $response->getContent());
+    }
+
+    public function test_a_draft_sales_invoice_refuses_a_delivery_note_over_http(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $draft = SalesInvoice::factory()->create(['company_id' => $company->id, 'partner_id' => $partner->id, 'status' => 'draft']);
+        $this->admin();
+
+        $this->get(route('sales-invoices.delivery-note', [$company, $draft]))->assertForbidden();
     }
 }

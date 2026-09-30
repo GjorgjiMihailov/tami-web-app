@@ -17,7 +17,9 @@ use App\Http\Controllers\PartnerShowRedirectController;
 use App\Http\Controllers\PartnerStatementPdfController;
 use App\Http\Controllers\PayrollRecapPdfController;
 use App\Http\Controllers\PayslipPdfController;
+use App\Http\Controllers\ProformaDeliveryNotePdfController;
 use App\Http\Controllers\ProformaPdfController;
+use App\Http\Controllers\SalesInvoiceDeliveryNotePdfController;
 use App\Http\Controllers\SalesInvoicePdfController;
 use App\Livewire\Invoicing\ProformaForm;
 use App\Livewire\Invoicing\ProformaIndex;
@@ -211,6 +213,7 @@ Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.
         Route::get('/sales-invoices/{salesInvoice}/edit', [SalesInvoiceForm::class, '__invoke'])->name('edit');
         Route::get('/sales-invoices/{salesInvoice}', [SalesInvoiceShow::class, '__invoke'])->name('show');
         Route::get('/sales-invoices/{salesInvoice}/pdf', [SalesInvoicePdfController::class, '__invoke'])->name('pdf');
+        Route::get('/sales-invoices/{salesInvoice}/delivery-note', [SalesInvoiceDeliveryNotePdfController::class, '__invoke'])->name('delivery-note');
     });
 
     // Профактури: ист модул (Материјално) како излезните фактури, отворено и за физичко лице.
@@ -219,6 +222,7 @@ Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.
         Route::get('/proformas/create', [ProformaForm::class, '__invoke'])->name('create');
         Route::get('/proformas/{proforma}/edit', [ProformaForm::class, '__invoke'])->name('edit');
         Route::get('/proformas/{proforma}/pdf', [ProformaPdfController::class, '__invoke'])->name('pdf');
+        Route::get('/proformas/{proforma}/delivery-note', [ProformaDeliveryNotePdfController::class, '__invoke'])->name('delivery-note');
     });
 
     // Намерно ВОН sales-invoices.* — Menu.php ги бои групите со Str::is() врз
