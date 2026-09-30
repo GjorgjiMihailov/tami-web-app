@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\DeliveryNote;
 use App\Models\Partner;
 use App\Models\ProformaInvoice;
+use App\Models\ProformaInvoiceLine;
 use App\Models\SalesInvoice;
 use App\Models\User;
 use App\Services\Invoicing\DeliveryNoteService;
@@ -114,5 +115,40 @@ class DeliveryNoteTest extends TestCase
 
         $this->expectException(InvalidInvoiceStateException::class);
         app(DeliveryNoteService::class)->createOrGetFor($draft);
+    }
+
+    // ---- PDF-шаблон ----
+
+    public function test_the_pdf_view_shows_quantities_without_any_price_or_vat(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create(['name' => 'Купувач Ана']);
+        $proforma = ProformaInvoice::factory()->create(['company_id' => $company->id, 'partner_id' => $partner->id, 'status' => 'confirmed']);
+        ProformaInvoiceLine::factory()->create(['proforma_invoice_id' => $proforma->id, 'description' => 'Канцелариски стол', 'quantity' => '3.000', 'unit_price' => '999.00']);
+        $note = DeliveryNote::factory()->create([
+            'company_id' => $company->id,
+            'deliverable_type' => ProformaInvoice::class,
+            'deliverable_id' => $proforma->id,
+            'delivery_note_number_formatted' => 'ИСП-2026/1',
+        ]);
+
+        $html = view('pdf.delivery-note', [
+            'deliveryNote' => $note,
+            'company' => $company,
+            'partner' => $partner,
+            'lines' => $proforma->load('lines.item')->lines,
+            'sourceLabel' => 'профактура',
+            'sourceNumber' => $proforma->proforma_number_formatted,
+        ])->render();
+
+        $this->assertStringContainsString('Испратница', $html);
+        $this->assertStringContainsString('ИСП-2026/1', $html);
+        $this->assertStringContainsString('Купувач Ана', $html);
+        $this->assertStringContainsString('Канцелариски стол', $html);
+        $this->assertStringContainsString('3.000', $html);
+        $this->assertStringContainsString('ПРЕДАЛ', $html);
+        $this->assertStringContainsString('ПРИМИЛ', $html);
+        $this->assertStringNotContainsString('999.00', $html);
+        $this->assertStringNotContainsString('ДДВ', $html);
     }
 }
