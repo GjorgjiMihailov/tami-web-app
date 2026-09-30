@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Exceptions\InvalidInvoiceStateException;
+use App\Livewire\Invoicing\SalesInvoiceShow;
 use App\Models\Company;
 use App\Models\DeliveryNote;
 use App\Models\Partner;
@@ -13,6 +14,7 @@ use App\Models\SalesInvoiceLine;
 use App\Models\User;
 use App\Services\Invoicing\DeliveryNoteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -214,5 +216,23 @@ class DeliveryNoteTest extends TestCase
         $this->admin();
 
         $this->get(route('sales-invoices.delivery-note', [$company, $draft]))->assertForbidden();
+    }
+
+    // ---- Копче на екраните ----
+
+    public function test_the_sales_invoice_screen_shows_the_delivery_note_button_only_when_confirmed(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $draft = SalesInvoice::factory()->create(['company_id' => $company->id, 'partner_id' => $partner->id, 'status' => 'draft']);
+        $confirmed = SalesInvoice::factory()->create(['company_id' => $company->id, 'partner_id' => $partner->id, 'status' => 'confirmed', 'fiscal_year' => now()->year, 'invoice_number' => 1]);
+        SalesInvoiceLine::factory()->create(['sales_invoice_id' => $confirmed->id]);
+        $this->admin();
+
+        Livewire::test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $confirmed])
+            ->assertSeeHtml(route('sales-invoices.delivery-note', [$company, $confirmed]));
+
+        Livewire::test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $draft])
+            ->assertDontSeeHtml(route('sales-invoices.delivery-note', [$company, $draft]));
     }
 }

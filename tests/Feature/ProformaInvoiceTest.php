@@ -539,4 +539,21 @@ class ProformaInvoiceTest extends TestCase
         $this->assertSame(1, ProformaInvoice::where('status', 'converted')->count());
         $this->assertSame(SalesInvoice::first()->id, $proforma->fresh()->sales_invoice_id);
     }
+
+    // ---- Испратница ----
+
+    public function test_the_detail_shows_the_delivery_note_button_only_when_confirmed(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $draft = $this->make($company, $partner, 'draft');
+        $confirmed = $this->make($company, $partner, 'confirmed');
+        $this->admin();
+
+        Livewire::test(ProformaIndex::class, ['company' => $company])
+            ->call('select', $confirmed->id)
+            ->assertSeeHtml(route('proformas.delivery-note', [$company, $confirmed]))
+            ->call('select', $draft->id)
+            ->assertDontSeeHtml(route('proformas.delivery-note', [$company, $draft]));
+    }
 }

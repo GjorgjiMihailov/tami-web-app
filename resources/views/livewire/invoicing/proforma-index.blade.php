@@ -90,6 +90,12 @@
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v11m0 0l-4-4m4 4l4-4" /></svg>
                                 Преземи PDF
                             </a>
+                            @if ($selected->status === 'confirmed')
+                                <a href="{{ route('proformas.delivery-note', [$company, $selected]) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full font-semibold text-sm text-gray-700 shadow-sm hover:bg-paper focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20 13V7a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 7v6a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4a2 2 0 001-1.73z" /></svg>
+                                    Испратница
+                                </a>
+                            @endif
                             @can('update', $selected)
                                 @if ($selected->status === 'draft')
                                     <button type="button" wire:click="markConfirmed({{ $selected->id }})" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full font-semibold text-sm text-gray-700 shadow-sm hover:bg-paper focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition">Означи како потврдена</button>
