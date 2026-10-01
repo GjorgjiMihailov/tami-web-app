@@ -286,7 +286,7 @@
                                         @foreach ($lines as $index => $line)
                                             @continue (! ($rows[$index]['is_stock'] ?? false))
                                             @php
-                                                $qty = (string) ($line['quantity'] !== '' ? $line['quantity'] : '0');
+                                                $qty = \App\Support\VatMath::number((string) ($line['quantity'] ?? '0'));
                                                 $landedUnit = $landedUnitCosts[(string) $index] ?? null;
                                                 // bcmul на 2 децимали ОТСЕКУВА наместо заокружува — множи
                                                 // на повисока работна прецизност, па дури потоа заокружи

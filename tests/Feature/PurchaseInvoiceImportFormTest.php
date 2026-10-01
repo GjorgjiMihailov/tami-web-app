@@ -227,6 +227,43 @@ class PurchaseInvoiceImportFormTest extends TestCase
     }
 
     /**
+     * Re-review gap on finding #2: render() normalizes the stock-line
+     * quantity with VatMath::number(), but the Blade preview table built its
+     * own `$qty` straight from the raw `$line['quantity']` and fed it into
+     * bcmul() unnormalized. That only breaks once the preview is actually
+     * showing (`showLandedPreview` true, which stays true after
+     * "Пресметај" is clicked) and the quantity is THEN edited to a comma
+     * value — exactly what the re-reviewer reproduced as
+     * `ValueError: bcmul(): Argument #2 ($num2) is not well-formed`.
+     */
+    public function test_comma_quantity_typed_after_preview_is_revealed_does_not_crash(): void
+    {
+        $company = Company::factory()->create();
+        $this->actingAdmin();
+        Partner::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $item = Item::factory()->for($company)->create();
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('warehouseId', (string) $warehouse->id)
+            ->call('selectItem', 0, (string) $item->id)
+            ->set('lines.0.quantity', '10')
+            ->set('lines.0.unit_price', '50')
+            ->set('isImport', true)
+            ->call('revealLandedPreview')
+            // Preview is now showing. Edit the quantity to a comma value
+            // WITHOUT re-clicking "Пресметај" — the preview stays open and
+            // re-renders live off the raw $lines array.
+            ->set('lines.0.quantity', '1,5')
+            ->assertOk()
+            // net = 1.5 * 50 = 75.00; no import costs → landed = net, so
+            // both the "Набавна" and "Магацинска вредност" columns show it —
+            // the old raw-string $qty either threw or (if it happened to
+            // survive) silently miscomputed this instead.
+            ->assertSeeHtml('75,00');
+    }
+
+    /**
      * Final-review fix #2: bcadd() truncates at scale 2 while the
      * decimal(14,2) column rounds on save — so a value with more than 2
      * decimals (e.g. a paste from a foreign invoice) must be rounded
