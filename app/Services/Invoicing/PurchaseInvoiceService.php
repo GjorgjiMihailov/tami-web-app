@@ -11,6 +11,7 @@ use App\Models\JournalGroup;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceLine;
 use App\Models\PurchaseInvoicePayment;
+use App\Services\Inventory\LandedCostAllocator;
 use App\Services\Inventory\StockMovementService;
 use Illuminate\Support\Facades\DB;
 
@@ -49,11 +50,12 @@ class PurchaseInvoiceService
         }
 
         return DB::transaction(function () use ($invoice, $userId) {
-            $invoice->loadMissing(['lines.account', 'lines.item', 'partner', 'company']);
+            $invoice->loadMissing(['lines.account', 'lines.item', 'partner', 'company', 'importCosts', 'tariffLines']);
 
             $vatRegistered = $invoice->company->is_vat_registered;
             $vatTotal = '0.00';
             $debitsByAccountId = [];
+            $landedCosts = $invoice->is_import ? $this->landedCosts($invoice) : [];
 
             foreach ($invoice->lines as $line) {
                 $lineNet = $line->lineTotal();
@@ -65,11 +67,16 @@ class PurchaseInvoiceService
                         $line->item,
                         $invoice->warehouse,
                         (string) $line->quantity,
+                        // На увозна фактура, залихата прима landed (магацинска)
+                        // цена наместо чистата фактурна — распределени увозни
+                        // трошоци/царина. Книжењето подолу останува на
+                        // фактурниот износ, намерно (видете ја спецификацијата).
+                        //
                         // Не `unit_price`: кај ставка внесена со бруто цена
                         // заокружената нето цена веќе не ја дава основицата,
                         // па залихата би примила 30,48 таму каде главната
                         // книга задолжува 30,51.
-                        $line->effectiveUnitPrice(),
+                        $landedCosts[$line->id] ?? $line->effectiveUnitPrice(),
                         $invoice->invoice_date->toDateString(),
                         $userId
                     );
@@ -292,6 +299,31 @@ class PurchaseInvoiceService
     private function movesStock(PurchaseInvoiceLine $line): bool
     {
         return $line->item_id !== null && ! $line->item->isService();
+    }
+
+    /**
+     * @return array<int, string> purchase_invoice_line id => landed unit cost
+     */
+    private function landedCosts(PurchaseInvoice $invoice): array
+    {
+        $stockLines = [];
+
+        foreach ($invoice->lines as $line) {
+            if ($this->movesStock($line)) {
+                $stockLines[$line->id] = ['net' => $line->lineTotal(), 'quantity' => (string) $line->quantity];
+            }
+        }
+
+        $costsTotal = $invoice->importCosts->reduce(
+            fn (?string $carry, $cost) => bcadd($carry ?? '0.00', (string) $cost->base_amount, 2),
+            '0.00'
+        );
+        $dutyTotal = $invoice->tariffLines->reduce(
+            fn (?string $carry, $tariff) => bcadd($carry ?? '0.00', (string) $tariff->customs_duty, 2),
+            '0.00'
+        );
+
+        return app(LandedCostAllocator::class)->allocate($stockLines, bcadd($costsTotal, $dutyTotal, 2));
     }
 
     private function account(Company $company, string $code): Account
