@@ -705,7 +705,13 @@ class PurchaseInvoiceForm extends Component
 
             if ($this->isImport) {
                 foreach ($this->importCosts as $order => $cost) {
-                    if (trim((string) ($cost['payee_name'] ?? '')) === '' && (float) ($cost['base_amount'] ?? 0) === 0.0) {
+                    $isBlankRow = trim((string) ($cost['payee_name'] ?? '')) === ''
+                        && trim((string) ($cost['reference_number'] ?? '')) === ''
+                        && trim((string) ($cost['foreign_amount'] ?? '')) === ''
+                        && (float) ($cost['base_amount'] ?? 0) === 0.0
+                        && (float) ($cost['vat_amount'] ?? 0) === 0.0;
+
+                    if ($isBlankRow) {
                         continue;
                     }
 
@@ -720,7 +726,12 @@ class PurchaseInvoiceForm extends Component
                 }
 
                 foreach ($this->tariffLines as $order => $tariff) {
-                    if (trim((string) ($tariff['tariff_code'] ?? '')) === '' && (float) ($tariff['customs_duty'] ?? 0) === 0.0) {
+                    $isBlankRow = trim((string) ($tariff['tariff_code'] ?? '')) === ''
+                        && trim((string) ($tariff['foreign_amount'] ?? '')) === ''
+                        && (float) ($tariff['customs_duty'] ?? 0) === 0.0
+                        && (float) ($tariff['vat_amount'] ?? 0) === 0.0;
+
+                    if ($isBlankRow) {
                         continue;
                     }
 
