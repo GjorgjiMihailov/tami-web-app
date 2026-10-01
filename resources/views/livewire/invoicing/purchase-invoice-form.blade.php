@@ -279,6 +279,7 @@
                                             <th class="py-1 px-2 text-right">Набавна (фактурна)</th>
                                             <th class="py-1 px-2 text-right">Увоз (удел)</th>
                                             <th class="py-1 px-2 text-right">Магацинска вредност</th>
+                                            <th class="py-1 px-2 text-right">Продажна</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -287,8 +288,16 @@
                                             @php
                                                 $qty = (string) ($line['quantity'] !== '' ? $line['quantity'] : '0');
                                                 $landedUnit = $landedUnitCosts[(string) $index] ?? null;
-                                                $landedValue = $landedUnit !== null ? bcmul($landedUnit, $qty, 2) : $rows[$index]['net'];
+                                                // bcmul на 2 децимали ОТСЕКУВА наместо заокружува — множи
+                                                // на повисока работна прецизност, па дури потоа заокружи
+                                                // half-up на 2, инаку „Увоз (удел)" прикажан овде може да
+                                                // биде за цент поинаков од она што LandedCostAllocator
+                                                // навистина го распредели.
+                                                $landedValue = $landedUnit !== null
+                                                    ? \App\Support\Bcmath::roundHalfUp(bcmul($landedUnit, $qty, 12), 2)
+                                                    : $rows[$index]['net'];
                                                 $share = bcsub($landedValue, $rows[$index]['net'], 2);
+                                                $sellingPrice = ($itemsById[$line['item_id'] ?? null] ?? null)?->selling_price;
                                             @endphp
                                             <tr wire:key="landed-{{ $index }}" class="border-t border-sand/70">
                                                 <td class="py-1 px-2">{{ $line['description'] ?: '—' }}</td>
@@ -296,6 +305,7 @@
                                                 <td class="py-1 px-2 text-right tabular-nums">{{ \App\Support\Format::money($rows[$index]['net'], '') }}</td>
                                                 <td class="py-1 px-2 text-right tabular-nums">{{ \App\Support\Format::money($share, '') }}</td>
                                                 <td class="py-1 px-2 text-right tabular-nums font-semibold text-brand">{{ \App\Support\Format::money($landedValue, '') }}</td>
+                                                <td class="py-1 px-2 text-right tabular-nums">{{ $sellingPrice !== null ? \App\Support\Format::money($sellingPrice, '') : '—' }}</td>
                                             </tr>
                                         @endforeach
                                     </tbody>

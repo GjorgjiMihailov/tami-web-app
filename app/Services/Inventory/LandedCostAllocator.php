@@ -11,6 +11,14 @@ use App\Support\Bcmath;
  * draft (Livewire form preview) and on persisted lines (confirm-time
  * stock receipt) — both callers build the same small array shape and
  * never store a separately-computed landed cost anywhere.
+ *
+ * No exception-throwing concerns here by design — this class only divides
+ * numbers. The caller (PurchaseInvoiceService::confirm()) is responsible
+ * for refusing to allocate when every stock line has a zero net value
+ * (see its guardLandedCostAllocatable()), and for the fact that account
+ * 660 only stays reconciled with the resulting landed stock value if the
+ * office separately books the forwarder/customs invoice to account 660 —
+ * a workflow instruction, not something this calculator enforces.
  */
 class LandedCostAllocator
 {

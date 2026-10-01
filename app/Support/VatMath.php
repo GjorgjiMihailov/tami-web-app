@@ -118,7 +118,14 @@ class VatMath
         return bcadd('1', bcdiv(self::number($rate), '100', self::WORKING_SCALE), self::WORKING_SCALE);
     }
 
-    private static function number(string $value): string
+    /**
+     * Нормализира корисничко внесен износ (запирка или точка како децимален
+     * разделувач, пропратни празнини) во чист bcmath-подготвен стринг.
+     * Јавна затоа што и други делови на формата (на пр. увозните трошоци/
+     * царина на влезна фактура) мора да ја нормализираат истата суровина пред
+     * да ја допрат со bcmath — исто правило, едно место.
+     */
+    public static function number(string $value): string
     {
         $value = trim(str_replace(',', '.', $value));
 

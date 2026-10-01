@@ -17,6 +17,7 @@ use App\Services\Invoicing\ScannedInvoice;
 use App\Services\Invoicing\ScannedInvoiceLine;
 use App\Services\Invoicing\ScannedInvoiceReader;
 use App\Services\PartnerInsights;
+use App\Support\Bcmath;
 use App\Support\VatMath;
 use App\Support\WorkingYear;
 use Illuminate\Support\Carbon;
@@ -226,7 +227,7 @@ class PurchaseInvoiceForm extends Component
 
         try {
             $rate = app(ExchangeRateService::class)->getRate($this->importCurrencyCode, Carbon::parse($this->importDate));
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             $this->addError('importExchangeRate', 'Не можев да го повлечам курсот — внеси го рачно.');
 
             return;
@@ -668,10 +669,12 @@ class PurchaseInvoiceForm extends Component
             $invoice->notes = $this->notes ?: null;
             $invoice->order_number = $this->orderNumber ?: null;
             $invoice->is_import = $this->isImport;
-            $invoice->customs_declaration_number = $this->customsDeclarationNumber ?: null;
-            $invoice->import_date = $this->importDate ?: null;
+            // Сите четири увозни полиња одат заедно — откако ќе се одштиклира
+            // „Фактура од увоз", ниедно не смее да остане старо во базата.
+            $invoice->customs_declaration_number = $this->isImport ? ($this->customsDeclarationNumber ?: null) : null;
+            $invoice->import_date = $this->isImport ? ($this->importDate ?: null) : null;
             $invoice->import_currency_code = $this->isImport ? ($this->importCurrencyCode ?: null) : null;
-            $invoice->import_exchange_rate = $this->importExchangeRate !== '' ? $this->importExchangeRate : null;
+            $invoice->import_exchange_rate = $this->isImport && $this->importExchangeRate !== '' ? $this->importExchangeRate : null;
 
             if (! $invoice->exists) {
                 $invoice->status = 'draft';
@@ -862,16 +865,26 @@ class PurchaseInvoiceForm extends Component
         $stockLines = [];
         foreach ($rows as $index => $row) {
             if ($row['is_stock']) {
-                $stockLines[(string) $index] = ['net' => $row['net'], 'quantity' => (string) ($this->lines[$index]['quantity'] ?? '0')];
+                // Внесена рачно, па можеби со запирка наместо точка (МК
+                // навика) — иста нормализација како секоја друга бруто/нето
+                // цена на оваа форма пред да допре bcmath, инаку bcdiv/bccomp
+                // во LandedCostAllocator паѓаат со ValueError.
+                $quantity = VatMath::number((string) ($this->lines[$index]['quantity'] ?? '0'));
+                $stockLines[(string) $index] = ['net' => $row['net'], 'quantity' => $quantity];
             }
         }
 
+        // Секој внесен износ прво се нормализира (запирка → точка), па се
+        // заокружува half-up на 2 децимали ПРЕД да се собере — bcadd со
+        // scale=2 отсекува, не заокружува, па „10,555" инаку би влегол во
+        // прегледот како 10.55 додека базата (при зачувување) го заокружува
+        // на 10.56. Истото правило како VatMath насекаде во оваа форма.
         $importCostsBase = collect($this->importCosts)->reduce(
-            fn (?string $carry, array $cost) => bcadd($carry ?? '0.00', $cost['base_amount'] !== '' ? $cost['base_amount'] : '0', 2),
+            fn (?string $carry, array $cost) => bcadd($carry ?? '0.00', Bcmath::roundHalfUp(VatMath::number($cost['base_amount'] ?? '0'), 2), 2),
             '0.00'
         );
         $tariffDutyTotal = collect($this->tariffLines)->reduce(
-            fn (?string $carry, array $tariff) => bcadd($carry ?? '0.00', $tariff['customs_duty'] !== '' ? $tariff['customs_duty'] : '0', 2),
+            fn (?string $carry, array $tariff) => bcadd($carry ?? '0.00', Bcmath::roundHalfUp(VatMath::number($tariff['customs_duty'] ?? '0'), 2), 2),
             '0.00'
         );
         $totalForAllocation = bcadd($importCostsBase, $tariffDutyTotal, 2);
@@ -880,12 +893,17 @@ class PurchaseInvoiceForm extends Component
             ? app(LandedCostAllocator::class)->allocate($stockLines, $totalForAllocation)
             : [];
 
+        $items = Item::where('company_id', $this->company->id)->where('is_active', true)
+            ->where(fn ($q) => $q->where('is_purchasable', true)->orWhereIn('id', collect($this->lines)->pluck('item_id')->filter()->all()))
+            ->orderBy('type')->orderBy('name')->get();
+
         return view('livewire.invoicing.purchase-invoice-form', [
             'partners' => Partner::where('company_id', $this->company->id)->orderBy('name')->get(),
             'warehouses' => Warehouse::where('company_id', $this->company->id)->where('is_active', true)->orderBy('name')->get(),
-            'items' => Item::where('company_id', $this->company->id)->where('is_active', true)
-                ->where(fn ($q) => $q->where('is_purchasable', true)->orWhereIn('id', collect($this->lines)->pluck('item_id')->filter()->all()))
-                ->orderBy('type')->orderBy('name')->get(),
+            'items' => $items,
+            // Преглед по ставка (Продажна колона) бара брзо гледање по
+            // артикл без нова query по ред — истата колекција веќе ја имаме.
+            'itemsById' => $items->keyBy('id'),
             'accounts' => Account::where('company_id', $this->company->id)->where('is_active', true)->orderBy('code')->get(),
             'rows' => $rows,
             'landedUnitCosts' => $landedUnitCosts,

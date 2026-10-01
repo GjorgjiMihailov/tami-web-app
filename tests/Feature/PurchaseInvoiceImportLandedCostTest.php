@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\InvalidInvoiceStateException;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\Item;
@@ -82,6 +83,44 @@ class PurchaseInvoiceImportLandedCostTest extends TestCase
         $entry = $confirmed->journalEntry()->with('lines.account')->first();
         $inventoryAsset = $entry->lines->firstWhere('account.code', '660');
         $this->assertSame('700.00', (string) $inventoryAsset->debit);
+    }
+
+    /**
+     * Final-review fix #3: if every stock line on an import invoice has a
+     * zero net value (free samples, warranty replacement) but there ARE
+     * import costs/duty to allocate, LandedCostAllocator's zero-totalNet
+     * branch would silently fall back to net/quantity = 0 for every line —
+     * the import cost is dropped on the floor with no trace. Confirming must
+     * refuse instead of silently losing the cost.
+     */
+    public function test_confirm_throws_when_only_stock_line_has_zero_value_but_import_costs_exist(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $item = Item::factory()->for($company)->create(['vat_rate' => '18.00']);
+        $user = User::factory()->create();
+
+        $invoice = PurchaseInvoice::factory()->for($company)->create([
+            'partner_id' => $partner->id,
+            'warehouse_id' => $warehouse->id,
+            'invoice_date' => '2026-03-01',
+            'is_import' => true,
+        ]);
+        $invoice->lines()->create(['item_id' => $item->id, 'description' => 'Free sample', 'quantity' => '10', 'unit_price' => '0', 'vat_rate' => '18.00']);
+        $invoice->importCosts()->create(['payee_name' => 'Шпедитер', 'base_amount' => '70.00', 'vat_amount' => '0', 'sort_order' => 0]);
+
+        try {
+            $this->service->confirm($invoice->fresh(), $user->id);
+            $this->fail('Expected InvalidInvoiceStateException to be thrown.');
+        } catch (InvalidInvoiceStateException $e) {
+            $this->assertStringContainsString('не можат да се распределат', mb_strtolower($e->getMessage()));
+        }
+
+        // The transaction must have rolled back — no stock movement, draft still a draft.
+        $this->assertSame(0, StockMovement::count());
+        $this->assertSame('draft', $invoice->fresh()->status);
     }
 
     public function test_non_import_invoice_is_completely_unaffected(): void

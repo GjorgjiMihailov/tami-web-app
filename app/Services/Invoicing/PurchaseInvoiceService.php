@@ -55,7 +55,12 @@ class PurchaseInvoiceService
             $vatRegistered = $invoice->company->is_vat_registered;
             $vatTotal = '0.00';
             $debitsByAccountId = [];
-            $landedCosts = $invoice->is_import ? $this->landedCosts($invoice) : [];
+            $landedCosts = [];
+
+            if ($invoice->is_import) {
+                $this->guardLandedCostAllocatable($invoice);
+                $landedCosts = $this->landedCosts($invoice);
+            }
 
             foreach ($invoice->lines as $line) {
                 $lineNet = $line->lineTotal();
@@ -71,6 +76,19 @@ class PurchaseInvoiceService
                         // цена наместо чистата фактурна — распределени увозни
                         // трошоци/царина. Книжењето подолу останува на
                         // фактурниот износ, намерно (видете ја спецификацијата).
+                        //
+                        // ВАЖНО за усогласување на сметка 660: ова НЕ е пропуст
+                        // во кодот. Штом ваквата (landed) залиха подоцна се
+                        // ПРОДАДЕ, постоечкото книжење на трошок на продадени
+                        // производи (Должи 701 / Побарува 660) ја зема
+                        // просечната landed цена — повисока од она со што 660
+                        // е задолжена при набавка. Сметка 660 останува
+                        // усогласена само ако канцеларијата ЗАСЕБНО ја книжи
+                        // фактурата на шпедитерот/царина како обична влезна
+                        // фактура со нејзината ставка насочена кон сметка 660
+                        // (залиха), не кон трошковна сметка — работна
+                        // инструкција за канцеларијата, не код (свесна одлука
+                        // на сопственикот; видете ја спецификацијата).
                         //
                         // Не `unit_price`: кај ставка внесена со бруто цена
                         // заокружената нето цена веќе не ја дава основицата,
@@ -314,6 +332,11 @@ class PurchaseInvoiceService
             }
         }
 
+        return app(LandedCostAllocator::class)->allocate($stockLines, $this->totalImportCost($invoice));
+    }
+
+    private function totalImportCost(PurchaseInvoice $invoice): string
+    {
         $costsTotal = $invoice->importCosts->reduce(
             fn (?string $carry, $cost) => bcadd($carry ?? '0.00', (string) $cost->base_amount, 2),
             '0.00'
@@ -323,7 +346,38 @@ class PurchaseInvoiceService
             '0.00'
         );
 
-        return app(LandedCostAllocator::class)->allocate($stockLines, bcadd($costsTotal, $dutyTotal, 2));
+        return bcadd($costsTotal, $dutyTotal, 2);
+    }
+
+    /**
+     * LandedCostAllocator е чист калкулатор без состојба и намерно не фрла
+     * исклучоци — само дели. Ако СИТЕ ставки-артикли на увозна фактура имаат
+     * нето вредност нула (бесплатни примероци, гарантна замена), а сепак
+     * постојат увозни трошоци/царина за распределба, поделбата
+     * net/quantity тивко би дала 0 за секоја ставка — трошокот би исчезнал
+     * без трага, без предупредување. За сметководствен систем тивко губење
+     * пари е полошо од одбиена операција, па проверката е тука, пред
+     * повикот кон калкулаторот, а не внатре во него.
+     */
+    private function guardLandedCostAllocatable(PurchaseInvoice $invoice): void
+    {
+        if (bccomp($this->totalImportCost($invoice), '0', 2) <= 0) {
+            return;
+        }
+
+        $totalNet = '0.00';
+
+        foreach ($invoice->lines as $line) {
+            if ($this->movesStock($line)) {
+                $totalNet = bcadd($totalNet, $line->lineTotal(), 2);
+            }
+        }
+
+        if (bccomp($totalNet, '0', 2) <= 0) {
+            throw new InvalidInvoiceStateException(
+                'Не можат да се распределат увозни трошоци — ниту една ставка со артикл нема вредност поголема од нула.'
+            );
+        }
     }
 
     private function account(Company $company, string $code): Account
