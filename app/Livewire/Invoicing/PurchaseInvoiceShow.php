@@ -129,7 +129,7 @@ class PurchaseInvoiceShow extends Component
 
     public function render()
     {
-        $invoice = $this->purchaseInvoice->fresh(['lines.item', 'lines.account', 'payments', 'partner']);
+        $invoice = $this->purchaseInvoice->fresh(['lines.item', 'lines.account', 'payments', 'partner', 'incomingEfakturaDocument']);
 
         // Левата листа ја покажува работната година, но секогаш ја вклучува и
         // отворената фактура (може да е од друга година).

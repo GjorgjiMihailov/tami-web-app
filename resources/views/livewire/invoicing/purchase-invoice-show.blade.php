@@ -143,6 +143,102 @@
         @endif
     </div>
 
+    @if ($invoice->incomingEfakturaDocument)
+        <div class="mt-4 mb-4 border-t border-b pt-4 pb-4" x-data="incomingEfakturaPdfFetch()">
+            @if ($invoice->incomingEfakturaDocument->efaktura_pdf_path)
+                <a href="{{ route('incoming-efaktura.pdf.download', [$company, $invoice->incomingEfakturaDocument]) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-[#CF1C69] border border-transparent rounded-full font-semibold text-sm text-white shadow-sm hover:bg-[#B01658] focus:outline-none focus:ring-2 focus:ring-[#CF1C69] focus:ring-offset-2 transition">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v11m0 0l-4-4m4 4l4-4" /></svg>
+                    Преземи е-Фактура
+                </a>
+            @elseif (auth()->user()->can('signEfaktura', $company))
+                <button type="button" @click="run()" :disabled="busy" class="inline-flex items-center gap-2 px-4 py-2 bg-[#CF1C69] border border-transparent rounded-full font-semibold text-sm text-white shadow-sm hover:bg-[#B01658] focus:outline-none focus:ring-2 focus:ring-[#CF1C69] focus:ring-offset-2 transition disabled:opacity-50">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v11m0 0l-4-4m4 4l4-4" /></svg>
+                    <span x-show="!busy">Преземи е-Фактура</span>
+                    <span x-show="busy" x-text="statusText"></span>
+                </button>
+                <p x-show="error" x-text="error" class="text-red-600 text-xs mt-1"></p>
+            @endif
+        </div>
+
+        @script
+        <script>
+            const toBase64Url = (str) => btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+            Alpine.data('incomingEfakturaPdfFetch', () => ({
+                busy: false,
+                error: '',
+                statusText: '',
+                async run() {
+                    this.busy = true; this.error = '';
+                    try {
+                        this.statusText = 'Проверувам мост...';
+                        const health = await fetch('http://127.0.0.1:9847/health').catch(() => null);
+                        if (!health || !health.ok) {
+                            throw new Error('Локалниот потпишувач не работи. Стартувај го и обиди се повторно.');
+                        }
+
+                        this.statusText = 'Читам токен...';
+                        const certRes = await fetch('http://127.0.0.1:9847/certificate');
+                        if (!certRes.ok) throw new Error('Не можам да ги прочитам податоците од токенот.');
+                        const cert = await certRes.json();
+
+                        if (cert.serialNumber !== @js(auth()->user()->efakturaSignerFor($company)?->serialNumber)) {
+                            throw new Error('Приклучениот токен не одговара на регистрираниот за оваа компанија.');
+                        }
+
+                        this.statusText = 'Подготвувам текст за потпишување...';
+                        const signingRes = await fetch(@js(route('incoming-efaktura.pdf.signing-input', [$company, $invoice->incomingEfakturaDocument])), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({ certificateBase64: cert.certificateBase64 }),
+                        });
+                        if (!signingRes.ok) {
+                            const errorBody = await signingRes.json().catch(() => null);
+                            throw new Error(errorBody?.message ?? errorBody?.error ?? 'Серверот не можеше да го подготви текстот за потпишување.');
+                        }
+                        const { token, signingInput } = await signingRes.json();
+
+                        this.statusText = 'Потпишувам (проверете го прозорецот на SafeNet)...';
+                        const signRes = await fetch('http://127.0.0.1:9847/sign', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ data: toBase64Url(signingInput) }),
+                        });
+                        if (!signRes.ok) throw new Error('Потпишувањето не успеа — провери го PIN-от на токенот.');
+                        const { signature } = await signRes.json();
+
+                        this.statusText = 'Преземам е-Фактура...';
+                        const storeRes = await fetch(@js(route('incoming-efaktura.pdf.store', [$company, $invoice->incomingEfakturaDocument])), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({ token, signature }),
+                        });
+                        if (!storeRes.ok) {
+                            const storeBody = await storeRes.json().catch(() => null);
+                            const message = storeBody?.error === 'ujp_rejected'
+                                ? `УЈП го одби барањето: ${storeBody.body}`
+                                : (storeBody?.message ?? storeBody?.error ?? 'Преземањето не успеа.');
+                            throw new Error(message);
+                        }
+
+                        window.location.reload();
+                    } catch (e) {
+                        this.error = e.message;
+                    } finally {
+                        this.busy = false;
+                    }
+                },
+            }));
+        </script>
+        @endscript
+    @endif
+
     @if ($invoice->status === 'confirmed')
         <x-card>
             <h2 class="font-semibold text-gray-700 mb-2">Плаќања</h2>
