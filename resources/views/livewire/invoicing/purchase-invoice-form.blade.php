@@ -135,6 +135,178 @@
             </div>
         </x-card>
 
+        @if ($requiresWarehouse)
+            <x-card>
+                <label class="flex items-start gap-3 rounded-lg border border-sand bg-paper-warm px-4 py-3 cursor-pointer">
+                    <input type="checkbox" wire:model.live="isImport" class="mt-0.5 rounded border-gray-300 text-brand focus:ring-brand">
+                    <span>
+                        <span class="block font-semibold text-gray-800">Фактура од увоз</span>
+                        <span class="block text-xs text-stone">Штиклирано — се отвора секторот подолу за увозни трошоци и царина, кои ја зголемуваат магацинската вредност над фактурната.</span>
+                    </span>
+                </label>
+
+                @if ($isImport)
+                    <div class="mt-4 rounded-lg border border-orange-200 border-l-4 border-l-brand bg-orange-50/50 px-4 py-4">
+                        <div class="flex items-center gap-2 mb-3">
+                            <h3 class="font-semibold text-gray-800">Увоз</h3>
+                            <span class="bg-brand text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">ЕЦД</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1">
+                            <div>
+                                <x-input-label value="ЕЦД број" />
+                                <x-text-input wire:model="customsDeclarationNumber" class="w-full text-sm" />
+                            </div>
+                            <div>
+                                <x-input-label value="Датум на увоз" />
+                                <x-text-input type="date" wire:model.live="importDate" class="w-full text-sm" />
+                            </div>
+                            <div>
+                                <x-input-label value="Валута" />
+                                <select wire:model.live="importCurrencyCode" class="w-full border-gray-300 focus:border-brand focus:ring-brand rounded-lg text-sm">
+                                    <option value="EUR">EUR</option>
+                                    <option value="USD">USD</option>
+                                    <option value="GBP">GBP</option>
+                                    <option value="CHF">CHF</option>
+                                </select>
+                            </div>
+                            <div>
+                                <x-input-label value="Курс (НБРМ на датумот)" />
+                                <div class="flex gap-2">
+                                    <x-text-input wire:model="importExchangeRate" class="w-full text-sm" />
+                                    <x-secondary-button type="button" wire:click="fetchImportRate" class="shrink-0 whitespace-nowrap">↻ НБРМ</x-secondary-button>
+                                </div>
+                                @error('importExchangeRate') <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
+
+                        <div class="flex gap-1 border-b border-orange-200 mt-4 mb-3 text-sm">
+                            <button type="button" wire:click="$set('importTab', 'costs')"
+                                class="px-3 py-1.5 {{ $importTab === 'costs' ? 'text-brand border-b-2 border-brand font-semibold' : 'text-stone' }}">Увозни трошоци</button>
+                            <button type="button" wire:click="$set('importTab', 'tariffs')"
+                                class="px-3 py-1.5 {{ $importTab === 'tariffs' ? 'text-brand border-b-2 border-brand font-semibold' : 'text-stone' }}">Распределба по царински тарифи</button>
+                        </div>
+
+                        @if ($importTab === 'costs')
+                            <div class="overflow-x-auto">
+                                <table class="min-w-[640px] w-full text-xs">
+                                    <thead>
+                                        <tr class="text-left text-stone bg-white/60">
+                                            <th class="py-1 px-2">Добавувач / шпедитер</th>
+                                            <th class="py-1 px-2">Фактура</th>
+                                            <th class="py-1 px-2 text-right">Девизи</th>
+                                            <th class="py-1 px-2 text-right">Основица</th>
+                                            <th class="py-1 px-2 text-right">ДДВ</th>
+                                            <th class="py-1 px-2"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($importCosts as $index => $cost)
+                                            <tr wire:key="import-cost-{{ $index }}" class="border-t border-orange-100">
+                                                <td class="py-1 px-2"><x-text-input wire:model="importCosts.{{ $index }}.payee_name" class="w-full text-xs py-1" /></td>
+                                                <td class="py-1 px-2"><x-text-input wire:model="importCosts.{{ $index }}.reference_number" class="w-full text-xs py-1" /></td>
+                                                <td class="py-1 px-2"><x-text-input wire:model="importCosts.{{ $index }}.foreign_amount" class="w-full text-xs py-1 text-right" /></td>
+                                                <td class="py-1 px-2"><x-text-input wire:model="importCosts.{{ $index }}.base_amount" class="w-full text-xs py-1 text-right" /></td>
+                                                <td class="py-1 px-2"><x-text-input wire:model="importCosts.{{ $index }}.vat_amount" class="w-full text-xs py-1 text-right" /></td>
+                                                <td class="py-1 px-2 text-center">
+                                                    <button type="button" wire:click="removeImportCost({{ $index }})" class="text-stone hover:text-red-600">✕</button>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button type="button" wire:click="addImportCost" class="mt-2 text-xs text-brand font-semibold hover:underline">+ Додади трошок</button>
+                        @else
+                            <div class="overflow-x-auto">
+                                <table class="min-w-[560px] w-full text-xs">
+                                    <thead>
+                                        <tr class="text-left text-stone bg-white/60">
+                                            <th class="py-1 px-2">Царинска тарифа</th>
+                                            <th class="py-1 px-2 text-right">Девизи</th>
+                                            <th class="py-1 px-2 text-right">Царина</th>
+                                            <th class="py-1 px-2 text-right">ДДВ</th>
+                                            <th class="py-1 px-2"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($tariffLines as $index => $tariff)
+                                            <tr wire:key="tariff-{{ $index }}" class="border-t border-orange-100">
+                                                <td class="py-1 px-2"><x-text-input wire:model="tariffLines.{{ $index }}.tariff_code" class="w-full text-xs py-1" /></td>
+                                                <td class="py-1 px-2"><x-text-input wire:model="tariffLines.{{ $index }}.foreign_amount" class="w-full text-xs py-1 text-right" /></td>
+                                                <td class="py-1 px-2"><x-text-input wire:model="tariffLines.{{ $index }}.customs_duty" class="w-full text-xs py-1 text-right" /></td>
+                                                <td class="py-1 px-2"><x-text-input wire:model="tariffLines.{{ $index }}.vat_amount" class="w-full text-xs py-1 text-right" /></td>
+                                                <td class="py-1 px-2 text-center">
+                                                    <button type="button" wire:click="removeTariffLine({{ $index }})" class="text-stone hover:text-red-600">✕</button>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button type="button" wire:click="addTariffLine" class="mt-2 text-xs text-brand font-semibold hover:underline">+ Додади тарифа</button>
+                        @endif
+
+                        <div class="flex flex-wrap justify-end gap-4 mt-4 pt-3 border-t border-dashed border-orange-200 text-sm">
+                            <div class="text-right">
+                                <div class="text-[10px] uppercase text-stone">Трошоци</div>
+                                <div class="font-semibold tabular-nums">{{ \App\Support\Format::money($importCostsBase, '') }}</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[10px] uppercase text-stone">Царина</div>
+                                <div class="font-semibold tabular-nums">{{ \App\Support\Format::money($tariffDutyTotal, '') }}</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[10px] uppercase text-stone">За распределба</div>
+                                <div class="font-bold text-brand text-base tabular-nums">{{ \App\Support\Format::money($totalForAllocation, '') }} ден.</div>
+                            </div>
+                        </div>
+
+                        <x-primary-button type="button" wire:click="revealLandedPreview" class="w-full mt-4 justify-center">
+                            Пресметај магацинска вредност →
+                        </x-primary-button>
+                    </div>
+
+                    @if ($showLandedPreview)
+                        <div class="mt-4">
+                            <h3 class="font-semibold text-gray-700 mb-2 text-sm">Преглед по ставка</h3>
+                            <div class="overflow-x-auto rounded-lg border border-sand">
+                                <table class="min-w-[560px] w-full text-xs">
+                                    <thead>
+                                        <tr class="text-left text-stone bg-paper-warm">
+                                            <th class="py-1 px-2">Артикл</th>
+                                            <th class="py-1 px-2 text-right">Кол.</th>
+                                            <th class="py-1 px-2 text-right">Набавна (фактурна)</th>
+                                            <th class="py-1 px-2 text-right">Увоз (удел)</th>
+                                            <th class="py-1 px-2 text-right">Магацинска вредност</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($lines as $index => $line)
+                                            @continue (! ($rows[$index]['is_stock'] ?? false))
+                                            @php
+                                                $qty = (string) ($line['quantity'] !== '' ? $line['quantity'] : '0');
+                                                $landedUnit = $landedUnitCosts[(string) $index] ?? null;
+                                                $landedValue = $landedUnit !== null ? bcmul($landedUnit, $qty, 2) : $rows[$index]['net'];
+                                                $share = bcsub($landedValue, $rows[$index]['net'], 2);
+                                            @endphp
+                                            <tr wire:key="landed-{{ $index }}" class="border-t border-sand/70">
+                                                <td class="py-1 px-2">{{ $line['description'] ?: '—' }}</td>
+                                                <td class="py-1 px-2 text-right tabular-nums">{{ $qty }}</td>
+                                                <td class="py-1 px-2 text-right tabular-nums">{{ \App\Support\Format::money($rows[$index]['net'], '') }}</td>
+                                                <td class="py-1 px-2 text-right tabular-nums">{{ \App\Support\Format::money($share, '') }}</td>
+                                                <td class="py-1 px-2 text-right tabular-nums font-semibold text-brand">{{ \App\Support\Format::money($landedValue, '') }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
+                @endif
+            </x-card>
+        @endif
+
         <x-card padding="p-0" class="overflow-hidden">
             <div class="flex items-center justify-between px-4 py-3 border-b border-sand">
                 <h2 class="font-semibold text-gray-700">Ставки</h2>
