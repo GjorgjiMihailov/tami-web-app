@@ -24,6 +24,11 @@ class PurchaseInvoiceFactory extends Factory
             'status' => 'draft',
             'notes' => null,
             'created_by' => User::factory(),
+            'is_import' => false,
+            'customs_declaration_number' => null,
+            'import_date' => null,
+            'import_currency_code' => null,
+            'import_exchange_rate' => null,
         ];
     }
 }

@@ -19,6 +19,8 @@ class PurchaseInvoice extends Model
         'company_id', 'partner_id', 'warehouse_id', 'journal_entry_id',
         'supplier_invoice_number', 'order_number', 'invoice_date', 'due_date',
         'status', 'notes', 'created_by',
+        'is_import', 'customs_declaration_number', 'import_date',
+        'import_currency_code', 'import_exchange_rate',
     ];
 
     protected function casts(): array
@@ -26,6 +28,9 @@ class PurchaseInvoice extends Model
         return [
             'invoice_date' => 'date',
             'due_date' => 'date',
+            'is_import' => 'boolean',
+            'import_date' => 'date',
+            'import_exchange_rate' => 'decimal:4',
         ];
     }
 
@@ -62,6 +67,16 @@ class PurchaseInvoice extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(PurchaseInvoicePayment::class);
+    }
+
+    public function importCosts(): HasMany
+    {
+        return $this->hasMany(PurchaseInvoiceImportCost::class)->orderBy('sort_order');
+    }
+
+    public function tariffLines(): HasMany
+    {
+        return $this->hasMany(PurchaseInvoiceTariffLine::class)->orderBy('sort_order');
     }
 
     public function incomingEfakturaDocument(): HasOne
