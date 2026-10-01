@@ -174,7 +174,7 @@ class SalesInvoiceShowEfakturaTest extends TestCase
         Livewire::actingAs($admin)
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
             ->assertSeeHtml(route('sales-invoices.efaktura.pdf.download', [$company, $invoice]))
-            ->assertSee('Преземи ПДФ');
+            ->assertSee('Преземи е-Фактура');
     }
 
     public function test_accepted_invoice_without_a_stored_pdf_shows_the_fetch_button(): void
@@ -192,7 +192,7 @@ class SalesInvoiceShowEfakturaTest extends TestCase
         Livewire::actingAs($admin)
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
             ->assertSee('Прифатена')
-            ->assertSee('Преземи ПДФ')
+            ->assertSee('Преземи е-Фактура')
             ->assertDontSeeHtml(route('sales-invoices.efaktura.pdf.download', [$company, $invoice]));
     }
 
@@ -210,6 +210,6 @@ class SalesInvoiceShowEfakturaTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
-            ->assertDontSee('Преземи ПДФ');
+            ->assertDontSee('Преземи е-Фактура');
     }
 }

@@ -185,15 +185,15 @@
 
                 <div class="mt-2">
                     @if ($invoice->efaktura_pdf_path)
-                        <a href="{{ route('sales-invoices.efaktura.pdf.download', [$company, $invoice]) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full font-semibold text-sm text-gray-700 shadow-sm hover:bg-paper focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition">
+                        <a href="{{ route('sales-invoices.efaktura.pdf.download', [$company, $invoice]) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-[#CF1C69] border border-transparent rounded-full font-semibold text-sm text-white shadow-sm hover:bg-[#B01658] focus:outline-none focus:ring-2 focus:ring-[#CF1C69] focus:ring-offset-2 transition">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v11m0 0l-4-4m4 4l4-4" /></svg>
-                            Преземи ПДФ
+                            Преземи е-Фактура
                         </a>
                     @elseif ($invoice->isEfakturaAccepted() && auth()->user()->can('signEfaktura', $company))
                         <div x-data="efakturaPdfFetch()">
-                            <button type="button" @click="run()" :disabled="busy" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full font-semibold text-sm text-gray-700 shadow-sm hover:bg-paper focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 transition disabled:opacity-50">
+                            <button type="button" @click="run()" :disabled="busy" class="inline-flex items-center gap-2 px-4 py-2 bg-[#CF1C69] border border-transparent rounded-full font-semibold text-sm text-white shadow-sm hover:bg-[#B01658] focus:outline-none focus:ring-2 focus:ring-[#CF1C69] focus:ring-offset-2 transition disabled:opacity-50">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v11m0 0l-4-4m4 4l4-4" /></svg>
-                                <span x-show="!busy">Преземи ПДФ</span>
+                                <span x-show="!busy">Преземи е-Фактура</span>
                                 <span x-show="busy" x-text="statusText"></span>
                             </button>
                             <p x-show="error" x-text="error" class="text-red-600 text-xs mt-1"></p>
