@@ -10,6 +10,8 @@ use App\Models\Item;
 use App\Models\Partner;
 use App\Models\PurchaseInvoice;
 use App\Models\Warehouse;
+use App\Services\ExchangeRateService;
+use App\Services\Inventory\LandedCostAllocator;
 use App\Services\Invoicing\PurchaseInvoiceService;
 use App\Services\Invoicing\ScannedInvoice;
 use App\Services\Invoicing\ScannedInvoiceLine;
@@ -65,6 +67,24 @@ class PurchaseInvoiceForm extends Component
 
     public array $lines = [];
 
+    public bool $isImport = false;
+
+    public string $customsDeclarationNumber = '';
+
+    public string $importDate = '';
+
+    public string $importCurrencyCode = 'EUR';
+
+    public string $importExchangeRate = '';
+
+    public array $importCosts = [];
+
+    public array $tariffLines = [];
+
+    public string $importTab = 'costs';
+
+    public bool $showLandedPreview = false;
+
     public int $workingYear = 0;
 
     public function mount(Company $company, ?PurchaseInvoice $purchaseInvoice = null): void
@@ -117,6 +137,24 @@ class PurchaseInvoiceForm extends Component
                 'vat_deductible' => $line->vat_deductible,
                 'needs_review' => $line->needs_review,
             ])->toArray();
+            $this->isImport = (bool) $purchaseInvoice->is_import;
+            $this->customsDeclarationNumber = (string) $purchaseInvoice->customs_declaration_number;
+            $this->importDate = $purchaseInvoice->import_date?->toDateString() ?? '';
+            $this->importCurrencyCode = $purchaseInvoice->import_currency_code ?? 'EUR';
+            $this->importExchangeRate = $purchaseInvoice->import_exchange_rate === null ? '' : (string) $purchaseInvoice->import_exchange_rate;
+            $this->importCosts = $purchaseInvoice->importCosts->map(fn ($cost) => [
+                'payee_name' => $cost->payee_name,
+                'reference_number' => (string) $cost->reference_number,
+                'foreign_amount' => $cost->foreign_amount === null ? '' : (string) $cost->foreign_amount,
+                'base_amount' => (string) $cost->base_amount,
+                'vat_amount' => (string) $cost->vat_amount,
+            ])->toArray();
+            $this->tariffLines = $purchaseInvoice->tariffLines->map(fn ($tariff) => [
+                'tariff_code' => $tariff->tariff_code,
+                'foreign_amount' => $tariff->foreign_amount === null ? '' : (string) $tariff->foreign_amount,
+                'customs_duty' => (string) $tariff->customs_duty,
+                'vat_amount' => (string) $tariff->vat_amount,
+            ])->toArray();
         } else {
             $this->invoiceDate = WorkingYear::defaultDate($this->workingYear);
             $this->dueDate = WorkingYear::defaultDate($this->workingYear);
@@ -152,6 +190,61 @@ class PurchaseInvoiceForm extends Component
     {
         unset($this->lines[$index]);
         $this->lines = array_values($this->lines);
+    }
+
+    public function addImportCost(): void
+    {
+        $this->importCosts[] = ['payee_name' => '', 'reference_number' => '', 'foreign_amount' => '', 'base_amount' => '0', 'vat_amount' => '0'];
+    }
+
+    public function removeImportCost(int $index): void
+    {
+        unset($this->importCosts[$index]);
+        $this->importCosts = array_values($this->importCosts);
+    }
+
+    public function addTariffLine(): void
+    {
+        $this->tariffLines[] = ['tariff_code' => '', 'foreign_amount' => '', 'customs_duty' => '0', 'vat_amount' => '0'];
+    }
+
+    public function removeTariffLine(int $index): void
+    {
+        unset($this->tariffLines[$index]);
+        $this->tariffLines = array_values($this->tariffLines);
+    }
+
+    public function fetchImportRate(): void
+    {
+        $this->resetErrorBag('importExchangeRate');
+
+        if ($this->importCurrencyCode === '' || $this->importDate === '') {
+            $this->addError('importExchangeRate', 'Внеси датум на увоз и валута пред да го повлечеш курсот.');
+
+            return;
+        }
+
+        try {
+            $rate = app(ExchangeRateService::class)->getRate($this->importCurrencyCode, Carbon::parse($this->importDate));
+        } catch (\Throwable $e) {
+            $this->addError('importExchangeRate', 'Не можев да го повлечам курсот — внеси го рачно.');
+
+            return;
+        }
+
+        $this->importExchangeRate = (string) $rate;
+    }
+
+    public function revealLandedPreview(): void
+    {
+        $this->showLandedPreview = true;
+    }
+
+    public function updatedIsImport(bool $value): void
+    {
+        if (! $value) {
+            $this->showLandedPreview = false;
+        }
     }
 
     public function selectItem(int $index, string $itemId): void
@@ -523,6 +616,20 @@ class PurchaseInvoiceForm extends Component
             'lines.*.vat_rate' => 'required|numeric|min:0|max:100',
             'lines.*.discount_percent' => 'nullable|numeric|min:0|max:100',
             'orderNumber' => 'nullable|string|max:100',
+            'isImport' => 'boolean',
+            'customsDeclarationNumber' => 'nullable|string|max:255',
+            'importDate' => 'nullable|date',
+            'importCurrencyCode' => 'nullable|string|size:3',
+            'importExchangeRate' => 'nullable|numeric|min:0',
+            'importCosts.*.payee_name' => 'nullable|string|max:255',
+            'importCosts.*.reference_number' => 'nullable|string|max:255',
+            'importCosts.*.foreign_amount' => 'nullable|numeric|min:0',
+            'importCosts.*.base_amount' => 'nullable|numeric|min:0',
+            'importCosts.*.vat_amount' => 'nullable|numeric|min:0',
+            'tariffLines.*.tariff_code' => 'nullable|string|max:255',
+            'tariffLines.*.foreign_amount' => 'nullable|numeric|min:0',
+            'tariffLines.*.customs_duty' => 'nullable|numeric|min:0',
+            'tariffLines.*.vat_amount' => 'nullable|numeric|min:0',
         ]);
 
         $types = $this->itemTypes();
@@ -560,6 +667,11 @@ class PurchaseInvoiceForm extends Component
             $invoice->due_date = $this->dueDate;
             $invoice->notes = $this->notes ?: null;
             $invoice->order_number = $this->orderNumber ?: null;
+            $invoice->is_import = $this->isImport;
+            $invoice->customs_declaration_number = $this->customsDeclarationNumber ?: null;
+            $invoice->import_date = $this->importDate ?: null;
+            $invoice->import_currency_code = $this->isImport ? ($this->importCurrencyCode ?: null) : null;
+            $invoice->import_exchange_rate = $this->importExchangeRate !== '' ? $this->importExchangeRate : null;
 
             if (! $invoice->exists) {
                 $invoice->status = 'draft';
@@ -586,6 +698,40 @@ class PurchaseInvoiceForm extends Component
                     'vat_deductible' => $line['vat_deductible'] ?? true,
                     'needs_review' => $line['needs_review'] ?? false,
                 ]);
+            }
+
+            $invoice->importCosts()->delete();
+            $invoice->tariffLines()->delete();
+
+            if ($this->isImport) {
+                foreach ($this->importCosts as $order => $cost) {
+                    if (trim((string) ($cost['payee_name'] ?? '')) === '' && (float) ($cost['base_amount'] ?? 0) === 0.0) {
+                        continue;
+                    }
+
+                    $invoice->importCosts()->create([
+                        'payee_name' => $cost['payee_name'] ?: '—',
+                        'reference_number' => $cost['reference_number'] ?: null,
+                        'foreign_amount' => filled($cost['foreign_amount'] ?? null) ? $cost['foreign_amount'] : null,
+                        'base_amount' => $cost['base_amount'] ?: '0',
+                        'vat_amount' => $cost['vat_amount'] ?: '0',
+                        'sort_order' => $order,
+                    ]);
+                }
+
+                foreach ($this->tariffLines as $order => $tariff) {
+                    if (trim((string) ($tariff['tariff_code'] ?? '')) === '' && (float) ($tariff['customs_duty'] ?? 0) === 0.0) {
+                        continue;
+                    }
+
+                    $invoice->tariffLines()->create([
+                        'tariff_code' => $tariff['tariff_code'] ?: '—',
+                        'foreign_amount' => filled($tariff['foreign_amount'] ?? null) ? $tariff['foreign_amount'] : null,
+                        'customs_duty' => $tariff['customs_duty'] ?: '0',
+                        'vat_amount' => $tariff['vat_amount'] ?: '0',
+                        'sort_order' => $order,
+                    ]);
+                }
             }
 
             $this->purchaseInvoice = $invoice;
@@ -702,6 +848,27 @@ class PurchaseInvoiceForm extends Component
             }
         }
 
+        $stockLines = [];
+        foreach ($rows as $index => $row) {
+            if ($row['is_stock']) {
+                $stockLines[(string) $index] = ['net' => $row['net'], 'quantity' => (string) ($this->lines[$index]['quantity'] ?? '0')];
+            }
+        }
+
+        $importCostsBase = collect($this->importCosts)->reduce(
+            fn (?string $carry, array $cost) => bcadd($carry ?? '0.00', $cost['base_amount'] !== '' ? $cost['base_amount'] : '0', 2),
+            '0.00'
+        );
+        $tariffDutyTotal = collect($this->tariffLines)->reduce(
+            fn (?string $carry, array $tariff) => bcadd($carry ?? '0.00', $tariff['customs_duty'] !== '' ? $tariff['customs_duty'] : '0', 2),
+            '0.00'
+        );
+        $totalForAllocation = bcadd($importCostsBase, $tariffDutyTotal, 2);
+
+        $landedUnitCosts = $this->isImport
+            ? app(LandedCostAllocator::class)->allocate($stockLines, $totalForAllocation)
+            : [];
+
         return view('livewire.invoicing.purchase-invoice-form', [
             'partners' => Partner::where('company_id', $this->company->id)->orderBy('name')->get(),
             'warehouses' => Warehouse::where('company_id', $this->company->id)->where('is_active', true)->orderBy('name')->get(),
@@ -710,6 +877,10 @@ class PurchaseInvoiceForm extends Component
                 ->orderBy('type')->orderBy('name')->get(),
             'accounts' => Account::where('company_id', $this->company->id)->where('is_active', true)->orderBy('code')->get(),
             'rows' => $rows,
+            'landedUnitCosts' => $landedUnitCosts,
+            'importCostsBase' => $importCostsBase,
+            'tariffDutyTotal' => $tariffDutyTotal,
+            'totalForAllocation' => $totalForAllocation,
             'partnerInfo' => $this->partnerInfo(),
             'vatRegistered' => $vatRegistered,
             'requiresWarehouse' => collect($rows)->contains(fn ($row) => $row['is_stock']),
