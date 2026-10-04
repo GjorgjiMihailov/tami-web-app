@@ -48,6 +48,36 @@ class CustomsTariffAggregatorTest extends TestCase
         $this->assertSame('0.00', $result['rows'][0]['customs_duty']);
     }
 
+    public function test_amounts_bcmath_would_reject_count_as_zero_instead_of_throwing(): void
+    {
+        $result = (new CustomsTariffAggregator)->aggregate([
+            new ScannedCustomsItem('61091000', 'a', ' 12', '12 ', ['A00' => '1e3', 'B00' => ' 5']),
+            new ScannedCustomsItem('58063210', 'b', '1e3', ' 12', ['A00' => '7', 'B00' => '8 ']),
+        ]);
+
+        $this->assertSame('0.00', $result['rows'][0]['foreign_amount']);
+        $this->assertSame('0.00', $result['rows'][0]['customs_duty']);
+        $this->assertSame('0.00', $result['rows'][0]['vat_amount']);
+        $this->assertSame('7.00', $result['rows'][1]['customs_duty']);
+        $this->assertSame('0.00', $result['foreign_total']);
+        $this->assertSame('7.00', $result['duty_total']);
+        $this->assertSame('0.00', $result['vat_total']);
+    }
+
+    public function test_tariff_codes_differing_only_by_whitespace_merge_into_one_row(): void
+    {
+        $result = (new CustomsTariffAggregator)->aggregate([
+            new ScannedCustomsItem(' 61091000', 'a', '1.00', '1', []),
+            new ScannedCustomsItem('61091000 ', 'b', '2.00', '2', []),
+            new ScannedCustomsItem('   ', 'c', '3.00', '3', []),
+        ]);
+
+        $this->assertCount(2, $result['rows']);
+        $this->assertSame('61091000', $result['rows'][0]['tariff_code']);
+        $this->assertSame('3.00', $result['rows'][0]['foreign_amount']);
+        $this->assertSame('—', $result['rows'][1]['tariff_code']);
+    }
+
     public function test_no_items_gives_empty_result(): void
     {
         $result = (new CustomsTariffAggregator)->aggregate([]);

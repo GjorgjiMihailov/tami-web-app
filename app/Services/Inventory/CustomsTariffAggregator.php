@@ -3,6 +3,7 @@
 namespace App\Services\Inventory;
 
 use App\Services\Invoicing\ScannedCustomsItem;
+use App\Support\Bcmath;
 
 /**
  * Ги собира ставките од ЕЦД по тарифен број — истиот приказ што го дава
@@ -28,7 +29,10 @@ class CustomsTariffAggregator
         $foreignTotal = '0.00';
 
         foreach ($items as $item) {
-            $code = $item->tariffCode !== null && $item->tariffCode !== '' ? $item->tariffCode : '—';
+            $code = trim((string) $item->tariffCode);
+            if ($code === '') {
+                $code = '—';
+            }
 
             $rows[$code] ??= ['tariff_code' => $code, 'foreign_amount' => '0.00', 'customs_duty' => '0.00', 'vat_amount' => '0.00'];
 
@@ -65,6 +69,6 @@ class CustomsTariffAggregator
 
     private function amount(?string $value): string
     {
-        return $value !== null && is_numeric($value) ? $value : '0';
+        return Bcmath::isPlainNumber($value) ? $value : '0';
     }
 }
