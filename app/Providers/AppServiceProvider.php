@@ -14,7 +14,10 @@ use App\Models\SalesInvoice;
 use App\Listeners\RecordLastLogin;
 use App\Models\User;
 use App\Observers\CompanyObserver;
+use App\Services\Invoicing\ClaudeCustomsDeclarationReader;
 use App\Services\Invoicing\ClaudeScannedInvoiceReader;
+use App\Services\Invoicing\CustomsDeclarationReader;
+use App\Services\Invoicing\NullCustomsDeclarationReader;
 use App\Services\Invoicing\NullScannedInvoiceReader;
 use App\Services\Invoicing\ScannedInvoiceReader;
 use Illuminate\Auth\Events\Login;
@@ -37,6 +40,13 @@ class AppServiceProvider extends ServiceProvider
             fn () => filled(config('services.anthropic.key'))
                 ? new ClaudeScannedInvoiceReader
                 : new NullScannedInvoiceReader,
+        );
+
+        $this->app->bind(
+            CustomsDeclarationReader::class,
+            fn () => filled(config('services.anthropic.key'))
+                ? new ClaudeCustomsDeclarationReader
+                : new NullCustomsDeclarationReader,
         );
     }
 
