@@ -76,6 +76,27 @@ class PurchaseInvoiceScanTest extends TestCase
             ->assertSet('suggestedPartner', null);
     }
 
+    public function test_an_ordinary_scan_keeps_a_charge_line_as_a_normal_line_without_an_account(): void
+    {
+        $company = $this->company();
+
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            buyerTaxId: '4080012345678',
+            lines: [
+                new ScannedInvoiceLine('Стока', '1', '100.00', '18', 'goods'),
+                new ScannedInvoiceLine('Транспорт', '1', '20.00', '18', 'charge'),
+            ],
+        );
+
+        $this->read($company)
+            ->assertCount('lines', 2)
+            ->assertSet('lines.1.description', 'Транспорт')
+            ->assertSet('lines.1.unit_price', '20.00')
+            ->assertSet('lines.1.vat_rate', '18')
+            ->assertSet('lines.1.account_id', '')
+            ->assertSet('lines.1.item_id', '');
+    }
+
     public function test_an_unknown_supplier_is_offered_as_a_new_partner(): void
     {
         $company = $this->company();

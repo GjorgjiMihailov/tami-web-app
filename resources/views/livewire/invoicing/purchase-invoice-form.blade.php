@@ -358,7 +358,7 @@
             <div class="flex items-center justify-between px-4 py-3 border-b border-sand">
                 <h2 class="font-semibold text-gray-700">Ставки</h2>
                 <div class="flex items-center gap-4">
-                    @if (collect($lines)->contains(fn ($l) => ($l['item_id'] ?? '') === '' && trim((string) ($l['description'] ?? '')) !== ''))
+                    @if (collect($lines)->contains(fn ($l) => ($l['item_id'] ?? '') === '' && ($l['account_id'] ?? '') === '' && trim((string) ($l['description'] ?? '')) !== ''))
                         <button type="button" wire:click="addAllUnknownLinesAsItems" class="text-brand text-sm font-medium hover:underline">Внеси ги сите непознати како артикли</button>
                     @endif
                     <button type="button" wire:click="addLine" class="text-brand text-sm font-medium hover:underline">+ Додади ставка</button>

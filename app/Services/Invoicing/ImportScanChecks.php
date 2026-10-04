@@ -52,11 +52,17 @@ class ImportScanChecks
             }
 
             if ($invoice !== null) {
-                if ($invoice->currency !== null && $ecd->currency !== null && $invoice->currency !== $ecd->currency) {
-                    $warnings[] = "Валутата на фактурата ({$invoice->currency}) не е иста со валутата на ЕЦД ({$ecd->currency}).";
+                $invoiceCurrency = $this->currency($invoice->currency);
+                $ecdCurrency = $this->currency($ecd->currency);
+                $currenciesDiffer = $invoiceCurrency !== null && $ecdCurrency !== null && $invoiceCurrency !== $ecdCurrency;
+
+                if ($currenciesDiffer) {
+                    $warnings[] = "Валутата на фактурата ({$invoiceCurrency}) не е иста со валутата на ЕЦД ({$ecdCurrency}).";
                 }
 
-                if ($invoice->printedTotal !== null && $ecd->invoiceTotalForeign !== null
+                // Со различни валути споредбата на износите не значи ништо
+                // (втор, залажувачки предупредувач).
+                if (! $currenciesDiffer && $invoice->printedTotal !== null && $ecd->invoiceTotalForeign !== null
                     && Bcmath::isPlainNumber($invoice->printedTotal) && Bcmath::isPlainNumber($ecd->invoiceTotalForeign)
                     && bccomp($invoice->printedTotal, $ecd->invoiceTotalForeign, 2) !== 0) {
                     $difference = ltrim(bcsub($invoice->printedTotal, $ecd->invoiceTotalForeign, 2), '-');
@@ -64,7 +70,7 @@ class ImportScanChecks
                 }
 
                 if ($invoice->invoiceNumber !== null && $ecd->referencedInvoiceNumbers !== []
-                    && ! in_array($this->normalizeNumber($invoice->invoiceNumber), array_map($this->normalizeNumber(...), $ecd->referencedInvoiceNumbers), true)) {
+                    && ! $this->numberReferenced($invoice->invoiceNumber, $ecd->referencedInvoiceNumbers)) {
                     $warnings[] = "Бројот на фактурата ({$invoice->invoiceNumber}) не се спомнува во ЕЦД (поле 44).";
                 }
             }
@@ -73,10 +79,20 @@ class ImportScanChecks
                 && ! $this->namesOverlap((string) $ecd->declarantName, (string) $forwarder->sellerName)) {
                 $warnings[] = "Шпедитерот на ЕЦД ({$ecd->declarantName}) не се совпаѓа со издавачот на шпедитерската фактура ({$forwarder->sellerName}).";
             }
+
+            if ($forwarder !== null && $this->forwarderRepeatsDuty($forwarder, $summary['duty_total'], $summary['vat_total'])) {
+                $warnings[] = 'Шпедитерската фактура содржи износ еднаков со царината/ДДВ од ЕЦД — ако е пренесена царина, ќе се смета двапати во магацинската вредност.';
+            }
+        }
+
+        if ($invoice !== null && ($sum = $this->linesGrossSum($invoice)) !== null
+            && Bcmath::isPlainNumber($invoice->printedTotal)
+            && bccomp(ltrim(bcsub($sum, $invoice->printedTotal, 2), '-'), '0.05', 2) > 0) {
+            $warnings[] = "Збирот на ставките на фактурата ({$sum}) не е ист со вкупното испишано ({$invoice->printedTotal}) — можеби е изоставена или погрешно прочитана ставка.";
         }
 
         if ($rateFromNbrm) {
-            $warnings[] = 'Нема ЕЦД — курсот е од НБРМ на датумот на фактурата. Со ЕЦД курсот би бил оној од декларацијата.';
+            $warnings[] = 'Курсот е од НБРМ на датумот на фактурата — нема ЕЦД со курс од декларацијата.';
         }
 
         return $warnings;
@@ -85,6 +101,84 @@ class ImportScanChecks
     private function differs(string $computed, ?string $printed): bool
     {
         return Bcmath::isPlainNumber($printed) && bccomp($computed, $printed, 2) !== 0;
+    }
+
+    private function currency(?string $currency): ?string
+    {
+        $value = strtoupper(trim((string) $currency));
+
+        return $value === '' ? null : $value;
+    }
+
+    /**
+     * Поле 44 може да врати подолг стринг од бројот на фактурата (или обратно),
+     * па важи и содржување — но само за број од барем 3 знаци, за да „1“ не
+     * се совпадне со сè.
+     *
+     * @param  string[]  $referenced
+     */
+    private function numberReferenced(string $number, array $referenced): bool
+    {
+        $mine = $this->normalizeNumber($number);
+
+        foreach ($referenced as $other) {
+            $theirs = $this->normalizeNumber($other);
+
+            if ($mine === $theirs) {
+                return true;
+            }
+
+            if (min(mb_strlen($mine), mb_strlen($theirs)) >= 3
+                && (str_contains($mine, $theirs) || str_contains($theirs, $mine))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Σ(количина × цена × (1 + ДДВ/100)), по ставка на 2 децимали; null ако некоја ставка не е читлива. */
+    private function linesGrossSum(ScannedInvoice $invoice): ?string
+    {
+        if ($invoice->lines === []) {
+            return null;
+        }
+
+        $sum = '0.00';
+
+        foreach ($invoice->lines as $line) {
+            $vat = filled($line->vatRate) ? $line->vatRate : '0';
+
+            if (! Bcmath::isPlainNumber($line->quantity) || ! Bcmath::isPlainNumber($line->unitPrice) || ! Bcmath::isPlainNumber($vat)) {
+                return null;
+            }
+
+            $factor = bcadd('1', bcdiv($vat, '100', 12), 12);
+            $sum = bcadd($sum, Bcmath::roundHalfUp(bcmul(bcmul($line->quantity, $line->unitPrice, 12), $factor, 12), 2), 2);
+        }
+
+        return $sum;
+    }
+
+    /** Ставка на шпедитерската со износ (±0,50) еднаков на царината или ДДВ од ЕЦД. */
+    private function forwarderRepeatsDuty(ScannedInvoice $forwarder, string $dutyTotal, string $vatTotal): bool
+    {
+        foreach ($forwarder->lines as $line) {
+            if (! Bcmath::isPlainNumber($line->quantity) || ! Bcmath::isPlainNumber($line->unitPrice)) {
+                continue;
+            }
+
+            $total = Bcmath::roundHalfUp(bcmul($line->quantity, $line->unitPrice, 12), 2);
+
+            foreach ([$dutyTotal, $vatTotal] as $reference) {
+                if (bccomp($reference, '0', 2) > 0
+                    && bccomp(ltrim(bcsub($total, $reference, 2), '-'), '0.50', 2) <= 0) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private function normalizeNumber(string $number): string

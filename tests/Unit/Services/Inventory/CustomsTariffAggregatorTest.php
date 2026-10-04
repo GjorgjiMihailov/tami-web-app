@@ -11,18 +11,18 @@ class CustomsTariffAggregatorTest extends TestCase
     public function test_it_sums_items_by_tariff_code_in_first_seen_order(): void
     {
         $result = (new CustomsTariffAggregator)->aggregate([
-            new ScannedCustomsItem('61091000', 'a', '234.61', '14474', ['A00' => '2533', 'B00' => '3061']),
-            new ScannedCustomsItem('58063210', 'b', '38.67', '2386', ['A00' => '239', 'B00' => '472']),
-            new ScannedCustomsItem('61091000', 'c', '193.36', '11929', ['A00' => '2088', 'B00' => '2523']),
+            new ScannedCustomsItem('61091000', 'a', '100.50', '6200', ['A00' => '1250', 'B00' => '800']),
+            new ScannedCustomsItem('58063210', 'b', '20.00', '1230', ['A00' => '200', 'B00' => '400']),
+            new ScannedCustomsItem('61091000', 'c', '80.25', '4900', ['A00' => '1000', 'B00' => '650']),
         ]);
 
         $this->assertSame([
-            ['tariff_code' => '61091000', 'foreign_amount' => '427.97', 'customs_duty' => '4621.00', 'vat_amount' => '5584.00'],
-            ['tariff_code' => '58063210', 'foreign_amount' => '38.67', 'customs_duty' => '239.00', 'vat_amount' => '472.00'],
+            ['tariff_code' => '61091000', 'foreign_amount' => '180.75', 'customs_duty' => '2250.00', 'vat_amount' => '1450.00'],
+            ['tariff_code' => '58063210', 'foreign_amount' => '20.00', 'customs_duty' => '200.00', 'vat_amount' => '400.00'],
         ], $result['rows']);
-        $this->assertSame('4860.00', $result['duty_total']);
-        $this->assertSame('6056.00', $result['vat_total']);
-        $this->assertSame('466.64', $result['foreign_total']);
+        $this->assertSame('2450.00', $result['duty_total']);
+        $this->assertSame('1850.00', $result['vat_total']);
+        $this->assertSame('200.75', $result['foreign_total']);
         $this->assertSame([], $result['other_codes']);
     }
 

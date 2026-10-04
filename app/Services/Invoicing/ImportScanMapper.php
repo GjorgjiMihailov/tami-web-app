@@ -15,7 +15,9 @@ class ImportScanMapper
     public const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF'];
 
     /**
-     * Фактурата од странски добавувач во денари по зададениот курс.
+     * Фактурата од странски добавувач во денари по зададениот курс. Ставките
+     * „транспорт/осигурување/пакување" (kind=charge) остануваат ставки на
+     * фактурата И се враќаат како ред во `costs`.
      *
      * @return array{invoice: ScannedInvoice, costs: array<int, array<string, string>>, warnings: string[]}
      */
@@ -32,11 +34,17 @@ class ImportScanMapper
                 $foreign = $this->lineTotal($line);
 
                 if ($foreign === null) {
-                    $warnings[] = "Ставка {$position} („{$line->description}“): износот не е читлив — внеси го трошокот рачно.";
+                    // Ставката останува на фактурата (долгот кон добавувачот мора да е
+                    // колку на хартијата), но непретворена, со предупредување.
+                    $warnings[] = "Ставка {$position} („{$line->description}“): износот не е читлив и не е претворен во денари — внеси го трошокот и износот рачно.";
+                    $lines[] = $line;
 
                     continue;
                 }
 
+                // Двојно, по одлука на сопственикот: ставка на фактурата (сметка 660,
+                // за да не се изгуби од долгот кон добавувачот) И ред „Увозни
+                // трошоци" (за да влезе во магацинската вредност).
                 $costs[] = [
                     'payee_name' => (string) ($invoice->sellerName ?? ''),
                     'reference_number' => (string) ($invoice->invoiceNumber ?? ''),
@@ -45,8 +53,6 @@ class ImportScanMapper
                     'vat_amount' => '0.00',
                     'source' => 'invoice',
                 ];
-
-                continue;
             }
 
             if (! Bcmath::isPlainNumber($line->unitPrice)) {

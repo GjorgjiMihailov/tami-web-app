@@ -4,6 +4,7 @@ namespace App\Services\Invoicing;
 
 use Anthropic\Client;
 use App\Models\Company;
+use App\Support\Bcmath;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 
@@ -12,8 +13,8 @@ use Illuminate\Support\Facades\Log;
  *
  * Моделот е Sonnet, не Haiku, свесно: врз вистински скен на ЕЦД (5 страни,
  * фотографија) Haiku погрешно го прочита ЕЦД бројот, пропушти ставки и врати
- * збир на царина 32.835 наместо 35.451. Sonnet ги прочита сите 11 ставки и
- * збировите излегоа точни. Цената е неколку центи по декларација.
+ * погрешен збир на царина. Sonnet ги прочита сите 11 ставки и збировите
+ * излегоа точни. Цената е неколку центи по декларација.
  */
 class ClaudeCustomsDeclarationReader implements CustomsDeclarationReader
 {
@@ -120,8 +121,20 @@ class ClaudeCustomsDeclarationReader implements CustomsDeclarationReader
             $charges = [];
 
             foreach ((array) ($item['charges'] ?? []) as $charge) {
-                if (is_array($charge) && isset($charge['code']) && $charge['code'] !== '') {
-                    $charges[strtoupper(trim((string) $charge['code']))] = $amount($text($charge, 'amount')) ?? '';
+                $code = is_array($charge) && isset($charge['code']) ? strtoupper(trim((string) $charge['code'])) : '';
+
+                if ($code === '') {
+                    continue;
+                }
+
+                $value = $amount($text($charge, 'amount')) ?? '';
+
+                // Два реда со ист вид на една ставка се собираат (ако се читливи
+                // и двата), а не се пишува еден врз друг.
+                if (isset($charges[$code]) && Bcmath::isPlainNumber($charges[$code]) && Bcmath::isPlainNumber($value)) {
+                    $charges[$code] = bcadd($charges[$code], $value, 2);
+                } elseif ($value !== '' || ! isset($charges[$code])) {
+                    $charges[$code] = $value;
                 }
             }
 
@@ -165,14 +178,14 @@ class ClaudeCustomsDeclarationReader implements CustomsDeclarationReader
         по до три ставки. Може да е фотографија — чекај го секој број внимателно.
 
         Врати ги податоците од документот:
-        - "ecd_number": бројот од полето „А. РДБ" на врвот (на пример 26MKIM10130001C799) — препиши го знак по знак;
+        - "ecd_number": бројот од полето „А. РДБ" на врвот (на пример 26MKIM00000001C000) — препиши го знак по знак;
         - "date": датумот на декларацијата во формат ГГГГ-ММ-ДД;
         - "importer_name" и "importer_tax_id": примачот (поле 8), со ДАНОЧНИОТ број (ЕДБ);
         - "declarant_name": подносителот/застапникот (поле 14);
         - "currency": валутата од поле 22 (три латински букви, на пример EUR);
         - "invoice_total_foreign": вкупниот износ на фактурата од поле 22;
         - "exchange_rate": курсот од поле 23, со сите децимали;
-        - "referenced_invoice_numbers": бројот(евите) на фактурите наведени во поле 44 (Прилож. док.), на пример R-0003/26 — само бројот на фактурата;
+        - "referenced_invoice_numbers": бројот(евите) на фактурите наведени во поле 44 (Прилож. док.), на пример T-1/26 — само бројот на фактурата;
         - "total_duty" и "total_vat": збировите од ВКУПНО на последната страна: збирот на сите A00 (царина) и збирот на сите B00 (ДДВ).
 
         За СЕКОЈА ставка (поле 32, Р.бр.) врати ред во "items":

@@ -14,7 +14,7 @@ class ImportScanMapperTest extends TestCase
     {
         return new ScannedInvoice(
             sellerName: 'FOREIGN DOO',
-            invoiceNumber: 'R-0003/26',
+            invoiceNumber: 'T-1/26',
             invoiceDate: '2026-02-24',
             currency: 'EUR',
             printedTotal: '1125.00',
@@ -28,27 +28,35 @@ class ImportScanMapperTest extends TestCase
 
     public function test_it_converts_goods_to_denars_with_half_up_rounding_and_zero_vat(): void
     {
-        $result = (new ImportScanMapper)->convertInvoice($this->foreignInvoice(), '61.6950');
+        $result = (new ImportScanMapper)->convertInvoice($this->foreignInvoice(), '61.5000');
 
         $this->assertSame('MKD', $result['invoice']->currency);
-        $this->assertCount(2, $result['invoice']->lines);
-        // 12.50 * 61.6950 = 771.1875 -> 771.19 ; 33.33 * 61.6950 = 2056.29435 -> 2056.29
-        $this->assertSame('771.19', $result['invoice']->lines[0]->unitPrice);
-        $this->assertSame('2056.29', $result['invoice']->lines[1]->unitPrice);
+        $this->assertCount(3, $result['invoice']->lines);
+        // 12.50 * 61.5 = 768.75 ; 33.33 * 61.5 = 2049.795 -> 2049.80 (половина нагоре)
+        $this->assertSame('768.75', $result['invoice']->lines[0]->unitPrice);
+        $this->assertSame('2049.80', $result['invoice']->lines[1]->unitPrice);
         $this->assertSame('0', $result['invoice']->lines[0]->vatRate);
         $this->assertSame('2', $result['invoice']->lines[0]->quantity);
-        $this->assertSame('R-0003/26', $result['invoice']->invoiceNumber);
+        $this->assertSame('T-1/26', $result['invoice']->invoiceNumber);
     }
 
-    public function test_a_charge_line_becomes_an_import_cost_row(): void
+    public function test_a_charge_line_stays_on_the_invoice_and_also_becomes_an_import_cost_row(): void
     {
-        $result = (new ImportScanMapper)->convertInvoice($this->foreignInvoice(), '61.6950');
+        $result = (new ImportScanMapper)->convertInvoice($this->foreignInvoice(), '61.5000');
+
+        // Ставката останува на фактурата (долгот кон добавувачот = хартијата), претворена, ДДВ 0, kind зачуван.
+        $charge = $result['invoice']->lines[2];
+        $this->assertSame('ТРОШКОВИ НА ТРАНСПОРТА', $charge->description);
+        $this->assertSame('6150.00', $charge->unitPrice);
+        $this->assertSame('1', $charge->quantity);
+        $this->assertSame('0', $charge->vatRate);
+        $this->assertSame('charge', $charge->kind);
 
         $this->assertSame([[
             'payee_name' => 'FOREIGN DOO',
-            'reference_number' => 'R-0003/26',
+            'reference_number' => 'T-1/26',
             'foreign_amount' => '100.00',
-            'base_amount' => '6169.50',
+            'base_amount' => '6150.00',
             'vat_amount' => '0.00',
             'source' => 'invoice',
         ]], $result['costs']);
@@ -58,31 +66,42 @@ class ImportScanMapperTest extends TestCase
     {
         $invoice = new ScannedInvoice(currency: 'EUR', lines: [new ScannedInvoiceLine('Нешто', '1', '1?5', '0', 'goods')]);
 
-        $result = (new ImportScanMapper)->convertInvoice($invoice, '61.6950');
+        $result = (new ImportScanMapper)->convertInvoice($invoice, '61.5000');
 
         $this->assertSame('1?5', $result['invoice']->lines[0]->unitPrice);
         $this->assertCount(1, $result['warnings']);
         $this->assertStringContainsString('1', $result['warnings'][0]);
     }
 
+    public function test_an_unreadable_charge_amount_keeps_the_line_unconverted_and_warns(): void
+    {
+        $invoice = new ScannedInvoice(currency: 'EUR', lines: [new ScannedInvoiceLine('Транспорт', '1', '10?0', '0', 'charge')]);
+
+        $result = (new ImportScanMapper)->convertInvoice($invoice, '61.5000');
+
+        $this->assertSame('10?0', $result['invoice']->lines[0]->unitPrice);
+        $this->assertSame([], $result['costs']);
+        $this->assertCount(1, $result['warnings']);
+    }
+
     public function test_forwarder_cost_sums_net_and_vat(): void
     {
         $forwarder = new ScannedInvoice(
-            sellerName: 'ТЕСТ ШПЕДИТЕР ДООЕЛ',
-            invoiceNumber: '2600000286',
+            sellerName: 'Шпедитер ДООЕЛ Скопје',
+            invoiceNumber: 'F-77/26',
             currency: 'MKD',
             lines: [
-                new ScannedInvoiceLine('Царинско посредување', '1', '3000.00', '18'),
-                new ScannedInvoiceLine('Манипулација', '2', '35.00', '18'),
+                new ScannedInvoiceLine('Царинско посредување', '1', '2000.00', '18'),
+                new ScannedInvoiceLine('Манипулација', '2', '25.00', '18'),
             ],
         );
 
         $result = (new ImportScanMapper)->forwarderCost($forwarder);
 
-        $this->assertSame('ТЕСТ ШПЕДИТЕР ДООЕЛ', $result['row']['payee_name']);
-        $this->assertSame('2600000286', $result['row']['reference_number']);
-        $this->assertSame('3070.00', $result['row']['base_amount']);
-        $this->assertSame('552.60', $result['row']['vat_amount']);
+        $this->assertSame('Шпедитер ДООЕЛ Скопје', $result['row']['payee_name']);
+        $this->assertSame('F-77/26', $result['row']['reference_number']);
+        $this->assertSame('2050.00', $result['row']['base_amount']);
+        $this->assertSame('369.00', $result['row']['vat_amount']);
         $this->assertSame('', $result['row']['foreign_amount']);
         $this->assertSame('forwarder', $result['row']['source']);
         $this->assertSame([], $result['warnings']);
@@ -100,17 +119,17 @@ class ImportScanMapperTest extends TestCase
     public function test_declaration_fields(): void
     {
         $fields = (new ImportScanMapper)->declarationFields(new ScannedCustomsDeclaration(
-            declarationNumber: '26MKIM99990001C111',
+            declarationNumber: '26MKIM00000001C000',
             date: '2026-03-04',
             currency: 'EUR',
-            exchangeRate: '61.6950',
+            exchangeRate: '61.5000',
         ));
 
         $this->assertSame([
-            'customsDeclarationNumber' => '26MKIM99990001C111',
+            'customsDeclarationNumber' => '26MKIM00000001C000',
             'importDate' => '2026-03-04',
             'importCurrencyCode' => 'EUR',
-            'importExchangeRate' => '61.6950',
+            'importExchangeRate' => '61.5000',
         ], $fields);
     }
 

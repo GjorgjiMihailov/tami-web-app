@@ -20,7 +20,6 @@ use App\Services\Invoicing\PurchaseInvoiceService;
 use App\Services\Invoicing\ScannedInvoice;
 use App\Services\Invoicing\ScannedInvoiceLine;
 use App\Services\Invoicing\ScannedInvoiceReader;
-use App\Services\Invoicing\ScannedInvoiceReadException;
 use App\Services\PartnerInsights;
 use App\Support\Bcmath;
 use App\Support\VatMath;
@@ -459,6 +458,20 @@ class PurchaseInvoiceForm extends Component
             return;
         }
 
+        // Истото правило како кај обичниот скен: преголема слика се одбива
+        // пред да се плати повик, на полето на тој документ.
+        $oversized = [];
+
+        foreach (['ecdFile', 'importInvoiceFile', 'forwarderFile'] as $slot) {
+            $file = $this->{$slot};
+
+            if ($file !== null && $file->getMimeType() !== 'application/pdf'
+                && $file->getSize() > self::MAX_IMAGE_KILOBYTES * 1024) {
+                $this->addError($slot, 'Сликата е преголема — прати помала слика (до 6 МБ) или PDF.');
+                $oversized[$slot] = true;
+            }
+        }
+
         $mapper = new ImportScanMapper;
         $warnings = [];
         $ecd = null;
@@ -467,28 +480,28 @@ class PurchaseInvoiceForm extends Component
         $rateFromNbrm = false;
         $invoiceNeedsRate = false;
 
-        if ($this->ecdFile !== null) {
+        if ($this->ecdFile !== null && ! isset($oversized['ecdFile'])) {
             try {
                 $ecd = app(CustomsDeclarationReader::class)->read($this->ecdFile, $this->company);
-            } catch (ScannedInvoiceReadException $e) {
+            } catch (\Throwable $e) {
                 report($e);
                 $this->addError('ecdFile', 'Не можев да ја прочитам ЕЦД — внеси ја рачно.');
             }
         }
 
-        if ($this->importInvoiceFile !== null) {
+        if ($this->importInvoiceFile !== null && ! isset($oversized['importInvoiceFile'])) {
             try {
                 $invoice = app(ScannedInvoiceReader::class)->read($this->importInvoiceFile, $this->company);
-            } catch (ScannedInvoiceReadException $e) {
+            } catch (\Throwable $e) {
                 report($e);
                 $this->addError('importInvoiceFile', 'Не можев да ја прочитам фактурата — внеси ја рачно.');
             }
         }
 
-        if ($this->forwarderFile !== null) {
+        if ($this->forwarderFile !== null && ! isset($oversized['forwarderFile'])) {
             try {
                 $forwarder = app(ScannedInvoiceReader::class)->read($this->forwarderFile, $this->company);
-            } catch (ScannedInvoiceReadException $e) {
+            } catch (\Throwable $e) {
                 report($e);
                 $this->addError('forwarderFile', 'Не можев да ја прочитам шпедитерската фактура — внеси ја рачно.');
             }
@@ -519,15 +532,27 @@ class PurchaseInvoiceForm extends Component
 
         if ($invoice !== null) {
             $rate = Bcmath::isPlainNumber($this->importExchangeRate) ? $this->importExchangeRate : null;
+            $currency = filled($invoice->currency) ? $invoice->currency : null;
 
-            if ($invoice->currency !== null && $invoice->currency !== 'MKD') {
+            // Валутата на фактурата не е прочитана: ако ЕЦД од истото читање има
+            // странска валута, фактурата се смета во неа (по курсот на ЕЦД);
+            // инаку износите се применуваат како што се, со предупредување.
+            if ($currency === null) {
+                if ($ecd !== null && filled($ecd->currency) && $ecd->currency !== 'MKD') {
+                    $currency = $ecd->currency;
+                } else {
+                    $warnings[] = 'Валутата на фактурата не е прочитана — износите се третирани како денари, провери ги.';
+                }
+            }
+
+            if ($currency !== null && $currency !== 'MKD') {
                 if ($rate === null) {
                     $date = filled($invoice->invoiceDate) ? $invoice->invoiceDate : $this->invoiceDate;
 
                     try {
-                        $rate = (string) app(ExchangeRateService::class)->getRate($invoice->currency, Carbon::parse($date));
+                        $rate = (string) app(ExchangeRateService::class)->getRate($currency, Carbon::parse($date));
                         $this->importExchangeRate = $rate;
-                        $this->importCurrencyCode = in_array($invoice->currency, ImportScanMapper::CURRENCIES, true) ? $invoice->currency : $this->importCurrencyCode;
+                        $this->importCurrencyCode = in_array($currency, ImportScanMapper::CURRENCIES, true) ? $currency : $this->importCurrencyCode;
                         $rateFromNbrm = true;
                     } catch (\Throwable $e) {
                         report($e);
@@ -542,7 +567,7 @@ class PurchaseInvoiceForm extends Component
                     $warnings = array_merge($warnings, $converted['warnings']);
 
                     $this->resetScanFeedback();
-                    $this->applyScan($converted['invoice']);
+                    $this->applyScan($converted['invoice'], chargesOnTransportAccount: true);
                     $this->scanRead = true;
 
                     $this->replaceImportCosts($converted['costs'], 'invoice');
@@ -551,6 +576,10 @@ class PurchaseInvoiceForm extends Component
                 $this->resetScanFeedback();
                 $this->applyScan($invoice);
                 $this->scanRead = true;
+
+                // Денарска фактура нема ред „транспорт" од фактурата: се отстрануваат
+                // и редовите од претходно читање во странска валута.
+                $this->replaceImportCosts([], 'invoice');
             }
         }
 
@@ -569,7 +598,8 @@ class PurchaseInvoiceForm extends Component
         $this->ecdFile = $this->forwarderFile = null;
 
         // Без курс фактурата не е применета: прикачувањето останува за да
-        // може да се внесе курсот и да се прочита пак без нов (платен) повик.
+        // може да се внесе курсот и да се прочита пак. Второто читање повторно
+        // го повикува (платениот) API за фактурата — ништо не се кешира.
         if (! $invoiceNeedsRate) {
             $this->importInvoiceFile = null;
         }
@@ -631,7 +661,8 @@ class PurchaseInvoiceForm extends Component
         $next = $existing->count() + 1;
 
         foreach ($this->lines as $index => $line) {
-            if (($line['item_id'] ?? '') !== '') {
+            // Ставка со сметка (на пр. транспортот на 660) не е стока.
+            if (($line['item_id'] ?? '') !== '' || ($line['account_id'] ?? '') !== '') {
                 continue;
             }
 
@@ -653,7 +684,7 @@ class PurchaseInvoiceForm extends Component
                     'code' => $code,
                     'name' => mb_substr($name, 0, 255),
                     'unit_of_measure' => 'бр.',
-                    'vat_rate' => Bcmath::isPlainNumber($line['vat_rate'] ?? null) ? $line['vat_rate'] : '18.00',
+                    'vat_rate' => $this->newItemVatRate($line),
                     'type' => 'product',
                     'is_active' => true,
                 ]);
@@ -665,6 +696,22 @@ class PurchaseInvoiceForm extends Component
             $this->lines[$index]['item_id'] = (string) $item->id;
             $this->lines[$index]['account_id'] = '';
         }
+    }
+
+    /**
+     * ДДВ стапка на нов артикл од ставка. Кај увоз ставките се претворени со
+     * ДДВ 0 (увозното ДДВ е во ЕЦД), па тоа не смее да стане стапка на
+     * артиклот при продажба — важи стандардната на фирмата.
+     *
+     * @param  array<string, mixed>  $line
+     */
+    private function newItemVatRate(array $line): string
+    {
+        if ($this->isImport) {
+            return $this->company->is_vat_registered ? '18.00' : '0.00';
+        }
+
+        return Bcmath::isPlainNumber($line['vat_rate'] ?? null) ? (string) $line['vat_rate'] : '18.00';
     }
 
     public function createSuggestedPartner(): void
@@ -690,7 +737,7 @@ class PurchaseInvoiceForm extends Component
         $this->suggestedPartner = null;
     }
 
-    private function applyScan(ScannedInvoice $scanned): void
+    private function applyScan(ScannedInvoice $scanned, bool $chargesOnTransportAccount = false): void
     {
         if ($scanned->invoiceCount === 0) {
             $this->scanWarnings[] = 'Документот не изгледа како фактура — провери дали е качен вистинскиот фајл.';
@@ -752,7 +799,17 @@ class PurchaseInvoiceForm extends Component
 
         $items = Item::where('company_id', $this->company->id)->where('is_active', true)->get();
 
-        $this->lines = array_map(function (ScannedInvoiceLine $line) use ($items) {
+        // Увоз: ставката „транспорт/осигурување" останува на фактурата (долгот
+        // кон добавувачот = хартијата) на сметка 660; истиот износ е и во
+        // „Увозни трошоци" за магацинската вредност. Кај обичен скен — без сметка.
+        $chargeAccountId = '';
+
+        if ($chargesOnTransportAccount && $this->isImport
+            && collect($scanned->lines)->contains(fn (ScannedInvoiceLine $l) => $l->kind === 'charge')) {
+            $chargeAccountId = (string) (Account::where('company_id', $this->company->id)->where('code', '660')->value('id') ?? '');
+        }
+
+        $this->lines = array_map(function (ScannedInvoiceLine $line) use ($items, $chargeAccountId) {
             $description = (string) $line->description;
             $rate = filled($line->vatRate) ? (string) $line->vatRate : '0.00';
             $price = filled($line->unitPrice) ? (string) $line->unitPrice : '0';
@@ -766,7 +823,7 @@ class PurchaseInvoiceForm extends Component
 
             return [
                 'item_id' => $match ? (string) $match->id : '',
-                'account_id' => '',
+                'account_id' => $line->kind === 'charge' ? $chargeAccountId : '',
                 'description' => $description,
                 'quantity' => filled($line->quantity) ? $line->quantity : '1',
                 'unit_price' => $price,
@@ -819,7 +876,7 @@ class PurchaseInvoiceForm extends Component
                 'code' => $code,
                 'name' => mb_substr($name, 0, 255),
                 'unit_of_measure' => 'бр.',
-                'vat_rate' => is_numeric($line['vat_rate'] ?? null) ? $line['vat_rate'] : '18.00',
+                'vat_rate' => $this->newItemVatRate($line),
                 'type' => 'product',
                 'is_active' => true,
             ]);
