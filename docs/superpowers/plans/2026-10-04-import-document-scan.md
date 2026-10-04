@@ -15,6 +15,7 @@
 - Никаде во тестовите нема мрежа и нема вистински API повик: читачите се менуваат со двојници (`tests/Support/Fake*Reader`); `Http::fake` за НБРМ.
 - Вистинските документи (PDF/слики од клиенти) НИКОГАШ не влегуваат во репото. Фикстурите се измислени (фирми, ЕДБ, броеви).
 - Износи од скен се нормализираат со `ClaudeScannedInvoiceReader::normalizeAmount($v, thousands: bool)` / `normalizeCurrency()`; износи што ги внесува корисник се нормализираат со `App\Support\VatMath::number()` пред секој bcmath повик (запирка како децимала не смее да руши со 500).
+- Пред секој bcmath повик врз вредност од скен/корисник: `App\Support\Bcmath::isPlainNumber(?string)` (додаден во Task 2), НИКОГАШ `is_numeric` (тој прима „ 12“, „1e3“, а bcmath фрла ValueError).
 - Секое заокружување е half-up преку `App\Support\Bcmath::roundHalfUp(string $value, int $scale)`; никогаш голо `bcmul`/`bcdiv` како резултат (тоа сече).
 - Книжењето не се менува: ништо во овој план не допира `JournalEntry`/сметка 660.
 - Читањето е само за `canReadScans()` (админ/сметководител + клуч). Текстовите на екран се на македонски (ист стил на остатокот).
@@ -1013,7 +1014,7 @@ class ImportScanMapper
                 continue;
             }
 
-            if ($line->unitPrice === null || ! is_numeric($line->unitPrice)) {
+            if (! Bcmath::isPlainNumber($line->unitPrice)) {
                 $warnings[] = "Ставка {$position} („{$line->description}“): цената не е читлива и не е претворена во денари.";
                 $lines[] = $line;
 
@@ -1056,7 +1057,7 @@ class ImportScanMapper
                 continue;
             }
 
-            $rate = $line->vatRate !== null && is_numeric($line->vatRate) ? $line->vatRate : '0';
+            $rate = Bcmath::isPlainNumber($line->vatRate) ? $line->vatRate : '0';
 
             $net = bcadd($net, $total, 2);
             $vat = bcadd($vat, Bcmath::roundHalfUp(bcdiv(bcmul($total, $rate, 12), '100', 12), 2), 2);
@@ -1094,7 +1095,7 @@ class ImportScanMapper
 
     private function lineTotal(ScannedInvoiceLine $line): ?string
     {
-        if ($line->quantity === null || $line->unitPrice === null || ! is_numeric($line->quantity) || ! is_numeric($line->unitPrice)) {
+        if (! Bcmath::isPlainNumber($line->quantity) || ! Bcmath::isPlainNumber($line->unitPrice)) {
             return null;
         }
 
@@ -1283,6 +1284,7 @@ class ImportScanChecksTest extends TestCase
 namespace App\Services\Invoicing;
 
 use App\Services\Inventory\CustomsTariffAggregator;
+use App\Support\Bcmath;
 
 /**
  * Проверки врз прочитаните увозни документи. Враќа листа предупредувања —
@@ -1336,7 +1338,7 @@ class ImportScanChecks
                 }
 
                 if ($invoice->printedTotal !== null && $ecd->invoiceTotalForeign !== null
-                    && is_numeric($invoice->printedTotal) && is_numeric($ecd->invoiceTotalForeign)
+                    && Bcmath::isPlainNumber($invoice->printedTotal) && Bcmath::isPlainNumber($ecd->invoiceTotalForeign)
                     && bccomp($invoice->printedTotal, $ecd->invoiceTotalForeign, 2) !== 0) {
                     $difference = ltrim(bcsub($invoice->printedTotal, $ecd->invoiceTotalForeign, 2), '-');
                     $warnings[] = "Вкупно на фактурата ({$invoice->printedTotal}) не е исто со вредноста во ЕЦД ({$ecd->invoiceTotalForeign}) — разлика {$difference}.";
@@ -1363,7 +1365,7 @@ class ImportScanChecks
 
     private function differs(string $computed, ?string $printed): bool
     {
-        return $printed !== null && is_numeric($printed) && bccomp($computed, $printed, 2) !== 0;
+        return Bcmath::isPlainNumber($printed) && bccomp($computed, $printed, 2) !== 0;
     }
 
     private function normalizeNumber(string $number): string
@@ -1671,6 +1673,8 @@ class PurchaseInvoiceImportScanTest extends TestCase
     public array $importScanWarnings = [];
 ```
 
+(в-1) Додај `use App\Support\Bcmath;` ако го нема.
+
 (в) Нови методи (по `readScan()`/`createSuggestedPartner()`):
 
 ```php
@@ -1759,7 +1763,7 @@ class PurchaseInvoiceImportScanTest extends TestCase
         }
 
         if ($invoice !== null) {
-            $rate = is_numeric($this->importExchangeRate) ? $this->importExchangeRate : null;
+            $rate = Bcmath::isPlainNumber($this->importExchangeRate) ? $this->importExchangeRate : null;
 
             if ($invoice->currency !== null && $invoice->currency !== 'MKD') {
                 if ($rate === null) {
