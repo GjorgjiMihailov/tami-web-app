@@ -11,11 +11,16 @@ use App\Models\Partner;
 use App\Models\PurchaseInvoice;
 use App\Models\Warehouse;
 use App\Services\ExchangeRateService;
+use App\Services\Inventory\CustomsTariffAggregator;
 use App\Services\Inventory\LandedCostAllocator;
+use App\Services\Invoicing\CustomsDeclarationReader;
+use App\Services\Invoicing\ImportScanChecks;
+use App\Services\Invoicing\ImportScanMapper;
 use App\Services\Invoicing\PurchaseInvoiceService;
 use App\Services\Invoicing\ScannedInvoice;
 use App\Services\Invoicing\ScannedInvoiceLine;
 use App\Services\Invoicing\ScannedInvoiceReader;
+use App\Services\Invoicing\ScannedInvoiceReadException;
 use App\Services\PartnerInsights;
 use App\Support\Bcmath;
 use App\Support\VatMath;
@@ -36,6 +41,15 @@ class PurchaseInvoiceForm extends Component
     private const MAX_IMAGE_KILOBYTES = 6144;
 
     public $scanFile = null;
+
+    public $ecdFile = null;
+
+    public $importInvoiceFile = null;
+
+    public $forwarderFile = null;
+
+    /** @var string[] */
+    public array $importScanWarnings = [];
 
     public bool $scanRead = false;
 
@@ -416,6 +430,191 @@ class PurchaseInvoiceForm extends Component
 
         $this->applyScan($scanned);
         $this->scanRead = true;
+    }
+
+    /**
+     * Чита до три увозни документи по фиксен редослед: ЕЦД (од него е
+     * курсот), па фактурата од добавувач (се претвора по тој курс), па
+     * шпедитерската. Секое ново читање ги заменува редовите од истиот
+     * извор, не ги удвојува. Грешка на еден документ не ги крши другите.
+     */
+    public function readImportDocuments(): void
+    {
+        abort_unless($this->canReadScans(), 403);
+
+        // Три повици кон API на еден барање; ограничувањето на PHP не е
+        // проверено на серверот, па се бара повеќе време наместо да се верува
+        // на стандардните 30 секунди.
+        @set_time_limit(240);
+
+        $this->resetErrorBag(['ecdFile', 'importInvoiceFile', 'forwarderFile', 'importDocuments']);
+        $this->importScanWarnings = [];
+
+        $rules = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+        $this->validate(['ecdFile' => $rules, 'importInvoiceFile' => $rules, 'forwarderFile' => $rules]);
+
+        if ($this->ecdFile === null && $this->importInvoiceFile === null && $this->forwarderFile === null) {
+            $this->addError('importDocuments', 'Прикачи барем еден документ.');
+
+            return;
+        }
+
+        $mapper = new ImportScanMapper;
+        $warnings = [];
+        $ecd = null;
+        $invoice = null;
+        $forwarder = null;
+        $rateFromNbrm = false;
+
+        if ($this->ecdFile !== null) {
+            try {
+                $ecd = app(CustomsDeclarationReader::class)->read($this->ecdFile, $this->company);
+            } catch (ScannedInvoiceReadException $e) {
+                report($e);
+                $this->addError('ecdFile', 'Не можев да ја прочитам ЕЦД — внеси ја рачно.');
+            }
+        }
+
+        if ($this->importInvoiceFile !== null) {
+            try {
+                $invoice = app(ScannedInvoiceReader::class)->read($this->importInvoiceFile, $this->company);
+            } catch (ScannedInvoiceReadException $e) {
+                report($e);
+                $this->addError('importInvoiceFile', 'Не можев да ја прочитам фактурата — внеси ја рачно.');
+            }
+        }
+
+        if ($this->forwarderFile !== null) {
+            try {
+                $forwarder = app(ScannedInvoiceReader::class)->read($this->forwarderFile, $this->company);
+            } catch (ScannedInvoiceReadException $e) {
+                report($e);
+                $this->addError('forwarderFile', 'Не можев да ја прочитам шпедитерската фактура — внеси ја рачно.');
+            }
+        }
+
+        if ($ecd === null && $invoice === null && $forwarder === null) {
+            return;
+        }
+
+        $this->isImport = true;
+
+        if ($ecd !== null) {
+            $fields = $mapper->declarationFields($ecd);
+
+            $this->customsDeclarationNumber = $fields['customsDeclarationNumber'];
+            $this->importDate = $fields['importDate'];
+            $this->importCurrencyCode = $fields['importCurrencyCode'] ?? $this->importCurrencyCode;
+            $this->importExchangeRate = $fields['importExchangeRate'];
+
+            if ($fields['importCurrencyCode'] === null && filled($ecd->currency)) {
+                $warnings[] = "Валутата на ЕЦД ({$ecd->currency}) не е меѓу понудените — избери ја рачно.";
+            }
+
+            $summary = (new CustomsTariffAggregator)->aggregate($ecd->items);
+
+            $this->tariffLines = array_map(fn (array $row) => $row + ['source' => 'ecd'], $summary['rows']);
+        }
+
+        if ($invoice !== null) {
+            $rate = Bcmath::isPlainNumber($this->importExchangeRate) ? $this->importExchangeRate : null;
+
+            if ($invoice->currency !== null && $invoice->currency !== 'MKD') {
+                if ($rate === null) {
+                    $date = filled($invoice->invoiceDate) ? $invoice->invoiceDate : $this->invoiceDate;
+
+                    try {
+                        $rate = (string) app(ExchangeRateService::class)->getRate($invoice->currency, Carbon::parse($date));
+                        $this->importExchangeRate = $rate;
+                        $this->importCurrencyCode = in_array($invoice->currency, ImportScanMapper::CURRENCIES, true) ? $invoice->currency : $this->importCurrencyCode;
+                        $rateFromNbrm = true;
+                    } catch (\Throwable) {
+                        $this->addError('importExchangeRate', 'Нема ЕЦД и не можев да го повлечам курсот од НБРМ — внеси го рачно и прочитај ја фактурата повторно.');
+                        $rate = null;
+                    }
+                }
+
+                if ($rate !== null) {
+                    $converted = $mapper->convertInvoice($invoice, $rate);
+                    $warnings = array_merge($warnings, $converted['warnings']);
+
+                    $this->applyScan($converted['invoice']);
+                    $this->scanRead = true;
+
+                    $this->importCosts = array_values(array_filter($this->importCosts, fn ($row) => ($row['source'] ?? '') !== 'invoice'));
+                    $this->importCosts = array_merge($this->importCosts, $converted['costs']);
+                }
+            } else {
+                $this->applyScan($invoice);
+                $this->scanRead = true;
+            }
+        }
+
+        if ($forwarder !== null) {
+            $cost = $mapper->forwarderCost($forwarder);
+            $warnings = array_merge($warnings, $cost['warnings']);
+
+            $this->importCosts = array_values(array_filter($this->importCosts, fn ($row) => ($row['source'] ?? '') !== 'forwarder'));
+            $this->importCosts[] = $cost['row'];
+        }
+
+        $warnings = array_merge($warnings, (new ImportScanChecks)->run(
+            $ecd, $invoice, $forwarder, (string) $this->company->tax_id, $rateFromNbrm,
+        ));
+
+        $this->importScanWarnings = $warnings;
+        $this->ecdFile = $this->importInvoiceFile = $this->forwarderFile = null;
+    }
+
+    /**
+     * Еден клик за сите ставки без артикл (фактура од ~110 ставки): исто
+     * правило како „Внеси како артикл" — исто име (без разлика на големи/мали
+     * букви) го користи постоечкиот артикл — но со еден бројач на шифри.
+     */
+    public function addAllUnknownLinesAsItems(): void
+    {
+        Gate::authorize('create', Item::class);
+
+        $existing = Item::where('company_id', $this->company->id)->get(['id', 'code', 'name']);
+        $byName = $existing->keyBy(fn ($item) => mb_strtolower($item->name));
+        $codes = $existing->pluck('code')->flip();
+        $next = $existing->count() + 1;
+
+        foreach ($this->lines as $index => $line) {
+            if (($line['item_id'] ?? '') !== '') {
+                continue;
+            }
+
+            $name = trim((string) ($line['description'] ?? ''));
+
+            if ($name === '') {
+                continue;
+            }
+
+            $item = $byName->get(mb_strtolower($name));
+
+            if (! $item) {
+                do {
+                    $code = 'A-'.str_pad((string) $next++, 4, '0', STR_PAD_LEFT);
+                } while ($codes->has($code));
+
+                $item = Item::create([
+                    'company_id' => $this->company->id,
+                    'code' => $code,
+                    'name' => mb_substr($name, 0, 255),
+                    'unit_of_measure' => 'бр.',
+                    'vat_rate' => Bcmath::isPlainNumber($line['vat_rate'] ?? null) ? $line['vat_rate'] : '18.00',
+                    'type' => 'product',
+                    'is_active' => true,
+                ]);
+
+                $byName->put(mb_strtolower($name), $item);
+                $codes->put($code, true);
+            }
+
+            $this->lines[$index]['item_id'] = (string) $item->id;
+            $this->lines[$index]['account_id'] = '';
+        }
     }
 
     public function createSuggestedPartner(): void
