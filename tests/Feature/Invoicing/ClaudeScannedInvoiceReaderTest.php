@@ -98,7 +98,7 @@ class ClaudeScannedInvoiceReaderTest extends TestCase
 
         $this->assertSame(1, $options['maxRetries']);
         $this->assertInstanceOf(Client::class, $options['transporter']);
-        $this->assertSame(30.0, $options['transporter']->getConfig('timeout'));
+        $this->assertSame(90.0,$options['transporter']->getConfig('timeout'));
     }
 
     /**
@@ -338,5 +338,27 @@ class ClaudeScannedInvoiceReaderTest extends TestCase
             'долари' => ['долари', 'USD'],
             'непознато останува' => ['јени', 'јени'],
         ];
+    }
+
+    public function test_a_line_kind_is_mapped_and_unknown_values_become_null(): void
+    {
+        $invoice = ClaudeScannedInvoiceReader::toScannedInvoice([
+            'lines' => [
+                ['description' => 'Рукавици', 'quantity' => '2', 'unit_price' => '12.50', 'vat_rate' => '0', 'kind' => 'goods'],
+                ['description' => 'ТРОШКОВИ НА ТРАНСПОРТА', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0', 'kind' => 'charge'],
+                ['description' => 'Нешто', 'quantity' => '1', 'unit_price' => '1', 'vat_rate' => '0', 'kind' => 'bogus'],
+                ['description' => 'Без вид', 'quantity' => '1', 'unit_price' => '1', 'vat_rate' => '0'],
+            ],
+        ]);
+
+        $this->assertSame('goods', $invoice->lines[0]->kind);
+        $this->assertSame('charge', $invoice->lines[1]->kind);
+        $this->assertNull($invoice->lines[2]->kind);
+        $this->assertNull($invoice->lines[3]->kind);
+    }
+
+    public function test_the_prompt_asks_for_the_line_kind(): void
+    {
+        $this->assertStringContainsString('"kind"', ClaudeScannedInvoiceReader::prompt('Фирма'));
     }
 }

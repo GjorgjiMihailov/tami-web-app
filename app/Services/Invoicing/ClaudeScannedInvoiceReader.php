@@ -26,13 +26,13 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
     /**
      * `RequestOptions::$timeout` од SDK-то е само советодавен — никаде во
      * vendor/ не се чита (види `RequestOptions.php`), границата ја наметнува
-     * транспортот. 30 секунди се доволни со голем резерв за скен од 1-2
-     * страници со ограничен JSON излез; со maxRetries=1 (наместо
-     * стандардните 2) најлошиот случај е 2 обиди × 30с = 60с, наместо
-     * неограничено чекање што ќе го убие php-fpm работникот пред catch-от
-     * воопшто да стигне до него.
+     * транспортот. Фактура од ~110 ставки дава над 4096 излезни токени, затоа
+     * лимитот на излез е 16000 токени, а граница на чекање 90 секунди; со
+     * maxRetries=1 (наместо стандардните 2) најлошиот случај е 2 обиди × 90с
+     * = 180с, наместо неограничено чекање што ќе го убие php-fpm работникот
+     * пред catch-от воопшто да стигне до него.
      */
-    private const TIMEOUT_SECONDS = 30.0;
+    private const TIMEOUT_SECONDS = 90.0;
 
     private const MAX_RETRIES = 1;
 
@@ -54,7 +54,7 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
 
             $message = (new Client(apiKey: $key, requestOptions: self::transportOptions()))->messages->create(
                 model: self::MODEL,
-                maxTokens: 4096,
+                maxTokens: 16000,
                 messages: [[
                     'role' => 'user',
                     'content' => [$block, ['type' => 'text', 'text' => self::prompt((string) $company->name)]],
@@ -159,6 +159,7 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
                     quantity: self::normalizeAmount($lineText('quantity'), thousands: false),
                     unitPrice: self::normalizeAmount($lineText('unit_price'), thousands: true),
                     vatRate: self::normalizeAmount($lineText('vat_rate'), thousands: false),
+                    kind: in_array($line['kind'] ?? null, ['goods', 'charge'], true) ? $line['kind'] : null,
                 );
             }
         }
@@ -372,6 +373,11 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
         до него и е пократок. Ако таков број го нема на документот, врати празен
         стринг.
 
+        За секоја ставка во "lines" врати "kind": "charge" ако ставката НЕ е
+        стока туку надоместок — транспорт, превоз, шпедиција, осигурување,
+        пакување, манипулативни трошоци (на пример „ТРОШКОВИ НА ТРАНСПОРТА",
+        „freight", „shipping"); инаку "goods".
+
         Датумите врати ги во формат ГГГГ-ММ-ДД.
 
         СИТЕ износи врати ги како чисти броеви: точка за децимала, БЕЗ разделник
@@ -419,8 +425,9 @@ class ClaudeScannedInvoiceReader implements ScannedInvoiceReader
                             'quantity' => $string,
                             'unit_price' => $string,
                             'vat_rate' => $string,
+                            'kind' => ['type' => 'string', 'enum' => ['goods', 'charge']],
                         ],
-                        'required' => ['description', 'quantity', 'unit_price', 'vat_rate'],
+                        'required' => ['description', 'quantity', 'unit_price', 'vat_rate', 'kind'],
                         'additionalProperties' => false,
                     ],
                 ],

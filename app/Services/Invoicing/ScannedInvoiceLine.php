@@ -16,5 +16,8 @@ final readonly class ScannedInvoiceLine
         public ?string $quantity = null,
         public ?string $unitPrice = null,
         public ?string $vatRate = null,
+        // 'goods' или 'charge' (транспорт, осигурување, пакување). Само при
+        // увоз се користи: 'charge' оди во увозни трошоци, не во стока.
+        public ?string $kind = null,
     ) {}
 }
