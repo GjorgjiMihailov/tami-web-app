@@ -887,7 +887,7 @@ class PurchaseInvoiceImportFormTest extends TestCase
             ->set('lines.0.quantity', '10')
             ->set('lines.0.unit_price', '50.00')
             ->set('isImport', true)
-            ->set('customsDeclarationNumber', '26MKIM1013000')
+            ->set('customsDeclarationNumber', '26MKIM0000000')
             ->call('addImportCost')
             ->set('importCosts.0.payee_name', 'Шпедитер ДОО')
             ->set('importCosts.0.base_amount', '70.00')
@@ -896,7 +896,7 @@ class PurchaseInvoiceImportFormTest extends TestCase
         $invoice = \App\Models\PurchaseInvoice::where('company_id', $company->id)->firstOrFail();
 
         $this->assertTrue((bool) $invoice->is_import);
-        $this->assertSame('26MKIM1013000', $invoice->customs_declaration_number);
+        $this->assertSame('26MKIM0000000', $invoice->customs_declaration_number);
         $this->assertSame(1, $invoice->importCosts()->count());
         $this->assertSame('Шпедитер ДОО', $invoice->importCosts()->first()->payee_name);
     }

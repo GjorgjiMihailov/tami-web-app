@@ -11,6 +11,7 @@
 ## Global Constraints
 
 - Спецификација: `docs/superpowers/specs/2026-10-04-import-document-scan-design.md` — прочитај ја пред да почнеш.
+- **Ревидирано по завршната ревизија (одлука на сопственикот):** ставката „транспорт“ (`kind = charge`) на фактурата од добавувач НЕ се префрла надвор од фактурата — остануваат ставка (без артикл, ДДВ 0, сметка со шифра `660`, претворена по ист курс), и истовремено се враќа како ред „Увозни трошоци“ за да влезе во магацинската вредност. Инаку долгот кон добавувачот (сметка 220) би бил помал од хартијата. Кодот и тестовите подолу го опишуваат првичниот чекор; важечко е ова. Исто така додадено: валута на фактурата што не е прочитана (курс од ЕЦД или предупредување), чистење на редовите од фактурата при повторно читање во денари, ограничување на големина на слика по место, `\Throwable` по документ, ДДВ на артикли создадени при увоз = стандардниот на фирмата, и проверки 9 (збир на ставки наспроти испишано вкупно) и 10 (шпедитерска со износ еднаков на царина/ДДВ).
 - Модел за ЕЦД: **`claude-sonnet-5-5`** (Haiku греши на вистински ЕЦД скен). Фактурата и шпедитерската остануваат на `claude-haiku-4-5`.
 - Никаде во тестовите нема мрежа и нема вистински API повик: читачите се менуваат со двојници (`tests/Support/Fake*Reader`); `Http::fake` за НБРМ.
 - Вистинските документи (PDF/слики од клиенти) НИКОГАШ не влегуваат во репото. Фикстурите се измислени (фирми, ЕДБ, броеви).
@@ -60,14 +61,14 @@ class ClaudeCustomsDeclarationReaderTest extends TestCase
     private function payload(array $overrides = []): array
     {
         return array_merge([
-            'ecd_number' => '26MKIM99990001C111',
+            'ecd_number' => '26MKIM00000001C000',
             'date' => '2026-03-04',
             'importer_name' => 'ТЕСТ УВОЗНИК ДООЕЛ',
             'importer_tax_id' => 'MK4000000000001',
             'declarant_name' => 'ТЕСТ ШПЕДИТЕР',
             'currency' => 'EUR',
-            'invoice_total_foreign' => '3.300,00',
-            'exchange_rate' => '61.6950',
+            'invoice_total_foreign' => '1.500,00',
+            'exchange_rate' => '61.5000',
             'total_duty' => '1000',
             'total_vat' => '2000',
             'referenced_invoice_numbers' => ['T-0001/26'],
@@ -75,11 +76,11 @@ class ClaudeCustomsDeclarationReaderTest extends TestCase
                 [
                     'tariff_code' => '6109 10 00',
                     'description' => 'МАИЦИ - ПАМУК',
-                    'invoice_value_foreign' => '234.61',
-                    'statistical_value' => '14.474',
+                    'invoice_value_foreign' => '100.50',
+                    'statistical_value' => '6.200',
                     'charges' => [
-                        ['code' => 'A00', 'amount' => '2.533'],
-                        ['code' => 'B00', 'amount' => '3061'],
+                        ['code' => 'A00', 'amount' => '1.250'],
+                        ['code' => 'B00', 'amount' => '800'],
                     ],
                 ],
             ],
@@ -90,18 +91,18 @@ class ClaudeCustomsDeclarationReaderTest extends TestCase
     {
         $d = ClaudeCustomsDeclarationReader::toDeclaration($this->payload());
 
-        $this->assertSame('26MKIM99990001C111', $d->declarationNumber);
+        $this->assertSame('26MKIM00000001C000', $d->declarationNumber);
         $this->assertSame('2026-03-04', $d->date);
         $this->assertSame('EUR', $d->currency);
-        $this->assertSame('3300.00', $d->invoiceTotalForeign);
-        $this->assertSame('61.6950', $d->exchangeRate);
+        $this->assertSame('1500.00', $d->invoiceTotalForeign);
+        $this->assertSame('61.5000', $d->exchangeRate);
         $this->assertSame('1000', $d->totalDuty);
         $this->assertSame(['T-0001/26'], $d->referencedInvoiceNumbers);
         $this->assertCount(1, $d->items);
         $this->assertSame('61091000', $d->items[0]->tariffCode);
-        $this->assertSame('234.61', $d->items[0]->invoiceValueForeign);
-        $this->assertSame('14474', $d->items[0]->statisticalValue);
-        $this->assertSame(['A00' => '2533', 'B00' => '3061'], $d->items[0]->charges);
+        $this->assertSame('100.50', $d->items[0]->invoiceValueForeign);
+        $this->assertSame('6200', $d->items[0]->statisticalValue);
+        $this->assertSame(['A00' => '1250', 'B00' => '800'], $d->items[0]->charges);
     }
 
     public function test_missing_and_empty_fields_become_null(): void
@@ -307,7 +308,7 @@ use Illuminate\Support\Facades\Log;
  *
  * Моделот е Sonnet, не Haiku, свесно: врз вистински скен на ЕЦД (5 страни,
  * фотографија) Haiku погрешно го прочита ЕЦД бројот, пропушти ставки и врати
- * збир на царина 32.835 наместо 35.451. Sonnet ги прочита сите 11 ставки и
+ * погрешен збир на царина. Sonnet ги прочита сите 11 ставки и
  * збировите излегоа точни. Цената е неколку центи по декларација.
  */
 class ClaudeCustomsDeclarationReader implements CustomsDeclarationReader
@@ -460,14 +461,14 @@ class ClaudeCustomsDeclarationReader implements CustomsDeclarationReader
         по до три ставки. Може да е фотографија — чекај го секој број внимателно.
 
         Врати ги податоците од документот:
-        - "ecd_number": бројот од полето „А. РДБ" на врвот (на пример 26MKIM10130001C799) — препиши го знак по знак;
+        - "ecd_number": бројот од полето „А. РДБ" на врвот (на пример 26MKIM00000001C000) — препиши го знак по знак;
         - "date": датумот на декларацијата во формат ГГГГ-ММ-ДД;
         - "importer_name" и "importer_tax_id": примачот (поле 8), со ДАНОЧНИОТ број (ЕДБ);
         - "declarant_name": подносителот/застапникот (поле 14);
         - "currency": валутата од поле 22 (три латински букви, на пример EUR);
         - "invoice_total_foreign": вкупниот износ на фактурата од поле 22;
         - "exchange_rate": курсот од поле 23, со сите децимали;
-        - "referenced_invoice_numbers": бројот(евите) на фактурите наведени во поле 44 (Прилож. док.), на пример R-0003/26 — само бројот на фактурата;
+        - "referenced_invoice_numbers": бројот(евите) на фактурите наведени во поле 44 (Прилож. док.), на пример T-1/26 — само бројот на фактурата;
         - "total_duty" и "total_vat": збировите од ВКУПНО на последната страна: збирот на сите A00 (царина) и збирот на сите B00 (ДДВ).
 
         За СЕКОЈА ставка (поле 32, Р.бр.) врати ред во "items":
@@ -599,18 +600,18 @@ class CustomsTariffAggregatorTest extends TestCase
     public function test_it_sums_items_by_tariff_code_in_first_seen_order(): void
     {
         $result = (new CustomsTariffAggregator)->aggregate([
-            new ScannedCustomsItem('61091000', 'a', '234.61', '14474', ['A00' => '2533', 'B00' => '3061']),
-            new ScannedCustomsItem('58063210', 'b', '38.67', '2386', ['A00' => '239', 'B00' => '472']),
-            new ScannedCustomsItem('61091000', 'c', '193.36', '11929', ['A00' => '2088', 'B00' => '2523']),
+            new ScannedCustomsItem('61091000', 'a', '100.50', '6200', ['A00' => '1250', 'B00' => '800']),
+            new ScannedCustomsItem('58063210', 'b', '20.00', '1230', ['A00' => '200', 'B00' => '400']),
+            new ScannedCustomsItem('61091000', 'c', '80.25', '4900', ['A00' => '1000', 'B00' => '650']),
         ]);
 
         $this->assertSame([
-            ['tariff_code' => '61091000', 'foreign_amount' => '427.97', 'customs_duty' => '4621.00', 'vat_amount' => '5584.00'],
-            ['tariff_code' => '58063210', 'foreign_amount' => '38.67', 'customs_duty' => '239.00', 'vat_amount' => '472.00'],
+            ['tariff_code' => '61091000', 'foreign_amount' => '180.75', 'customs_duty' => '2250.00', 'vat_amount' => '1450.00'],
+            ['tariff_code' => '58063210', 'foreign_amount' => '20.00', 'customs_duty' => '200.00', 'vat_amount' => '400.00'],
         ], $result['rows']);
-        $this->assertSame('4860.00', $result['duty_total']);
-        $this->assertSame('6056.00', $result['vat_total']);
-        $this->assertSame('466.64', $result['foreign_total']);
+        $this->assertSame('2450.00', $result['duty_total']);
+        $this->assertSame('1850.00', $result['vat_total']);
+        $this->assertSame('200.75', $result['foreign_total']);
         $this->assertSame([], $result['other_codes']);
     }
 
@@ -826,7 +827,7 @@ git commit -m "Scan reader: classify charge lines, raise token and time limits f
 **Interfaces:**
 - Consumes: `ScannedInvoice`, `ScannedInvoiceLine` (со `kind`, Task 3), `ScannedCustomsDeclaration` (Task 1), `App\Support\Bcmath::roundHalfUp`.
 - Produces:
-  - `ImportScanMapper::convertInvoice(ScannedInvoice $invoice, string $rate): array{invoice: ScannedInvoice, costs: array<int, array<string,string>>, warnings: string[]}` — `invoice` е истата фактура со само `goods`/непознат вид ставки, `unitPrice = roundHalfUp(цена × курс, 2)`, `vatRate = '0'`, `currency = 'MKD'`; ставките `charge` стануваат редови во `costs` со облик `['payee_name', 'reference_number', 'foreign_amount', 'base_amount', 'vat_amount', 'source' => 'invoice']` (сите стрингови).
+  - `ImportScanMapper::convertInvoice(ScannedInvoice $invoice, string $rate): array{invoice: ScannedInvoice, costs: array<int, array<string,string>>, warnings: string[]}` — `invoice` е истата фактура со СИТЕ ставки (и `charge`, со зачуван `kind`), `unitPrice = roundHalfUp(цена × курс, 2)`, `vatRate = '0'`, `currency = 'MKD'`; ставките `charge` ДОПОЛНИТЕЛНО даваат редови во `costs` со облик `['payee_name', 'reference_number', 'foreign_amount', 'base_amount', 'vat_amount', 'source' => 'invoice']` (сите стрингови).
   - `ImportScanMapper::forwarderCost(ScannedInvoice $forwarder): array{row: array<string,string>, warnings: string[]}` — `row` има `source => 'forwarder'`, `foreign_amount => ''`.
   - `ImportScanMapper::declarationFields(ScannedCustomsDeclaration $d): array{customsDeclarationNumber: string, importDate: string, importCurrencyCode: ?string, importExchangeRate: string}`.
 
@@ -849,7 +850,7 @@ class ImportScanMapperTest extends TestCase
     {
         return new ScannedInvoice(
             sellerName: 'FOREIGN DOO',
-            invoiceNumber: 'R-0003/26',
+            invoiceNumber: 'T-1/26',
             invoiceDate: '2026-02-24',
             currency: 'EUR',
             printedTotal: '1125.00',
@@ -863,27 +864,27 @@ class ImportScanMapperTest extends TestCase
 
     public function test_it_converts_goods_to_denars_with_half_up_rounding_and_zero_vat(): void
     {
-        $result = (new ImportScanMapper)->convertInvoice($this->foreignInvoice(), '61.6950');
+        $result = (new ImportScanMapper)->convertInvoice($this->foreignInvoice(), '61.5000');
 
         $this->assertSame('MKD', $result['invoice']->currency);
         $this->assertCount(2, $result['invoice']->lines);
-        // 12.50 * 61.6950 = 771.1875 -> 771.19 ; 33.33 * 61.6950 = 2056.29435 -> 2056.29
-        $this->assertSame('771.19', $result['invoice']->lines[0]->unitPrice);
-        $this->assertSame('2056.29', $result['invoice']->lines[1]->unitPrice);
+        // 12.50 * 61.5000 = 768.75 ; 33.33 * 61.5000 = 2049.795 -> 2049.80
+        $this->assertSame('768.75', $result['invoice']->lines[0]->unitPrice);
+        $this->assertSame('2049.80', $result['invoice']->lines[1]->unitPrice);
         $this->assertSame('0', $result['invoice']->lines[0]->vatRate);
         $this->assertSame('2', $result['invoice']->lines[0]->quantity);
-        $this->assertSame('R-0003/26', $result['invoice']->invoiceNumber);
+        $this->assertSame('T-1/26', $result['invoice']->invoiceNumber);
     }
 
     public function test_a_charge_line_becomes_an_import_cost_row(): void
     {
-        $result = (new ImportScanMapper)->convertInvoice($this->foreignInvoice(), '61.6950');
+        $result = (new ImportScanMapper)->convertInvoice($this->foreignInvoice(), '61.5000');
 
         $this->assertSame([[
             'payee_name' => 'FOREIGN DOO',
-            'reference_number' => 'R-0003/26',
+            'reference_number' => 'T-1/26',
             'foreign_amount' => '100.00',
-            'base_amount' => '6169.50',
+            'base_amount' => '6150.00',
             'vat_amount' => '0.00',
             'source' => 'invoice',
         ]], $result['costs']);
@@ -893,7 +894,7 @@ class ImportScanMapperTest extends TestCase
     {
         $invoice = new ScannedInvoice(currency: 'EUR', lines: [new ScannedInvoiceLine('Нешто', '1', '1?5', '0', 'goods')]);
 
-        $result = (new ImportScanMapper)->convertInvoice($invoice, '61.6950');
+        $result = (new ImportScanMapper)->convertInvoice($invoice, '61.5000');
 
         $this->assertSame('1?5', $result['invoice']->lines[0]->unitPrice);
         $this->assertCount(1, $result['warnings']);
@@ -904,20 +905,20 @@ class ImportScanMapperTest extends TestCase
     {
         $forwarder = new ScannedInvoice(
             sellerName: 'ТЕСТ ШПЕДИТЕР ДООЕЛ',
-            invoiceNumber: '2600000286',
+            invoiceNumber: 'F-77/26',
             currency: 'MKD',
             lines: [
-                new ScannedInvoiceLine('Царинско посредување', '1', '3000.00', '18'),
-                new ScannedInvoiceLine('Манипулација', '2', '35.00', '18'),
+                new ScannedInvoiceLine('Царинско посредување', '1', '1950.00', '18'),
+                new ScannedInvoiceLine('Манипулација', '2', '25.00', '18'),
             ],
         );
 
         $result = (new ImportScanMapper)->forwarderCost($forwarder);
 
         $this->assertSame('ТЕСТ ШПЕДИТЕР ДООЕЛ', $result['row']['payee_name']);
-        $this->assertSame('2600000286', $result['row']['reference_number']);
-        $this->assertSame('3070.00', $result['row']['base_amount']);
-        $this->assertSame('552.60', $result['row']['vat_amount']);
+        $this->assertSame('F-77/26', $result['row']['reference_number']);
+        $this->assertSame('2000.00', $result['row']['base_amount']);
+        $this->assertSame('360.00', $result['row']['vat_amount']);
         $this->assertSame('', $result['row']['foreign_amount']);
         $this->assertSame('forwarder', $result['row']['source']);
         $this->assertSame([], $result['warnings']);
@@ -935,17 +936,17 @@ class ImportScanMapperTest extends TestCase
     public function test_declaration_fields(): void
     {
         $fields = (new ImportScanMapper)->declarationFields(new ScannedCustomsDeclaration(
-            declarationNumber: '26MKIM99990001C111',
+            declarationNumber: '26MKIM00000001C000',
             date: '2026-03-04',
             currency: 'EUR',
-            exchangeRate: '61.6950',
+            exchangeRate: '61.5000',
         ));
 
         $this->assertSame([
-            'customsDeclarationNumber' => '26MKIM99990001C111',
+            'customsDeclarationNumber' => '26MKIM00000001C000',
             'importDate' => '2026-03-04',
             'importCurrencyCode' => 'EUR',
-            'importExchangeRate' => '61.6950',
+            'importExchangeRate' => '61.5000',
         ], $fields);
     }
 
@@ -1166,12 +1167,12 @@ class ImportScanChecksTest extends TestCase
     private function ecd(array $over = []): ScannedCustomsDeclaration
     {
         $args = array_merge([
-            'declarationNumber' => '26MKIM99990001C111',
+            'declarationNumber' => '26MKIM00000001C000',
             'importerTaxId' => 'MK4000000000001',
             'declarantName' => 'ТЕСТ ШПЕДИТЕР',
             'currency' => 'EUR',
             'invoiceTotalForeign' => '100.00',
-            'exchangeRate' => '61.6950',
+            'exchangeRate' => '61.5000',
             'totalDuty' => '50',
             'totalVat' => '100',
             'referencedInvoiceNumbers' => ['T-1/26'],
@@ -1467,13 +1468,13 @@ class PurchaseInvoiceImportScanTest extends TestCase
     private function ecd(): ScannedCustomsDeclaration
     {
         return new ScannedCustomsDeclaration(
-            declarationNumber: '26MKIM99990001C111',
+            declarationNumber: '26MKIM00000001C000',
             date: '2026-03-04',
             importerTaxId: 'MK4000000000001',
             declarantName: 'ТЕСТ ШПЕДИТЕР',
             currency: 'EUR',
             invoiceTotalForeign: '100.00',
-            exchangeRate: '61.6950',
+            exchangeRate: '61.5000',
             totalDuty: '50',
             totalVat: '100',
             referencedInvoiceNumbers: ['T-1/26'],
@@ -1487,7 +1488,7 @@ class PurchaseInvoiceImportScanTest extends TestCase
     private function foreignInvoice(): ScannedInvoice
     {
         return new ScannedInvoice(
-            sellerTaxId: '107545537',
+            sellerTaxId: '1234567890',
             sellerName: 'FOREIGN DOO',
             buyerTaxId: '4000000000001',
             invoiceNumber: 'T-1/26',
@@ -1520,10 +1521,10 @@ class PurchaseInvoiceImportScanTest extends TestCase
             ->set('ecdFile', $this->files()['ecdFile'])
             ->call('readImportDocuments')
             ->assertSet('isImport', true)
-            ->assertSet('customsDeclarationNumber', '26MKIM99990001C111')
+            ->assertSet('customsDeclarationNumber', '26MKIM00000001C000')
             ->assertSet('importDate', '2026-03-04')
             ->assertSet('importCurrencyCode', 'EUR')
-            ->assertSet('importExchangeRate', '61.6950')
+            ->assertSet('importExchangeRate', '61.5000')
             ->assertCount('tariffLines', 1)
             ->assertSet('tariffLines.0.tariff_code', '61091000')
             ->assertSet('tariffLines.0.foreign_amount', '100.00')
@@ -1545,15 +1546,15 @@ class PurchaseInvoiceImportScanTest extends TestCase
             ->set('importInvoiceFile', $files['importInvoiceFile'])
             ->call('readImportDocuments')
             ->assertSet('supplierInvoiceNumber', 'T-1/26')
-            // 12.50 EUR * 61.6950 = 771.1875 -> 771.19
-            ->assertSet('lines.0.unit_price', '771.19')
+            // 12.50 EUR * 61.5000 = 768.75
+            ->assertSet('lines.0.unit_price', '768.75')
             ->assertSet('lines.0.description', 'Рукавици зимски')
             ->assertSet('lines.0.vat_rate', '0')
             ->assertCount('lines', 1)
             ->assertCount('importCosts', 1)
             ->assertSet('importCosts.0.payee_name', 'FOREIGN DOO')
             ->assertSet('importCosts.0.foreign_amount', '100.00')
-            ->assertSet('importCosts.0.base_amount', '6169.50')
+            ->assertSet('importCosts.0.base_amount', '6150.00')
             ->assertSet('importCosts.0.source', 'invoice');
     }
 
@@ -1562,9 +1563,9 @@ class PurchaseInvoiceImportScanTest extends TestCase
         $company = $this->company();
         FakeScannedInvoiceReader::$next = new ScannedInvoice(
             sellerName: 'ТЕСТ ШПЕДИТЕР ДООЕЛ',
-            invoiceNumber: '2600000286',
+            invoiceNumber: 'F-77/26',
             currency: 'MKD',
-            lines: [new ScannedInvoiceLine('Посредување', '1', '3070.00', '18')],
+            lines: [new ScannedInvoiceLine('Посредување', '1', '2000.00', '18')],
         );
 
         $component = Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
@@ -1572,8 +1573,8 @@ class PurchaseInvoiceImportScanTest extends TestCase
             ->call('readImportDocuments')
             ->assertCount('importCosts', 1)
             ->assertSet('importCosts.0.payee_name', 'ТЕСТ ШПЕДИТЕР ДООЕЛ')
-            ->assertSet('importCosts.0.base_amount', '3070.00')
-            ->assertSet('importCosts.0.vat_amount', '552.60')
+            ->assertSet('importCosts.0.base_amount', '2000.00')
+            ->assertSet('importCosts.0.vat_amount', '360.00')
             ->assertSet('importCosts.0.source', 'forwarder');
 
         $component->set('forwarderFile', $this->files()['forwarderFile'])
