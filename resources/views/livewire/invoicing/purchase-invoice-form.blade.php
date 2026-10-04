@@ -19,7 +19,7 @@
         {{ $purchaseInvoice ? 'Измени нацрт влезна фактура' : 'Нова влезна фактура' }} — {{ $company->name }}
     </h1>
 
-    @if ($this->canReadScans() && ! $purchaseInvoice)
+    @if ($this->canReadScans() && ! $purchaseInvoice && ! $isImport)
         <x-card class="mb-4">
             <x-input-label for="scanFile" value="Прикачи скенирана фактура" />
             <p class="text-xs text-gray-500 mt-1 mb-2">PDF, JPG или PNG, до 10 МБ. Тами ќе ја прочита и ќе ги пополни полињата подолу.</p>
@@ -135,7 +135,6 @@
             </div>
         </x-card>
 
-        @if ($requiresWarehouse)
             <x-card>
                 <label class="flex items-start gap-3 rounded-lg border border-sand bg-paper-warm px-4 py-3 cursor-pointer">
                     <input type="checkbox" wire:model.live="isImport" class="mt-0.5 rounded border-gray-300 text-brand focus:ring-brand">
@@ -151,6 +150,45 @@
                             <h3 class="font-semibold text-gray-800">Увоз</h3>
                             <span class="bg-brand text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">ЕЦД</span>
                         </div>
+
+                        @if ($this->canReadScans())
+                            <div class="mb-4 rounded-lg border border-orange-200 bg-white px-3 py-3">
+                                <p class="text-xs text-stone mb-2">Прикачи ги документите од увозот — PDF, JPG или PNG, до 10 МБ секој. Секој е по избор. Тами ги чита по ред: ЕЦД, фактурата, шпедитерската.</p>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div>
+                                        <x-input-label for="importInvoiceFile" value="Фактура од добавувач" />
+                                        <input id="importInvoiceFile" type="file" wire:model="importInvoiceFile" accept=".pdf,.jpg,.jpeg,.png" class="text-xs w-full" />
+                                        @error('importInvoiceFile') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div>
+                                        <x-input-label for="ecdFile" value="Царинска декларација (ЕЦД)" />
+                                        <input id="ecdFile" type="file" wire:model="ecdFile" accept=".pdf,.jpg,.jpeg,.png" class="text-xs w-full" />
+                                        @error('ecdFile') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div>
+                                        <x-input-label for="forwarderFile" value="Шпедитерска фактура" />
+                                        <input id="forwarderFile" type="file" wire:model="forwarderFile" accept=".pdf,.jpg,.jpeg,.png" class="text-xs w-full" />
+                                        @error('forwarderFile') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+                                    </div>
+                                </div>
+                                @error('importDocuments') <p class="text-red-600 text-xs mt-2">{{ $message }}</p> @enderror
+                                <div class="mt-3 flex items-center gap-3">
+                                    <x-secondary-button type="button" wire:click="readImportDocuments" wire:loading.attr="disabled" wire:target="readImportDocuments,ecdFile,importInvoiceFile,forwarderFile">
+                                        <span wire:loading.remove wire:target="readImportDocuments">Прочитај ги документите</span>
+                                        <span wire:loading wire:target="readImportDocuments">Читам… (може да потрае)</span>
+                                    </x-secondary-button>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($importScanWarnings !== [])
+                            <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 space-y-1">
+                                <p class="font-semibold">Провери пред да зачуваш:</p>
+                                @foreach ($importScanWarnings as $warning)
+                                    <p>• {{ $warning }}</p>
+                                @endforeach
+                            </div>
+                        @endif
 
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1">
                             <div>
@@ -315,12 +353,16 @@
                     @endif
                 @endif
             </x-card>
-        @endif
 
         <x-card padding="p-0" class="overflow-hidden">
             <div class="flex items-center justify-between px-4 py-3 border-b border-sand">
                 <h2 class="font-semibold text-gray-700">Ставки</h2>
-                <button type="button" wire:click="addLine" class="text-brand text-sm font-medium hover:underline">+ Додади ставка</button>
+                <div class="flex items-center gap-4">
+                    @if (collect($lines)->contains(fn ($l) => ($l['item_id'] ?? '') === '' && trim((string) ($l['description'] ?? '')) !== ''))
+                        <button type="button" wire:click="addAllUnknownLinesAsItems" class="text-brand text-sm font-medium hover:underline">Внеси ги сите непознати како артикли</button>
+                    @endif
+                    <button type="button" wire:click="addLine" class="text-brand text-sm font-medium hover:underline">+ Додади ставка</button>
+                </div>
             </div>
 
             <div class="overflow-x-auto">

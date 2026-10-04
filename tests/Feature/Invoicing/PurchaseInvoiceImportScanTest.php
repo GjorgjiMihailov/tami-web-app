@@ -311,6 +311,21 @@ class PurchaseInvoiceImportScanTest extends TestCase
             ->assertSet('importScanWarnings', fn (array $warnings) => collect($warnings)->contains(fn ($w) => str_contains($w, 'НБРМ')));
     }
 
+    public function test_the_nbrm_warning_is_rendered_on_the_form_after_a_read_without_an_ecd(): void
+    {
+        Http::fake(['nbrm.mk/*' => Http::response([['oznaka' => 'EUR', 'sreden' => 61.7, 'nomin' => 1, 'datum' => '2026-02-24T00:00:00']], 200)]);
+        $company = $this->company();
+        FakeScannedInvoiceReader::$next = $this->foreignInvoice();
+
+        // „НБРМ“ веќе стои во статичките ознаки (Курс (НБРМ на датумот), ↻ НБРМ),
+        // па се проверува самата реченица од предупредувањето.
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('importInvoiceFile', $this->files()['importInvoiceFile'])
+            ->call('readImportDocuments')
+            ->assertSee('Провери пред да зачуваш')
+            ->assertSee('курсот е од НБРМ на датумот на фактурата');
+    }
+
     public function test_a_failing_reader_shows_an_error_and_keeps_the_rest(): void
     {
         Http::fake(['nbrm.mk/*' => Http::response([['oznaka' => 'EUR', 'sreden' => 61.7, 'nomin' => 1, 'datum' => '2026-02-24T00:00:00']], 200)]);

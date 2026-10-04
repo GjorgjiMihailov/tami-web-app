@@ -34,14 +34,14 @@ class PurchaseInvoiceImportFormTest extends TestCase
         return $user;
     }
 
-    public function test_import_checkbox_is_hidden_until_a_line_has_a_stock_item(): void
+    public function test_import_checkbox_is_visible_even_before_any_stock_line(): void
     {
         $company = Company::factory()->create();
         $this->actingAdmin();
         Partner::factory()->for($company)->create();
 
         Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
-            ->assertDontSee('Фактура од увоз');
+            ->assertSee('Фактура од увоз');
     }
 
     public function test_checking_import_reveals_the_import_section_and_fields_can_be_edited(): void
