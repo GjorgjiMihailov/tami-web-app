@@ -6,6 +6,8 @@ use App\Livewire\Invoicing\PurchaseInvoiceForm;
 use App\Models\Company;
 use App\Models\Item;
 use App\Models\Partner;
+use App\Models\PurchaseInvoice;
+use App\Models\PurchaseInvoiceImportCost;
 use App\Models\User;
 use App\Services\Invoicing\CustomsDeclarationReader;
 use App\Services\Invoicing\ScannedCustomsDeclaration;
@@ -31,6 +33,7 @@ class PurchaseInvoiceImportScanTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Http::preventStrayRequests();
         Role::findOrCreate('admin');
         FakeScannedInvoiceReader::reset();
         FakeCustomsDeclarationReader::reset();
@@ -88,6 +91,16 @@ class PurchaseInvoiceImportScanTest extends TestCase
         );
     }
 
+    private function forwarderInvoice(string $net = '3070.00'): ScannedInvoice
+    {
+        return new ScannedInvoice(
+            sellerName: 'ТЕСТ ШПЕДИТЕР ДООЕЛ',
+            invoiceNumber: '2600000286',
+            currency: 'MKD',
+            lines: [new ScannedInvoiceLine('Посредување', '1', $net, '18')],
+        );
+    }
+
     private function files()
     {
         return [
@@ -122,13 +135,15 @@ class PurchaseInvoiceImportScanTest extends TestCase
     {
         $company = $this->company();
         FakeCustomsDeclarationReader::$next = $this->ecd();
-        FakeScannedInvoiceReader::$next = $this->foreignInvoice();
+        // Читачот се вика по ред: прво фактурата од добавувач, потоа шпедитерската.
+        FakeScannedInvoiceReader::$queue = [$this->foreignInvoice(), $this->forwarderInvoice()];
 
         $files = $this->files();
 
         Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
             ->set('ecdFile', $files['ecdFile'])
             ->set('importInvoiceFile', $files['importInvoiceFile'])
+            ->set('forwarderFile', $files['forwarderFile'])
             ->call('readImportDocuments')
             ->assertSet('supplierInvoiceNumber', 'T-1/26')
             // 12.50 EUR * 61.6950 = 771.1875 -> 771.19
@@ -136,22 +151,20 @@ class PurchaseInvoiceImportScanTest extends TestCase
             ->assertSet('lines.0.description', 'Рукавици зимски')
             ->assertSet('lines.0.vat_rate', '0')
             ->assertCount('lines', 1)
-            ->assertCount('importCosts', 1)
+            ->assertCount('importCosts', 2)
             ->assertSet('importCosts.0.payee_name', 'FOREIGN DOO')
             ->assertSet('importCosts.0.foreign_amount', '100.00')
             ->assertSet('importCosts.0.base_amount', '6169.50')
-            ->assertSet('importCosts.0.source', 'invoice');
+            ->assertSet('importCosts.0.source', 'invoice')
+            ->assertSet('importCosts.1.payee_name', 'ТЕСТ ШПЕДИТЕР ДООЕЛ')
+            ->assertSet('importCosts.1.base_amount', '3070.00')
+            ->assertSet('importCosts.1.source', 'forwarder');
     }
 
     public function test_the_forwarder_invoice_adds_one_cost_row_and_rereading_replaces_it(): void
     {
         $company = $this->company();
-        FakeScannedInvoiceReader::$next = new ScannedInvoice(
-            sellerName: 'ТЕСТ ШПЕДИТЕР ДООЕЛ',
-            invoiceNumber: '2600000286',
-            currency: 'MKD',
-            lines: [new ScannedInvoiceLine('Посредување', '1', '3070.00', '18')],
-        );
+        FakeScannedInvoiceReader::$next = $this->forwarderInvoice();
 
         $component = Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
             ->set('forwarderFile', $this->files()['forwarderFile'])
@@ -162,9 +175,126 @@ class PurchaseInvoiceImportScanTest extends TestCase
             ->assertSet('importCosts.0.vat_amount', '552.60')
             ->assertSet('importCosts.0.source', 'forwarder');
 
+        FakeScannedInvoiceReader::$next = $this->forwarderInvoice('4000.00');
+
         $component->set('forwarderFile', $this->files()['forwarderFile'])
             ->call('readImportDocuments')
-            ->assertCount('importCosts', 1);
+            ->assertCount('importCosts', 1)
+            ->assertSet('importCosts.0.base_amount', '4000.00')
+            ->assertSet('importCosts.0.vat_amount', '720.00');
+    }
+
+    public function test_rereading_the_forwarder_on_a_reopened_draft_replaces_the_saved_row_not_doubles_it(): void
+    {
+        $company = $this->company();
+        $invoice = PurchaseInvoice::factory()->create([
+            'company_id' => $company->id,
+            'partner_id' => Partner::factory()->create(['company_id' => $company->id])->id,
+            'is_import' => true,
+            'import_currency_code' => 'EUR',
+            'import_exchange_rate' => '61.6950',
+        ]);
+        PurchaseInvoiceImportCost::factory()->create([
+            'purchase_invoice_id' => $invoice->id,
+            'payee_name' => 'ТЕСТ ШПЕДИТЕР ДООЕЛ',
+            'reference_number' => '2600000286',
+            'base_amount' => '3070.00',
+            'vat_amount' => '552.60',
+        ]);
+        FakeScannedInvoiceReader::$next = $this->forwarderInvoice('4000.00');
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company, 'purchaseInvoice' => $invoice])
+            ->assertCount('importCosts', 1)
+            ->set('forwarderFile', $this->files()['forwarderFile'])
+            ->call('readImportDocuments')
+            ->assertCount('importCosts', 1)
+            ->assertSet('importCosts.0.base_amount', '4000.00')
+            ->assertSet('importCosts.0.source', 'forwarder');
+    }
+
+    public function test_rereading_the_invoice_replaces_its_charge_rows(): void
+    {
+        $company = $this->company();
+        FakeCustomsDeclarationReader::$next = $this->ecd();
+        FakeScannedInvoiceReader::$next = $this->foreignInvoice();
+        $files = $this->files();
+
+        $component = Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('ecdFile', $files['ecdFile'])
+            ->set('importInvoiceFile', $files['importInvoiceFile'])
+            ->call('readImportDocuments')
+            ->assertCount('importCosts', 1)
+            ->assertSet('importCosts.0.base_amount', '6169.50');
+
+        // Курсот од првото читање останува во формата; втората фактура има поскап превоз.
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerTaxId: '107545537',
+            sellerName: 'FOREIGN DOO',
+            buyerTaxId: '4000000000001',
+            invoiceNumber: 'T-1/26',
+            invoiceDate: '2026-02-24',
+            currency: 'EUR',
+            printedTotal: '200.00',
+            ourCompanyRole: 'buyer',
+            lines: [
+                new ScannedInvoiceLine('Рукавици зимски', '2', '12.50', '0', 'goods'),
+                new ScannedInvoiceLine('ТРОШКОВИ НА ТРАНСПОРТА', '1', '200.00', '0', 'charge'),
+            ],
+        );
+
+        $component->set('importInvoiceFile', $this->files()['importInvoiceFile'])
+            ->call('readImportDocuments')
+            ->assertCount('importCosts', 1)
+            // 200.00 EUR * 61.6950 = 12339.00
+            ->assertSet('importCosts.0.base_amount', '12339.00');
+    }
+
+    public function test_an_mkd_invoice_is_applied_without_conversion(): void
+    {
+        $company = $this->company();
+        FakeScannedInvoiceReader::$next = new ScannedInvoice(
+            sellerName: 'ДОМАШЕН ДООЕЛ',
+            invoiceNumber: 'D-5',
+            invoiceDate: '2026-02-24',
+            currency: 'MKD',
+            ourCompanyRole: 'buyer',
+            lines: [new ScannedInvoiceLine('Стока', '2', '500.00', '18', 'goods')],
+        );
+
+        Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('importInvoiceFile', $this->files()['importInvoiceFile'])
+            ->call('readImportDocuments')
+            ->assertSet('isImport', true)
+            ->assertSet('supplierInvoiceNumber', 'D-5')
+            ->assertCount('lines', 1)
+            ->assertSet('lines.0.unit_price', '500.00')
+            ->assertSet('lines.0.vat_rate', '18')
+            ->assertSet('importInvoiceFile', null)
+            ->assertHasNoErrors();
+    }
+
+    public function test_a_foreign_invoice_without_an_ecd_and_without_a_rate_keeps_the_upload_and_asks_for_the_rate(): void
+    {
+        Http::fake(['nbrm.mk/*' => Http::response('boom', 500)]);
+        $company = $this->company();
+        FakeScannedInvoiceReader::$next = $this->foreignInvoice();
+
+        $component = Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
+            ->set('importInvoiceFile', $this->files()['importInvoiceFile'])
+            ->call('readImportDocuments')
+            ->assertHasErrors('importExchangeRate')
+            ->assertSet('supplierInvoiceNumber', '')
+            ->assertCount('importCosts', 0);
+
+        $this->assertNotNull($component->get('importInvoiceFile'));
+        $this->assertSame('', $component->get('lines.0.description'));
+
+        // Со рачно внесен курс истиот прикачен фајл се чита без повторно прикачување.
+        $component->set('importExchangeRate', '61.5')
+            ->call('readImportDocuments')
+            ->assertHasNoErrors('importExchangeRate')
+            ->assertSet('lines.0.unit_price', '768.75')
+            ->assertSet('importInvoiceFile', null);
     }
 
     public function test_without_an_ecd_the_rate_comes_from_nbrm_on_the_invoice_date_with_a_warning(): void
@@ -183,6 +313,7 @@ class PurchaseInvoiceImportScanTest extends TestCase
 
     public function test_a_failing_reader_shows_an_error_and_keeps_the_rest(): void
     {
+        Http::fake(['nbrm.mk/*' => Http::response([['oznaka' => 'EUR', 'sreden' => 61.7, 'nomin' => 1, 'datum' => '2026-02-24T00:00:00']], 200)]);
         $company = $this->company();
         FakeCustomsDeclarationReader::$throws = new ScannedInvoiceReadException('x');
         FakeScannedInvoiceReader::$next = $this->foreignInvoice();

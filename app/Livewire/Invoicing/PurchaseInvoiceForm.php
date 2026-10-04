@@ -465,6 +465,7 @@ class PurchaseInvoiceForm extends Component
         $invoice = null;
         $forwarder = null;
         $rateFromNbrm = false;
+        $invoiceNeedsRate = false;
 
         if ($this->ecdFile !== null) {
             try {
@@ -528,9 +529,11 @@ class PurchaseInvoiceForm extends Component
                         $this->importExchangeRate = $rate;
                         $this->importCurrencyCode = in_array($invoice->currency, ImportScanMapper::CURRENCIES, true) ? $invoice->currency : $this->importCurrencyCode;
                         $rateFromNbrm = true;
-                    } catch (\Throwable) {
-                        $this->addError('importExchangeRate', 'Нема ЕЦД и не можев да го повлечам курсот од НБРМ — внеси го рачно и прочитај ја фактурата повторно.');
+                    } catch (\Throwable $e) {
+                        report($e);
+                        $this->addError('importExchangeRate', 'Нема ЕЦД и не можев да го повлечам курсот од НБРМ — внеси го курсот рачно и притисни „Прочитај ги документите“ повторно.');
                         $rate = null;
+                        $invoiceNeedsRate = true;
                     }
                 }
 
@@ -538,13 +541,14 @@ class PurchaseInvoiceForm extends Component
                     $converted = $mapper->convertInvoice($invoice, $rate);
                     $warnings = array_merge($warnings, $converted['warnings']);
 
+                    $this->resetScanFeedback();
                     $this->applyScan($converted['invoice']);
                     $this->scanRead = true;
 
-                    $this->importCosts = array_values(array_filter($this->importCosts, fn ($row) => ($row['source'] ?? '') !== 'invoice'));
-                    $this->importCosts = array_merge($this->importCosts, $converted['costs']);
+                    $this->replaceImportCosts($converted['costs'], 'invoice');
                 }
             } else {
+                $this->resetScanFeedback();
                 $this->applyScan($invoice);
                 $this->scanRead = true;
             }
@@ -554,8 +558,7 @@ class PurchaseInvoiceForm extends Component
             $cost = $mapper->forwarderCost($forwarder);
             $warnings = array_merge($warnings, $cost['warnings']);
 
-            $this->importCosts = array_values(array_filter($this->importCosts, fn ($row) => ($row['source'] ?? '') !== 'forwarder'));
-            $this->importCosts[] = $cost['row'];
+            $this->replaceImportCosts([$cost['row']], 'forwarder');
         }
 
         $warnings = array_merge($warnings, (new ImportScanChecks)->run(
@@ -563,7 +566,54 @@ class PurchaseInvoiceForm extends Component
         ));
 
         $this->importScanWarnings = $warnings;
-        $this->ecdFile = $this->importInvoiceFile = $this->forwarderFile = null;
+        $this->ecdFile = $this->forwarderFile = null;
+
+        // Без курс фактурата не е применета: прикачувањето останува за да
+        // може да се внесе курсот и да се прочита пак без нов (платен) повик.
+        if (! $invoiceNeedsRate) {
+            $this->importInvoiceFile = null;
+        }
+    }
+
+    private function resetScanFeedback(): void
+    {
+        $this->scanWarnings = [];
+        $this->suggestedPartner = null;
+    }
+
+    /**
+     * Додава редови на увозни трошоци од скен. Претходно ги отстранува
+     * постојните редови од истиот извор И редовите со ист добавувач и број на
+     * документ — запишаните нацрти го губат `source`, па без второто повторно
+     * читање по отворање на нацрт ги удвојува трошоците.
+     *
+     * @param  array<int, array<string, mixed>>  $newRows
+     */
+    private function replaceImportCosts(array $newRows, string $source): void
+    {
+        $norm = fn ($value) => mb_strtolower(trim((string) $value));
+        $identities = [];
+
+        foreach ($newRows as $row) {
+            $payee = $norm($row['payee_name'] ?? '');
+            $reference = $norm($row['reference_number'] ?? '');
+
+            if ($payee !== '' || $reference !== '') {
+                $identities[] = [$payee, $reference];
+            }
+        }
+
+        $this->importCosts = array_values(array_filter($this->importCosts, function ($existing) use ($source, $norm, $identities) {
+            if (($existing['source'] ?? '') === $source) {
+                return false;
+            }
+
+            $key = [$norm($existing['payee_name'] ?? ''), $norm($existing['reference_number'] ?? '')];
+
+            return ! in_array($key, $identities, true);
+        }));
+
+        $this->importCosts = array_merge($this->importCosts, $newRows);
     }
 
     /**
