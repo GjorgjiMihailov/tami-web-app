@@ -256,7 +256,8 @@ class PurchaseInvoiceService
         });
     }
 
-    public function recordPayment(PurchaseInvoice $invoice, string $amount, string $paymentDate, string $paymentMethod, int $userId): PurchaseInvoicePayment
+    /** Заедничка проверка: само потврдена фактура и не повеќе од салдото. */
+    private function assertPayable(PurchaseInvoice $invoice, string $amount): void
     {
         if ($invoice->status !== 'confirmed') {
             throw new InvalidInvoiceStateException("Влезна фактура #{$invoice->id} не е потврдена; плаќања можат да се внесуваат само за потврдени фактури.");
@@ -267,6 +268,24 @@ class PurchaseInvoiceService
         if (bccomp($amount, $invoice->balanceDue(), 2) > 0) {
             throw new InvalidInvoiceStateException("Плаќањето од {$amount} го надминува преостанатото салдо од {$invoice->balanceDue()}.");
         }
+    }
+
+    /** Само редот за плаќање, без налог: налогот го пишува изводот. */
+    public function createPaymentRecord(PurchaseInvoice $invoice, string $amount, string $paymentDate, int $userId): PurchaseInvoicePayment
+    {
+        $this->assertPayable($invoice, $amount);
+
+        return $invoice->payments()->create([
+            'amount' => $amount,
+            'payment_date' => $paymentDate,
+            'payment_method' => 'bank',
+            'created_by' => $userId,
+        ]);
+    }
+
+    public function recordPayment(PurchaseInvoice $invoice, string $amount, string $paymentDate, string $paymentMethod, int $userId): PurchaseInvoicePayment
+    {
+        $this->assertPayable($invoice, $amount);
 
         return DB::transaction(function () use ($invoice, $amount, $paymentDate, $paymentMethod, $userId) {
             $payment = $invoice->payments()->create([

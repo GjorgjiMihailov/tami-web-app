@@ -302,6 +302,44 @@ class SalesInvoiceService
         });
     }
 
+    /** Заедничка проверка: само потврдена фактура и не повеќе од салдото. */
+    private function assertPayable(SalesInvoice $invoice, string $amount): void
+    {
+        if ($invoice->status !== 'confirmed') {
+            throw new InvalidInvoiceStateException("Фактура #{$invoice->id} не е потврдена; плаќања можат да се внесуваат само за потврдени фактури.");
+        }
+
+        $invoice->loadMissing(['lines', 'payments', 'company']);
+
+        if (bccomp($amount, $invoice->balanceDue(), 2) > 0) {
+            throw new InvalidInvoiceStateException("Плаќањето од {$amount} го надминува преостанатото салдо од {$invoice->balanceDue()}.");
+        }
+    }
+
+    /**
+     * Само редот за плаќање, без налог: налогот го пишува изводот (една ставка
+     * од изводот е една страна од неговиот налог). Само денарски фактури —
+     * девизна фактура платена од денарски извод бара курсна логика што овде
+     * намерно ја нема.
+     */
+    public function createPaymentRecord(SalesInvoice $invoice, string $amount, string $paymentDate, int $userId): SalesInvoicePayment
+    {
+        $amount = Bcmath::roundHalfUp($amount, 2);
+
+        $this->assertPayable($invoice, $amount);
+
+        if ($invoice->isForeignCurrency()) {
+            throw new InvalidInvoiceStateException('Девизна фактура не може да се плати од денарски извод во оваа верзија.');
+        }
+
+        return $invoice->payments()->create([
+            'amount' => $amount,
+            'payment_date' => $paymentDate,
+            'payment_method' => 'bank',
+            'created_by' => $userId,
+        ]);
+    }
+
     public function recordPayment(SalesInvoice $invoice, string $amount, string $paymentDate, string $paymentMethod, int $userId): SalesInvoicePayment
     {
         // Нормализирано на 2 децимали пред каква било пресметка — записот за
@@ -313,15 +351,7 @@ class SalesInvoiceService
         // ова не менува ништо.
         $amount = Bcmath::roundHalfUp($amount, 2);
 
-        if ($invoice->status !== 'confirmed') {
-            throw new InvalidInvoiceStateException("Фактура #{$invoice->id} не е потврдена; плаќања можат да се внесуваат само за потврдени фактури.");
-        }
-
-        $invoice->loadMissing(['lines', 'payments', 'company']);
-
-        if (bccomp($amount, $invoice->balanceDue(), 2) > 0) {
-            throw new InvalidInvoiceStateException("Плаќањето од {$amount} го надминува преостанатото салдо од {$invoice->balanceDue()}.");
-        }
+        $this->assertPayable($invoice, $amount);
 
         return DB::transaction(function () use ($invoice, $amount, $paymentDate, $paymentMethod, $userId) {
             // Пресметано ПРЕД да се создаде овој запис за плаќање — ова е
