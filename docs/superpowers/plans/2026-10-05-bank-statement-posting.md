@@ -1234,7 +1234,7 @@ class StatementControlsTest extends TestCase
 }
 ```
 
-> `Format`-те со запирка за илјади/децимали: користи `number_format($v, 2, ',', '.')` во пораките, истото како `App\Support\Format` ако има метод за пари — провери `app/Support/Format.php` и користи го ако постои (тестот горе очекува `1.000,00` и `−50,00`; ако `Format::money` дава друг облик, усогласи ги и тестот и пораките).
+> Паричниот облик го дава `App\Support\Format::money($v, '')` (запирка за децимали, точка за илјади: `1.000,00`). Тестот горе очекува `1.000,00` и `−50,00` (минус како „−“).
 
 - [ ] **Step 2: Run — FAIL.** `php artisan test tests/Feature/Bank/StatementControlsTest.php`
 
@@ -1391,7 +1391,7 @@ class StatementControls
 
     private static function money(string $value): string
     {
-        return str_replace('-', '−', number_format((float) $value, 2, ',', '.'));
+        return str_replace('-', '−', \App\Support\Format::money($value, ''));
     }
 }
 ```
