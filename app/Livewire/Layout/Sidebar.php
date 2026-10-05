@@ -38,6 +38,9 @@ class Sidebar extends Component
     // toggled.
     public string $currentRoute = '';
 
+    // За рутата office.settings: која од поставките на сметководителот е отворена.
+    public string $currentFeature = '';
+
     public string $brandUrl = '';
 
     // Празна низа кога апликацијата сè уште нема своја табла. Само Продажба
@@ -49,6 +52,7 @@ class Sidebar extends Component
         $company ??= request()->route('company');
         $this->company = $company instanceof Company ? $company : null;
         $this->currentRoute = (string) request()->route()?->getName();
+        $this->currentFeature = (string) request()->route('feature');
 
         $app = PortalApp::fromHost(request()->getHost()) ?? PortalApp::PORTAL;
         $this->appKey = $app->value;

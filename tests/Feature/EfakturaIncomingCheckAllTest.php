@@ -118,7 +118,7 @@ class EfakturaIncomingCheckAllTest extends TestCase
         $this->get(route('efaktura.incoming-all'))->assertRedirect(route('login'));
     }
 
-    public function test_the_portal_menu_links_to_the_incoming_check_for_the_office(): void
+    public function test_the_portal_menu_links_to_the_incoming_check_for_the_admin_only(): void
     {
         $this->actingAs($this->user('admin'))->get(route('dashboard'))
             ->assertSee('Влезни е-Фактури')
@@ -127,8 +127,9 @@ class EfakturaIncomingCheckAllTest extends TestCase
 
         $accountant = $this->user('accountant');
         Company::factory()->create()->accountants()->attach($accountant);
+        // Сметководителот го нема во менито (рутата и понатаму постои).
         $this->actingAs($accountant)->get(route('companies.index'))
-            ->assertSee('Влезни е-Фактури')
-            ->assertSeeHtml(route('efaktura.incoming-all'));
+            ->assertDontSee('Влезни е-Фактури')
+            ->assertDontSeeHtml(route('efaktura.incoming-all'));
     }
 }

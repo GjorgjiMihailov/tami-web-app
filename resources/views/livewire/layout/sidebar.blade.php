@@ -38,17 +38,21 @@
                     Поставки
                 </a>
             @elseif (auth()->check() && auth()->user()->hasRole('accountant'))
+                <a href="{{ route('profile') }}" wire:navigate
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ in_array($currentRoute, ['profile'], true) ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
+                    Подесувања на профил
+                </a>
                 <a href="{{ route('companies.index') }}" wire:navigate
                    class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'companies.index' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
                     Клиенти
                 </a>
-                <a href="{{ route('efaktura.incoming-all') }}" wire:navigate
-                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'efaktura.incoming-all' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
-                    Влезни е-Фактури
+                <a href="{{ route('office.settings', 'kontenplan') }}" wire:navigate
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'office.settings' && $currentFeature === 'kontenplan' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
+                    Контен план
                 </a>
-                <a href="{{ route('profile') }}" wire:navigate
-                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ in_array($currentRoute, ['profile'], true) ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
-                    Подесувања на профил
+                <a href="{{ route('office.settings', 'semi-za-knizenje') }}" wire:navigate
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'office.settings' && $currentFeature === 'semi-za-knizenje' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
+                    Шеми за книжење
                 </a>
             @endif
         @endif

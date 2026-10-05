@@ -40,6 +40,7 @@ use App\Livewire\Bank\BankStatementIndex;
 use App\Livewire\Bank\Form743Upload;
 use App\Livewire\Bank\Form743Worklist;
 use App\Livewire\ComingSoon;
+use App\Livewire\OfficeComingSoon;
 use App\Livewire\CompanyDashboard;
 use App\Livewire\CompanyIndex;
 use App\Livewire\CompanyModules;
@@ -142,6 +143,10 @@ Route::domain(PortalApp::PORTAL->domain())->group(function () {
     Route::middleware(['auth'])->get('/743-obrasci', [Form743Worklist::class, '__invoke'])->name('form743.worklist');
     // Работен список на канцеларијата (низ сите клиенти), по угледот на 743 обрасците.
     Route::middleware(['auth'])->get('/efaktura/na-cekanje', [PendingSendList::class, '__invoke'])->name('efaktura.pending');
+    // Поставки на сметководителот што важат за сите негови фирми — без {company}.
+    Route::middleware(['auth'])->get('/podesuvanja/{feature}', [OfficeComingSoon::class, '__invoke'])
+        ->whereIn('feature', array_keys(OfficeComingSoon::FEATURES))
+        ->name('office.settings');
     Route::middleware(['auth'])->get('/efaktura/vlezni', [IncomingCheckAll::class, '__invoke'])->name('efaktura.incoming-all');
 
     // form743.download е преземање датотека, не сметководствен екран — работниот
