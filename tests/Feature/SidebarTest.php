@@ -469,7 +469,7 @@ class SidebarTest extends TestCase
             ->assertSee(route('profile'), false);
     }
 
-    /** Редоследот на сметководителот пред избор на фирма е утврден: профил, клиенти, контен план, шеми. */
+    /** Редоследот на сметководителот пред избор на фирма е утврден: профил, клиенти, шеми. Контен планот е во фирмата. */
     public function test_an_accountants_top_level_sidebar_is_in_the_agreed_order_without_incoming_efaktura(): void
     {
         $accountant = User::factory()->create();
@@ -478,7 +478,7 @@ class SidebarTest extends TestCase
         $html = Livewire::actingAs($accountant)->test(Sidebar::class)->html();
 
         $positions = array_map(fn ($label) => mb_strpos($html, $label), [
-            'Подесувања на профил', 'Клиенти', 'Контен план', 'Шеми за книжење',
+            'Подесувања на профил', 'Клиенти', 'Шеми за книжење',
         ]);
 
         $this->assertNotContains(false, $positions);
@@ -486,6 +486,7 @@ class SidebarTest extends TestCase
         sort($sorted);
         $this->assertSame($sorted, $positions);
         $this->assertStringNotContainsString('Влезни е-Фактури', $html);
+        $this->assertStringNotContainsString('Контен план', $html);
     }
 
     public function test_office_settings_pages_open_for_an_accountant_only(): void
@@ -493,12 +494,10 @@ class SidebarTest extends TestCase
         $accountant = User::factory()->create();
         $accountant->assignRole('accountant');
 
-        foreach (['kontenplan', 'semi-za-knizenje'] as $feature) {
-            $this->actingAs($accountant)->get(route('office.settings', $feature))->assertOk();
-        }
+        $this->actingAs($accountant)->get(route('office.settings', 'semi-za-knizenje'))->assertOk();
 
         $client = User::factory()->create();
         $client->assignRole('freelancer_client');
-        $this->actingAs($client)->get(route('office.settings', 'kontenplan'))->assertForbidden();
+        $this->actingAs($client)->get(route('office.settings', 'semi-za-knizenje'))->assertForbidden();
     }
 }
