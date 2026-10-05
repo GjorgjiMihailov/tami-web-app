@@ -113,8 +113,8 @@ class JournalEntryTest extends TestCase
     public function test_is_balanced_returns_true_when_debits_equal_credits(): void
     {
         $company = Company::factory()->create();
-        $cash = Account::factory()->for($company)->create(['code' => '1001']);
-        $revenue = Account::factory()->for($company)->create(['code' => '7401']);
+        $cash = Account::factory()->for($company)->create(['code' => '1001991']);
+        $revenue = Account::factory()->for($company)->create(['code' => '7401991']);
         $entry = JournalEntry::factory()->for($company)->create();
 
         $entry->lines()->create(['account_id' => $cash->id, 'debit' => 1000, 'credit' => 0]);
@@ -126,8 +126,8 @@ class JournalEntryTest extends TestCase
     public function test_is_balanced_returns_false_when_debits_do_not_equal_credits(): void
     {
         $company = Company::factory()->create();
-        $cash = Account::factory()->for($company)->create(['code' => '1001']);
-        $revenue = Account::factory()->for($company)->create(['code' => '7401']);
+        $cash = Account::factory()->for($company)->create(['code' => '1001991']);
+        $revenue = Account::factory()->for($company)->create(['code' => '7401991']);
         $entry = JournalEntry::factory()->for($company)->create();
 
         $entry->lines()->create(['account_id' => $cash->id, 'debit' => 1000, 'credit' => 0]);

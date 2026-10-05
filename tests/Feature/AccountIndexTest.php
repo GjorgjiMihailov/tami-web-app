@@ -63,14 +63,14 @@ class AccountIndexTest extends TestCase
 
         Livewire::test(AccountIndex::class, ['company' => $company])
             ->set('newParentCode', '234')
-            ->set('newCode', '2341')
+            ->set('newCode', '234101')
             ->set('newName', 'Обврски за придонес за задолжително пензиско и инвалидско осигурување')
             ->call('addAnalyticalAccount')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('accounts', [
             'company_id' => $company->id,
-            'code' => '2341',
+            'code' => '234101',
             'parent_code' => '234',
             'is_analytical' => true,
         ]);
@@ -84,13 +84,13 @@ class AccountIndexTest extends TestCase
 
         $this->actingAs($admin);
 
-        // '2341' passes the 4+-digit format regex on its own, so this
+        // '234101' passes the 4+-digit format regex on its own, so this
         // isolates the uniqueness rule specifically -- unlike a 3-digit
         // code, which would already fail the regex regardless of whether
         // the unique(company_id, code) rule exists at all.
         Livewire::test(AccountIndex::class, ['company' => $company])
             ->set('newParentCode', '234')
-            ->set('newCode', '2341')
+            ->set('newCode', '234101')
             ->set('newName', 'First analytical account')
             ->call('addAnalyticalAccount')
             ->assertHasNoErrors();
@@ -99,7 +99,7 @@ class AccountIndexTest extends TestCase
 
         Livewire::test(AccountIndex::class, ['company' => $company])
             ->set('newParentCode', '234')
-            ->set('newCode', '2341')
+            ->set('newCode', '234101')
             ->set('newName', 'Duplicate code test')
             ->call('addAnalyticalAccount')
             ->assertHasErrors(['newCode' => 'unique']);
@@ -117,7 +117,7 @@ class AccountIndexTest extends TestCase
 
         Livewire::test(AccountIndex::class, ['company' => $company])
             ->set('newParentCode', '234')
-            ->set('newCode', '2341')
+            ->set('newCode', '234101')
             ->set('newName', 'Test')
             ->call('addAnalyticalAccount')
             ->assertForbidden();
@@ -151,5 +151,84 @@ class AccountIndexTest extends TestCase
             ->assertSeeHtml('shadow-card p-0')
             ->assertSee('bg-gray-50', false)
             ->assertSee('hover:bg-orange-50', false);
+    }
+
+    public function test_the_list_can_be_searched_by_code_or_name(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(AccountIndex::class, ['company' => $company])
+            ->set('search', '1020')
+            ->assertSee('Главна благајна')
+            ->assertDontSee('Побарувања од купувачи во земјата')
+            ->set('search', 'Главна благајна')
+            ->assertSee('1020');
+    }
+
+    public function test_it_shows_the_side_rule_of_an_account(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(AccountIndex::class, ['company' => $company])
+            ->set('search', '0020')
+            ->assertSee('з.д.')
+            ->set('search', '4000')
+            ->assertSee('з.п.');
+    }
+
+    public function test_an_analytical_account_can_be_added_under_a_four_digit_parent(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(AccountIndex::class, ['company' => $company])
+            ->set('newParentCode', '1201')
+            ->set('newCode', '120101')
+            ->set('newName', 'Купувач Алфа')
+            ->call('addAnalyticalAccount')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('accounts', [
+            'company_id' => $company->id,
+            'code' => '120101',
+            'parent_code' => '1201',
+            'level' => 'account',
+        ]);
+    }
+
+    public function test_the_parent_must_exist_and_the_code_must_start_with_it(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(AccountIndex::class, ['company' => $company])
+            ->set('newParentCode', '12345')
+            ->set('newCode', '123451')
+            ->set('newName', 'Непостоечки родител')
+            ->call('addAnalyticalAccount')
+            ->assertHasErrors(['newParentCode']);
+
+        Livewire::test(AccountIndex::class, ['company' => $company])
+            ->set('newParentCode', '1201')
+            ->set('newCode', '220101')
+            ->set('newName', 'Погрешна шифра')
+            ->call('addAnalyticalAccount')
+            ->assertHasErrors(['newCode']);
+
+        $this->assertDatabaseMissing('accounts', ['company_id' => $company->id, 'code' => '220101']);
     }
 }

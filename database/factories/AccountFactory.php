@@ -11,10 +11,9 @@ class AccountFactory extends Factory
     {
         return [
             'company_id' => Company::factory(),
-            // 4 digits: every official chart-of-accounts code (auto-seeded
-            // whenever a Company is created) is exactly 3 digits, so this
-            // can never collide with seed data.
-            'code' => $this->faker->unique()->numerify('####'),
+            // 7 digits: the official chart (auto-seeded whenever a Company is
+            // created) goes up to 6 digits, so this can never collide with it.
+            'code' => $this->faker->unique()->numerify('#######'),
             'name' => $this->faker->words(3, true),
             'parent_code' => null,
             'is_analytical' => false,

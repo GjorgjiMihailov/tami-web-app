@@ -40,8 +40,8 @@ class TrialBalanceQueryTest extends TestCase
     {
         $company = Company::factory()->create();
         $synthetic = Account::where('company_id', $company->id)->where('code', '234')->first();
-        $analytical1 = Account::create(['company_id' => $company->id, 'code' => '2341', 'name' => 'Pension', 'parent_code' => '234', 'is_analytical' => true, 'is_active' => true]);
-        $analytical2 = Account::create(['company_id' => $company->id, 'code' => '2342', 'name' => 'Health', 'parent_code' => '234', 'is_analytical' => true, 'is_active' => true]);
+        $analytical1 = Account::create(['company_id' => $company->id, 'code' => '234101', 'name' => 'Pension', 'parent_code' => '234', 'is_analytical' => true, 'is_active' => true]);
+        $analytical2 = Account::create(['company_id' => $company->id, 'code' => '234102', 'name' => 'Health', 'parent_code' => '234', 'is_analytical' => true, 'is_active' => true]);
 
         $entry = JournalEntry::factory()->for($company)->create(['entry_date' => '2026-01-10']);
         $entry->lines()->create(['account_id' => $analytical1->id, 'debit' => 0, 'credit' => 300]);

@@ -18,9 +18,9 @@ class AccountTest extends TestCase
 
         $account = Account::create([
             'company_id' => $company->id,
-            'code' => '1200',
+            'code' => '1200991',
             'name' => 'Побарувања од купувачи во земјата',
-            'parent_code' => '120',
+            'parent_code' => '1200',
             'is_analytical' => true,
             'is_active' => true,
         ]);

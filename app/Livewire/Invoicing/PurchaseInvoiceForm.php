@@ -1217,7 +1217,7 @@ class PurchaseInvoiceForm extends Component
             // Преглед по ставка (Продажна колона) бара брзо гледање по
             // артикл без нова query по ред — истата колекција веќе ја имаме.
             'itemsById' => $items->keyBy('id'),
-            'accounts' => Account::where('company_id', $this->company->id)->where('is_active', true)->orderBy('code')->get(),
+            'accounts' => Account::where('company_id', $this->company->id)->postable()->where('is_active', true)->orderBy('code')->get(),
             'rows' => $rows,
             'landedUnitCosts' => $landedUnitCosts,
             'importCostsBase' => $importCostsBase,

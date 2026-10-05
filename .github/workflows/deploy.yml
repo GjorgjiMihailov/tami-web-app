@@ -93,6 +93,9 @@ jobs:
             git pull origin main
             composer install --no-dev --optimize-autoloader --no-interaction
             php artisan migrate --force
+            # Контниот план живее во docs/reference/official-chart-of-accounts.json;
+            # при секое пуштање се усогласува кај сите фирми (додава и менува, не брише).
+            php artisan accounts:sync-official
             npm ci
             npm run build
             # Клучот за читање скенирани фактури живее како GitHub тајна, не во

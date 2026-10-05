@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Account;
+use App\Services\OfficialChartOfAccounts;
 use App\Models\Company;
 use App\Models\User;
 use Database\Seeders\DemoDataSeeder;
@@ -59,7 +60,7 @@ class DemoDataSeederTest extends TestCase
 
         foreach ($companies as $company) {
             $this->assertSame(
-                428,
+                count(OfficialChartOfAccounts::entries()),
                 Account::where('company_id', $company->id)->count(),
                 "Company [{$company->name}] should have its chart of accounts seeded via the real db:seed entry point."
             );

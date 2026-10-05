@@ -344,7 +344,7 @@ class JournalEntryForm extends Component
 
     public function render()
     {
-        $accounts = Account::where('company_id', $this->company->id)->where('is_active', true)->orderBy('code')->get();
+        $accounts = Account::where('company_id', $this->company->id)->postable()->where('is_active', true)->orderBy('code')->get();
         $partners = Partner::where('company_id', $this->company->id)->orderBy('name')->get();
 
         return view('livewire.accounting.journal-entry-form', [

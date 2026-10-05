@@ -20,6 +20,8 @@ class AccountIndex extends Component
 
     public string $newParentCode = '';
 
+    public string $search = '';
+
     public function mount(Company $company): void
     {
         Gate::authorize('view', $company);
@@ -41,14 +43,25 @@ class AccountIndex extends Component
         $validated = $this->validate([
             'newCode' => ['required', 'string', 'max:10', 'regex:/^[0-9]{4,}$/', Rule::unique('accounts', 'code')->where('company_id', $this->company->id)],
             'newName' => 'required|string|max:255',
-            'newParentCode' => 'required|string|size:3',
+            'newParentCode' => [
+                'required', 'string', 'max:9',
+                Rule::exists('accounts', 'code')->where('company_id', $this->company->id),
+            ],
         ]);
+
+        if (! str_starts_with($validated['newCode'], $validated['newParentCode'])
+            || strlen($validated['newCode']) <= strlen($validated['newParentCode'])) {
+            $this->addError('newCode', 'Шифрата мора да почнува со шифрата на родителот и да е подолга од неа.');
+
+            return;
+        }
 
         Account::create([
             'company_id' => $this->company->id,
             'code' => $validated['newCode'],
             'name' => $validated['newName'],
             'parent_code' => $validated['newParentCode'],
+            'level' => Account::LEVEL_ACCOUNT,
             'is_analytical' => true,
             'is_active' => true,
         ]);
@@ -58,11 +71,23 @@ class AccountIndex extends Component
 
     public function render()
     {
+        $search = trim($this->search);
+
         $accountsByClass = Account::where('company_id', $this->company->id)
+            ->when($search !== '', fn ($query) => $query->where(
+                fn ($q) => $q->where('code', 'like', $search.'%')->orWhere('name', 'like', '%'.$search.'%')
+            ))
             ->orderBy('code')
             ->get()
             ->groupBy('class');
 
-        return view('livewire.accounting.account-index', ['accountsByClass' => $accountsByClass]);
+        // The policy asks the database per account, and every account on this
+        // page belongs to the same company — ask once instead of ~2000 times.
+        $sample = $accountsByClass->flatten()->first();
+
+        return view('livewire.accounting.account-index', [
+            'accountsByClass' => $accountsByClass,
+            'canUpdate' => $sample !== null && Gate::allows('update', $sample),
+        ]);
     }
 }
