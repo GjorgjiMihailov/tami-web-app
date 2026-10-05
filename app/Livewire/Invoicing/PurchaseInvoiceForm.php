@@ -443,8 +443,15 @@ class PurchaseInvoiceForm extends Component
 
         // Три повици кон API на еден барање; ограничувањето на PHP не е
         // проверено на серверот, па се бара повеќе време наместо да се верува
-        // на стандардните 30 секунди.
-        @set_time_limit(240);
+        // на стандардните 30 секунди. Само кога веќе има ограничување: во CLI
+        // (тестови, artisan) е 0 = без граница, а `set_time_limit` важи за
+        // цел процес — па повикот од еден тест би ја прекинал целата серија
+        // по 240 секунди.
+        $limit = (int) ini_get('max_execution_time');
+
+        if ($limit !== 0 && $limit < 240) {
+            @set_time_limit(240);
+        }
 
         $this->resetErrorBag(['ecdFile', 'importInvoiceFile', 'forwarderFile', 'importDocuments']);
         $this->importScanWarnings = [];
