@@ -136,7 +136,7 @@ class StatementControls
         }
 
         if ($line->kind === LineKind::INVOICE_PAYMENT) {
-            return array_merge($problems, self::invoiceProblems($line));
+            return array_merge($problems, self::invoiceProblems($statement, $line));
         }
 
         if ($line->account_id === null) {
@@ -157,7 +157,7 @@ class StatementControls
     }
 
     /** @return array<int, string> */
-    private static function invoiceProblems(BankStatementLine $line): array
+    private static function invoiceProblems(BankStatement $statement, BankStatementLine $line): array
     {
         $isIn = $line->direction === LineDirection::IN;
         $invoice = $isIn ? $line->salesInvoice : $line->purchaseInvoice;
@@ -167,8 +167,13 @@ class StatementControls
             return ['изберете фактура.'];
         }
 
+        // ID-јата доаѓаат од екранот; фирмата се проверува овде, не се верува на формата.
+        if ($invoice->company_id !== $statement->company_id) {
+            return ['фактурата не е од оваа фирма.'];
+        }
+
         if ($existing !== null) {
-            return [];
+            return self::linkedPaymentProblems($line, $invoice, $isIn, $existing);
         }
 
         $invoice->loadMissing(['lines', 'payments']);
@@ -182,6 +187,32 @@ class StatementControls
         }
 
         return [];
+    }
+
+    /**
+     * Врзано претходно плаќање: мора да е на избраната фактура, банкарско и
+     * врзано само за оваа ставка — инаку исто плаќање се брои двапати.
+     *
+     * @return array<int, string>
+     */
+    private static function linkedPaymentProblems(BankStatementLine $line, $invoice, bool $isIn, int $paymentId): array
+    {
+        $payment = $isIn ? $line->salesInvoicePayment : $line->purchaseInvoicePayment;
+        $ownerId = $payment === null ? null : ($isIn ? $payment->sales_invoice_id : $payment->purchase_invoice_id);
+
+        if ($payment === null || $ownerId !== $invoice->id) {
+            return ['плаќањето не е на избраната фактура.'];
+        }
+
+        if ($payment->payment_method !== 'bank') {
+            return ['врзаното плаќање не е банкарско.'];
+        }
+
+        $taken = BankStatementLine::where($isIn ? 'sales_invoice_payment_id' : 'purchase_invoice_payment_id', $paymentId)
+            ->whereKeyNot($line->id)
+            ->exists();
+
+        return $taken ? ['плаќањето е веќе врзано за друга ставка на извод.'] : [];
     }
 
     private static function money(string $value): string

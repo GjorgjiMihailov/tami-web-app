@@ -20,6 +20,7 @@ use App\Support\Bcmath;
 use App\Support\Format;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -195,6 +196,14 @@ class BankStatementBook extends Component
 
     public function updated(string $name, mixed $value): void
     {
+        // Насока, партнер или вид ја менуваат смислата на избраната фактура
+        // (излезна наспроти влезна), па изборот се чисти — инаку старото id
+        // би покажало на погрешна фактура од другата страна.
+        if (preg_match('/^lines\.(\d+)\.(direction|partner_id|kind)$/', $name, $m)) {
+            $this->lines[(int) $m[1]]['invoice_id'] = null;
+            $this->lines[(int) $m[1]]['existing_payment_id'] = null;
+        }
+
         // Избор на фактура: износот се нуди сам кога е празен, а старата врска
         // со постоечко плаќање се тргнува.
         if (preg_match('/^lines\.(\d+)\.invoice_id$/', $name, $m) && $value) {
@@ -263,7 +272,9 @@ class BankStatementBook extends Component
             'lines.*.direction' => ['required', 'in:in,out'],
             'lines.*.amount' => ['required', 'regex:/^\d+(\.\d{1,2})?$/'],
             'lines.*.kind' => ['required', 'in:invoice_payment,account,unclear'],
+            'lines.*.partner_id' => ['nullable', Rule::exists('partners', 'id')->where('company_id', $this->company->id)],
         ], [
+            'lines.*.partner_id.exists' => 'Партнерот не е од оваа фирма.',
             'openingBalance.regex' => 'Почетната состојба е број (пример 1000.50 или -200).',
             'closingBalance.regex' => 'Крајната состојба е број (пример 1000.50 или -200).',
             'lines.*.amount.required' => 'Внесете износ на секоја ставка.',

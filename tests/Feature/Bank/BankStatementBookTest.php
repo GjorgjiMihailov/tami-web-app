@@ -266,6 +266,35 @@ class BankStatementBookTest extends TestCase
         $this->assertSame([], $component->instance()->paymentOptions(0));
     }
 
+    public function test_changing_direction_partner_or_kind_clears_the_chosen_invoice(): void
+    {
+        $partner = Partner::factory()->for($this->company)->create();
+        $invoice = $this->confirmedInvoice($partner);
+
+        $component = $this->screen($this->draft())
+            ->call('addLine')
+            ->set('lines.0.kind', 'invoice_payment')
+            ->set('lines.0.partner_id', $partner->id)
+            ->set('lines.0.invoice_id', $invoice->id);
+
+        $component->set('lines.0.direction', 'out')->assertSet('lines.0.invoice_id', null);
+
+        $component->set('lines.0.direction', 'in')->set('lines.0.invoice_id', $invoice->id)
+            ->set('lines.0.partner_id', null)->assertSet('lines.0.invoice_id', null);
+    }
+
+    public function test_a_partner_of_another_company_is_rejected_on_save(): void
+    {
+        $foreignPartner = Partner::factory()->for(Company::factory()->create())->create();
+
+        $this->screen($this->draft())
+            ->call('addLine')
+            ->set('lines.0.amount', '10.00')
+            ->set('lines.0.partner_id', $foreignPartner->id)
+            ->call('save')
+            ->assertHasErrors('lines.0.partner_id');
+    }
+
     public function test_reopen_returns_the_statement_to_a_draft(): void
     {
         $statement = $this->draft();

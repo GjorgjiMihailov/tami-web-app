@@ -143,6 +143,47 @@ class StatementControlsTest extends TestCase
         $this->assertContains('Ставка 1: контото не постои во оваа фирма.', StatementControls::problems($statement->fresh('lines')));
     }
 
+    public function test_an_invoice_of_another_company_is_refused(): void
+    {
+        $other = Company::factory()->create();
+        $partner = Partner::factory()->for($other)->create();
+        $invoice = SalesInvoice::factory()->for($other)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => '300.00', 'vat_rate' => '0']);
+        app(SalesInvoiceService::class)->confirm($invoice->fresh(), User::factory()->create()->id);
+        $statement = $this->statement();
+        $this->line($statement, ['kind' => LineKind::INVOICE_PAYMENT, 'account_id' => null, 'sales_invoice_id' => $invoice->id, 'amount' => '300.00']);
+
+        $this->assertContains('Ставка 1: фактурата не е од оваа фирма.', StatementControls::problems($statement->fresh('lines')));
+    }
+
+    public function test_a_linked_payment_must_belong_to_the_chosen_invoice_and_be_unique(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $user = User::factory()->create();
+        $make = function (string $price) use ($company, $partner, $user) {
+            $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+            $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => $price, 'vat_rate' => '0']);
+            app(SalesInvoiceService::class)->confirm($invoice->fresh(), $user->id);
+
+            return $invoice;
+        };
+        $a = $make('300.00');
+        $b = $make('300.00');
+        $paymentOfB = app(SalesInvoiceService::class)->recordPayment($b->fresh(), '300.00', '2026-03-04', 'bank', $user->id);
+        $statement = $this->statement(['company_id' => $company->id]);
+
+        $this->line($statement, ['kind' => LineKind::INVOICE_PAYMENT, 'account_id' => null, 'sales_invoice_id' => $a->id, 'sales_invoice_payment_id' => $paymentOfB->id, 'amount' => '300.00']);
+        $this->assertContains('Ставка 1: плаќањето не е на избраната фактура.', StatementControls::problems($statement->fresh('lines')));
+
+        $statement->lines()->delete();
+        $this->line($statement, ['kind' => LineKind::INVOICE_PAYMENT, 'account_id' => null, 'sales_invoice_id' => $b->id, 'sales_invoice_payment_id' => $paymentOfB->id, 'amount' => '300.00']);
+        $other = $this->statement(['company_id' => $company->id, 'number' => 9]);
+        $this->line($other, ['kind' => LineKind::INVOICE_PAYMENT, 'account_id' => null, 'sales_invoice_id' => $b->id, 'sales_invoice_payment_id' => $paymentOfB->id, 'amount' => '300.00']);
+
+        $this->assertContains('Ставка 1: плаќањето е веќе врзано за друга ставка на извод.', StatementControls::problems($statement->fresh('lines')));
+    }
+
     public function test_two_lines_on_one_invoice_are_checked_together(): void
     {
         $company = Company::factory()->create();
