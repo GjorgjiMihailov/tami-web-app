@@ -143,6 +143,21 @@ class StatementControlsTest extends TestCase
         $this->assertContains('Ставка 1: контото не постои во оваа фирма.', StatementControls::problems($statement->fresh('lines')));
     }
 
+    public function test_two_lines_on_one_invoice_are_checked_together(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $user = User::factory()->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => '300.00', 'vat_rate' => '0']);
+        app(SalesInvoiceService::class)->confirm($invoice->fresh(), $user->id);
+        $statement = $this->statement(['company_id' => $company->id, 'closing_balance' => '1400.00']);
+        $this->line($statement, ['kind' => LineKind::INVOICE_PAYMENT, 'account_id' => null, 'sales_invoice_id' => $invoice->id, 'amount' => '200.00', 'position' => 1]);
+        $this->line($statement, ['kind' => LineKind::INVOICE_PAYMENT, 'account_id' => null, 'sales_invoice_id' => $invoice->id, 'amount' => '200.00', 'position' => 2]);
+
+        $this->assertContains('Ставки 1, 2: заедно ја надминуваат фактурата (салдо 300,00).', StatementControls::problems($statement->fresh('lines')));
+    }
+
     public function test_an_invoice_payment_needs_an_invoice_within_its_balance(): void
     {
         $company = Company::factory()->create();

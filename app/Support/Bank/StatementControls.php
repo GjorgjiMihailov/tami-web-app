@@ -68,6 +68,43 @@ class StatementControls
             }
         }
 
+        return array_merge($problems, self::sharedInvoiceProblems($statement));
+    }
+
+    /**
+     * Две ставки на иста фактура поединечно може да влезат во салдото, а заедно
+     * да го надминат. Се собираат само ставките што создаваат ново плаќање.
+     *
+     * @return array<int, string>
+     */
+    private static function sharedInvoiceProblems(BankStatement $statement): array
+    {
+        $problems = [];
+
+        $groups = $statement->lines
+            ->filter(fn (BankStatementLine $line) => $line->kind === LineKind::INVOICE_PAYMENT)
+            ->filter(fn (BankStatementLine $line) => $line->direction === LineDirection::IN
+                ? $line->sales_invoice_id !== null && $line->sales_invoice_payment_id === null
+                : $line->purchase_invoice_id !== null && $line->purchase_invoice_payment_id === null)
+            ->groupBy(fn (BankStatementLine $line) => $line->direction->value.'-'.($line->sales_invoice_id ?? $line->purchase_invoice_id));
+
+        foreach ($groups as $group) {
+            if ($group->count() < 2) {
+                continue;
+            }
+
+            $first = $group->first();
+            $invoice = $first->direction === LineDirection::IN
+                ? $first->salesInvoice()->with(['lines', 'payments'])->first()
+                : $first->purchaseInvoice()->with(['lines', 'payments'])->first();
+            $total = $group->reduce(fn (string $carry, BankStatementLine $line) => bcadd($carry, (string) $line->amount, 2), '0.00');
+
+            if ($invoice !== null && bccomp($total, $invoice->balanceDue(), 2) > 0) {
+                $numbers = $group->map(fn (BankStatementLine $line) => $statement->lines->search(fn ($l) => $l->is($line)) + 1)->implode(', ');
+                $problems[] = "Ставки {$numbers}: заедно ја надминуваат фактурата (салдо ".self::money($invoice->balanceDue()).').';
+            }
+        }
+
         return $problems;
     }
 
