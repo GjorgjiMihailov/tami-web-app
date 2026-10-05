@@ -32,15 +32,15 @@ class BankStatementTest extends TestCase
     }
 
     /**
-     * Состојбите и прометот намерно не се внесуваат — тие се во фајлот. Ако некој
-     * ги додаде во иднина, нека биде свесна одлука, не превид.
+     * Состојбите порано намерно ги немаше. Од книжењето на изводи (2026-10-05)
+     * се внесуваат — но само за контрола, никогаш не се книжат.
      */
-    public function test_a_statement_carries_no_balances_or_turnover(): void
+    public function test_a_statement_carries_balances_only_for_the_check(): void
     {
-        $statement = BankStatement::factory()->create();
+        $statement = BankStatement::factory()->create(['opening_balance' => '1000.00', 'closing_balance' => '1500.00'])->fresh();
 
-        $this->assertFalse(array_key_exists('opening_balance', $statement->getAttributes()));
-        $this->assertFalse(array_key_exists('closing_balance', $statement->getAttributes()));
+        $this->assertSame('1000.00', $statement->opening_balance);
+        $this->assertSame('1500.00', $statement->closing_balance);
     }
 
     public function test_a_foreign_statement_is_told_apart_from_a_denar_one(): void
