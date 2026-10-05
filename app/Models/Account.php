@@ -19,6 +19,9 @@ class Account extends Model
 
     public const LEVEL_ACCOUNT = 'account';
 
+    /** Конто на кое се книжат сите банкарски движења (трансакциска сметка во денари). */
+    public const BANK_CODE = '1000';
+
     protected $fillable = [
         'company_id', 'code', 'name', 'parent_code', 'level',
         'is_analytical', 'must_debit', 'must_credit', 'is_active',
@@ -52,6 +55,12 @@ class Account extends Model
     public function scopePostable(Builder $query): void
     {
         $query->whereNotIn('level', [self::LEVEL_CLASS, self::LEVEL_GROUP]);
+    }
+
+    /** Само аналитичките конта (листовите) примаат книжење од изводи. */
+    public function scopeAnalytical(Builder $query): void
+    {
+        $query->where('is_analytical', true);
     }
 
     public function company(): BelongsTo

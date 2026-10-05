@@ -276,7 +276,7 @@ class PurchaseInvoiceService
                 'created_by' => $userId,
             ]);
 
-            $cashOrBankCode = $paymentMethod === 'cash' ? '102' : '100';
+            $cashOrBankCode = $paymentMethod === 'cash' ? '102' : Account::BANK_CODE;
             $label = "Payment for purchase bill {$invoice->partner->name} #{$invoice->supplier_invoice_number}";
 
             $entry = JournalEntry::create([

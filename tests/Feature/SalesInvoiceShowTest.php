@@ -29,7 +29,7 @@ class SalesInvoiceShowTest extends TestCase
 
     private function seedAccounts(Company $company): void
     {
-        foreach (['120', '740', '230', '660', '701', '100', '102'] as $code) {
+        foreach (['120', '740', '230', '660', '701', '1000', '102'] as $code) {
             Account::firstOrCreate(
                 ['company_id' => $company->id, 'code' => $code],
                 ['name' => $code]

@@ -349,7 +349,7 @@ class SalesInvoiceService
             $paidAfter = bcadd($paidBefore, $amount, 2);
             $amountMkd = bcsub($this->toMkd($invoice, $paidAfter), $this->toMkd($invoice, $paidBefore), 2);
 
-            $cashOrBankCode = $paymentMethod === 'cash' ? '102' : '100';
+            $cashOrBankCode = $paymentMethod === 'cash' ? '102' : Account::BANK_CODE;
             $label = "Payment for invoice {$invoice->formattedNumber()}";
 
             $entry = JournalEntry::create([

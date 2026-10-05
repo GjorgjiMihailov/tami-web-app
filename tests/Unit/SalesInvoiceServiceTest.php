@@ -43,7 +43,7 @@ class SalesInvoiceServiceTest extends TestCase
             ['code' => '230', 'name' => 'VAT Payable'],
             ['code' => '660', 'name' => 'Inventory Asset'],
             ['code' => '701', 'name' => 'COGS'],
-            ['code' => '100', 'name' => 'Bank'],
+            ['code' => '1000', 'name' => 'Bank'],
             ['code' => '102', 'name' => 'Cash'],
         ] as $account) {
             Account::firstOrCreate(
@@ -329,7 +329,7 @@ class SalesInvoiceServiceTest extends TestCase
         $this->assertSame('partially_paid', $confirmed->fresh(['lines', 'payments'])->paymentStatus());
 
         $entry = JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
-        $bank = $entry->lines->firstWhere('account.code', '100');
+        $bank = $entry->lines->firstWhere('account.code', '1000');
         $ar = $entry->lines->firstWhere('account.code', '120');
 
         $this->assertSame('60.00', (string) $bank->debit);
