@@ -167,10 +167,19 @@
         </div>
     @endforeach
 
-    <div class="flex flex-wrap gap-2 mb-8">
+    @if ($mineSaved)
+        <div class="mb-3 p-3 rounded bg-green-50 text-green-800 text-sm">Шемата е зачувана и е ваш предлог — ќе ја добива секоја нова фирма што ја создавате.</div>
+    @endif
+
+    <div class="flex flex-wrap gap-2 mb-2">
         <x-primary-button type="button" wire:click="saveScheme">Зачувај шема</x-primary-button>
-        <x-secondary-button type="button" wire:click="restoreDefault" wire:confirm="Да се врати предложената шема? Вашите измени за овој документ ќе се изгубат.">Врати на предложено</x-secondary-button>
+        <x-secondary-button type="button" wire:click="saveAsMine" wire:confirm="Да се зачува шемата и да стане ваш предлог за нови фирми? Постојните фирми не се менуваат.">Зачувај и постави како мој предлог</x-secondary-button>
+        <x-secondary-button type="button" wire:click="restoreDefault" wire:confirm="Да се врати предложената шема ({{ $hasMine ? 'вашиот личен предлог' : 'стандардната' }})? Вашите измени за овој документ ќе се изгубат.">Врати на предложено</x-secondary-button>
     </div>
+    <p class="text-xs text-gray-500 mb-8">
+        {{ $hasMine ? 'Имате личен предлог за овој документ.' : 'Немате личен предлог — „Врати на предложено“ ја враќа стандардната шема.' }}
+        Предлогот важи само за нови фирми што ги создавате.
+    </p>
 
     <x-card class="mb-6">
         <h2 class="font-semibold text-gray-700 mb-1">Пробај</h2>
