@@ -103,10 +103,9 @@ class Menu
      * Каде се влегува во апликација: нејзината табла ако има, инаку првиот
      * екран.
      *
-     * Ова е шевот за „за другите модули потака ќе средиме". Кога ќе се одлучи
-     * што има на таблата на Финансии, тука се додава еден ред — сите три
-     * места што одлучуваат за влез (AppSwitcher, LandingUrl, brandUrl во
-     * Sidebar) веќе читаат од овде.
+     * Ова е шевот за „за другите модули потака ќе средиме". Сите три места што
+     * одлучуваат за влез (AppSwitcher, LandingUrl, brandUrl во Sidebar) читаат
+     * од овде. Табла имаат Продажба и Финансии (кај правно лице).
      *
      * Враќа null кога апликацијата нема ниту еден екран за оваа фирма —
      * тогаш ни таблата не смее да се понуди, зашто би била празна врата.
@@ -119,9 +118,13 @@ class Menu
             return null;
         }
 
-        return $app === PortalApp::PRODAZBA
-            ? route('prodazba.dashboard', $company)
-            : $first;
+        return match (true) {
+            $app === PortalApp::PRODAZBA => route('prodazba.dashboard', $company),
+            // Таблата на Финансии е само за правни лица (физичкото лице има
+            // 743 обрасци, не книги); првата ставка постои само кога модулот е вклучен.
+            $app === PortalApp::FINANSII && $company->type->isLegal() => route('finansii.dashboard', $company),
+            default => $first,
+        };
     }
 
     private static function itemVisible(User $user, Company $company, array $item): bool

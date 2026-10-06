@@ -35,6 +35,7 @@ use App\Livewire\Accounting\JournalEntryIndex;
 use App\Livewire\Accounting\JournalGroupIndex;
 use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
+use App\Livewire\Apps\FinanceDashboard;
 use App\Livewire\Apps\SalesDashboard;
 use App\Livewire\Bank\BankStatementBook;
 use App\Livewire\Bank\BankStatementIndex;
@@ -305,6 +306,12 @@ Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.
 Route::domain(PortalApp::FINANSII->domain())->middleware(EnsureAppAccess::class.':finansii')->group(function () {
     // Истата причина како кај Продажба: голата адреса мора да води некаде.
     Route::get('/', fn () => redirect(LandingUrl::for(auth()->user(), PortalApp::FINANSII)))->middleware('auth');
+
+    // Таблата на апликацијата: побарувања, обврски, готовински тек. Само правни
+    // лица со вклучен модул Финансии — истото како екраните на оваа апликација.
+    Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':finance'])
+        ->get('/companies/{company}/tabla', [FinanceDashboard::class, '__invoke'])
+        ->name('finansii.dashboard');
 
     // NOTE: Route::get($uri, ClassString::class) (bare class-string) resolves
     // method_exists($action, '__invoke') eagerly at route *registration* time,

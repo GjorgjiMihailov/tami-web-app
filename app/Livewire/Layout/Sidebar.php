@@ -3,6 +3,7 @@
 namespace App\Livewire\Layout;
 
 use App\Models\Company;
+use App\Support\CompanyModule;
 use App\Support\CurrentCompany;
 use App\Support\Menu;
 use App\Support\PortalApp;
@@ -43,8 +44,8 @@ class Sidebar extends Component
 
     public string $brandUrl = '';
 
-    // Празна низа кога апликацијата сè уште нема своја табла. Само Продажба
-    // има; Финансии и Плати ќе добијат кога ќе се одлучи што има на нив.
+    // Празна низа кога апликацијата нема своја табла. Имаат Продажба и Финансии
+    // (правно лице); Плати ќе добие кога ќе се одлучи што има на неа.
     public string $boardUrl = '';
 
     public function mount(?Company $company = null): void
@@ -67,9 +68,14 @@ class Sidebar extends Component
 
         CurrentCompany::remember($this->company);
 
-        $this->boardUrl = $app === PortalApp::PRODAZBA
-            ? route('prodazba.dashboard', $this->company)
-            : '';
+        $this->boardUrl = match (true) {
+            $app === PortalApp::PRODAZBA => route('prodazba.dashboard', $this->company),
+            // Исти услови како рутата: само правно лице со вклучен модул Финансии.
+            $app === PortalApp::FINANSII
+                && $this->company->type->isLegal()
+                && $this->company->usesModule(CompanyModule::FINANCE) => route('finansii.dashboard', $this->company),
+            default => '',
+        };
 
         $this->menu = Menu::for(auth()->user(), $this->company, $app);
         $this->expandedGroup = $this->groupMatchingCurrentRoute();

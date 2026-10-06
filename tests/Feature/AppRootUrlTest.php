@@ -55,7 +55,7 @@ class AppRootUrlTest extends TestCase
             ->assertRedirect(route('prodazba.dashboard', $company));
     }
 
-    public function test_an_app_without_a_board_still_lands_on_its_first_screen(): void
+    public function test_the_finansii_root_lands_on_its_board(): void
     {
         $company = Company::factory()->create();
         $accountant = User::factory()->create();
@@ -64,7 +64,7 @@ class AppRootUrlTest extends TestCase
 
         $this->actingAs($accountant)
             ->get('http://'.PortalApp::FINANSII->domain().'/')
-            ->assertRedirect(route('accounting.journal-groups.index', $company));
+            ->assertRedirect(route('finansii.dashboard', $company));
     }
 
     public function test_the_portal_root_still_shows_the_public_page(): void

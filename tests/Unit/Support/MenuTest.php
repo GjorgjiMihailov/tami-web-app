@@ -328,14 +328,25 @@ class MenuTest extends TestCase
         );
     }
 
+    public function test_finansii_is_entered_through_its_board_for_a_legal_entity(): void
+    {
+        $company = Company::factory()->create();
+        $admin = $this->userWithRole('admin');
+
+        $this->assertSame(
+            route('finansii.dashboard', $company),
+            Menu::landingUrl($admin, $company, PortalApp::FINANSII)
+        );
+    }
+
     public function test_apps_without_a_board_still_open_on_their_first_screen(): void
     {
         $company = Company::factory()->create();
         $admin = $this->userWithRole('admin');
 
         $this->assertSame(
-            Menu::firstUrl($admin, $company, PortalApp::FINANSII),
-            Menu::landingUrl($admin, $company, PortalApp::FINANSII)
+            Menu::firstUrl($admin, $company, PortalApp::PLATA),
+            Menu::landingUrl($admin, $company, PortalApp::PLATA)
         );
     }
 
