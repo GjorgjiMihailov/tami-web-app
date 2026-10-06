@@ -143,10 +143,22 @@ class ChartAdoptionTest extends TestCase
         $this->assertTrue(OfficialChartOfAccounts::isCurrent($company->fresh()));
     }
 
-    public function test_deploy_no_longer_forces_the_chart_on_every_company(): void
+    public function test_deploy_applies_the_chart_to_every_company(): void
     {
         $deploy = file_get_contents(base_path('.github/workflows/deploy.yml'));
 
-        $this->assertStringNotContainsString('php artisan accounts:sync-official', $deploy);
+        $this->assertStringContainsString('php artisan accounts:sync-official', $deploy);
+    }
+
+    public function test_the_sync_adds_new_accounts_active_and_keeps_the_accountants_choices(): void
+    {
+        $company = Company::factory()->create();
+        Account::where('company_id', $company->id)->where('code', '1000')->delete();
+        Account::where('company_id', $company->id)->where('code', '1020')->update(['is_active' => false]);
+
+        $this->artisan('accounts:sync-official')->assertSuccessful();
+
+        $this->assertTrue((bool) Account::where('company_id', $company->id)->where('code', '1000')->value('is_active'));
+        $this->assertFalse((bool) Account::where('company_id', $company->id)->where('code', '1020')->value('is_active'));
     }
 }

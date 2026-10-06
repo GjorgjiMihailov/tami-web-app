@@ -93,9 +93,11 @@ jobs:
             git pull origin main
             composer install --no-dev --optimize-autoloader --no-interaction
             php artisan migrate --force
-            # Предложениот контен план живее во docs/reference/official-chart-of-accounts.json,
-            # но не се наметнува при пуштање: секоја фирма го презема сама од екранот
-            # „Контен план“. За сите одеднаш рачно служи командата accounts:sync-official.
+            # Контниот план живее во docs/reference/official-chart-of-accounts.json;
+            # при секое пуштање се применува кај сите фирми (додава нови конта активни и
+            # усогласува називи; не брише и не го допира „активно“ ниту аналитиките на
+            # сметководителот). Копчето „Преземи“ на екранот е само резерва.
+            php artisan accounts:sync-official
             npm ci
             npm run build
             # Клучот за читање скенирани фактури живее како GitHub тајна, не во
