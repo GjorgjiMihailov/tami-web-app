@@ -159,7 +159,7 @@ class PurchaseInvoiceImportScanTest extends TestCase
             ->assertSet('lines.1.unit_price', '6150.00')
             ->assertSet('lines.1.vat_rate', '0')
             ->assertSet('lines.1.item_id', '')
-            ->assertSet('lines.1.account_id', (string) Account::where('company_id', $company->id)->where('code', '660')->value('id'))
+            ->assertSet('lines.1.account_id', (string) Account::where('company_id', $company->id)->where('code', '6601')->value('id'))
             // ... а истиот износ е и ред „Увозни трошоци" за магацинската вредност.
             ->assertCount('importCosts', 2)
             ->assertSet('importCosts.0.payee_name', 'FOREIGN DOO')
@@ -456,7 +456,7 @@ class PurchaseInvoiceImportScanTest extends TestCase
     public function test_add_all_unknown_skips_a_line_that_already_has_an_account(): void
     {
         $company = $this->company();
-        $accountId = (string) Account::where('company_id', $company->id)->where('code', '660')->value('id');
+        $accountId = (string) Account::where('company_id', $company->id)->where('code', '6601')->value('id');
 
         $component = Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
             ->set('lines', [$this->importLine('Стока'), $this->importLine('ТРАНСПОРТ', $accountId)])
@@ -471,7 +471,7 @@ class PurchaseInvoiceImportScanTest extends TestCase
     public function test_the_bulk_button_is_hidden_when_only_account_lines_remain(): void
     {
         $company = $this->company();
-        $accountId = (string) Account::where('company_id', $company->id)->where('code', '660')->value('id');
+        $accountId = (string) Account::where('company_id', $company->id)->where('code', '6601')->value('id');
 
         Livewire::test(PurchaseInvoiceForm::class, ['company' => $company])
             ->set('lines', [$this->importLine('ТРАНСПОРТ', $accountId)])

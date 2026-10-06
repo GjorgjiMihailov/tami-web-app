@@ -21,6 +21,7 @@ use App\Services\Invoicing\ScannedInvoice;
 use App\Services\Invoicing\ScannedInvoiceLine;
 use App\Services\Invoicing\ScannedInvoiceReader;
 use App\Services\PartnerInsights;
+use App\Services\Posting\PostingSchemes;
 use App\Support\Bcmath;
 use App\Support\VatMath;
 use App\Support\WorkingYear;
@@ -807,13 +808,13 @@ class PurchaseInvoiceForm extends Component
         $items = Item::where('company_id', $this->company->id)->where('is_active', true)->get();
 
         // Увоз: ставката „транспорт/осигурување" останува на фактурата (долгот
-        // кон добавувачот = хартијата) на сметка 660; истиот износ е и во
+        // кон добавувачот = хартијата) на залихата за увоз од шемата (6601); истиот износ е и во
         // „Увозни трошоци" за магацинската вредност. Кај обичен скен — без сметка.
         $chargeAccountId = '';
 
         if ($chargesOnTransportAccount && $this->isImport
             && collect($scanned->lines)->contains(fn (ScannedInvoiceLine $l) => $l->kind === 'charge')) {
-            $chargeAccountId = (string) (Account::where('company_id', $this->company->id)->where('code', '660')->value('id') ?? '');
+            $chargeAccountId = (string) (PostingSchemes::importStockAccount($this->company)?->id ?? '');
         }
 
         $this->lines = array_map(function (ScannedInvoiceLine $line) use ($items, $chargeAccountId) {
