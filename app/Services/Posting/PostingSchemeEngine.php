@@ -93,9 +93,17 @@ class PostingSchemeEngine
                 continue;
             }
 
+            $variables = ['ОСНОВИЦА' => $slice->base, 'ДДВ' => $slice->vat, 'ВКУПНО' => bcadd($slice->base, $slice->vat, 2)];
+
+            // Нула не бара конто: ДДВ на извоз или ослободена кришка е 0 и во
+            // ДДВ-матрицата нема (и не треба да има) конто за таа група.
+            if (bccomp(FormulaEvaluator::evaluate($row->formula, $variables), '0', 2) === 0) {
+                continue;
+            }
+
             $expanded[] = [
                 $this->checked($this->matrixAccount($scheme, $row->matrix_key, $slice), $row),
-                ['ОСНОВИЦА' => $slice->base, 'ДДВ' => $slice->vat, 'ВКУПНО' => bcadd($slice->base, $slice->vat, 2)],
+                $variables,
                 ['ОСНОВИЦА' => $slice->baseForeign, 'ДДВ' => $slice->vatForeign, 'ВКУПНО' => bcadd($slice->baseForeign, $slice->vatForeign, 2)],
             ];
         }
