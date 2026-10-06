@@ -34,32 +34,37 @@ class DefaultPostingSchemes
 
         return DB::transaction(function () use ($company, $type, $definition) {
             $scheme = PostingScheme::create(['company_id' => $company->id, 'doc_type' => $type, 'name' => $definition['name']]);
-
-            foreach ($definition['rows'] as $position => $row) {
-                $scheme->rows()->create([
-                    'position' => $position + 1,
-                    'account_mode' => $row['mode'],
-                    'account_id' => isset($row['account']) ? self::account($company, $row['account'])->id : null,
-                    'matrix_key' => $row['matrix'] ?? null,
-                    'side' => $row['side'],
-                    'formula' => $row['formula'],
-                    'with_partner' => $row['partner'] ?? false,
-                    'description' => $row['description'] ?? null,
-                    'condition' => $row['condition'] ?? null,
-                ]);
-            }
-
-            foreach ($definition['matrix'] as $entry) {
-                $scheme->matrixAccounts()->create([
-                    'matrix_key' => $entry['key'],
-                    'item_kind' => $entry['kind'],
-                    'vat_group' => $entry['group'],
-                    'account_id' => self::account($company, $entry['account'])->id,
-                ]);
-            }
+            self::populate($scheme, $company, $definition);
 
             return $scheme;
         });
+    }
+
+    /** Ги создава редовите и матричните сметки на шемата од дефиниција (стандардна). */
+    public static function populate(PostingScheme $scheme, Company $company, array $definition): void
+    {
+        foreach ($definition['rows'] as $position => $row) {
+            $scheme->rows()->create([
+                'position' => $position + 1,
+                'account_mode' => $row['mode'],
+                'account_id' => isset($row['account']) ? self::account($company, $row['account'])->id : null,
+                'matrix_key' => $row['matrix'] ?? null,
+                'side' => $row['side'],
+                'formula' => $row['formula'],
+                'with_partner' => $row['partner'] ?? false,
+                'description' => $row['description'] ?? null,
+                'condition' => $row['condition'] ?? null,
+            ]);
+        }
+
+        foreach ($definition['matrix'] as $entry) {
+            $scheme->matrixAccounts()->create([
+                'matrix_key' => $entry['key'],
+                'item_kind' => $entry['kind'],
+                'vat_group' => $entry['group'],
+                'account_id' => self::account($company, $entry['account'])->id,
+            ]);
+        }
     }
 
     private static function account(Company $company, string $code): Account
