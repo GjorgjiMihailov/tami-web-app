@@ -128,4 +128,59 @@ class PostingSchemeSetsTest extends TestCase
 
         $this->assertSame(0, PostingScheme::where('company_id', $fresh->id)->count());
     }
+
+    public function test_a_company_created_by_an_accountant_gets_the_accountants_set(): void
+    {
+        PostingSchemeSets::remember($this->accountant, $this->changedScheme(Company::factory()->create()));
+
+        $this->actingAs($this->accountant);
+        $created = Company::factory()->create();
+
+        $scheme = PostingScheme::where('company_id', $created->id)->where('doc_type', 'sales_invoice')->first();
+        $this->assertNotNull($scheme);
+        $this->assertSame('Мој опис {фактура}', $scheme->rows->first()->description);
+    }
+
+    public function test_a_company_created_by_someone_without_a_set_gets_nothing_up_front(): void
+    {
+        $other = User::factory()->create();
+        $other->assignRole('accountant');
+        PostingSchemeSets::remember($this->accountant, $this->changedScheme(Company::factory()->create()));
+
+        $this->actingAs($other);
+        $created = Company::factory()->create();
+
+        $this->assertSame(0, PostingScheme::where('company_id', $created->id)->count());
+    }
+
+    public function test_reset_to_default_uses_the_users_set_and_falls_back_to_the_standard(): void
+    {
+        $source = Company::factory()->create();
+        PostingSchemeSets::remember($this->accountant, $this->changedScheme($source));
+        $company = Company::factory()->create();
+        $scheme = PostingSchemes::for($company, PostingDocType::SALES_INVOICE);
+        $editor = app(PostingSchemeEditor::class);
+
+        $editor->resetToDefault($scheme, $this->accountant);
+        $this->assertSame('Мој опис {фактура}', $scheme->fresh()->rows->first()->description);
+
+        $editor->resetToDefault($scheme);
+        $this->assertSame('{фактура}', $scheme->fresh()->rows->first()->description);
+    }
+
+    public function test_reset_with_a_set_whose_account_is_missing_changes_nothing(): void
+    {
+        PostingSchemeSets::remember($this->accountant, $this->changedScheme(Company::factory()->create()));
+        $company = Company::factory()->create();
+        $scheme = PostingSchemes::for($company, PostingDocType::SALES_INVOICE);
+        \App\Models\Account::where('company_id', $company->id)->where('code', '74001')->update(['is_analytical' => false]);
+        $before = $scheme->rows()->count();
+
+        try {
+            app(PostingSchemeEditor::class)->resetToDefault($scheme, $this->accountant);
+            $this->fail('Очекуван ModelNotFoundException.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            $this->assertSame($before, $scheme->rows()->count());
+        }
+    }
 }

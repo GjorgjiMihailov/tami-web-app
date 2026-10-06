@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\PostingScheme;
 use App\Models\PostingSchemeMatrixAccount;
 use App\Models\PostingSchemeRow;
+use App\Models\User;
 use App\Support\Posting\FormulaEvaluator;
 use App\Support\Posting\PostingDocType;
 use App\Support\Posting\PostingVocabulary;
@@ -185,9 +186,9 @@ class PostingSchemeEditor
         return [];
     }
 
-    public function resetToDefault(PostingScheme $scheme): void
+    public function resetToDefault(PostingScheme $scheme, ?User $user = null): void
     {
-        $definition = DefaultPostingSchemes::definition($scheme->doc_type);
+        $definition = PostingSchemeSets::definitionFor($user, $scheme->doc_type);
 
         DB::transaction(function () use ($scheme, $definition) {
             $scheme->rows()->delete();
