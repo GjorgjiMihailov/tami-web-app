@@ -13,9 +13,11 @@ use App\Models\PurchaseInvoiceLine;
 use App\Models\PurchaseInvoicePayment;
 use App\Services\Inventory\LandedCostAllocator;
 use App\Services\Inventory\StockMovementService;
+use App\Services\Posting\PostedInvoiceAccounts;
 use App\Services\Posting\PostingSchemeEngine;
 use App\Services\Posting\PostingSchemes;
 use App\Services\Posting\PurchaseInvoicePostingContext;
+use App\Services\Posting\PurchasePaymentPostingContext;
 use App\Support\Posting\PostingDocType;
 use Illuminate\Support\Facades\DB;
 
@@ -254,7 +256,6 @@ class PurchaseInvoiceService
                 'created_by' => $userId,
             ]);
 
-            $cashOrBankCode = $paymentMethod === 'cash' ? '102' : Account::BANK_CODE;
             $label = "Payment for purchase bill {$invoice->partner->name} #{$invoice->supplier_invoice_number}";
 
             $entry = JournalEntry::create([
@@ -265,23 +266,11 @@ class PurchaseInvoiceService
                 'created_by' => $userId,
             ]);
 
-            $entry->lines()->create([
-                'account_id' => $this->account($invoice->company, '220')->id,
-                'partner_id' => $invoice->partner_id,
-                'description' => $label,
-                'line_date' => $paymentDate,
-                'debit' => $amount,
-                'credit' => '0',
-            ]);
+            $context = PurchasePaymentPostingContext::build($invoice, $amount, $paymentMethod === 'cash', $label, PostedInvoiceAccounts::payable($invoice));
 
-            $entry->lines()->create([
-                'account_id' => $this->account($invoice->company, $cashOrBankCode)->id,
-                'partner_id' => $invoice->partner_id,
-                'description' => $label,
-                'line_date' => $paymentDate,
-                'debit' => '0',
-                'credit' => $amount,
-            ]);
+            foreach ($this->postingEngine->lines(PostingSchemes::for($invoice->company, PostingDocType::PURCHASE_PAYMENT), $context) as $line) {
+                $entry->lines()->create($line->journalColumns($paymentDate));
+            }
 
             return $payment;
         });
@@ -356,11 +345,6 @@ class PurchaseInvoiceService
                 'Не можат да се распределат увозни трошоци — ниту една ставка со артикл нема вредност поголема од нула.'
             );
         }
-    }
-
-    private function account(Company $company, string $code): Account
-    {
-        return Account::where('company_id', $company->id)->where('code', $code)->firstOrFail();
     }
 
     private function systemJournalGroup(Company $company): JournalGroup

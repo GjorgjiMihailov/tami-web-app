@@ -135,10 +135,12 @@ class BankStatementPoster
                 : ['purchase_invoice_payment_id' => $payment->id, 'created_payment' => true]);
 
             // Уплата од купувач ја затвора сметката на којашто фактурата го
-            // отворила побарувањето (1200, или 120 за стара фактура).
+            // отворила побарувањето (1200, или 120 за стара фактура); исплата
+            // кон добавувач — онаму каде што е отворена обврската (2200/2210,
+            // или 220 за стара фактура).
             $counter = $isIn
                 ? PostedInvoiceAccounts::receivable($invoice)
-                : $this->account($statement, '220');
+                : PostedInvoiceAccounts::payable($invoice);
         } else {
             $counter = Account::where('company_id', $statement->company_id)->findOrFail($line->account_id);
         }

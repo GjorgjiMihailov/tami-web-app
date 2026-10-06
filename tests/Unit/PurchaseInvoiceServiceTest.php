@@ -540,7 +540,7 @@ class PurchaseInvoiceServiceTest extends TestCase
 
         $entry = JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
         $bank = $entry->lines->firstWhere('account.code', '1000');
-        $ap = $entry->lines->firstWhere('account.code', '220');
+        $ap = $entry->lines->firstWhere('account.code', '2200');
 
         $this->assertSame('60.00', (string) $bank->credit);
         $this->assertSame('60.00', (string) $ap->debit);
@@ -560,7 +560,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $this->service->recordPayment($confirmed, '100.00', '2026-03-10', 'cash', $user->id);
 
         $entry = JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
-        $cash = $entry->lines->firstWhere('account.code', '102');
+        $cash = $entry->lines->firstWhere('account.code', '1020');
         $this->assertSame('100.00', (string) $cash->credit);
     }
 
