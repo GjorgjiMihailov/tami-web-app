@@ -35,6 +35,7 @@ class AccountingAccessTest extends TestCase
     {
         return [
             'chart of accounts' => ['accounting.accounts.index'],
+            'posting schemes' => ['accounting.posting-schemes.index'],
             'journal groups' => ['accounting.journal-groups.index'],
             'journal entries' => ['accounting.journal-entries.index'],
             'new journal entry' => ['accounting.journal-entries.create'],
@@ -87,6 +88,7 @@ class AccountingAccessTest extends TestCase
     {
         return [
             'chart of accounts' => ['accounting.accounts.index'],
+            'posting schemes' => ['accounting.posting-schemes.index'],
             'journal groups' => ['accounting.journal-groups.index'],
             'journal entries' => ['accounting.journal-entries.index'],
         ];

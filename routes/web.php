@@ -30,6 +30,8 @@ use App\Http\Middleware\EnsureCompanyModule;
 use App\Http\Middleware\EnsureIndividual;
 use App\Http\Middleware\EnsureLegalEntity;
 use App\Livewire\Accounting\AccountIndex;
+use App\Livewire\Accounting\PostingSchemeEdit;
+use App\Livewire\Accounting\PostingSchemeIndex;
 use App\Livewire\Accounting\JournalEntryForm;
 use App\Livewire\Accounting\JournalEntryIndex;
 use App\Livewire\Accounting\JournalGroupIndex;
@@ -327,6 +329,8 @@ Route::domain(PortalApp::FINANSII->domain())->middleware(EnsureAppAccess::class.
     // the same action at dispatch time once the class exists.
     Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class, EnsureCompanyModule::class.':finance'])->prefix('companies/{company}')->name('accounting.')->group(function () {
         Route::get('/accounts', [AccountIndex::class, '__invoke'])->name('accounts.index');
+        Route::get('/posting-schemes', [PostingSchemeIndex::class, '__invoke'])->name('posting-schemes.index');
+        Route::get('/posting-schemes/{type}', [PostingSchemeEdit::class, '__invoke'])->name('posting-schemes.edit');
         Route::get('/journal-groups', [JournalGroupIndex::class, '__invoke'])->name('journal-groups.index');
         Route::get('/journal-groups/{journalGroup}/entries', [JournalEntryIndex::class, '__invoke'])->name('journal-groups.entries');
         Route::get('/journal-entries', [JournalEntryIndex::class, '__invoke'])->name('journal-entries.index');

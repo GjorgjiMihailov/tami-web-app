@@ -256,6 +256,7 @@ class Menu
                 'label' => 'ПОСТАВКИ',
                 'items' => [
                     ['label' => 'Контен план', 'url' => route('accounting.accounts.index', $company), 'pattern' => 'accounting.accounts.*', 'roles' => ['admin', 'accountant'], 'module' => CompanyModule::FINANCE],
+                    ['label' => 'Шеми за книжење', 'url' => route('accounting.posting-schemes.index', $company), 'pattern' => 'accounting.posting-schemes.*', 'roles' => ['admin', 'accountant'], 'module' => CompanyModule::FINANCE],
                 ],
             ],
             [
