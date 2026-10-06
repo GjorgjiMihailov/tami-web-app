@@ -23,7 +23,8 @@ class DefaultPostingSchemes
         return match ($type) {
             PostingDocType::SALES_INVOICE => self::salesInvoice(),
             PostingDocType::SALES_PAYMENT => self::salesPayment(),
-            default => throw new \LogicException("Нема стандардна шема за {$type->value} (доаѓа во следниот дел)."),
+            PostingDocType::PURCHASE_INVOICE => self::purchaseInvoice(),
+            PostingDocType::PURCHASE_PAYMENT => self::purchasePayment(),
         };
     }
 
@@ -105,6 +106,41 @@ class DefaultPostingSchemes
                 ['mode' => 'fixed', 'account' => '1000', 'side' => 'debit', 'formula' => 'ИЗНОС', 'partner' => true, 'description' => '{фактура}', 'condition' => 'not_cash'],
                 ['mode' => 'fixed', 'account' => '1020', 'side' => 'debit', 'formula' => 'ИЗНОС', 'partner' => true, 'description' => '{фактура}', 'condition' => 'cash'],
                 ['mode' => 'invoice', 'side' => 'credit', 'formula' => 'ИЗНОС', 'partner' => true, 'description' => '{фактура}'],
+            ],
+            'matrix' => [],
+        ];
+    }
+
+    private static function purchaseInvoice(): array
+    {
+        $vat = PostingMatrix::INPUT_VAT;
+
+        return [
+            'name' => 'Влезна фактура',
+            'rows' => [
+                ['mode' => 'line', 'side' => 'debit', 'formula' => 'ТРОШОК_СТАВКА', 'partner' => true, 'description' => '{фактура}'],
+                ['mode' => 'fixed', 'account' => '6600', 'side' => 'debit', 'formula' => 'ЗАЛИХА', 'partner' => true, 'description' => '{фактура}', 'condition' => 'not_import'],
+                ['mode' => 'fixed', 'account' => '6601', 'side' => 'debit', 'formula' => 'ЗАЛИХА', 'partner' => true, 'description' => '{фактура}', 'condition' => 'import'],
+                ['mode' => 'matrix', 'matrix' => $vat, 'side' => 'debit', 'formula' => 'ДДВ', 'partner' => true, 'description' => 'Input VAT on {фактура}', 'condition' => 'not_import'],
+                ['mode' => 'fixed', 'account' => '1302', 'side' => 'debit', 'formula' => 'ОДБИВЛИВ_ДДВ', 'partner' => true, 'description' => 'Input VAT on {фактура}', 'condition' => 'import'],
+                ['mode' => 'fixed', 'account' => '2200', 'side' => 'credit', 'formula' => 'ВКУПНО', 'partner' => true, 'description' => '{фактура}', 'condition' => 'not_import'],
+                ['mode' => 'fixed', 'account' => '2210', 'side' => 'credit', 'formula' => 'ВКУПНО', 'partner' => true, 'description' => '{фактура}', 'condition' => 'import'],
+            ],
+            'matrix' => [
+                ['key' => $vat, 'kind' => null, 'group' => 'general', 'account' => '1300'],
+                ['key' => $vat, 'kind' => null, 'group' => 'reduced', 'account' => '1301'],
+            ],
+        ];
+    }
+
+    private static function purchasePayment(): array
+    {
+        return [
+            'name' => 'Исплата кон добавувач',
+            'rows' => [
+                ['mode' => 'invoice', 'side' => 'debit', 'formula' => 'ИЗНОС', 'partner' => true, 'description' => '{фактура}'],
+                ['mode' => 'fixed', 'account' => '1000', 'side' => 'credit', 'formula' => 'ИЗНОС', 'partner' => true, 'description' => '{фактура}', 'condition' => 'not_cash'],
+                ['mode' => 'fixed', 'account' => '1020', 'side' => 'credit', 'formula' => 'ИЗНОС', 'partner' => true, 'description' => '{фактура}', 'condition' => 'cash'],
             ],
             'matrix' => [],
         ];

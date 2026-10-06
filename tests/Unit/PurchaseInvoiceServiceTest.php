@@ -76,8 +76,8 @@ class PurchaseInvoiceServiceTest extends TestCase
         $this->assertCount(3, $entry->lines);
 
         $expense = $entry->lines->firstWhere('account.code', '462');
-        $vat = $entry->lines->firstWhere('account.code', '130');
-        $ap = $entry->lines->firstWhere('account.code', '220');
+        $vat = $entry->lines->firstWhere('account.code', '1300');
+        $ap = $entry->lines->firstWhere('account.code', '2200');
 
         $this->assertSame('1000.00', (string) $expense->debit);
         $this->assertSame('180.00', (string) $vat->debit);
@@ -106,7 +106,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $this->assertSame('50.0000', (string) StockLevel::where('item_id', $item->id)->where('warehouse_id', $warehouse->id)->first()->average_cost);
 
         $entry = $confirmed->journalEntry()->with('lines.account')->first();
-        $inventoryAsset = $entry->lines->firstWhere('account.code', '660');
+        $inventoryAsset = $entry->lines->firstWhere('account.code', '6600');
         $this->assertSame('500.00', (string) $inventoryAsset->debit);
 
         $this->assertSame($line->fresh()->stock_movement_id, StockMovement::where('item_id', $item->id)->where('type', 'receipt')->first()->id);
@@ -126,10 +126,10 @@ class PurchaseInvoiceServiceTest extends TestCase
 
         $entry = $confirmed->journalEntry()->with('lines.account')->first();
         $this->assertCount(2, $entry->lines);
-        $this->assertNull($entry->lines->firstWhere('account.code', '130'));
+        $this->assertNull($entry->lines->firstWhere('account.code', '1300'));
 
         $expense = $entry->lines->firstWhere('account.code', '462');
-        $ap = $entry->lines->firstWhere('account.code', '220');
+        $ap = $entry->lines->firstWhere('account.code', '2200');
         $this->assertSame('1180.00', (string) $expense->debit);
         $this->assertSame('1180.00', (string) $ap->credit);
     }
@@ -148,7 +148,7 @@ class PurchaseInvoiceServiceTest extends TestCase
 
         $entry = $confirmed->journalEntry()->with('lines.account')->first();
         $this->assertCount(2, $entry->lines);
-        $this->assertNull($entry->lines->firstWhere('account.code', '130'));
+        $this->assertNull($entry->lines->firstWhere('account.code', '1300'));
     }
 
     public function test_confirming_requires_at_least_one_line(): void
@@ -232,8 +232,8 @@ class PurchaseInvoiceServiceTest extends TestCase
         $lines = $confirmed->journalEntry->lines;
 
         $this->assertSame('30.51', $lines->firstWhere('account_id', $expenseAccount->id)->debit);
-        $this->assertSame('5.49', $lines->firstWhere('account_id', $this->accountId($company, '130'))->debit);
-        $this->assertSame('36.00', $lines->firstWhere('account_id', $this->accountId($company, '220'))->credit);
+        $this->assertSame('5.49', $lines->firstWhere('account_id', $this->accountId($company, '1300'))->debit);
+        $this->assertSame('36.00', $lines->firstWhere('account_id', $this->accountId($company, '2200'))->credit);
     }
 
     /**
@@ -269,7 +269,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $movement = StockMovement::where('item_id', $item->id)->firstOrFail();
         $this->assertSame('5.0850', (string) $movement->unit_cost);
 
-        $inventoryDebit = $confirmed->journalEntry->lines->firstWhere('account_id', $this->accountId($company, '660'))->debit;
+        $inventoryDebit = $confirmed->journalEntry->lines->firstWhere('account_id', $this->accountId($company, '6600'))->debit;
         $this->assertSame('30.51', $inventoryDebit);
         $this->assertSame(
             $inventoryDebit,
@@ -309,9 +309,9 @@ class PurchaseInvoiceServiceTest extends TestCase
 
         $lines = $confirmed->journalEntry->lines;
         $this->assertSame('100.00', $lines->firstWhere('account_id', $expenseAccount->id)->debit);
-        $this->assertSame('18.00', $lines->firstWhere('account_id', $this->accountId($company, '130'))->debit);
-        $this->assertSame('118.00', $lines->firstWhere('account_id', $this->accountId($company, '220'))->credit);
-        $this->assertNull($lines->firstWhere('account_id', $this->accountId($company, '660')));
+        $this->assertSame('18.00', $lines->firstWhere('account_id', $this->accountId($company, '1300'))->debit);
+        $this->assertSame('118.00', $lines->firstWhere('account_id', $this->accountId($company, '2200'))->credit);
+        $this->assertNull($lines->firstWhere('account_id', $this->accountId($company, '6600')));
     }
 
     public function test_confirming_a_service_item_line_without_an_expense_account_throws(): void
@@ -381,7 +381,7 @@ class PurchaseInvoiceServiceTest extends TestCase
 
         // Non-deductible VAT lands in the expense, not in input VAT.
         $this->assertSame('118.00', $lines->firstWhere('account_id', $expenseAccount->id)->debit);
-        $this->assertNull($lines->firstWhere('account_id', $this->accountId($company, '130')));
+        $this->assertNull($lines->firstWhere('account_id', $this->accountId($company, '1300')));
     }
 
     public function test_deleting_issues_stock_only_for_product_lines(): void
@@ -540,7 +540,7 @@ class PurchaseInvoiceServiceTest extends TestCase
 
         $entry = JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
         $bank = $entry->lines->firstWhere('account.code', '1000');
-        $ap = $entry->lines->firstWhere('account.code', '220');
+        $ap = $entry->lines->firstWhere('account.code', '2200');
 
         $this->assertSame('60.00', (string) $bank->credit);
         $this->assertSame('60.00', (string) $ap->debit);
@@ -560,7 +560,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $this->service->recordPayment($confirmed, '100.00', '2026-03-10', 'cash', $user->id);
 
         $entry = JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
-        $cash = $entry->lines->firstWhere('account.code', '102');
+        $cash = $entry->lines->firstWhere('account.code', '1020');
         $this->assertSame('100.00', (string) $cash->credit);
     }
 
