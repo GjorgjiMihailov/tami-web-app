@@ -25,7 +25,7 @@ class DefaultPostingSchemesTest extends TestCase
     {
         $company = Company::factory()->create();
 
-        foreach ([PostingDocType::SALES_INVOICE, PostingDocType::SALES_PAYMENT] as $type) {
+        foreach (PostingDocType::cases() as $type) {
             $definition = DefaultPostingSchemes::definition($type);
             $codes = array_filter(array_merge(
                 array_column($definition['rows'], 'account'),
@@ -65,13 +65,6 @@ class DefaultPostingSchemesTest extends TestCase
         $this->assertSame('ВКУПНО - ДДВ', $scheme->rows()->first()->fresh()->formula);
     }
 
-    public function test_a_type_without_defaults_is_refused(): void
-    {
-        $this->expectException(\LogicException::class);
-
-        DefaultPostingSchemes::definition(PostingDocType::PURCHASE_INVOICE);
-    }
-
     /** @return array<string, array{0: list<PostingSlice>, 1: string, 2: string, 3: string, 4: string}> */
     public static function documents(): array
     {
@@ -108,5 +101,53 @@ class DefaultPostingSchemesTest extends TestCase
         $debit = collect($lines)->where('side', 'debit')->reduce(fn ($c, $l) => bcadd($c, $l->amount, 2), '0.00');
         $this->assertSame($gross, collect($lines)->firstWhere(fn ($l) => $l->account->code === '1200')->amount);
         $this->assertTrue(bccomp($debit, '0', 2) > 0);
+    }
+
+    public function test_the_purchase_schemes_are_created_lazily_with_their_rows(): void
+    {
+        $company = Company::factory()->create();
+
+        $invoice = PostingSchemes::for($company, PostingDocType::PURCHASE_INVOICE);
+        $payment = PostingSchemes::for($company, PostingDocType::PURCHASE_PAYMENT);
+
+        $this->assertSame(7, $invoice->rows()->count());
+        $this->assertSame(2, $invoice->matrixAccounts()->count());
+        $this->assertSame(3, $payment->rows()->count());
+    }
+
+    public function test_the_import_stock_account_is_read_from_the_scheme(): void
+    {
+        $company = Company::factory()->create();
+
+        $this->assertSame('6601', PostingSchemes::importStockAccount($company)->code);
+    }
+
+    public function test_the_default_purchase_scheme_balances_for_domestic_and_import_documents(): void
+    {
+        $company = Company::factory()->create();
+        $scheme = PostingSchemes::for($company, PostingDocType::PURCHASE_INVOICE);
+        $expense = Account::where('company_id', $company->id)->where('code', '4620')->firstOrFail();
+        $slices = [
+            new PostingSlice(ItemKind::GOODS, VatGroup::REDUCED, '500.00', '25.00'),
+            new PostingSlice(ItemKind::SERVICE, VatGroup::GENERAL, '100.00', '18.00'),
+        ];
+
+        foreach ([false, true] as $import) {
+            $context = new PostingContext(
+                totals: ['ВКУПНО' => '643.00', 'ЗАЛИХА' => '500.00', 'ТРОШОК_СТАВКА' => '100.00', 'ОДБИВЛИВ_ДДВ' => '43.00'],
+                slices: $slices,
+                flags: ['has_goods' => true, 'cash' => false, 'import' => $import],
+                partnerId: 1,
+                documentLabel: 'Purchase bill X #1',
+                accountBuckets: [['account' => $expense, 'amount' => '100.00']],
+            );
+
+            $codes = collect((new PostingSchemeEngine)->lines($scheme, $context))->map(fn ($l) => $l->account->code.($l->side === 'debit' ? ' D ' : ' C ').$l->amount)->all();
+
+            $expected = $import
+                ? ['4620 D 100.00', '6601 D 500.00', '1302 D 43.00', '2210 C 643.00']
+                : ['4620 D 100.00', '6600 D 500.00', '1300 D 18.00', '1301 D 25.00', '2200 C 643.00'];
+            $this->assertEqualsCanonicalizing($expected, $codes);
+        }
     }
 }
