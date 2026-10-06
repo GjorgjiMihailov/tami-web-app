@@ -81,7 +81,7 @@ class PurchaseInvoiceImportLandedCostTest extends TestCase
         // The journal entry still books only the raw invoice net amount —
         // import costs are deliberately not posted to the ledger yet.
         $entry = $confirmed->journalEntry()->with('lines.account')->first();
-        $inventoryAsset = $entry->lines->firstWhere('account.code', '660');
+        $inventoryAsset = $entry->lines->firstWhere('account.code', '6601');
         $this->assertSame('700.00', (string) $inventoryAsset->debit);
     }
 

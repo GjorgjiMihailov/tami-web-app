@@ -13,11 +13,18 @@ use App\Models\PurchaseInvoiceLine;
 use App\Models\PurchaseInvoicePayment;
 use App\Services\Inventory\LandedCostAllocator;
 use App\Services\Inventory\StockMovementService;
+use App\Services\Posting\PostingSchemeEngine;
+use App\Services\Posting\PostingSchemes;
+use App\Services\Posting\PurchaseInvoicePostingContext;
+use App\Support\Posting\PostingDocType;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseInvoiceService
 {
-    public function __construct(private StockMovementService $stockMovementService) {}
+    public function __construct(
+        private StockMovementService $stockMovementService,
+        private PostingSchemeEngine $postingEngine,
+    ) {}
 
     public function confirm(PurchaseInvoice $invoice, int $userId): PurchaseInvoice
     {
@@ -52,9 +59,6 @@ class PurchaseInvoiceService
         return DB::transaction(function () use ($invoice, $userId) {
             $invoice->loadMissing(['lines.account', 'lines.item', 'partner', 'company', 'importCosts', 'tariffLines']);
 
-            $vatRegistered = $invoice->company->is_vat_registered;
-            $vatTotal = '0.00';
-            $debitsByAccountId = [];
             $landedCosts = [];
 
             if ($invoice->is_import) {
@@ -63,10 +67,6 @@ class PurchaseInvoiceService
             }
 
             foreach ($invoice->lines as $line) {
-                $lineNet = $line->lineTotal();
-                $lineVat = $vatRegistered ? $line->vatAmount() : '0.00';
-                $deductible = $vatRegistered && $line->vat_deductible;
-
                 if ($this->movesStock($line)) {
                     $movement = $this->stockMovementService->receipt(
                         $line->item,
@@ -100,21 +100,11 @@ class PurchaseInvoiceService
                     );
 
                     $line->update(['stock_movement_id' => $movement->id]);
-                    $targetAccount = $this->account($invoice->company, '660');
-                } else {
-                    $targetAccount = $line->account;
-                }
-
-                $debitAmount = $deductible ? $lineNet : bcadd($lineNet, $lineVat, 2);
-                $debitsByAccountId[$targetAccount->id] = bcadd($debitsByAccountId[$targetAccount->id] ?? '0.00', $debitAmount, 2);
-
-                if ($deductible) {
-                    $vatTotal = bcadd($vatTotal, $lineVat, 2);
                 }
             }
 
-            $supplierRef = "{$invoice->partner->name} #{$invoice->supplier_invoice_number}";
-            $label = "Purchase bill {$supplierRef}";
+            $context = PurchaseInvoicePostingContext::build($invoice);
+            $label = $context->documentLabel;
 
             $entry = JournalEntry::create([
                 'company_id' => $invoice->company_id,
@@ -124,40 +114,9 @@ class PurchaseInvoiceService
                 'created_by' => $userId,
             ]);
 
-            $grossTotal = '0.00';
-
-            foreach ($debitsByAccountId as $accountId => $amount) {
-                $entry->lines()->create([
-                    'account_id' => $accountId,
-                    'partner_id' => $invoice->partner_id,
-                    'description' => $label,
-                    'line_date' => $invoice->invoice_date,
-                    'debit' => $amount,
-                    'credit' => '0',
-                ]);
-                $grossTotal = bcadd($grossTotal, $amount, 2);
+            foreach ($this->postingEngine->lines(PostingSchemes::for($invoice->company, PostingDocType::PURCHASE_INVOICE), $context) as $line) {
+                $entry->lines()->create($line->journalColumns($invoice->invoice_date));
             }
-
-            if (bccomp($vatTotal, '0', 2) > 0) {
-                $entry->lines()->create([
-                    'account_id' => $this->account($invoice->company, '130')->id,
-                    'partner_id' => $invoice->partner_id,
-                    'description' => "Input VAT on {$label}",
-                    'line_date' => $invoice->invoice_date,
-                    'debit' => $vatTotal,
-                    'credit' => '0',
-                ]);
-                $grossTotal = bcadd($grossTotal, $vatTotal, 2);
-            }
-
-            $entry->lines()->create([
-                'account_id' => $this->account($invoice->company, '220')->id,
-                'partner_id' => $invoice->partner_id,
-                'description' => $label,
-                'line_date' => $invoice->invoice_date,
-                'debit' => '0',
-                'credit' => $grossTotal,
-            ]);
 
             $invoice->update([
                 'journal_entry_id' => $entry->id,
