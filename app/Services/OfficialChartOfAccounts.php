@@ -26,6 +26,54 @@ class OfficialChartOfAccounts
         );
     }
 
+    /**
+     * Отпечаток на предложениот план. Фирма што го има овој отпечаток е
+     * ажурирана; фирма со друг (или без) гледа понуда да го преземе планот.
+     */
+    public static function version(): string
+    {
+        return sha1_file(base_path('docs/reference/official-chart-of-accounts.json'));
+    }
+
+    public static function isCurrent(Company $company): bool
+    {
+        return $company->chart_version === self::version();
+    }
+
+    /**
+     * Што би направило преземањето: колку конта фалат и колку постојни се
+     * разликуваат (назив, ниво, родител, страна). Ништо не запишува.
+     *
+     * @return array{added: int, changed: int}
+     */
+    public static function preview(Company $company): array
+    {
+        $existing = Account::where('company_id', $company->id)
+            ->get(['code', 'name', 'level', 'parent_code', 'must_debit', 'must_credit'])
+            ->keyBy('code');
+
+        $added = 0;
+        $changed = 0;
+
+        foreach (self::entries() as $entry) {
+            $account = $existing->get($entry['code']);
+
+            if ($account === null) {
+                $added++;
+            } elseif (
+                $account->name !== $entry['name']
+                || $account->level !== $entry['level']
+                || $account->parent_code !== $entry['parent_code']
+                || (bool) $account->must_debit !== (bool) $entry['must_debit']
+                || (bool) $account->must_credit !== (bool) $entry['must_credit']
+            ) {
+                $changed++;
+            }
+        }
+
+        return ['added' => $added, 'changed' => $changed];
+    }
+
     public static function seedForCompany(Company $company): void
     {
         self::syncForCompany($company);
@@ -64,5 +112,9 @@ class OfficialChartOfAccounts
                 ]);
             }
         });
+
+        // Фирмата е сега на тековниот предложен план — без настани и без
+        // нејзин updated_at да се мести (не е промена на профилот).
+        $company->forceFill(['chart_version' => self::version()])->saveQuietly();
     }
 }
