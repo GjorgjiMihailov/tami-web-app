@@ -37,7 +37,7 @@ class LoginLandingTest extends TestCase
         );
     }
 
-    public function test_an_app_without_a_board_still_lands_on_its_first_screen(): void
+    public function test_finansii_lands_on_its_board(): void
     {
         $company = Company::factory()->create();
         $accountant = User::factory()->create();
@@ -45,7 +45,7 @@ class LoginLandingTest extends TestCase
         $company->accountants()->attach($accountant);
 
         $this->assertSame(
-            route('accounting.journal-groups.index', $company),
+            route('finansii.dashboard', $company),
             LandingUrl::for($accountant, PortalApp::FINANSII)
         );
     }

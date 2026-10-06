@@ -106,12 +106,28 @@ class SalesDashboardTest extends TestCase
             ->assertSee('Дома');
     }
 
-    public function test_other_apps_have_no_board_link_in_their_sidebar(): void
+    public function test_finansii_has_a_board_link_in_its_sidebar_but_plata_does_not(): void
     {
         $company = Company::factory()->create();
 
         $this->actingAs($this->admin())
             ->get(route('accounting.journal-groups.index', $company))
+            ->assertOk()
+            ->assertSee('sidebar-board', false)
+            ->assertSee(route('finansii.dashboard', $company), false);
+
+        $this->actingAs($this->admin())
+            ->get(route('employees.index', $company))
+            ->assertOk()
+            ->assertDontSee('sidebar-board', false);
+    }
+
+    public function test_an_individual_has_no_finansii_board_link(): void
+    {
+        $company = Company::factory()->create(['type' => \App\Support\CompanyType::INDIVIDUAL]);
+
+        $this->actingAs($this->admin())
+            ->get(route('form743.index', $company))
             ->assertOk()
             ->assertDontSee('sidebar-board', false);
     }

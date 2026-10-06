@@ -64,7 +64,7 @@
                      двете. --}}
                 @if ($boardUrl !== '')
                     <a href="{{ $boardUrl }}" wire:navigate
-                       class="sidebar-board block px-4 py-2 mb-1 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'prodazba.dashboard' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
+                       class="sidebar-board block px-4 py-2 mb-1 text-sm font-medium rounded-lg mx-3 {{ in_array($currentRoute, ['prodazba.dashboard', 'finansii.dashboard'], true) ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
                         Дома
                     </a>
                 @endif
