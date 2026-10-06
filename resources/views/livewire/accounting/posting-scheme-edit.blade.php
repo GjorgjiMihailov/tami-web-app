@@ -173,6 +173,58 @@
     </div>
 
     <x-card class="mb-6">
+        <h2 class="font-semibold text-gray-700 mb-1">Пробај</h2>
+        <p class="text-sm text-gray-600 mb-3">Избери постоечка фактура и види ги ставките што би настанале со шемата како што е сега (и со незачуваните измени). Ништо не се книжи.</p>
+        <div class="flex flex-wrap items-end gap-3">
+            <div class="min-w-[18rem]">
+                <x-input-label for="trial_document" value="Документ" />
+                <select id="trial_document" wire:model="trialDocument" class="border-gray-300 rounded-md text-sm w-full">
+                    <option value="">— изберете —</option>
+                    @foreach ($trialDocuments as $document)
+                        <option value="{{ $document['id'] }}">{{ $document['label'] }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @if ($canCash)
+                <label class="inline-flex items-center gap-2 text-sm pb-2">
+                    <input type="checkbox" wire:model="trialCash" class="rounded border-gray-300"> Готовинско
+                </label>
+            @endif
+            <x-secondary-button type="button" wire:click="runTrial">Пробај</x-secondary-button>
+        </div>
+        @if ($trialDocuments->isEmpty())
+            <p class="text-xs text-gray-500 mt-2">Нема потврдена фактура за пробање.</p>
+        @endif
+
+        @if ($trial !== null)
+            @if ($trial['error'])
+                <div class="mt-3 p-3 rounded bg-red-50 text-red-800 text-sm">{{ $trial['error'] }}</div>
+            @else
+                <table class="min-w-full divide-y divide-gray-200 mt-3">
+                    <thead>
+                        <tr class="text-left text-sm text-gray-500 bg-gray-50">
+                            <th class="py-1 px-3">Конто</th>
+                            <th class="py-1 px-3 text-right">Должи</th>
+                            <th class="py-1 px-3 text-right">Побарува</th>
+                            <th class="py-1 px-3">Опис</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach ($trial['lines'] as $line)
+                            <tr class="text-sm">
+                                <td class="py-1 px-3">{{ $line['account'] }}</td>
+                                <td class="py-1 px-3 text-right font-mono">{{ $line['debit'] }}</td>
+                                <td class="py-1 px-3 text-right font-mono">{{ $line['credit'] }}</td>
+                                <td class="py-1 px-3 text-xs text-gray-500">{{ $line['description'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+        @endif
+    </x-card>
+
+    <x-card class="mb-6">
         <h2 class="font-semibold text-gray-700 mb-2">Помош</h2>
         <p class="text-sm text-gray-600 mb-2">Во формулата може да се користат броеви, <span class="font-mono">+ − *</span>, загради и променливите:</p>
         <ul class="text-sm space-y-0.5 mb-3">

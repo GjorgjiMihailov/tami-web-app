@@ -192,4 +192,37 @@ class PostingSchemeScreenTest extends TestCase
 
         Livewire::actingAs($stranger)->test(PostingSchemeEdit::class, ['company' => $company, 'type' => 'sales_invoice'])->assertForbidden();
     }
+
+    public function test_the_trial_on_the_edit_screen_shows_the_lines_of_a_chosen_invoice(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $partner = \App\Models\Partner::factory()->for($company)->create();
+        $invoice = \App\Models\SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['description' => 'Услуга', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00']);
+        $confirmed = app(\App\Services\Invoicing\SalesInvoiceService::class)->confirm($invoice->fresh(), User::factory()->create()->id);
+        $entries = \App\Models\JournalEntry::count();
+
+        $this->edit($company)
+            ->set('trialDocument', (string) $confirmed->id)
+            ->call('runTrial')
+            ->assertSee('74000')
+            ->assertSee('1180.00');
+
+        $this->assertSame($entries, \App\Models\JournalEntry::count());
+    }
+
+    public function test_the_trial_reports_a_broken_draft_instead_of_failing(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $partner = \App\Models\Partner::factory()->for($company)->create();
+        $invoice = \App\Models\SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['description' => 'Услуга', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00']);
+        $confirmed = app(\App\Services\Invoicing\SalesInvoiceService::class)->confirm($invoice->fresh(), User::factory()->create()->id);
+
+        $this->edit($company)
+            ->call('editRow', 0)->set('form.formula', 'ВКУПНО + 1')->call('saveRow')
+            ->set('trialDocument', (string) $confirmed->id)
+            ->call('runTrial')
+            ->assertSee('не се балансира');
+    }
 }

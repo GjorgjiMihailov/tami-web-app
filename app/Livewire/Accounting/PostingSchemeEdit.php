@@ -2,10 +2,13 @@
 
 namespace App\Livewire\Accounting;
 
+use App\Exceptions\PostingFormulaException;
+use App\Exceptions\PostingSchemeException;
 use App\Models\Account;
 use App\Models\Company;
 use App\Services\Posting\PostingSchemeEditor;
 use App\Services\Posting\PostingSchemes;
+use App\Services\Posting\PostingSchemeTrial;
 use App\Support\Posting\PostingDocType;
 use App\Support\Posting\PostingVocabulary;
 use Illuminate\Support\Facades\Gate;
@@ -35,6 +38,13 @@ class PostingSchemeEdit extends Component
     public array $problems = [];
 
     public bool $saved = false;
+
+    public string $trialDocument = '';
+
+    public bool $trialCash = false;
+
+    /** @var array{lines: list<array<string, string>>, error: ?string}|null */
+    public ?array $trial = null;
 
     public function mount(Company $company, string $type): void
     {
@@ -153,18 +163,54 @@ class PostingSchemeEdit extends Component
         $this->saved = false;
     }
 
+    /** @return list<array<string, mixed>> матрицата од ќелиите што имаат внесено конто */
+    private function matrixFromCells(): array
+    {
+        return collect($this->cells)
+            ->filter(fn ($c) => trim((string) $c['account_code']) !== '')
+            ->map(fn ($c) => ['matrix_key' => $c['matrix_key'], 'item_kind' => $c['item_kind'], 'vat_group' => $c['vat_group'], 'account_code' => trim((string) $c['account_code'])])
+            ->values()->all();
+    }
+
     public function saveScheme(): void
     {
         Gate::authorize('update', $this->company);
 
-        $matrix = collect($this->cells)
-            ->filter(fn ($c) => trim((string) $c['account_code']) !== '')
-            ->map(fn ($c) => ['matrix_key' => $c['matrix_key'], 'item_kind' => $c['item_kind'], 'vat_group' => $c['vat_group'], 'account_code' => trim((string) $c['account_code'])])
-            ->values()->all();
-
         $scheme = PostingSchemes::for($this->company, $this->docType());
-        $this->problems = app(PostingSchemeEditor::class)->save($scheme, $this->rows, $matrix);
+        $this->problems = app(PostingSchemeEditor::class)->save($scheme, $this->rows, $this->matrixFromCells());
         $this->saved = $this->problems === [];
+    }
+
+    public function runTrial(): void
+    {
+        Gate::authorize('update', $this->company);
+        $this->trial = null;
+
+        if ($this->trialDocument === '') {
+            return;
+        }
+
+        $editor = app(PostingSchemeEditor::class);
+        $type = $this->docType();
+        $scheme = PostingSchemes::for($this->company, $type);
+        $matrix = $this->matrixFromCells();
+        $draft = $editor->transientScheme($this->company, $type, $scheme->name, $this->rows, $matrix);
+
+        try {
+            $lines = app(PostingSchemeTrial::class)->run($this->company, $type, (int) $this->trialDocument, $draft, $this->trialCash);
+
+            $this->trial = [
+                'error' => null,
+                'lines' => array_map(fn ($l) => [
+                    'account' => $l->account->code.' — '.$l->account->name,
+                    'debit' => $l->side === 'debit' ? $l->amount : '',
+                    'credit' => $l->side === 'credit' ? $l->amount : '',
+                    'description' => $l->description,
+                ], $lines),
+            ];
+        } catch (PostingSchemeException|PostingFormulaException $e) {
+            $this->trial = ['lines' => [], 'error' => $e->getMessage()];
+        }
     }
 
     public function restoreDefault(): void
@@ -184,10 +230,14 @@ class PostingSchemeEdit extends Component
             ->push($this->form['account_code'] ?? null)
             ->filter()->unique()->values();
 
+        $conditions = PostingVocabulary::conditions($type);
+
         return view('livewire.accounting.posting-scheme-edit', [
             'docType' => $type,
             'modes' => PostingVocabulary::modes($type),
-            'conditions' => PostingVocabulary::conditions($type),
+            'conditions' => $conditions,
+            'canCash' => array_key_exists('cash', $conditions),
+            'trialDocuments' => app(PostingSchemeTrial::class)->documents($this->company, $type),
             'variables' => PostingVocabulary::variables($type),
             'matrices' => PostingVocabulary::matrices($type),
             'accountNames' => Account::where('company_id', $this->company->id)->whereIn('code', $codes)->pluck('name', 'code'),
