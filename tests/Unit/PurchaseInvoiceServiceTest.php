@@ -43,7 +43,7 @@ class PurchaseInvoiceServiceTest extends TestCase
             ['code' => '660', 'name' => 'Inventory Asset'],
             ['code' => '1000', 'name' => 'Bank'],
             ['code' => '102', 'name' => 'Cash'],
-            ['code' => '462', 'name' => 'Services expense'],
+            ['code' => '4620', 'name' => 'Services expense'],
         ] as $account) {
             Account::firstOrCreate(
                 ['company_id' => $company->id, 'code' => $account['code']],
@@ -62,7 +62,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $user = User::factory()->create();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
         $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Consulting', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00']);
@@ -75,7 +75,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $entry = $confirmed->journalEntry()->with('lines.account')->first();
         $this->assertCount(3, $entry->lines);
 
-        $expense = $entry->lines->firstWhere('account.code', '462');
+        $expense = $entry->lines->firstWhere('account.code', '4620');
         $vat = $entry->lines->firstWhere('account.code', '1300');
         $ap = $entry->lines->firstWhere('account.code', '2200');
 
@@ -117,7 +117,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $user = User::factory()->create();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
         $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Entertainment', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00', 'vat_deductible' => false]);
@@ -128,7 +128,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $this->assertCount(2, $entry->lines);
         $this->assertNull($entry->lines->firstWhere('account.code', '1300'));
 
-        $expense = $entry->lines->firstWhere('account.code', '462');
+        $expense = $entry->lines->firstWhere('account.code', '4620');
         $ap = $entry->lines->firstWhere('account.code', '2200');
         $this->assertSame('1180.00', (string) $expense->debit);
         $this->assertSame('1180.00', (string) $ap->credit);
@@ -139,7 +139,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create(['is_vat_registered' => false]);
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $user = User::factory()->create();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
         $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Consulting', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00']);
@@ -215,7 +215,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $user = User::factory()->create();
 
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
@@ -283,7 +283,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $item = Item::factory()->for($company)->create(['type' => 'service']);
         $user = User::factory()->create();
 
@@ -335,7 +335,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create();
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $item = Item::factory()->for($company)->create(['type' => 'service']);
         $user = User::factory()->create();
 
@@ -361,7 +361,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $item = Item::factory()->for($company)->create(['type' => 'service']);
         $user = User::factory()->create();
 
@@ -390,7 +390,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
         $warehouse = Warehouse::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $product = Item::factory()->for($company)->create(['type' => 'product']);
         $service = Item::factory()->for($company)->create(['type' => 'service']);
         $user = User::factory()->create();
@@ -460,7 +460,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create();
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $user = User::factory()->create();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
         $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
@@ -507,7 +507,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create();
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $user = User::factory()->create();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01', 'supplier_invoice_number' => 'OLD-1']);
         $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
@@ -527,7 +527,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create();
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $user = User::factory()->create();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
         $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
@@ -551,7 +551,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create();
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $user = User::factory()->create();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
         $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
@@ -569,7 +569,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create();
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $user = User::factory()->create();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
         $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
@@ -595,7 +595,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $user = User::factory()->create();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
         $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Consulting', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00']);
@@ -613,7 +613,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $user = User::factory()->create();
 
         $first = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
@@ -636,7 +636,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $user = User::factory()->create();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
         $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Consulting', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00']);
@@ -656,7 +656,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $expenseAccount = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $expenseAccount = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $user = User::factory()->create();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
         $invoice->lines()->create(['account_id' => $expenseAccount->id, 'description' => 'Consulting', 'quantity' => '1', 'unit_price' => '1000.00', 'vat_rate' => '18.00']);

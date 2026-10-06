@@ -43,7 +43,7 @@ class OpenInvoicesQueryTest extends TestCase
     private function purchase(string $price, string $invoiceDate, string $dueDate): PurchaseInvoice
     {
         $partner = Partner::factory()->for($this->company)->create();
-        $expense = Account::where('company_id', $this->company->id)->where('code', '462')->firstOrFail();
+        $expense = Account::where('company_id', $this->company->id)->where('code', '4620')->firstOrFail();
         $invoice = PurchaseInvoice::factory()->for($this->company)->create([
             'partner_id' => $partner->id, 'invoice_date' => $invoiceDate, 'due_date' => $dueDate,
         ]);

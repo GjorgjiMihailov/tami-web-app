@@ -55,7 +55,7 @@ class PostingSchemeEngineLineModeTest extends TestCase
         ], $extra));
     }
 
-    public function test_a_line_row_repeats_per_account_bucket_even_on_a_heading_account(): void
+    public function test_a_line_row_repeats_per_account_bucket(): void
     {
         $this->row(1, 'line', 'debit', 'ТРОШОК_СТАВКА', ['with_partner' => true, 'description' => '{фактура}']);
         $this->row(2, 'fixed', 'credit', 'ВКУПНО', ['account_id' => $this->account('2200')->id, 'with_partner' => true]);
@@ -64,7 +64,7 @@ class PostingSchemeEngineLineModeTest extends TestCase
             ['ВКУПНО' => '1500.00'],
             ['accountBuckets' => [
                 ['account' => $this->account('4620'), 'amount' => '1000.00'],
-                ['account' => $this->account('462'), 'amount' => '500.00'], // подгрупа: корисникот ја избрал
+                ['account' => $this->account('4621'), 'amount' => '500.00'],
             ]]
         ));
 
@@ -74,8 +74,22 @@ class PostingSchemeEngineLineModeTest extends TestCase
         $this->assertSame('debit', $lines[0]->side);
         $this->assertSame(9, $lines[0]->partnerId);
         $this->assertSame('Purchase bill X #1', $lines[0]->description);
-        $this->assertSame('462', $lines[1]->account->code);
+        $this->assertSame('4621', $lines[1]->account->code);
         $this->assertSame('500.00', $lines[1]->amount);
+    }
+
+    public function test_a_line_row_on_a_heading_account_is_refused(): void
+    {
+        $this->row(1, 'line', 'debit', 'ТРОШОК_СТАВКА');
+        $this->row(2, 'fixed', 'credit', 'ВКУПНО', ['account_id' => $this->account('2200')->id]);
+
+        $this->expectException(\App\Exceptions\PostingSchemeException::class);
+        $this->expectExceptionMessage('не е аналитичко');
+
+        (new PostingSchemeEngine)->lines($this->scheme->fresh(), $this->context(
+            ['ВКУПНО' => '100.00'],
+            ['accountBuckets' => [['account' => $this->account('462'), 'amount' => '100.00']]]
+        ));
     }
 
     public function test_a_line_row_with_no_buckets_posts_nothing(): void

@@ -37,8 +37,8 @@ class PurchaseInvoiceShowTest extends TestCase
         $company = Company::factory()->create();
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $account = Account::where('company_id', $company->id)->where('code', '462')->first()
-            ?? Account::factory()->for($company)->create(['code' => '462', 'name' => 'Services']);
+        $account = Account::where('company_id', $company->id)->where('code', '4620')->first()
+            ?? Account::factory()->for($company)->create(['code' => '4620', 'name' => 'Services']);
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id]);
         $invoice->lines()->create(['account_id' => $account->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
         $admin = User::factory()->create();
@@ -57,8 +57,8 @@ class PurchaseInvoiceShowTest extends TestCase
         $company = Company::factory()->create();
         $this->seedAccounts($company);
         $partner = Partner::factory()->for($company)->create();
-        $account = Account::where('company_id', $company->id)->where('code', '462')->first()
-            ?? Account::factory()->for($company)->create(['code' => '462', 'name' => 'Services']);
+        $account = Account::where('company_id', $company->id)->where('code', '4620')->first()
+            ?? Account::factory()->for($company)->create(['code' => '4620', 'name' => 'Services']);
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'confirmed']);
         $invoice->lines()->create(['account_id' => $account->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
         $journalEntry = JournalEntry::factory()->for($company)->create();

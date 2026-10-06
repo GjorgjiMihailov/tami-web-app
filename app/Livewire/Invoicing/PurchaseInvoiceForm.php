@@ -920,7 +920,7 @@ class PurchaseInvoiceForm extends Component
             'dueDate' => 'required|date|after_or_equal:invoiceDate',
             'lines' => 'required|array|min:1',
             'lines.*.item_id' => ['nullable', Rule::exists('items', 'id')->where('company_id', $this->company->id)],
-            'lines.*.account_id' => ['nullable', Rule::exists('accounts', 'id')->where('company_id', $this->company->id)],
+            'lines.*.account_id' => ['nullable', Rule::exists('accounts', 'id')->where('company_id', $this->company->id)->where('is_analytical', true)],
             'lines.*.description' => 'nullable|string|max:255',
             'lines.*.quantity' => 'required|numeric|min:0.001',
             'lines.*.unit_price' => 'required|numeric|min:0',
@@ -1218,7 +1218,7 @@ class PurchaseInvoiceForm extends Component
             // Преглед по ставка (Продажна колона) бара брзо гледање по
             // артикл без нова query по ред — истата колекција веќе ја имаме.
             'itemsById' => $items->keyBy('id'),
-            'accounts' => Account::where('company_id', $this->company->id)->postable()->where('is_active', true)->orderBy('code')->get(),
+            'accounts' => Account::where('company_id', $this->company->id)->analytical()->where('is_active', true)->orderBy('code')->get(),
             'rows' => $rows,
             'landedUnitCosts' => $landedUnitCosts,
             'importCostsBase' => $importCostsBase,

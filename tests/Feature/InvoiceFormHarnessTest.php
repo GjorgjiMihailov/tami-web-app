@@ -41,7 +41,7 @@ class InvoiceFormHarnessTest extends TestCase
         Warehouse::factory()->for($company)->create(['name' => 'Главен магацин']);
         $product = Item::factory()->for($company)->create(['code' => 'A-100', 'name' => 'Хартија А4', 'vat_rate' => '18.00']);
         $service = Item::factory()->for($company)->service()->create(['code' => 'U-010', 'name' => 'Сметководствени услуги', 'vat_rate' => '18.00']);
-        $account = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $account = Account::where('company_id', $company->id)->where('code', '4620')->first();
 
         $admin = User::factory()->create();
         $admin->assignRole('admin');

@@ -42,7 +42,7 @@ class PurchaseInvoiceZohoLayoutTest extends TestCase
 
     private function expenseAccount(Company $company): Account
     {
-        return Account::where('company_id', $company->id)->where('code', '462')->first();
+        return Account::where('company_id', $company->id)->where('code', '4620')->first();
     }
 
     private function bill(Company $company, Partner $partner, array $extra = [], string $net = '1000.00'): PurchaseInvoice

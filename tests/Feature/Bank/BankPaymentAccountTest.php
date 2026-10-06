@@ -39,7 +39,7 @@ class BankPaymentAccountTest extends TestCase
     {
         $company = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
-        $expense = Account::where('company_id', $company->id)->where('code', '462')->firstOrFail();
+        $expense = Account::where('company_id', $company->id)->where('code', '4620')->firstOrFail();
         $user = User::factory()->create();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
         $invoice->lines()->create(['account_id' => $expense->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
