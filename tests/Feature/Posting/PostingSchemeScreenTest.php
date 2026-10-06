@@ -225,4 +225,62 @@ class PostingSchemeScreenTest extends TestCase
             ->call('runTrial')
             ->assertSee('не се балансира');
     }
+
+    public function test_save_as_mine_saves_the_scheme_and_remembers_it_for_the_accountant(): void
+    {
+        $company = Company::factory()->create();
+        $accountant = $this->accountantOf($company);
+
+        Livewire::actingAs($accountant)->test(PostingSchemeEdit::class, ['company' => $company, 'type' => 'sales_invoice'])
+            ->call('editRow', 0)->set('form.description', 'Мој опис {фактура}')->call('saveRow')
+            ->call('saveAsMine')
+            ->assertSet('problems', [])
+            ->assertSet('mineSaved', true);
+
+        $this->assertTrue(\App\Services\Posting\PostingSchemeSets::has($accountant, \App\Support\Posting\PostingDocType::SALES_INVOICE));
+        $scheme = PostingScheme::where('company_id', $company->id)->where('doc_type', 'sales_invoice')->firstOrFail();
+        $this->assertSame('Мој опис {фактура}', $scheme->rows->first()->description);
+    }
+
+    public function test_a_bad_draft_is_neither_saved_nor_remembered(): void
+    {
+        $company = Company::factory()->create();
+        $accountant = $this->accountantOf($company);
+
+        Livewire::actingAs($accountant)->test(PostingSchemeEdit::class, ['company' => $company, 'type' => 'sales_invoice'])
+            ->call('editRow', 0)->set('form.formula', 'ВКУПНО + 1')->call('saveRow')
+            ->call('saveAsMine')
+            ->assertSet('mineSaved', false)
+            ->assertSee('не се балансира');
+
+        $this->assertFalse(\App\Services\Posting\PostingSchemeSets::has($accountant, \App\Support\Posting\PostingDocType::SALES_INVOICE));
+    }
+
+    public function test_restore_brings_back_my_set_when_i_have_one(): void
+    {
+        $company = Company::factory()->create();
+        $accountant = $this->accountantOf($company);
+        $component = Livewire::actingAs($accountant)->test(PostingSchemeEdit::class, ['company' => $company, 'type' => 'sales_invoice'])
+            ->call('editRow', 0)->set('form.description', 'Мој опис {фактура}')->call('saveRow')->call('saveAsMine')
+            ->call('editRow', 0)->set('form.description', 'Друго')->call('saveRow')->call('saveScheme');
+
+        $component->call('restoreDefault');
+
+        $scheme = PostingScheme::where('company_id', $company->id)->where('doc_type', 'sales_invoice')->firstOrFail();
+        $this->assertSame('Мој опис {фактура}', $scheme->rows->first()->description);
+    }
+
+    public function test_restore_reports_a_missing_account_of_my_set_instead_of_failing(): void
+    {
+        $source = Company::factory()->create();
+        $accountant = $this->accountantOf($source);
+        Livewire::actingAs($accountant)->test(PostingSchemeEdit::class, ['company' => $source, 'type' => 'sales_invoice'])->call('saveAsMine');
+        $company = Company::factory()->create();
+        $accountant->assignedCompanies()->attach($company);
+        \App\Models\Account::where('company_id', $company->id)->where('code', '74001')->update(['is_analytical' => false]);
+
+        Livewire::actingAs($accountant)->test(PostingSchemeEdit::class, ['company' => $company, 'type' => 'sales_invoice'])
+            ->call('restoreDefault')
+            ->assertSee('нема во планот на оваа фирма');
+    }
 }

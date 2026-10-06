@@ -8,9 +8,11 @@ use App\Models\Account;
 use App\Models\Company;
 use App\Services\Posting\PostingSchemeEditor;
 use App\Services\Posting\PostingSchemes;
+use App\Services\Posting\PostingSchemeSets;
 use App\Services\Posting\PostingSchemeTrial;
 use App\Support\Posting\PostingDocType;
 use App\Support\Posting\PostingVocabulary;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -38,6 +40,8 @@ class PostingSchemeEdit extends Component
     public array $problems = [];
 
     public bool $saved = false;
+
+    public bool $mineSaved = false;
 
     public string $trialDocument = '';
 
@@ -80,6 +84,7 @@ class PostingSchemeEdit extends Component
         $this->form = [];
         $this->problems = [];
         $this->saved = false;
+        $this->mineSaved = false;
     }
 
     public function addRow(): void
@@ -213,12 +218,34 @@ class PostingSchemeEdit extends Component
         }
     }
 
+    /** Зачувај ја шемата (низ сите проверки) и запомни ја како мој предлог за нови фирми. */
+    public function saveAsMine(): void
+    {
+        $this->saveScheme();
+        $this->mineSaved = false;
+
+        if ($this->problems !== []) {
+            return;
+        }
+
+        PostingSchemeSets::remember(auth()->user(), PostingSchemes::for($this->company, $this->docType()));
+        $this->mineSaved = true;
+    }
+
     public function restoreDefault(): void
     {
         Gate::authorize('update', $this->company);
 
-        app(PostingSchemeEditor::class)->resetToDefault(PostingSchemes::for($this->company, $this->docType()));
+        try {
+            app(PostingSchemeEditor::class)->resetToDefault(PostingSchemes::for($this->company, $this->docType()), auth()->user());
+        } catch (ModelNotFoundException) {
+            $this->problems = ['Некое конто од вашиот предлог го нема во планот на оваа фирма — шемата не е променета.'];
+
+            return;
+        }
+
         $this->loadDraft();
+        $this->mineSaved = false;
     }
 
     public function render()
@@ -237,6 +264,7 @@ class PostingSchemeEdit extends Component
             'modes' => PostingVocabulary::modes($type),
             'conditions' => $conditions,
             'canCash' => array_key_exists('cash', $conditions),
+            'hasMine' => PostingSchemeSets::has(auth()->user(), $type),
             'trialDocuments' => app(PostingSchemeTrial::class)->documents($this->company, $type),
             'variables' => PostingVocabulary::variables($type),
             'matrices' => PostingVocabulary::matrices($type),
