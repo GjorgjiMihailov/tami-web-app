@@ -69,7 +69,7 @@ class MenuTest extends TestCase
 
         $financeMenu = Menu::for($admin, $company, PortalApp::FINANSII);
         $this->assertSame(['Главна книга', 'Извештаи и обрасци', 'Банкарски документи'], $this->itemLabels($financeMenu, 'finance'));
-        $this->assertSame(['Контен план'], $this->itemLabels($financeMenu, 'finance-settings'));
+        $this->assertSame(['Контен план', 'Шеми за книжење'], $this->itemLabels($financeMenu, 'finance-settings'));
 
         $this->assertSame(['Компанија'], $this->itemLabels(Menu::for($admin, $company, PortalApp::PORTAL), 'settings'));
         $this->assertSame(['Фактурирање'], $this->itemLabels(Menu::for($admin, $company, PortalApp::PRODAZBA), 'sales-settings'));
@@ -84,7 +84,7 @@ class MenuTest extends TestCase
         $this->assertContains('ФИНАНСИИ', $this->groupLabels(Menu::for($accountant, $company, PortalApp::FINANSII)));
         $this->assertSame(['Компанија'], $this->itemLabels(Menu::for($accountant, $company, PortalApp::PORTAL), 'settings'));
         $this->assertSame(['Фактурирање'], $this->itemLabels(Menu::for($accountant, $company, PortalApp::PRODAZBA), 'sales-settings'));
-        $this->assertSame(['Контен план'], $this->itemLabels(Menu::for($accountant, $company, PortalApp::FINANSII), 'finance-settings'));
+        $this->assertSame(['Контен план', 'Шеми за книжење'], $this->itemLabels(Menu::for($accountant, $company, PortalApp::FINANSII), 'finance-settings'));
     }
 
     public function test_an_internal_client_sees_reports_but_not_the_general_ledger(): void
