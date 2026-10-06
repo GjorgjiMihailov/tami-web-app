@@ -11,6 +11,9 @@ final class PostingMatrix
     /** Излезен ДДВ: конто само по даночна група. */
     public const OUTPUT_VAT = 'output_vat';
 
+    /** Влезен ДДВ (одбивлив): конто само по даночна група. */
+    public const INPUT_VAT = 'input_vat';
+
     /** Дали матрицата се чита по вид и група (true) или само по група (false). */
     public static function byKind(string $key): bool
     {

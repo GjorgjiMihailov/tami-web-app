@@ -82,6 +82,18 @@ class PostingSchemeEngine
             return [[$context->invoiceAccount, $context->totals, $context->foreignTotals]];
         }
 
+        if ($row->account_mode === 'line') {
+            // Сметката ја избрал корисникот на ставката на документот; не се
+            // проверува за аналитичност — постојните документи книжат и на подгрупи.
+            $expanded = [];
+
+            foreach ($context->accountBuckets as $bucket) {
+                $expanded[] = [$bucket['account'], $context->totals + ['ТРОШОК_СТАВКА' => $bucket['amount']], $context->foreignTotals];
+            }
+
+            return $expanded;
+        }
+
         if ($row->account_mode !== 'matrix' || $row->matrix_key === null) {
             throw new PostingSchemeException("Непознат начин на конто „{$row->account_mode}“.");
         }

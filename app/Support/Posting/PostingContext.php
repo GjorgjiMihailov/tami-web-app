@@ -27,5 +27,7 @@ final class PostingContext
         public readonly string $documentLabel = '',
         public readonly ?array $foreign = null,
         public readonly ?Account $invoiceAccount = null,
+        /** @var list<array{account: Account, amount: string}> сметки од ставките на документот и збир по сметка */
+        public readonly array $accountBuckets = [],
     ) {}
 }
