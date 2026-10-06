@@ -123,7 +123,7 @@ class BankStatementPosterTest extends TestCase
         $this->poster()->post($statement->fresh(), $this->user->id);
     }
 
-    public function test_an_invoice_line_creates_the_payment_and_posts_against_120(): void
+    public function test_an_invoice_line_creates_the_payment_and_posts_against_1200(): void
     {
         $partner = Partner::factory()->for($this->company)->create();
         $invoice = $this->confirmedSalesInvoice($partner, '300.00');
@@ -132,8 +132,8 @@ class BankStatementPosterTest extends TestCase
 
         $entry = $this->poster()->post($statement, $this->user->id)->load('lines.account');
 
-        $this->assertSame('300.00', (string) $entry->lines->firstWhere('account.code', '120')->credit);
-        $this->assertSame($partner->id, $entry->lines->firstWhere('account.code', '120')->partner_id);
+        $this->assertSame('300.00', (string) $entry->lines->firstWhere('account.code', '1200')->credit);
+        $this->assertSame($partner->id, $entry->lines->firstWhere('account.code', '1200')->partner_id);
         $line = $line->fresh();
         $this->assertTrue($line->created_payment);
         $this->assertNotNull($line->sales_invoice_payment_id);

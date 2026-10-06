@@ -9,6 +9,7 @@ use App\Models\BankStatementLine;
 use App\Models\JournalEntry;
 use App\Services\Invoicing\PurchaseInvoiceService;
 use App\Services\Invoicing\SalesInvoiceService;
+use App\Services\Posting\PostedInvoiceAccounts;
 use App\Support\Bank\BankAccountGroups;
 use App\Support\Bank\LineDirection;
 use App\Support\Bank\LineKind;
@@ -133,7 +134,11 @@ class BankStatementPoster
                 ? ['sales_invoice_payment_id' => $payment->id, 'created_payment' => true]
                 : ['purchase_invoice_payment_id' => $payment->id, 'created_payment' => true]);
 
-            $counter = $this->account($statement, $isIn ? '120' : '220');
+            // Уплата од купувач ја затвора сметката на којашто фактурата го
+            // отворила побарувањето (1200, или 120 за стара фактура).
+            $counter = $isIn
+                ? PostedInvoiceAccounts::receivable($invoice)
+                : $this->account($statement, '220');
         } else {
             $counter = Account::where('company_id', $statement->company_id)->findOrFail($line->account_id);
         }
