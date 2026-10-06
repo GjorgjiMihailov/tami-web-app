@@ -4,6 +4,7 @@ namespace App\Livewire\Accounting;
 
 use App\Models\Account;
 use App\Models\Company;
+use App\Services\OfficialChartOfAccounts;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -22,10 +23,40 @@ class AccountIndex extends Component
 
     public string $search = '';
 
+    /** Што би донело преземањето на предложениот план; null кога фирмата е ажурирана. */
+    public ?array $chartOffer = null;
+
+    public bool $chartAdopted = false;
+
     public function mount(Company $company): void
     {
         Gate::authorize('view', $company);
         $this->company = $company;
+        $this->refreshChartOffer();
+    }
+
+    /**
+     * Предложениот план на канцеларијата не се наметнува при пуштање: фирмата
+     * (админ или нејзин сметководител) го презема кога сака. Ги додава и
+     * усогласува контата, никогаш не брише и не ги допира „активно“ и
+     * аналитиките што сметководителот сам ги додал.
+     */
+    public function adoptSuggestedChart(): void
+    {
+        Gate::authorize('update', $this->company);
+
+        OfficialChartOfAccounts::syncForCompany($this->company);
+
+        $this->company->refresh();
+        $this->refreshChartOffer();
+        $this->chartAdopted = true;
+    }
+
+    private function refreshChartOffer(): void
+    {
+        $this->chartOffer = OfficialChartOfAccounts::isCurrent($this->company)
+            ? null
+            : OfficialChartOfAccounts::preview($this->company);
     }
 
     public function toggleActive(int $accountId): void

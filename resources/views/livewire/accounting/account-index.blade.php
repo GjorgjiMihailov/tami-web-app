@@ -1,6 +1,22 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-4">Контен план — {{ $company->name }}</h1>
 
+    @can('update', $company)
+        @if ($chartAdopted)
+            <div class="mb-6 p-3 rounded bg-green-50 text-green-800 text-sm">Предложениот контен план е преземен.</div>
+        @elseif ($chartOffer !== null)
+            <x-card class="mb-6">
+                <h2 class="font-semibold text-gray-700 mb-1">Има нова верзија на предложениот контен план</h2>
+                <p class="text-sm text-gray-600 mb-3">
+                    Ќе се додадат <span class="font-medium">{{ $chartOffer['added'] }} {{ $chartOffer['added'] === 1 ? 'конто' : 'конта' }}</span>
+                    и ќе се променат <span class="font-medium">{{ $chartOffer['changed'] }} {{ $chartOffer['changed'] === 1 ? 'конто' : 'конта' }}</span>.
+                    Ништо не се брише, а вашите аналитички конта и избор „активно“ остануваат.
+                </p>
+                <x-primary-button type="button" wire:click="adoptSuggestedChart" wire:confirm="Да се преземе предложениот контен план за оваа фирма?">Преземи го предложениот план</x-primary-button>
+            </x-card>
+        @endif
+    @endcan
+
     @can('create', \App\Models\Account::class)
         <x-card class="mb-6">
             <h2 class="font-semibold text-gray-700 mb-2">Додади аналитичка сметка</h2>
