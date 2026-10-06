@@ -3,7 +3,7 @@
 
     <x-card class="mb-6">
         <h2 class="font-semibold text-gray-700 mb-2">Прикачи извод</h2>
-        <form wire:submit="upload" class="flex flex-wrap gap-3 items-end">
+        <form wire:submit="saveStatement" class="flex flex-wrap gap-3 items-end">
             <div class="flex-1 min-w-[12rem]">
                 <x-input-label for="bank" value="Банка" />
                 <x-text-input id="bank" wire:model="bank" class="w-full" />

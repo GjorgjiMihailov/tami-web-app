@@ -29,7 +29,7 @@ class DocumentManager extends Component
         $this->documentable = $documentable;
     }
 
-    public function upload(): void
+    public function attachDocument(): void
     {
         Gate::authorize('update', $this->documentable);
 

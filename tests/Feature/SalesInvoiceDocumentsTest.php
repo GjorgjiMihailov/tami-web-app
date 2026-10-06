@@ -36,7 +36,7 @@ class SalesInvoiceDocumentsTest extends TestCase
         Livewire::test(DocumentManager::class, ['documentable' => $invoice])
             ->set('newFile', UploadedFile::fake()->create('delivery-note.pdf', 20))
             ->set('newCategory', 'Contract')
-            ->call('upload')
+            ->call('attachDocument')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('documents', [

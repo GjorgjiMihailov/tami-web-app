@@ -40,7 +40,7 @@ class DocumentManagerTest extends TestCase
             ->set('newFile', UploadedFile::fake()->create('bill.pdf', 50))
             ->set('newCategory', 'Invoice')
             ->set('newNote', 'Supplier scan')
-            ->call('upload')
+            ->call('attachDocument')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('documents', [
@@ -66,7 +66,7 @@ class DocumentManagerTest extends TestCase
         Livewire::test(DocumentManager::class, ['documentable' => $invoice])
             ->set('newFile', UploadedFile::fake()->create('large-scan.pdf', 20000))
             ->set('newCategory', 'Invoice')
-            ->call('upload')
+            ->call('attachDocument')
             ->assertHasNoErrors();
 
         $document = Document::where('documentable_id', $invoice->id)->firstOrFail();
@@ -93,7 +93,7 @@ class DocumentManagerTest extends TestCase
             Livewire::test(DocumentManager::class, ['documentable' => $invoice])
                 ->set('newFile', UploadedFile::fake()->create('bill.pdf', 50))
                 ->set('newCategory', 'Invoice')
-                ->call('upload');
+                ->call('attachDocument');
         } finally {
             $this->assertSame(0, Document::withTrashed()->count());
         }

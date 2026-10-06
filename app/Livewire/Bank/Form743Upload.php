@@ -34,7 +34,7 @@ class Form743Upload extends Component
         $this->company = $company;
     }
 
-    public function upload(): void
+    public function saveForm(): void
     {
         Gate::authorize('view', $this->company);
 

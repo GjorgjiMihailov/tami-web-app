@@ -2,7 +2,7 @@
     <h2 class="font-semibold text-gray-700 mb-2">Документи</h2>
 
     @can('update', $documentable)
-        <form wire:submit="upload" class="flex flex-wrap gap-3 items-end mb-4">
+        <form wire:submit="attachDocument" class="flex flex-wrap gap-3 items-end mb-4">
             <div>
                 <x-input-label for="newFile" value="Датотека" />
                 <input type="file" id="newFile" wire:model="newFile" class="text-sm">

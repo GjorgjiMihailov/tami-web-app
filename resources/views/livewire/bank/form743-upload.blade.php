@@ -7,7 +7,7 @@
             Прикачете го образецот 743 што ви го дала банката. Ништо не треба да
             пополнувате — податоците ги презема канцеларијата од самиот образец.
         </p>
-        <form wire:submit="upload" class="flex flex-wrap gap-3 items-end">
+        <form wire:submit="saveForm" class="flex flex-wrap gap-3 items-end">
             <div>
                 <x-input-label for="newFile" value="Датотека" />
                 <input type="file" id="newFile" wire:model="newFile" class="text-sm">

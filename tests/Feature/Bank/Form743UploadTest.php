@@ -56,7 +56,7 @@ class Form743UploadTest extends TestCase
 
         Livewire::test(Form743Upload::class, ['company' => $company])
             ->set('newFile', UploadedFile::fake()->create('743-januari.pdf', 40))
-            ->call('upload')
+            ->call('saveForm')
             ->assertHasNoErrors();
 
         $form = Form743::where('company_id', $company->id)->firstOrFail();
@@ -79,7 +79,7 @@ class Form743UploadTest extends TestCase
         $this->actingAs($this->clientOf($company));
 
         Livewire::test(Form743Upload::class, ['company' => $company])
-            ->call('upload')
+            ->call('saveForm')
             ->assertHasErrors('newFile');
 
         $this->assertSame(0, Form743::count());
@@ -110,7 +110,7 @@ class Form743UploadTest extends TestCase
 
         Livewire::test(Form743Upload::class, ['company' => $company])
             ->set('newFile', UploadedFile::fake()->create('743.pdf', 10))
-            ->call('upload');
+            ->call('saveForm');
 
         $form = Form743::where('company_id', $company->id)->firstOrFail();
 

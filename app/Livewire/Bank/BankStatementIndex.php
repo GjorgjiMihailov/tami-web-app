@@ -53,7 +53,7 @@ class BankStatementIndex extends Component
         $this->account = $configured?->account_number ?? '';
     }
 
-    public function upload(): void
+    public function saveStatement(): void
     {
         Gate::authorize('view', $this->company);
 

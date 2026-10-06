@@ -61,7 +61,7 @@ class BankStatementIndexTest extends TestCase
             ->set('number', '12')
             ->set('statementDate', '2026-02-14')
             ->set('newFile', UploadedFile::fake()->create('izvod-12.pdf', 30))
-            ->call('upload')
+            ->call('saveStatement')
             ->assertHasNoErrors();
 
         $statement = BankStatement::where('company_id', $company->id)->firstOrFail();
@@ -94,7 +94,7 @@ class BankStatementIndexTest extends TestCase
             ->set('number', '1')
             ->set('statementDate', now()->toDateString())
             ->set('newFile', UploadedFile::fake()->create('izvod-1.pdf', 20))
-            ->call('upload')
+            ->call('saveStatement')
             ->assertHasNoErrors();
 
         $this->assertSame(1, BankStatement::where('company_id', $company->id)->count());
@@ -219,7 +219,7 @@ class BankStatementIndexTest extends TestCase
             ->set('number', '5')
             ->set('statementDate', '2026-01-21')
             ->set('newFile', UploadedFile::fake()->create('izvod-5.pdf', 10))
-            ->call('upload')
+            ->call('saveStatement')
             ->assertHasErrors('number');
 
         $this->assertSame(1, BankStatement::where('company_id', $company->id)->count());
@@ -234,7 +234,7 @@ class BankStatementIndexTest extends TestCase
         Livewire::test(BankStatementIndex::class, ['company' => $company])
             ->set('bank', '')
             ->set('account', '')
-            ->call('upload')
+            ->call('saveStatement')
             ->assertHasErrors(['bank', 'account', 'number', 'statementDate', 'newFile']);
 
         $this->assertSame(0, BankStatement::count());
