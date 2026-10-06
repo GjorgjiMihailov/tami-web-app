@@ -489,15 +489,15 @@ class SidebarTest extends TestCase
         $this->assertStringNotContainsString('Контен план', $html);
     }
 
-    public function test_office_settings_pages_open_for_an_accountant_only(): void
+    public function test_the_office_posting_schemes_page_opens_for_the_office_only(): void
     {
         $accountant = User::factory()->create();
         $accountant->assignRole('accountant');
 
-        $this->actingAs($accountant)->get(route('office.settings', 'semi-za-knizenje'))->assertOk();
+        $this->actingAs($accountant)->get(route('office.posting-schemes'))->assertOk();
 
         $client = User::factory()->create();
         $client->assignRole('freelancer_client');
-        $this->actingAs($client)->get(route('office.settings', 'semi-za-knizenje'))->assertForbidden();
+        $this->actingAs($client)->get(route('office.posting-schemes'))->assertForbidden();
     }
 }

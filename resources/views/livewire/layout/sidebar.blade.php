@@ -46,8 +46,8 @@
                    class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'companies.index' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
                     Клиенти
                 </a>
-                <a href="{{ route('office.settings', 'semi-za-knizenje') }}" wire:navigate
-                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'office.settings' && $currentFeature === 'semi-za-knizenje' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
+                <a href="{{ route('office.posting-schemes') }}" wire:navigate
+                   class="block px-4 py-2 text-sm font-medium rounded-lg mx-3 {{ $currentRoute === 'office.posting-schemes' ? 'bg-brand text-white press' : 'text-rail-text hover:bg-rail-soft press' }}">
                     Шеми за книжење
                 </a>
             @endif
