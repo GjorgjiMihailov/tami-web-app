@@ -10,8 +10,14 @@ use App\Models\JournalGroup;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoicePayment;
 use App\Services\Inventory\StockMovementService;
+use App\Services\Posting\PostedInvoiceAccounts;
+use App\Services\Posting\PostingSchemeEngine;
+use App\Services\Posting\PostingSchemes;
+use App\Services\Posting\SalesInvoicePostingContext;
+use App\Services\Posting\SalesPaymentPostingContext;
 use App\Support\Bcmath;
 use App\Support\InvoiceNumber;
+use App\Support\Posting\PostingDocType;
 use Illuminate\Support\Facades\DB;
 
 class SalesInvoiceService
@@ -24,7 +30,10 @@ class SalesInvoiceService
      */
     private const MAX_NUMBER_ATTEMPTS = 1000;
 
-    public function __construct(private StockMovementService $stockMovementService) {}
+    public function __construct(
+        private StockMovementService $stockMovementService,
+        private PostingSchemeEngine $postingEngine,
+    ) {}
 
     public function confirm(SalesInvoice $invoice, int $userId): SalesInvoice
     {
@@ -121,17 +130,9 @@ class SalesInvoiceService
                 $cogsTotal = bcadd($cogsTotal, Bcmath::roundHalfUp(bcmul((string) $line->quantity, (string) $movement->unit_cost, 10), 2), 2);
             }
 
-            // Бруто се конвертира ЕДНАШ (не збир од посебно заокружени нето+ддв) —
-            // инаку две одделни заокружувања можат да остават стотинка вишок или
-            // малку на 120 наспроти 740+230. Нето е плуг (бруто - ддв), а ддв се
-            // конвертира точно бидејќи е државна обврска. Со ова 120 = 740 + 230
-            // по конструкција, за секоја фактура и за секој курс.
-            $vatRegistered = $invoice->company->is_vat_registered;
-            $grossForeign = bcadd($invoice->subtotal(), $vatRegistered ? $invoice->vatTotal() : '0.00', 2);
-            $gross = $this->toMkd($invoice, $grossForeign);
-            $vat = $vatRegistered ? $this->toMkd($invoice, $invoice->vatTotal()) : '0.00';
-            $net = bcsub($gross, $vat, 2);
             $label = 'Invoice '.$formattedNumber;
+            $context = SalesInvoicePostingContext::build($invoice, $formattedNumber, $cogsTotal);
+            $lines = $this->postingEngine->lines(PostingSchemes::for($invoice->company, PostingDocType::SALES_INVOICE), $context);
 
             $entry = JournalEntry::create([
                 'company_id' => $invoice->company_id,
@@ -141,51 +142,8 @@ class SalesInvoiceService
                 'created_by' => $userId,
             ]);
 
-            $entry->lines()->create(array_merge([
-                'account_id' => $this->account($invoice->company, '120')->id,
-                'partner_id' => $invoice->partner_id,
-                'description' => $label,
-                'line_date' => $invoice->invoice_date,
-                'debit' => $gross,
-                'credit' => '0',
-            ], $this->currencyColumns($invoice, $grossForeign)));
-
-            $entry->lines()->create(array_merge([
-                'account_id' => $this->account($invoice->company, '740')->id,
-                'partner_id' => $invoice->partner_id,
-                'description' => $label,
-                'line_date' => $invoice->invoice_date,
-                'debit' => '0',
-                'credit' => $net,
-            ], $this->currencyColumns($invoice, $invoice->subtotal())));
-
-            if (bccomp($vat, '0', 2) > 0) {
-                $entry->lines()->create(array_merge([
-                    'account_id' => $this->account($invoice->company, '230')->id,
-                    'partner_id' => $invoice->partner_id,
-                    'description' => "VAT on {$label}",
-                    'line_date' => $invoice->invoice_date,
-                    'debit' => '0',
-                    'credit' => $vat,
-                ], $this->currencyColumns($invoice, $invoice->vatTotal())));
-            }
-
-            if (bccomp($cogsTotal, '0', 2) > 0) {
-                $entry->lines()->create([
-                    'account_id' => $this->account($invoice->company, '701')->id,
-                    'description' => "COGS for {$label}",
-                    'line_date' => $invoice->invoice_date,
-                    'debit' => $cogsTotal,
-                    'credit' => '0',
-                ]);
-
-                $entry->lines()->create([
-                    'account_id' => $this->account($invoice->company, '660')->id,
-                    'description' => "COGS for {$label}",
-                    'line_date' => $invoice->invoice_date,
-                    'debit' => '0',
-                    'credit' => $cogsTotal,
-                ]);
+            foreach ($lines as $line) {
+                $entry->lines()->create($line->journalColumns($invoice->invoice_date));
             }
 
             $invoice->update([
@@ -379,7 +337,6 @@ class SalesInvoiceService
             $paidAfter = bcadd($paidBefore, $amount, 2);
             $amountMkd = bcsub($this->toMkd($invoice, $paidAfter), $this->toMkd($invoice, $paidBefore), 2);
 
-            $cashOrBankCode = $paymentMethod === 'cash' ? '102' : Account::BANK_CODE;
             $label = "Payment for invoice {$invoice->formattedNumber()}";
 
             $entry = JournalEntry::create([
@@ -390,23 +347,18 @@ class SalesInvoiceService
                 'created_by' => $userId,
             ]);
 
-            $entry->lines()->create(array_merge([
-                'account_id' => $this->account($invoice->company, $cashOrBankCode)->id,
-                'partner_id' => $invoice->partner_id,
-                'description' => $label,
-                'line_date' => $paymentDate,
-                'debit' => $amountMkd,
-                'credit' => '0',
-            ], $this->currencyColumns($invoice, $amount)));
+            $context = SalesPaymentPostingContext::build(
+                $invoice,
+                $amountMkd,
+                $amount,
+                $paymentMethod === 'cash',
+                $label,
+                PostedInvoiceAccounts::receivable($invoice),
+            );
 
-            $entry->lines()->create(array_merge([
-                'account_id' => $this->account($invoice->company, '120')->id,
-                'partner_id' => $invoice->partner_id,
-                'description' => $label,
-                'line_date' => $paymentDate,
-                'debit' => '0',
-                'credit' => $amountMkd,
-            ], $this->currencyColumns($invoice, $amount)));
+            foreach ($this->postingEngine->lines(PostingSchemes::for($invoice->company, PostingDocType::SALES_PAYMENT), $context) as $line) {
+                $entry->lines()->create($line->journalColumns($paymentDate));
+            }
 
             return $payment;
         });
@@ -429,30 +381,6 @@ class SalesInvoiceService
         }
 
         return Bcmath::roundHalfUp(bcmul($amount, (string) $invoice->exchange_rate, 10), 2);
-    }
-
-    /**
-     * Девизните колони на една ставка од книжењето.
-     *
-     * `journal_entry_lines` веќе ги носи `currency_code`, `exchange_rate` и
-     * `foreign_amount`, и формата за рачно книжење веќе ги полни — фактурата го
-     * користи истиот образец, за да не се изгуби оригиналниот износ зад
-     * денарскиот.
-     *
-     * Кај денарска фактура враќа празна низа: трите колони остануваат на своите
-     * стандардни вредности и записот е буквално идентичен со досегашниот.
-     */
-    private function currencyColumns(SalesInvoice $invoice, string $foreignAmount): array
-    {
-        if (! $invoice->isForeignCurrency()) {
-            return [];
-        }
-
-        return [
-            'currency_code' => $invoice->currency,
-            'exchange_rate' => (string) $invoice->exchange_rate,
-            'foreign_amount' => $foreignAmount,
-        ];
     }
 
     /**

@@ -53,7 +53,7 @@ class BankPaymentAccountTest extends TestCase
         $this->assertNull($entry->lines->firstWhere('account.code', '100'));
     }
 
-    public function test_cash_payments_stay_on_102(): void
+    public function test_cash_payments_post_to_1020(): void
     {
         $company = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
@@ -66,7 +66,7 @@ class BankPaymentAccountTest extends TestCase
         $service->recordPayment($confirmed, '100.00', '2026-03-10', 'cash', $user->id);
 
         $entry = JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
-        $this->assertNotNull($entry->lines->firstWhere('account.code', '102'));
+        $this->assertNotNull($entry->lines->firstWhere('account.code', '1020'));
     }
 
     public function test_the_account_scope_keeps_only_analytical_accounts(): void

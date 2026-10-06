@@ -481,8 +481,8 @@ class ForeignCurrencyInvoiceTest extends TestCase
             ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
 
         $entry = $invoice->fresh()->journalEntry;
-        $receivable = $entry->lines->firstWhere(fn ($line) => $line->account->code === '120');
-        $revenue = $entry->lines->firstWhere(fn ($line) => $line->account->code === '740');
+        $receivable = $entry->lines->firstWhere(fn ($line) => $line->account->code === '1200');
+        $revenue = $entry->lines->firstWhere(fn ($line) => $line->account->code === '74000');
 
         // 500 EUR × 61,50 = 30.750 денари
         $this->assertSame(0, bccomp('30750.00', $receivable->debit, 2));
@@ -513,7 +513,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
 
         $receivable = $invoice->fresh()->journalEntry->lines
-            ->firstWhere(fn ($line) => $line->account->code === '120');
+            ->firstWhere(fn ($line) => $line->account->code === '1200');
 
         $this->assertSame('EUR', $receivable->currency_code);
         $this->assertSame(0, bccomp('61.500000', $receivable->exchange_rate, 6));
@@ -540,7 +540,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
 
         $receivable = $invoice->fresh()->journalEntry->lines
-            ->firstWhere(fn ($line) => $line->account->code === '120');
+            ->firstWhere(fn ($line) => $line->account->code === '1200');
 
         $this->assertSame('MKD', $receivable->currency_code);
         $this->assertNull($receivable->foreign_amount);
@@ -595,7 +595,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
 
         $receivable = $invoice->fresh()->journalEntry->lines
-            ->firstWhere(fn ($line) => $line->account->code === '120');
+            ->firstWhere(fn ($line) => $line->account->code === '1200');
 
         $this->assertSame(0, bccomp('1234.56', $receivable->debit, 2));
     }
@@ -628,7 +628,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
         // ...а во главната книга сметка 120 се затвора точно на нула.
         $receivableMovement = JournalEntryLine::whereHas(
             'account',
-            fn ($q) => $q->where('code', '120')->where('company_id', $company->id)
+            fn ($q) => $q->where('code', '1200')->where('company_id', $company->id)
         )
             ->get()
             ->reduce(fn ($carry, $line) => bcsub(bcadd($carry, $line->debit, 2), $line->credit, 2), '0.00');
@@ -665,7 +665,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
 
         $receivableMovement = JournalEntryLine::whereHas(
             'account',
-            fn ($q) => $q->where('code', '120')->where('company_id', $company->id)
+            fn ($q) => $q->where('code', '1200')->where('company_id', $company->id)
         )
             ->get()
             ->reduce(fn ($carry, $line) => bcsub(bcadd($carry, $line->debit, 2), $line->credit, 2), '0.00');
@@ -716,7 +716,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
 
         $receivableMovement = JournalEntryLine::whereHas(
             'account',
-            fn ($q) => $q->where('code', '120')->where('company_id', $company->id)
+            fn ($q) => $q->where('code', '1200')->where('company_id', $company->id)
         )
             ->get()
             ->reduce(fn ($carry, $line) => bcsub(bcadd($carry, $line->debit, 2), $line->credit, 2), '0.00');
@@ -750,7 +750,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
 
         $receivableMovement = JournalEntryLine::whereHas(
             'account',
-            fn ($q) => $q->where('code', '120')->where('company_id', $company->id)
+            fn ($q) => $q->where('code', '1200')->where('company_id', $company->id)
         )
             ->get()
             ->reduce(fn ($carry, $line) => bcsub(bcadd($carry, $line->debit, 2), $line->credit, 2), '0.00');
