@@ -24,7 +24,7 @@ class PurchaseInvoicePostingContextTest extends TestCase
         return PurchaseInvoice::factory()->for($company)->create(array_merge(['partner_id' => $partner->id, 'supplier_invoice_number' => '77', 'invoice_date' => '2026-03-01'], $attrs));
     }
 
-    private function expense(Company $company, string $code = '462'): Account
+    private function expense(Company $company, string $code = '4620'): Account
     {
         return Account::where('company_id', $company->id)->where('code', $code)->firstOrFail();
     }
@@ -47,7 +47,7 @@ class PurchaseInvoicePostingContextTest extends TestCase
         $this->assertSame('1000.00', $context->totals['ТРОШОК_СТАВКА']);
         $this->assertSame('180.00', $context->totals['ОДБИВЛИВ_ДДВ']);
         $this->assertCount(1, $context->accountBuckets);
-        $this->assertSame('462', $context->accountBuckets[0]['account']->code);
+        $this->assertSame('4620', $context->accountBuckets[0]['account']->code);
         $this->assertSame('1000.00', $context->accountBuckets[0]['amount']);
         $this->assertCount(1, $context->slices);
         $this->assertSame(ItemKind::SERVICE, $context->slices[0]->itemKind);

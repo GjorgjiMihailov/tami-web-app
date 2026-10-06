@@ -83,12 +83,12 @@ class PostingSchemeEngine
         }
 
         if ($row->account_mode === 'line') {
-            // Сметката ја избрал корисникот на ставката на документот; не се
-            // проверува за аналитичност — постојните документи книжат и на подгрупи.
+            // Сметката ја избрал корисникот на ставката на документот, но и таа
+            // мора да е аналитичка — книжењето оди само на аналитички конта.
             $expanded = [];
 
             foreach ($context->accountBuckets as $bucket) {
-                $expanded[] = [$bucket['account'], $context->totals + ['ТРОШОК_СТАВКА' => $bucket['amount']], $context->foreignTotals];
+                $expanded[] = [$this->checked($bucket['account'], $row), $context->totals + ['ТРОШОК_СТАВКА' => $bucket['amount']], $context->foreignTotals];
             }
 
             return $expanded;

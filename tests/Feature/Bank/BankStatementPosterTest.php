@@ -144,7 +144,7 @@ class BankStatementPosterTest extends TestCase
     {
         $partner = Partner::factory()->for($this->company)->create();
         $invoice = PurchaseInvoice::factory()->for($this->company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
-        $invoice->lines()->create(['account_id' => $this->account('462')->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '200.00', 'vat_rate' => '0']);
+        $invoice->lines()->create(['account_id' => $this->account('4620')->id, 'description' => 'Line', 'quantity' => '1', 'unit_price' => '200.00', 'vat_rate' => '0']);
         app(PurchaseInvoiceService::class)->confirm($invoice->fresh(), $this->user->id);
         $statement = $this->statement('500.00', '300.00');
         $this->line($statement, LineDirection::OUT, '200.00', ['kind' => LineKind::INVOICE_PAYMENT, 'purchase_invoice_id' => $invoice->id, 'partner_id' => $partner->id]);

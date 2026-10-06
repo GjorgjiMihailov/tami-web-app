@@ -33,7 +33,7 @@ class PurchaseInvoiceFormTest extends TestCase
         Storage::fake('google');
         $company = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
-        $account = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $account = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $this->actingAs($admin);
@@ -116,7 +116,7 @@ class PurchaseInvoiceFormTest extends TestCase
         $company = Company::factory()->create();
         $otherCompany = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
-        $otherCompanyAccount = Account::where('company_id', $otherCompany->id)->where('code', '462')->first();
+        $otherCompanyAccount = Account::where('company_id', $otherCompany->id)->where('code', '4620')->first();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $this->actingAs($admin);
@@ -139,7 +139,7 @@ class PurchaseInvoiceFormTest extends TestCase
         Storage::fake('google');
         $company = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
-        $account = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $account = Account::where('company_id', $company->id)->where('code', '4620')->first();
         PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'supplier_invoice_number' => 'DUP-1']);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
@@ -163,7 +163,7 @@ class PurchaseInvoiceFormTest extends TestCase
         Storage::fake('google');
         $company = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
-        $account = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $account = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $client = User::factory()->create(['company_id' => $company->id]);
         $client->assignRole('internal_client');
         $this->actingAs($client);
@@ -202,7 +202,7 @@ class PurchaseInvoiceFormTest extends TestCase
         Storage::fake('google');
         $company = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
-        $account = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $account = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $service = Item::factory()->for($company)->service()->create();
         $admin = User::factory()->create();
         $admin->assignRole('admin');
@@ -367,7 +367,7 @@ class PurchaseInvoiceFormTest extends TestCase
         Storage::fake('google');
         $company = Company::factory()->create();
         $partner = Partner::factory()->for($company)->create();
-        $account = Account::where('company_id', $company->id)->where('code', '462')->first();
+        $account = Account::where('company_id', $company->id)->where('code', '4620')->first();
         $invoice = PurchaseInvoice::factory()->for($company)->create(['partner_id' => $partner->id]);
         $invoice->lines()->create([
             'account_id' => $account->id,
