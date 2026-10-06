@@ -36,6 +36,7 @@ use App\Livewire\Accounting\JournalGroupIndex;
 use App\Livewire\Accounting\LedgerCardReport;
 use App\Livewire\Accounting\TrialBalanceReport;
 use App\Livewire\Apps\SalesDashboard;
+use App\Livewire\Bank\BankStatementBook;
 use App\Livewire\Bank\BankStatementIndex;
 use App\Livewire\Bank\Form743Upload;
 use App\Livewire\Bank\Form743Worklist;
@@ -352,6 +353,7 @@ Route::domain(PortalApp::FINANSII->domain())->middleware(EnsureAppAccess::class.
 
     Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':finance'])->prefix('companies/{company}')->name('bank-statements.')->group(function () {
         Route::get('/izvodi', [BankStatementIndex::class, '__invoke'])->name('index');
+        Route::get('/izvodi/{statement}/knizenje', [BankStatementBook::class, '__invoke'])->name('book');
     });
 
     Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':finance'])->prefix('companies/{company}')->name('reports.')->group(function () {

@@ -5,8 +5,10 @@ namespace App\Livewire\Bank;
 use App\Models\BankStatement;
 use App\Models\Company;
 use App\Services\DocumentStorage;
+use App\Support\Bank\BankLedgerTotals;
 use App\Support\Bank\StatementSequence;
 use App\Support\BankStatementKind;
+use App\Support\WorkingYear;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -119,9 +121,15 @@ class BankStatementIndex extends Component
             ->with(['documents', 'uploader'])
             ->get();
 
+        $year = WorkingYear::for($this->company);
+        $canBook = auth()->user()?->hasAnyRole(['admin', 'accountant']) ?? false;
+
         return view('livewire.bank.bank-statement-index', [
             'groups' => StatementSequence::groups($statements),
             'kinds' => BankStatementKind::cases(),
+            'canBook' => $canBook,
+            'year' => $year,
+            'totals' => $canBook ? BankLedgerTotals::forCompany($this->company, $year) : null,
         ]);
     }
 }

@@ -277,6 +277,55 @@ class BankStatementIndexTest extends TestCase
         }
     }
 
+    public function test_an_admin_sees_a_book_link_for_a_denar_statement_but_not_a_foreign_one(): void
+    {
+        $company = Company::factory()->create();
+        $denar = BankStatement::factory()->for($company)->create(['number' => 1]);
+        BankStatement::factory()->foreign()->for($company)->create(['number' => 1]);
+        $this->actingAs($this->admin());
+
+        $html = Livewire::test(BankStatementIndex::class, ['company' => $company])->html();
+
+        $this->assertStringContainsString(route('bank-statements.book', [$company, $denar]), $html);
+        $this->assertSame(1, substr_count($html, '/knizenje'));
+        $this->assertStringContainsString('Книжи', $html);
+    }
+
+    public function test_a_booked_statement_shows_as_booked(): void
+    {
+        $company = Company::factory()->create();
+        BankStatement::factory()->for($company)->create(['status' => BankStatement::STATUS_BOOKED]);
+        $this->actingAs($this->admin());
+
+        Livewire::test(BankStatementIndex::class, ['company' => $company])->assertSee('Прокнижен');
+    }
+
+    public function test_an_internal_client_sees_neither_the_book_link_nor_the_1000_check(): void
+    {
+        $company = Company::factory()->create();
+        BankStatement::factory()->for($company)->create();
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+
+        $html = Livewire::actingAs($client)->test(BankStatementIndex::class, ['company' => $company])->html();
+
+        $this->assertStringNotContainsString('/knizenje', $html);
+        $this->assertStringNotContainsString('Контрола на конто 1000', $html);
+    }
+
+    public function test_the_1000_check_shows_a_difference_to_an_admin(): void
+    {
+        $company = Company::factory()->create();
+        BankStatement::factory()->for($company)->create([
+            'closing_balance' => '700.00', 'status' => BankStatement::STATUS_BOOKED, 'statement_date' => now()->startOfYear()->toDateString(),
+        ]);
+        $this->actingAs($this->admin());
+
+        Livewire::test(BankStatementIndex::class, ['company' => $company])
+            ->assertSee('Контрола на конто 1000')
+            ->assertSee('разлика -700,00');
+    }
+
     public function test_another_companys_client_and_an_unassigned_accountant_cannot_download_a_statement_file(): void
     {
         $company = Company::factory()->create();

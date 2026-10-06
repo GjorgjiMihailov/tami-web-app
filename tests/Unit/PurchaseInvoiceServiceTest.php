@@ -41,7 +41,7 @@ class PurchaseInvoiceServiceTest extends TestCase
             ['code' => '130', 'name' => 'Input VAT'],
             ['code' => '220', 'name' => 'AP'],
             ['code' => '660', 'name' => 'Inventory Asset'],
-            ['code' => '100', 'name' => 'Bank'],
+            ['code' => '1000', 'name' => 'Bank'],
             ['code' => '102', 'name' => 'Cash'],
             ['code' => '462', 'name' => 'Services expense'],
         ] as $account) {
@@ -539,7 +539,7 @@ class PurchaseInvoiceServiceTest extends TestCase
         $this->assertSame('partially_paid', $confirmed->fresh(['lines', 'payments'])->paymentStatus());
 
         $entry = JournalEntry::where('company_id', $company->id)->where('id', '!=', $confirmed->journal_entry_id)->with('lines.account')->first();
-        $bank = $entry->lines->firstWhere('account.code', '100');
+        $bank = $entry->lines->firstWhere('account.code', '1000');
         $ap = $entry->lines->firstWhere('account.code', '220');
 
         $this->assertSame('60.00', (string) $bank->credit);

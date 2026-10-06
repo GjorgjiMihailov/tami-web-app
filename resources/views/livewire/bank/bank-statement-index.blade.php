@@ -42,6 +42,22 @@
         </form>
     </x-card>
 
+    @if ($totals !== null)
+        <x-card class="mb-6">
+            <h2 class="font-semibold text-gray-700 mb-1">Контрола на конто 1000 за {{ $year }}</h2>
+            <p class="text-sm text-gray-600">
+                Салдо на конто 1000: <span class="font-medium">{{ \App\Support\Format::money($totals['ledger'], '') }}</span>
+                — збир на крајните состојби од изводите: <span class="font-medium">{{ \App\Support\Format::money($totals['closings'], '') }}</span>
+                —
+                @if (bccomp($totals['difference'], '0', 2) === 0)
+                    <span class="text-green-700 font-semibold">се совпаѓа</span>
+                @else
+                    <span class="text-red-700 font-semibold">разлика {{ \App\Support\Format::money($totals['difference'], '') }}</span>
+                @endif
+            </p>
+        </x-card>
+    @endif
+
     @forelse ($groups as $group)
         <x-card class="mb-4">
             <h2 class="font-semibold text-gray-700 mb-2">
@@ -55,6 +71,9 @@
                         <th class="py-1 w-32">Датум</th>
                         <th class="py-1">Датотека</th>
                         <th class="py-1">Прикачил</th>
+                        @if ($canBook)
+                            <th class="py-1 w-40">Состојба</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -68,7 +87,7 @@
                                         {{ $row['from'] }}–{{ $row['to'] }}
                                     @endif
                                 </td>
-                                <td class="py-1" colspan="3">
+                                <td class="py-1" colspan="{{ $canBook ? 4 : 3 }}">
                                     @if ($row['from'] === $row['to'])
                                         Недостига извод {{ $row['from'] }}.
                                     @else
@@ -91,6 +110,17 @@
                                     @endif
                                 </td>
                                 <td class="py-1">{{ $statement->uploader?->name }}</td>
+                                @if ($canBook)
+                                    <td class="py-1">
+                                        @if (! $statement->kind->isDenar())
+                                            <span class="text-gray-400">—</span>
+                                        @elseif ($statement->isBooked())
+                                            <a href="{{ route('bank-statements.book', [$company, $statement]) }}" class="text-green-700 hover:underline">Прокнижен · Отвори</a>
+                                        @else
+                                            <a href="{{ route('bank-statements.book', [$company, $statement]) }}" class="text-brand hover:underline">Книжи</a>
+                                        @endif
+                                    </td>
+                                @endif
                             </tr>
                         @endif
                     @endforeach
