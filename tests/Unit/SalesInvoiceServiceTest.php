@@ -72,9 +72,9 @@ class SalesInvoiceServiceTest extends TestCase
         $entry = $confirmed->journalEntry()->with('lines.account')->first();
         $this->assertCount(3, $entry->lines);
 
-        $ar = $entry->lines->firstWhere('account.code', '120');
-        $revenue = $entry->lines->firstWhere('account.code', '740');
-        $vat = $entry->lines->firstWhere('account.code', '230');
+        $ar = $entry->lines->firstWhere('account.code', '1200');
+        $revenue = $entry->lines->firstWhere('account.code', '74000');
+        $vat = $entry->lines->firstWhere('account.code', '2300');
 
         $this->assertSame('1180.00', (string) $ar->debit);
         $this->assertSame('1000.00', (string) $revenue->credit);
@@ -106,8 +106,8 @@ class SalesInvoiceServiceTest extends TestCase
         $entry = $confirmed->journalEntry()->with('lines.account')->first();
         $this->assertCount(5, $entry->lines);
 
-        $cogs = $entry->lines->firstWhere('account.code', '701');
-        $inventoryAsset = $entry->lines->firstWhere('account.code', '660');
+        $cogs = $entry->lines->firstWhere('account.code', '7010');
+        $inventoryAsset = $entry->lines->firstWhere('account.code', '6600');
 
         // 4 units issued at the receipted cost of 50.00 each = 200.00 COGS
         $this->assertSame('200.00', (string) $cogs->debit);
@@ -129,7 +129,7 @@ class SalesInvoiceServiceTest extends TestCase
 
         $entry = $confirmed->journalEntry()->with('lines.account')->first();
         $this->assertCount(2, $entry->lines);
-        $this->assertNull($entry->lines->firstWhere('account.code', '230'));
+        $this->assertNull($entry->lines->firstWhere('account.code', '2300'));
     }
 
     public function test_invoice_numbers_are_sequential_per_company_per_fiscal_year(): void
@@ -482,8 +482,8 @@ class SalesInvoiceServiceTest extends TestCase
         $this->assertSame('confirmed', $confirmed->status);
         $entry = $confirmed->journalEntry()->with('lines.account')->first();
         $this->assertCount(3, $entry->lines); // AR + revenue + VAT, no COGS/inventory lines
-        $this->assertNull($entry->lines->firstWhere('account.code', '701'));
-        $this->assertNull($entry->lines->firstWhere('account.code', '660'));
+        $this->assertNull($entry->lines->firstWhere('account.code', '7010'));
+        $this->assertNull($entry->lines->firstWhere('account.code', '6600'));
         $this->assertSame(0, StockMovement::where('item_id', $serviceItem->id)->count());
     }
 
