@@ -84,7 +84,8 @@ class DefaultPostingSchemes
                 ['mode' => 'matrix', 'matrix' => $revenue, 'side' => 'credit', 'formula' => 'ОСНОВИЦА', 'partner' => true, 'description' => '{фактура}'],
                 ['mode' => 'matrix', 'matrix' => $vat, 'side' => 'credit', 'formula' => 'ДДВ', 'partner' => true, 'description' => 'VAT on {фактура}'],
                 ['mode' => 'fixed', 'account' => '7010', 'side' => 'debit', 'formula' => 'НАБАВНА_ВРЕДНОСТ', 'description' => 'COGS for {фактура}', 'condition' => 'has_goods'],
-                ['mode' => 'fixed', 'account' => '6600', 'side' => 'credit', 'formula' => 'НАБАВНА_ВРЕДНОСТ', 'description' => 'COGS for {фактура}', 'condition' => 'has_goods'],
+                ['mode' => 'fixed', 'account' => '6600', 'side' => 'credit', 'formula' => 'НАБАВНА_ДОМАШНА', 'description' => 'COGS for {фактура}', 'condition' => 'has_goods'],
+                ['mode' => 'fixed', 'account' => '6601', 'side' => 'credit', 'formula' => 'НАБАВНА_УВОЗ', 'description' => 'COGS for {фактура}', 'condition' => 'has_goods'],
             ],
             'matrix' => [
                 ['key' => $revenue, 'kind' => 'service', 'group' => 'general', 'account' => '74000'],

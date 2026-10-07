@@ -131,7 +131,7 @@ class PostingSchemeScreenTest extends TestCase
     {
         $company = Company::factory()->create();
 
-        $component = $this->edit($company)->assertCount('rows', 5);
+        $component = $this->edit($company)->assertCount('rows', 6);
 
         $component->call('addRow')
             ->set('form.account_mode', 'fixed')
@@ -139,12 +139,12 @@ class PostingSchemeScreenTest extends TestCase
             ->set('form.side', 'debit')
             ->set('form.formula', 'ВКУПНО')
             ->call('saveRow')
-            ->assertCount('rows', 6);
+            ->assertCount('rows', 7);
 
-        $component->call('moveRow', 5, -1);
-        $this->assertSame('1000', $component->get('rows')[4]['account_code']);
+        $component->call('moveRow', 6, -1);
+        $this->assertSame('1000', $component->get('rows')[5]['account_code']);
 
-        $component->call('deleteRow', 4)->assertCount('rows', 5);
+        $component->call('deleteRow', 5)->assertCount('rows', 6);
     }
 
     public function test_the_row_form_refuses_an_empty_formula(): void
@@ -156,7 +156,7 @@ class PostingSchemeScreenTest extends TestCase
             ->set('form.formula', '')
             ->call('saveRow')
             ->assertHasErrors(['form.formula'])
-            ->assertCount('rows', 5);
+            ->assertCount('rows', 6);
     }
 
     public function test_a_matrix_account_can_be_changed(): void

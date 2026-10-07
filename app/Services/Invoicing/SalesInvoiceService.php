@@ -112,6 +112,7 @@ class SalesInvoiceService
             }
 
             $cogsTotal = '0.00';
+            $importCogsTotal = '0.00';
 
             foreach ($invoice->lines as $line) {
                 if ($line->item_id === null || $line->item->isService()) {
@@ -127,11 +128,16 @@ class SalesInvoiceService
                 );
 
                 $line->update(['stock_movement_id' => $movement->id]);
-                $cogsTotal = bcadd($cogsTotal, Bcmath::roundHalfUp(bcmul((string) $line->quantity, (string) $movement->unit_cost, 10), 2), 2);
+                $lineCogs = Bcmath::roundHalfUp(bcmul((string) $line->quantity, (string) $movement->unit_cost, 10), 2);
+                $lineImport = Bcmath::roundHalfUp((string) $movement->import_value, 2);
+                $lineImport = bccomp($lineImport, $lineCogs, 2) > 0 ? $lineCogs : $lineImport;
+
+                $cogsTotal = bcadd($cogsTotal, $lineCogs, 2);
+                $importCogsTotal = bcadd($importCogsTotal, $lineImport, 2);
             }
 
             $label = 'Invoice '.$formattedNumber;
-            $context = SalesInvoicePostingContext::build($invoice, $formattedNumber, $cogsTotal);
+            $context = SalesInvoicePostingContext::build($invoice, $formattedNumber, $cogsTotal, $importCogsTotal);
             $lines = $this->postingEngine->lines(PostingSchemes::for($invoice->company, PostingDocType::SALES_INVOICE), $context);
 
             $entry = JournalEntry::create([
@@ -192,7 +198,9 @@ class SalesInvoiceService
                     (string) $line->quantity,
                     (string) $line->stockMovement->unit_cost,
                     now()->toDateString(),
-                    $userId
+                    $userId,
+                    // Сторно на продажба: увозниот дел што излегол се враќа на 6601.
+                    (string) $line->stockMovement->import_value
                 );
             }
 

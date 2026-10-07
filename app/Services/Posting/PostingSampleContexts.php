@@ -33,7 +33,7 @@ final class PostingSampleContexts
     private static function salesInvoice(): array
     {
         $make = fn (array $totals, array $slices, bool $goods) => new PostingContext(
-            totals: $totals,
+            totals: $totals + ['НАБАВНА_УВОЗ' => '0.00', 'НАБАВНА_ДОМАШНА' => $totals['НАБАВНА_ВРЕДНОСТ']],
             slices: $slices,
             flags: ['has_goods' => $goods, 'cash' => false, 'import' => false],
             partnerId: 1,
@@ -48,6 +48,11 @@ final class PostingSampleContexts
             ),
             'Стока со 18% ДДВ и залиха' => $make(
                 ['ВКУПНО' => '1180.00', 'ОСНОВИЦА' => '1000.00', 'ДДВ' => '180.00', 'НАБАВНА_ВРЕДНОСТ' => '600.00'],
+                [new PostingSlice(ItemKind::GOODS, VatGroup::GENERAL, '1000.00', '180.00')],
+                true
+            ),
+            'Стока од увоз и од дома' => $make(
+                ['ВКУПНО' => '1180.00', 'ОСНОВИЦА' => '1000.00', 'ДДВ' => '180.00', 'НАБАВНА_ВРЕДНОСТ' => '600.00', 'НАБАВНА_УВОЗ' => '400.00', 'НАБАВНА_ДОМАШНА' => '200.00'],
                 [new PostingSlice(ItemKind::GOODS, VatGroup::GENERAL, '1000.00', '180.00')],
                 true
             ),

@@ -50,7 +50,7 @@ class DefaultPostingSchemesTest extends TestCase
 
         $this->assertSame($first->id, $second->id);
         $this->assertSame(1, PostingScheme::where('company_id', $company->id)->count());
-        $this->assertSame(5, $first->rows()->count());
+        $this->assertSame(6, $first->rows()->count());
         $this->assertSame(12, $first->matrixAccounts()->count());
     }
 
@@ -89,7 +89,7 @@ class DefaultPostingSchemesTest extends TestCase
         $company = Company::factory()->create();
         $scheme = PostingSchemes::for($company, PostingDocType::SALES_INVOICE);
         $context = new PostingContext(
-            totals: ['ВКУПНО' => $gross, 'ОСНОВИЦА' => $net, 'ДДВ' => $vat, 'НАБАВНА_ВРЕДНОСТ' => $cogs],
+            totals: ['ВКУПНО' => $gross, 'ОСНОВИЦА' => $net, 'ДДВ' => $vat, 'НАБАВНА_ВРЕДНОСТ' => $cogs, 'НАБАВНА_УВОЗ' => '0.00', 'НАБАВНА_ДОМАШНА' => $cogs],
             slices: $slices,
             flags: ['has_goods' => bccomp($cogs, '0', 2) > 0, 'cash' => false, 'import' => false],
             partnerId: 1,

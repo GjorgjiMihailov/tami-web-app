@@ -10,13 +10,17 @@ class StockLevel extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['item_id', 'warehouse_id', 'quantity_on_hand', 'average_cost'];
+    protected $fillable = ['item_id', 'warehouse_id', 'quantity_on_hand', 'average_cost', 'import_value'];
+
+    // DB-default не го полни свеж модел во меморија.
+    protected $attributes = ['import_value' => '0'];
 
     protected function casts(): array
     {
         return [
             'quantity_on_hand' => 'decimal:3',
             'average_cost' => 'decimal:4',
+            'import_value' => 'decimal:6',
         ];
     }
 

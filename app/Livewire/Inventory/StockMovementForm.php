@@ -33,6 +33,9 @@ class StockMovementForm extends Component
 
     public string $unitCost = '';
 
+    /** Прием на стока од увоз: целата вредност оди на 6601 (увоз), не на 6600. */
+    public bool $fromImport = false;
+
     public string $direction = 'increase';
 
     public string $reason = '';
@@ -106,7 +109,15 @@ class StockMovementForm extends Component
 
         try {
             match ($this->type) {
-                'receipt' => $service->receipt($item, $warehouse, $this->quantity, $this->unitCost, $this->movementDate, $userId),
+                'receipt' => $service->receipt(
+                    $item,
+                    $warehouse,
+                    $this->quantity,
+                    $this->unitCost,
+                    $this->movementDate,
+                    $userId,
+                    $this->fromImport ? bcmul($this->quantity, $this->unitCost, 6) : '0'
+                ),
                 'issue' => $service->issue($item, $warehouse, $this->quantity, $this->movementDate, $userId),
                 'transfer' => $service->transfer($item, $warehouse, Warehouse::findOrFail($this->toWarehouseId), $this->quantity, $this->movementDate, $userId),
                 'adjustment' => $service->adjustment(

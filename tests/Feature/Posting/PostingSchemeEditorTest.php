@@ -36,7 +36,7 @@ class PostingSchemeEditorTest extends TestCase
 
         $draft = $this->editor->draftOf($scheme);
 
-        $this->assertCount(5, $draft['rows']);
+        $this->assertCount(6, $draft['rows']);
         $this->assertSame('1200', $draft['rows'][0]['account_code']);
         $this->assertSame('ВКУПНО', $draft['rows'][0]['formula']);
         $this->assertTrue($draft['rows'][0]['with_partner']);
@@ -136,8 +136,8 @@ class PostingSchemeEditorTest extends TestCase
         $good[0]['description'] = 'Нов опис {фактура}';
         $this->assertSame([], $this->editor->save($scheme, $good, $draft['matrix']));
         $fresh = $scheme->fresh()->rows;
-        $this->assertCount(5, $fresh);
-        $this->assertSame([1, 2, 3, 4, 5], $fresh->pluck('position')->all());
+        $this->assertCount(6, $fresh);
+        $this->assertSame([1, 2, 3, 4, 5, 6], $fresh->pluck('position')->all());
         $this->assertSame('Нов опис {фактура}', $fresh->first()->description);
         $this->assertSame(12, $scheme->matrixAccounts()->count());
     }
@@ -152,7 +152,7 @@ class PostingSchemeEditorTest extends TestCase
         $this->editor->resetToDefault($scheme);
 
         $this->assertSame('{фактура}', $scheme->fresh()->rows->first()->description);
-        $this->assertSame(5, $scheme->rows()->count());
+        $this->assertSame(6, $scheme->rows()->count());
         $this->assertSame(12, $scheme->matrixAccounts()->count());
     }
 }

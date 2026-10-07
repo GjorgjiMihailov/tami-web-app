@@ -46,7 +46,9 @@ class PostingSchemeTrial
             $invoice = SalesInvoice::where('company_id', $company->id)->with('lines.item', 'lines.stockMovement', 'company')->findOrFail($documentId);
 
             if ($type === PostingDocType::SALES_INVOICE) {
-                return SalesInvoicePostingContext::build($invoice, (string) $invoice->invoice_number_formatted, $this->cogs($invoice));
+                [$cogs, $import] = $this->cogsParts($invoice);
+
+                return SalesInvoicePostingContext::build($invoice, (string) $invoice->invoice_number_formatted, $cogs, $import);
             }
 
             $amount = $this->paymentAmount($invoice);
@@ -84,17 +86,27 @@ class PostingSchemeTrial
         return bccomp($due, '0', 2) > 0 ? $due : $invoice->grandTotal();
     }
 
-    /** Набавна вредност на продадената стока: количина × цена на движењето, по ставка. */
-    private function cogs(SalesInvoice $invoice): string
+    /**
+     * Набавна вредност на продадената стока по ставка: количина × цена на движењето,
+     * и колку од неа е од увоз (6601) — истото правило како при потврда на фактурата.
+     *
+     * @return array{0: string, 1: string} вкупно, дел од увоз
+     */
+    private function cogsParts(SalesInvoice $invoice): array
     {
         $total = '0.00';
+        $import = '0.00';
 
         foreach ($invoice->lines as $line) {
             if ($line->stockMovement !== null) {
-                $total = bcadd($total, Bcmath::roundHalfUp(bcmul((string) $line->quantity, (string) $line->stockMovement->unit_cost, 10), 2), 2);
+                $lineCogs = Bcmath::roundHalfUp(bcmul((string) $line->quantity, (string) $line->stockMovement->unit_cost, 10), 2);
+                $lineImport = Bcmath::roundHalfUp((string) $line->stockMovement->import_value, 2);
+
+                $total = bcadd($total, $lineCogs, 2);
+                $import = bcadd($import, bccomp($lineImport, $lineCogs, 2) > 0 ? $lineCogs : $lineImport, 2);
             }
         }
 
-        return $total;
+        return [$total, $import];
     }
 }
