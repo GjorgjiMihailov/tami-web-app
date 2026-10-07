@@ -17,11 +17,13 @@ class StockMovementService
 
     private const VALUE_SCALE = 6;
 
-    public function receipt(Item $item, Warehouse $warehouse, string $quantity, string $unitCost, string $movementDate, int $createdBy): StockMovement
+    private const COST_PRECISE_SCALE = 7;
+
+    public function receipt(Item $item, Warehouse $warehouse, string $quantity, string $unitCost, string $movementDate, int $createdBy, string $importValue = '0'): StockMovement
     {
         $this->assertSameCompany($item, $warehouse);
 
-        return DB::transaction(function () use ($item, $warehouse, $quantity, $unitCost, $movementDate, $createdBy) {
+        return DB::transaction(function () use ($item, $warehouse, $quantity, $unitCost, $movementDate, $createdBy, $importValue) {
             $level = $this->lockedLevel($item, $warehouse);
 
             $oldValue = bcmul($level->quantity_on_hand, $level->average_cost, self::VALUE_SCALE);
@@ -31,7 +33,14 @@ class StockMovementService
                 ? self::bcDivRoundHalfUp(bcadd($oldValue, $newValue, self::VALUE_SCALE), $newQty, self::COST_SCALE)
                 : '0.0000';
 
-            $level->update(['quantity_on_hand' => $newQty, 'average_cost' => $newAvgCost]);
+            // Увозниот дел не може да е поголем од вредноста на самиот прием.
+            $importPart = bccomp($importValue, $newValue, self::VALUE_SCALE) > 0 ? $newValue : bcadd($importValue, '0', self::VALUE_SCALE);
+
+            $level->update([
+                'quantity_on_hand' => $newQty,
+                'average_cost' => $newAvgCost,
+                'import_value' => bcadd($level->import_value, $importPart, self::VALUE_SCALE),
+            ]);
 
             return StockMovement::create([
                 'item_id' => $item->id,
@@ -39,17 +48,18 @@ class StockMovementService
                 'type' => 'receipt',
                 'quantity' => $quantity,
                 'unit_cost' => $unitCost,
+                'import_value' => $importPart,
                 'movement_date' => $movementDate,
                 'created_by' => $createdBy,
             ]);
         });
     }
 
-    public function issue(Item $item, Warehouse $warehouse, string $quantity, string $movementDate, int $createdBy): StockMovement
+    public function issue(Item $item, Warehouse $warehouse, string $quantity, string $movementDate, int $createdBy, ?string $importValue = null): StockMovement
     {
         $this->assertSameCompany($item, $warehouse);
 
-        return DB::transaction(function () use ($item, $warehouse, $quantity, $movementDate, $createdBy) {
+        return DB::transaction(function () use ($item, $warehouse, $quantity, $movementDate, $createdBy, $importValue) {
             $level = $this->lockedLevel($item, $warehouse);
 
             if (bccomp($level->quantity_on_hand, $quantity, self::QTY_SCALE) < 0) {
@@ -59,8 +69,13 @@ class StockMovementService
             }
 
             $unitCost = $level->average_cost;
+            $part = $this->importPart($level, bcmul($quantity, $unitCost, self::COST_PRECISE_SCALE), $importValue);
             $newQty = bcsub($level->quantity_on_hand, $quantity, self::QTY_SCALE);
-            $level->update(['quantity_on_hand' => $newQty]);
+
+            $level->update([
+                'quantity_on_hand' => $newQty,
+                'import_value' => $this->importAfter($level->import_value, $part, $newQty),
+            ]);
 
             return StockMovement::create([
                 'item_id' => $item->id,
@@ -68,6 +83,7 @@ class StockMovementService
                 'type' => 'issue',
                 'quantity' => $quantity,
                 'unit_cost' => $unitCost,
+                'import_value' => $part,
                 'movement_date' => $movementDate,
                 'created_by' => $createdBy,
             ]);
@@ -106,7 +122,12 @@ class StockMovementService
             }
 
             $costAtSource = $fromLevel->average_cost;
-            $fromLevel->update(['quantity_on_hand' => bcsub($fromLevel->quantity_on_hand, $quantity, self::QTY_SCALE)]);
+            $part = $this->importPart($fromLevel, bcmul($quantity, $costAtSource, self::COST_PRECISE_SCALE), null);
+            $newFromQty = bcsub($fromLevel->quantity_on_hand, $quantity, self::QTY_SCALE);
+            $fromLevel->update([
+                'quantity_on_hand' => $newFromQty,
+                'import_value' => $this->importAfter($fromLevel->import_value, $part, $newFromQty),
+            ]);
 
             $oldValue = bcmul($toLevel->quantity_on_hand, $toLevel->average_cost, self::VALUE_SCALE);
             $incomingValue = bcmul($quantity, $costAtSource, self::VALUE_SCALE);
@@ -114,7 +135,11 @@ class StockMovementService
             $newToAvgCost = bccomp($newToQty, '0', self::QTY_SCALE) > 0
                 ? self::bcDivRoundHalfUp(bcadd($oldValue, $incomingValue, self::VALUE_SCALE), $newToQty, self::COST_SCALE)
                 : '0.0000';
-            $toLevel->update(['quantity_on_hand' => $newToQty, 'average_cost' => $newToAvgCost]);
+            $toLevel->update([
+                'quantity_on_hand' => $newToQty,
+                'average_cost' => $newToAvgCost,
+                'import_value' => bcadd($toLevel->import_value, $part, self::VALUE_SCALE),
+            ]);
 
             return StockMovement::create([
                 'item_id' => $item->id,
@@ -123,6 +148,7 @@ class StockMovementService
                 'type' => 'transfer',
                 'quantity' => $quantity,
                 'unit_cost' => $costAtSource,
+                'import_value' => $part,
                 'movement_date' => $movementDate,
                 'created_by' => $createdBy,
             ]);
@@ -146,7 +172,15 @@ class StockMovementService
             }
 
             $unitCost = $level->average_cost;
-            $level->update(['quantity_on_hand' => $newQty]);
+
+            // Корекцијата го чува уделот на увоз: ако останат N од M, останува N/M од увозот.
+            $oldQty = $level->quantity_on_hand;
+            $newImport = bccomp($oldQty, '0', self::QTY_SCALE) > 0 && bccomp($newQty, '0', self::QTY_SCALE) > 0
+                ? self::bcDivRoundHalfUp(bcmul($level->import_value, $newQty, 9), $oldQty, self::VALUE_SCALE)
+                : '0.000000';
+            $moved = ltrim(bcsub($level->import_value, $newImport, self::VALUE_SCALE), '-');
+
+            $level->update(['quantity_on_hand' => $newQty, 'import_value' => $newImport]);
 
             return StockMovement::create([
                 'item_id' => $item->id,
@@ -154,11 +188,48 @@ class StockMovementService
                 'type' => 'adjustment',
                 'quantity' => $quantityDelta,
                 'unit_cost' => $unitCost,
+                'import_value' => $moved,
                 'reason' => $reason,
                 'movement_date' => $movementDate,
                 'created_by' => $createdBy,
             ]);
         });
+    }
+
+    /**
+     * Колку од набавната вредност што излегува ($cost) е од увоз: пропорционално
+     * на уделот на увозот во залихата, или точно даден износ (сторно на прием).
+     * Никогаш повеќе од тоа што залихата го има од увоз, ниту од $cost.
+     */
+    private function importPart(StockLevel $level, string $cost, ?string $explicit): string
+    {
+        $available = (string) $level->import_value;
+
+        if ($explicit !== null) {
+            $part = $explicit;
+        } else {
+            $value = bcmul($level->quantity_on_hand, $level->average_cost, self::COST_PRECISE_SCALE);
+            $part = bccomp($value, '0', self::COST_PRECISE_SCALE) > 0
+                ? self::bcDivRoundHalfUp(bcmul($cost, $available, self::COST_PRECISE_SCALE + self::VALUE_SCALE), $value, self::VALUE_SCALE)
+                : '0';
+        }
+
+        if (bccomp($part, $available, self::VALUE_SCALE) > 0) {
+            $part = $available;
+        }
+
+        if (bccomp($part, $cost, self::VALUE_SCALE) > 0) {
+            $part = $cost;
+        }
+
+        return bcadd($part, '0', self::VALUE_SCALE);
+    }
+
+    private function importAfter(string $import, string $part, string $newQty): string
+    {
+        return bccomp($newQty, '0', self::QTY_SCALE) > 0
+            ? bcsub($import, $part, self::VALUE_SCALE)
+            : '0.000000';
     }
 
     /**
@@ -204,7 +275,7 @@ class StockMovementService
      * causes when a weighted-average cost is recalculated repeatedly
      * (e.g. many receipts at the same unit cost).
      */
-    private static function bcDivRoundHalfUp(string $dividend, string $divisor, int $scale): string
+    public static function bcDivRoundHalfUp(string $dividend, string $divisor, int $scale): string
     {
         $guardScale = $scale + 10;
         $quotient = bcdiv($dividend, $divisor, $guardScale);
