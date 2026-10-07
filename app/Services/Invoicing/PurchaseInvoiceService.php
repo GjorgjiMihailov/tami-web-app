@@ -70,6 +70,8 @@ class PurchaseInvoiceService
 
             foreach ($invoice->lines as $line) {
                 if ($this->movesStock($line)) {
+                    $unitCost = $landedCosts[$line->id] ?? $line->effectiveUnitPrice();
+
                     $movement = $this->stockMovementService->receipt(
                         $line->item,
                         $invoice->warehouse,
@@ -96,9 +98,11 @@ class PurchaseInvoiceService
                         // заокружената нето цена веќе не ја дава основицата,
                         // па залихата би примила 30,48 таму каде главната
                         // книга задолжува 30,51.
-                        $landedCosts[$line->id] ?? $line->effectiveUnitPrice(),
+                        $unitCost,
                         $invoice->invoice_date->toDateString(),
-                        $userId
+                        $userId,
+                        // Увозна фактура: целата вредност на приемот е од увоз (6601).
+                        $invoice->is_import ? bcmul((string) $line->quantity, $unitCost, 6) : '0'
                     );
 
                     $line->update(['stock_movement_id' => $movement->id]);
@@ -159,7 +163,9 @@ class PurchaseInvoiceService
                         $invoice->warehouse,
                         (string) $line->quantity,
                         now()->toDateString(),
-                        $userId
+                        $userId,
+                        // Сторно на прием: точно онаа увозна вредност што приемот ја донел.
+                        (string) $line->stockMovement->import_value
                     );
                 } catch (InsufficientStockException $e) {
                     throw new InvalidInvoiceStateException(

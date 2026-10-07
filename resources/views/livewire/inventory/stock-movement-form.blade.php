@@ -73,6 +73,12 @@
                 <x-text-input id="unitCost" wire:model="unitCost" class="w-32" />
                 @error('unitCost') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
+            <div class="flex items-end pb-2">
+                <label class="inline-flex items-center gap-2 text-sm">
+                    <input type="checkbox" wire:model="fromImport" class="rounded border-gray-300">
+                    Стока од увоз (оди на 6601)
+                </label>
+            </div>
         @endif
 
         @if ($type === 'adjustment')

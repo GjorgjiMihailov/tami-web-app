@@ -48,6 +48,30 @@ class StockMovementFormTest extends TestCase
         $this->assertDatabaseHas('stock_levels', ['item_id' => $item->id, 'warehouse_id' => $warehouse->id, 'quantity_on_hand' => 10]);
     }
 
+    public function test_a_receipt_can_be_marked_as_from_import(): void
+    {
+        $company = Company::factory()->create();
+        $item = Item::factory()->for($company)->create();
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        Livewire::test(StockMovementForm::class, ['company' => $company, 'type' => 'receipt'])
+            ->set('itemId', (string) $item->id)
+            ->set('warehouseId', (string) $warehouse->id)
+            ->set('quantity', '10')
+            ->set('unitCost', '50.00')
+            ->set('fromImport', true)
+            ->set('movementDate', '2026-01-10')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $level = \App\Models\StockLevel::where('item_id', $item->id)->firstOrFail();
+        $this->assertSame('500.000000', (string) $level->import_value);
+    }
+
     public function test_it_records_a_transfer_between_two_warehouses(): void
     {
         $company = Company::factory()->create();

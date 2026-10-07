@@ -192,7 +192,9 @@ class SalesInvoiceService
                     (string) $line->quantity,
                     (string) $line->stockMovement->unit_cost,
                     now()->toDateString(),
-                    $userId
+                    $userId,
+                    // Сторно на продажба: увозниот дел што излегол се враќа на 6601.
+                    (string) $line->stockMovement->import_value
                 );
             }
 
