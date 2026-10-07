@@ -66,7 +66,7 @@ class PostingSchemeSetsTest extends TestCase
         $this->assertSame('1200', $definition['rows'][0]['account']);
         $this->assertSame('ВКУПНО', $definition['rows'][0]['formula']);
         $this->assertTrue($definition['rows'][0]['partner']);
-        $this->assertCount(5, $definition['rows']);
+        $this->assertCount(6, $definition['rows']);
         $this->assertCount(12, $definition['matrix']);
         $this->assertSame('74000', collect($definition['matrix'])->firstWhere(fn ($m) => $m['key'] === 'revenue' && $m['kind'] === 'service' && $m['group'] === 'general')['account']);
     }

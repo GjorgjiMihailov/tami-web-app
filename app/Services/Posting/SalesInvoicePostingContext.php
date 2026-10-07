@@ -20,7 +20,7 @@ use App\Support\Posting\VatGroup;
  */
 final class SalesInvoicePostingContext
 {
-    public static function build(SalesInvoice $invoice, string $formattedNumber, string $cogsTotal): PostingContext
+    public static function build(SalesInvoice $invoice, string $formattedNumber, string $cogsTotal, string $importCogsTotal = '0.00'): PostingContext
     {
         $vatRegistered = (bool) $invoice->company->is_vat_registered;
         $foreign = $invoice->isForeignCurrency();
@@ -65,8 +65,8 @@ final class SalesInvoicePostingContext
         self::absorbRounding($slices, $net, $vat);
 
         return new PostingContext(
-            totals: ['ВКУПНО' => $gross, 'ОСНОВИЦА' => $net, 'ДДВ' => $vat, 'НАБАВНА_ВРЕДНОСТ' => $cogsTotal],
-            foreignTotals: ['ВКУПНО' => $grossForeign, 'ОСНОВИЦА' => $subtotalForeign, 'ДДВ' => $vatForeign, 'НАБАВНА_ВРЕДНОСТ' => '0.00'],
+            totals: ['ВКУПНО' => $gross, 'ОСНОВИЦА' => $net, 'ДДВ' => $vat, 'НАБАВНА_ВРЕДНОСТ' => $cogsTotal, 'НАБАВНА_УВОЗ' => $importCogsTotal, 'НАБАВНА_ДОМАШНА' => bcsub($cogsTotal, $importCogsTotal, 2)],
+            foreignTotals: ['ВКУПНО' => $grossForeign, 'ОСНОВИЦА' => $subtotalForeign, 'ДДВ' => $vatForeign, 'НАБАВНА_ВРЕДНОСТ' => '0.00', 'НАБАВНА_УВОЗ' => '0.00', 'НАБАВНА_ДОМАШНА' => '0.00'],
             slices: $slices,
             flags: ['has_goods' => bccomp($cogsTotal, '0', 2) > 0, 'cash' => false, 'import' => false],
             partnerId: $invoice->partner_id,
