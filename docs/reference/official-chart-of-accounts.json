@@ -14816,6 +14816,14 @@
     "must_credit": false
   },
   {
+    "code": "740135",
+    "name": "",
+    "level": "account",
+    "parent_code": "74013",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
     "code": "741",
     "name": "Приходи од продажба на добра (стоки) во земјата",
     "level": "subgroup",
@@ -15056,13 +15064,76 @@
     "must_credit": false
   },
   {
+    "code": "7441",
+    "name": "Приходи од продажба на недвижности, постројки и опрема кои се чуваат за продажба",
+    "level": "account",
+    "parent_code": "744",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7442",
+    "name": "Приходи од продажба на алат, погонски инвентар и транспортни средства кои се чуваат за продажба",
+    "level": "account",
+    "parent_code": "744",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7443",
+    "name": "Приходи од продажба на биолошки средства кои се чуваат за продажба",
+    "level": "account",
+    "parent_code": "744",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7444",
+    "name": "Приходи од продажба на останати нетековни средства кои се чуваат за продажба",
+    "level": "account",
+    "parent_code": "744",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7449",
+    "name": "Приходи од продажба на средства од прекинато работење",
+    "level": "account",
+    "parent_code": "744",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
     "code": "745",
     "name": "Приходи врз основа на употреба на сопствени добра (производи, стоки) и услуги",
     "level": "subgroup",
     "parent_code": "74",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7450",
+    "name": "Приходи врз основа на употреба на сопствени материјали и други добра за изработка на материјални средства за сопствени потреби (објекти, алат, опрема и сл.)",
+    "level": "account",
+    "parent_code": "745",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7451",
+    "name": "Приходи врз основа на сопствени стоки за користење на сопствени потреби",
+    "level": "account",
+    "parent_code": "745",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7455",
+    "name": "Приходи врз основа на производи и услуги за прираст на основно стадо",
+    "level": "account",
+    "parent_code": "745",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "746",
@@ -15070,8 +15141,63 @@
     "level": "subgroup",
     "parent_code": "74",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7460",
+    "name": "Приходи врз основа на побарувања од извозници",
+    "level": "account",
+    "parent_code": "746",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7461",
+    "name": "Приходи од продажба на добра врз основа на увоз за туѓа сметка",
+    "level": "account",
+    "parent_code": "746",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7462",
+    "name": "Приходи од продажба на добра во комисиона и консигнациона продажба",
+    "level": "account",
+    "parent_code": "746",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "74620",
+    "name": "Приходи од продажба на производи, стоки и услуги во комисион и консигнација оданочиви по општа даночна стапка",
+    "level": "account",
+    "parent_code": "7462",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "74621",
+    "name": "Приходи од продажба на производи, стоки и услуги во комисион и консигнација оданочиви по повластена даночна стапка",
+    "level": "account",
+    "parent_code": "7462",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "74622",
+    "name": "Приходи од продажба на производи, стоки и услуги во комисион и консигнација ослободени од данок со право на одбивка на предходен данок",
+    "level": "account",
+    "parent_code": "7462",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "74623",
+    "name": "Приходи од продажба на производи, стоки и услуги во комисион и консигнација ослободени од данок без право на одбивка на предходен данок",
+    "level": "account",
+    "parent_code": "7462",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "747",
@@ -15079,8 +15205,47 @@
     "level": "subgroup",
     "parent_code": "74",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7470",
+    "name": "Приходи од наемнина на недвижности",
+    "level": "account",
+    "parent_code": "747",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7471",
+    "name": "Приходи од наемнина на постројки и опрема",
+    "level": "account",
+    "parent_code": "747",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7472",
+    "name": "Приходи од наемнина на транспортни средства",
+    "level": "account",
+    "parent_code": "747",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7473",
+    "name": "Приходи од рент-а кар",
+    "level": "account",
+    "parent_code": "747",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7479",
+    "name": "Приходи од наемнина врз друга основа",
+    "level": "account",
+    "parent_code": "747",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "748",
@@ -15088,8 +15253,7 @@
     "level": "subgroup",
     "parent_code": "74",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "749",
@@ -15097,8 +15261,39 @@
     "level": "subgroup",
     "parent_code": "74",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7490",
+    "name": "Приходи од продажба на патенти, лиценци, жигови и слично",
+    "level": "account",
+    "parent_code": "749",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7491",
+    "name": "Приходи од продажба на софтвер",
+    "level": "account",
+    "parent_code": "749",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7492",
+    "name": "Приходи од продажба на франшиза",
+    "level": "account",
+    "parent_code": "749",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7499",
+    "name": "Останати приходи од продажба",
+    "level": "account",
+    "parent_code": "749",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "75",
@@ -15106,8 +15301,7 @@
     "level": "group",
     "parent_code": "7",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "750",
@@ -15115,8 +15309,39 @@
     "level": "subgroup",
     "parent_code": "75",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7500",
+    "name": "Приходи од вредносно усогласување на вложувања во развој",
+    "level": "account",
+    "parent_code": "750",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7501",
+    "name": "Приходи од вредносно усогласување на концесии",
+    "level": "account",
+    "parent_code": "750",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7502",
+    "name": "Приходи од вредносно усогласување на патенти, лиценци и слични права",
+    "level": "account",
+    "parent_code": "750",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7509",
+    "name": "Приходи од вредносно усогласување на останати нематеријални средства",
+    "level": "account",
+    "parent_code": "750",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "751",
@@ -15124,8 +15349,63 @@
     "level": "subgroup",
     "parent_code": "75",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7510",
+    "name": "Приходи од вредносно усогласување на недвижности",
+    "level": "account",
+    "parent_code": "751",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7511",
+    "name": "Приходи од вредносно усогласување на постројки и опрема",
+    "level": "account",
+    "parent_code": "751",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7512",
+    "name": "Приходи од вредносно усогласување на алат, погонски инвентар и транспортни средства",
+    "level": "account",
+    "parent_code": "751",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7513",
+    "name": "Приходи од вредносно усогласување на биолошки средства",
+    "level": "account",
+    "parent_code": "751",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "75130",
+    "name": "Приходи од вредносно усогласување на шуми",
+    "level": "account",
+    "parent_code": "7513",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "75131",
+    "name": "Приходи од вредносно усогласување на повеќегодишни насади",
+    "level": "account",
+    "parent_code": "7513",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "75132",
+    "name": "Приходи од вредносно усогласување на основно стадо",
+    "level": "account",
+    "parent_code": "7513",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "752",
@@ -15133,8 +15413,23 @@
     "level": "subgroup",
     "parent_code": "75",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7520",
+    "name": "Приходи од вредносно усогласување на земјиште",
+    "level": "account",
+    "parent_code": "752",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7521",
+    "name": "Приходи од вредносно усогласување на градежни објекти",
+    "level": "account",
+    "parent_code": "752",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "753",
@@ -15142,8 +15437,7 @@
     "level": "subgroup",
     "parent_code": "75",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "754",
@@ -15151,8 +15445,23 @@
     "level": "subgroup",
     "parent_code": "75",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7540",
+    "name": "Приходи од вредносно усогласување на долгорочни побарувања",
+    "level": "account",
+    "parent_code": "754",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7541",
+    "name": "Приходи од вредносно усогласување на долгорочни депозити",
+    "level": "account",
+    "parent_code": "754",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "755",
@@ -15160,8 +15469,23 @@
     "level": "subgroup",
     "parent_code": "75",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7550",
+    "name": "Приходи од вредносно усогласување на краткорочни побарувања од поврзани друштва",
+    "level": "account",
+    "parent_code": "755",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7551",
+    "name": "Приходи од вредносно усогласување на краткорочни побарувања од неповрзани друштва",
+    "level": "account",
+    "parent_code": "755",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "756",
@@ -15169,8 +15493,31 @@
     "level": "subgroup",
     "parent_code": "75",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7560",
+    "name": "Приходи од вредносно усогласување на материјали",
+    "level": "account",
+    "parent_code": "756",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7561",
+    "name": "Приходи од вредносно усогласување на резервни делови, ситен инвентар и автогуми",
+    "level": "account",
+    "parent_code": "756",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7562",
+    "name": "Приходи од вредносно усогласување на залихи на стоки во магацин и продавница",
+    "level": "account",
+    "parent_code": "756",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "757",
@@ -15178,8 +15525,7 @@
     "level": "subgroup",
     "parent_code": "75",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "759",
@@ -15187,8 +15533,31 @@
     "level": "subgroup",
     "parent_code": "75",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7590",
+    "name": "Приходи од вредносно усогласување на аванси, депозити и кауции",
+    "level": "account",
+    "parent_code": "759",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7591",
+    "name": "Приходи од вредносно усогласување на готовински еквиваленти",
+    "level": "account",
+    "parent_code": "759",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7599",
+    "name": "Приходи од вредносно усогласување на останати средства",
+    "level": "account",
+    "parent_code": "759",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "76",
@@ -15196,8 +15565,7 @@
     "level": "group",
     "parent_code": "7",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "760",
@@ -15205,8 +15573,39 @@
     "level": "subgroup",
     "parent_code": "76",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7600",
+    "name": "Добивки од продажба на нематеријални средства",
+    "level": "account",
+    "parent_code": "760",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7601",
+    "name": "Добивки од продажба на недвижности, постројки и опрема",
+    "level": "account",
+    "parent_code": "760",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7602",
+    "name": "Добивки од продажба на алат, погонски инвентар, мебел и транспортни средства",
+    "level": "account",
+    "parent_code": "760",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7603",
+    "name": "Добивки од продажба на материјални средства кои не се амортизираат",
+    "level": "account",
+    "parent_code": "760",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "761",
@@ -15214,8 +15613,39 @@
     "level": "subgroup",
     "parent_code": "76",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7610",
+    "name": "Добивки од продажба на шуми",
+    "level": "account",
+    "parent_code": "761",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7611",
+    "name": "Добивки од продажба на повеќегодишни насади",
+    "level": "account",
+    "parent_code": "761",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7612",
+    "name": "Добивки од продажба на основно стадо",
+    "level": "account",
+    "parent_code": "761",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7619",
+    "name": "Добивки од продажба на останати биолошки средства",
+    "level": "account",
+    "parent_code": "761",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "762",
@@ -15223,8 +15653,39 @@
     "level": "subgroup",
     "parent_code": "76",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7620",
+    "name": "Добивки од продажба на акции",
+    "level": "account",
+    "parent_code": "762",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7621",
+    "name": "Добивки од продажба на удел",
+    "level": "account",
+    "parent_code": "762",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7622",
+    "name": "Добивки од продажба на долгорочни обврски",
+    "level": "account",
+    "parent_code": "762",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7629",
+    "name": "Добивки од продажба на останати хартии од вредност",
+    "level": "account",
+    "parent_code": "762",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "763",
@@ -15232,8 +15693,23 @@
     "level": "subgroup",
     "parent_code": "76",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7630",
+    "name": "Добивки од продажба на материјали",
+    "level": "account",
+    "parent_code": "763",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7631",
+    "name": "Добивки од продажба на отпадоци",
+    "level": "account",
+    "parent_code": "763",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "764",
@@ -15241,8 +15717,63 @@
     "level": "subgroup",
     "parent_code": "76",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7640",
+    "name": "Вишоци на нематеријални средства",
+    "level": "account",
+    "parent_code": "764",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7641",
+    "name": "Вишоци на недвижности, постројки и опрема",
+    "level": "account",
+    "parent_code": "764",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7642",
+    "name": "Вишоци на материјали",
+    "level": "account",
+    "parent_code": "764",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7643",
+    "name": "Вишоци на резервни делови, ситен инвентар, амбалажа и автогуми",
+    "level": "account",
+    "parent_code": "764",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7644",
+    "name": "Вишоци на стоки",
+    "level": "account",
+    "parent_code": "764",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7645",
+    "name": "Вишоци на пари и парични еквиваленти",
+    "level": "account",
+    "parent_code": "764",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7649",
+    "name": "Вишоци на останати средства",
+    "level": "account",
+    "parent_code": "764",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "765",
@@ -15250,8 +15781,71 @@
     "level": "subgroup",
     "parent_code": "76",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7650",
+    "name": "Наплатени отпишани побарувања од поврзани друштва",
+    "level": "account",
+    "parent_code": "765",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "76500",
+    "name": "Наплатени отпишани побарувања од матични и зависни друштва",
+    "level": "account",
+    "parent_code": "7650",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "76501",
+    "name": "Наплатени отпишани побарувања од други поврзани друштва",
+    "level": "account",
+    "parent_code": "7650",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7651",
+    "name": "Наплатени отпишани побарувања од неповрзани друштва",
+    "level": "account",
+    "parent_code": "765",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7652",
+    "name": "Приходи од отпис на обврските од поврзани друштва",
+    "level": "account",
+    "parent_code": "765",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "76520",
+    "name": "Приходи од отпис на обврските од матични и зависни друштва",
+    "level": "account",
+    "parent_code": "7652",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "76521",
+    "name": "Приходи од отпис на обврските од други поврзани друштва",
+    "level": "account",
+    "parent_code": "7652",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7653",
+    "name": "Приходи од отпис на обврските од неповрзани друштва",
+    "level": "account",
+    "parent_code": "765",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "766",
@@ -15259,8 +15853,39 @@
     "level": "subgroup",
     "parent_code": "76",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7660",
+    "name": "Приходи од ефектот од заштита од ризик од ревалоризирани побарувања и обврски од матични и зависни друштва",
+    "level": "account",
+    "parent_code": "766",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7661",
+    "name": "Приходи од ефектот од заштита од ризик од ревалоризирани побарувања и обврски од други поврзани друштва",
+    "level": "account",
+    "parent_code": "766",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7662",
+    "name": "Приходи од ефектот од заштита од ризик од ревалоризирани побарувања и обврски од неповрзани друштва",
+    "level": "account",
+    "parent_code": "766",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7663",
+    "name": "Приходи од ефектот од заштита од ризик за побарувања и обврски врз основа на други договорени облици",
+    "level": "account",
+    "parent_code": "766",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "767",
@@ -15268,8 +15893,31 @@
     "level": "subgroup",
     "parent_code": "76",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7670",
+    "name": "Приходи од премии",
+    "level": "account",
+    "parent_code": "767",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7671",
+    "name": "Приходи од субвенции",
+    "level": "account",
+    "parent_code": "767",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7672",
+    "name": "Приходи од донации и помошти (во добра и парични средства)",
+    "level": "account",
+    "parent_code": "767",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "768",
@@ -15277,8 +15925,71 @@
     "level": "subgroup",
     "parent_code": "76",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7680",
+    "name": "Приходи од укинување на долгорочни резервирања за обновување на природни богатства",
+    "level": "account",
+    "parent_code": "768",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7681",
+    "name": "Приходи од укинување на долгорочни резервирања за користи на вработените",
+    "level": "account",
+    "parent_code": "768",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7682",
+    "name": "Приходи од укинување на долгорочни резервирања за преструктуирање",
+    "level": "account",
+    "parent_code": "768",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7683",
+    "name": "Приходи од укинување на долгорочни резервирања за гарантен рок",
+    "level": "account",
+    "parent_code": "768",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7684",
+    "name": "Приходи од укинување на долгорочни резервирања за кауции и депозити",
+    "level": "account",
+    "parent_code": "768",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7689",
+    "name": "Приходи од укинување на останати долгорочни резервирања",
+    "level": "account",
+    "parent_code": "768",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "76890",
+    "name": "Приходи од укинување на долгорочни резервирања за неповолни договори и започнати судски спорови",
+    "level": "account",
+    "parent_code": "7689",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "76899",
+    "name": "Приходи од укинување на останати долгорочни резервирања",
+    "level": "account",
+    "parent_code": "7689",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "769",
@@ -15286,8 +15997,127 @@
     "level": "subgroup",
     "parent_code": "76",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7690",
+    "name": "Приходи од чланарини",
+    "level": "account",
+    "parent_code": "769",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7691",
+    "name": "Приходи од наплатени пенали, казни и штети",
+    "level": "account",
+    "parent_code": "769",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7692",
+    "name": "Приходи за надомест на штета од осигурителни друштва",
+    "level": "account",
+    "parent_code": "769",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7693",
+    "name": "Приходи од вратени премии за осигурување врз други основи",
+    "level": "account",
+    "parent_code": "769",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7694",
+    "name": "Приходи врз основа на реклама, пропаганда и спонзорство",
+    "level": "account",
+    "parent_code": "769",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7695",
+    "name": "Приходи врз основа на повеќе платени даноци и придонеси",
+    "level": "account",
+    "parent_code": "769",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7696",
+    "name": "Приходи од наплатени кауции, капари, тендери и слично",
+    "level": "account",
+    "parent_code": "769",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7697",
+    "name": "Приходи врз основа на дополнително одобрени попусти, рабат, рекламации и слично",
+    "level": "account",
+    "parent_code": "769",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7698",
+    "name": "Приходи од рефундации за плата и други надоместоци",
+    "level": "account",
+    "parent_code": "769",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7699",
+    "name": "Останати приходи",
+    "level": "account",
+    "parent_code": "769",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "76990",
+    "name": "Приходи од наплата по судски одлуки",
+    "level": "account",
+    "parent_code": "7699",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "76991",
+    "name": "Дополнително утврдени приходи од претходни години кои не се материјално значајни",
+    "level": "account",
+    "parent_code": "7699",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "76992",
+    "name": "Ефекти од промена на сметководствената политика која не е материјално значајна",
+    "level": "account",
+    "parent_code": "7699",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "76993",
+    "name": "Исправка на грешка од предходна година која не е материјално значајна",
+    "level": "account",
+    "parent_code": "7699",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "76999",
+    "name": "Останати приходи од работењето",
+    "level": "account",
+    "parent_code": "7699",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "77",
@@ -15295,8 +16125,7 @@
     "level": "group",
     "parent_code": "7",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "770",
@@ -15304,8 +16133,39 @@
     "level": "subgroup",
     "parent_code": "77",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7700",
+    "name": "Приходи врз основа на камати од матични и зависни друштва во земјата",
+    "level": "account",
+    "parent_code": "770",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7701",
+    "name": "Приходи врз основа на камати од матични и зависни друштва од странство",
+    "level": "account",
+    "parent_code": "770",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7702",
+    "name": "Приходи врз основа на камати од други поврзани друштва во земјата",
+    "level": "account",
+    "parent_code": "770",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7703",
+    "name": "Приходи врз основа на камати од други поврзани друштва од странство",
+    "level": "account",
+    "parent_code": "770",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "771",
@@ -15313,8 +16173,23 @@
     "level": "subgroup",
     "parent_code": "77",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7710",
+    "name": "Приходи врз основа на позитивни курсни разлики од матични и зависни друштва",
+    "level": "account",
+    "parent_code": "771",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7711",
+    "name": "Приходи врз основа на позитивни курсни разлики од други поврзани друштва",
+    "level": "account",
+    "parent_code": "771",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "772",
@@ -15322,8 +16197,39 @@
     "level": "subgroup",
     "parent_code": "77",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7720",
+    "name": "Останати финансиски приходи од поврзани друштва",
+    "level": "account",
+    "parent_code": "772",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "77200",
+    "name": "Приходи врз основа на ефекти од валутна клаузула од матични и зависни друштва",
+    "level": "account",
+    "parent_code": "7720",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "77201",
+    "name": "Приходи врз основа на ефекти од валутна клаузула од други поврзани друштва",
+    "level": "account",
+    "parent_code": "7720",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "77202",
+    "name": "Останати финансиски приходи од поврзани друштва",
+    "level": "account",
+    "parent_code": "7720",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "773",
@@ -15331,8 +16237,47 @@
     "level": "subgroup",
     "parent_code": "77",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7730",
+    "name": "Приходи од вложувања во поврзани друштва",
+    "level": "account",
+    "parent_code": "773",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "77300",
+    "name": "Приходи од учество во добивка (дивиденда) или удел во добивката од зависни друштва во земјата",
+    "level": "account",
+    "parent_code": "7730",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "77301",
+    "name": "Приходи од учество во добивка (дивиденда) или удел во добивката од зависни друштва од странство",
+    "level": "account",
+    "parent_code": "7730",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "77302",
+    "name": "Приходи од учество во добивка (дивиденда) или удел во добивката од други поврзани друштва во земјата",
+    "level": "account",
+    "parent_code": "7730",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "77303",
+    "name": "Приходи од учество во добивка (дивиденда) или удел во добивката од други поврзани друштва од странство",
+    "level": "account",
+    "parent_code": "7730",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "774",
@@ -15340,8 +16285,119 @@
     "level": "subgroup",
     "parent_code": "77",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7740",
+    "name": "Приходи врз основа на камати од краткорочни и долгорочни кредити",
+    "level": "account",
+    "parent_code": "774",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "77400",
+    "name": "Приходи врз основа на камати од краткорочни и долгорочни кредити во земјата",
+    "level": "account",
+    "parent_code": "7740",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "77401",
+    "name": "Приходи врз основа на камати од краткорочни и долгорочни кредити од странство",
+    "level": "account",
+    "parent_code": "7740",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7741",
+    "name": "Приходи врз основа на камати содржани во издадени меници",
+    "level": "account",
+    "parent_code": "774",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7742",
+    "name": "Приходи врз основа на камати во хартии од вредност",
+    "level": "account",
+    "parent_code": "774",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7743",
+    "name": "Приходи врз основа на камати од други финансиски пласмани",
+    "level": "account",
+    "parent_code": "774",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7744",
+    "name": "Приходи врз основа на камати од купопродажни односи",
+    "level": "account",
+    "parent_code": "774",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "77440",
+    "name": "Приходи врз основа на камати од купопродажни односи во земјата",
+    "level": "account",
+    "parent_code": "7744",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "77441",
+    "name": "Приходи врз основа на камати од купопродажни односи со странство",
+    "level": "account",
+    "parent_code": "7744",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7745",
+    "name": "Приходи врз основа на камати од финансиски лизинг",
+    "level": "account",
+    "parent_code": "774",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7746",
+    "name": "Казнени камати",
+    "level": "account",
+    "parent_code": "774",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "77460",
+    "name": "Казнени камати во земјата",
+    "level": "account",
+    "parent_code": "7746",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "77461",
+    "name": "Казнени камати од странство",
+    "level": "account",
+    "parent_code": "7746",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7749",
+    "name": "Приходи врз основа на останати финансиски побарувања и пласмани",
+    "level": "account",
+    "parent_code": "774",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "775",
@@ -15349,8 +16405,39 @@
     "level": "subgroup",
     "parent_code": "77",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7750",
+    "name": "Позитивни курсни разлики врз основа на побарувања, финансиски обврски и пласмани во странска валута",
+    "level": "account",
+    "parent_code": "775",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7751",
+    "name": "Позитивни курсни разлики по финансиски пласмани, побарувања и обврски во странска валута на денот на составување на Извештајот за финансиската состојба",
+    "level": "account",
+    "parent_code": "775",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7752",
+    "name": "Позитивни курсни разлики пресметани по среден курс на НБРМ на парични средства во странска валута (девизна сметка, девизна благајна, хартии од вредност, готовински еквиваленти)",
+    "level": "account",
+    "parent_code": "775",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7759",
+    "name": "Останати курсни разлики",
+    "level": "account",
+    "parent_code": "775",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "776",
@@ -15358,8 +16445,31 @@
     "level": "subgroup",
     "parent_code": "77",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7760",
+    "name": "Приходи од дивиденди или удел во добивката од неповрзани друштва",
+    "level": "account",
+    "parent_code": "776",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7761",
+    "name": "Приходи од учество во инвестициони фондови во земјата и странство",
+    "level": "account",
+    "parent_code": "776",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7762",
+    "name": "Останати финансиски приходи од неповрзани друштва",
+    "level": "account",
+    "parent_code": "776",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "777",
@@ -15367,8 +16477,31 @@
     "level": "subgroup",
     "parent_code": "77",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7770",
+    "name": "Приходи од вредносно усогласување на хартии од вредност кои се чуваат за трговање",
+    "level": "account",
+    "parent_code": "777",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7771",
+    "name": "Приходи од вредносно усогласување на долгорочни финансиски пласмани и други хартии од вредност расположиви за продажба",
+    "level": "account",
+    "parent_code": "777",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7779",
+    "name": "Приходи од други останати финансиски средства",
+    "level": "account",
+    "parent_code": "777",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "779",
@@ -15376,8 +16509,47 @@
     "level": "subgroup",
     "parent_code": "77",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "7790",
+    "name": "Приходи од ефекти од валутна клаузула врз основа на побарувања",
+    "level": "account",
+    "parent_code": "779",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7791",
+    "name": "Приходи врз основа на есконтирање на чекови и меници",
+    "level": "account",
+    "parent_code": "779",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7792",
+    "name": "Приходи од факторинг и слично",
+    "level": "account",
+    "parent_code": "779",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7793",
+    "name": "Приходи од берзански услуги, емисија на хартии од вредност и слично",
+    "level": "account",
+    "parent_code": "779",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "7799",
+    "name": "Останати финансиски приходи",
+    "level": "account",
+    "parent_code": "779",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "78",
@@ -15385,8 +16557,7 @@
     "level": "group",
     "parent_code": "7",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "780",
@@ -15394,8 +16565,7 @@
     "level": "subgroup",
     "parent_code": "78",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "781",
@@ -15403,8 +16573,7 @@
     "level": "subgroup",
     "parent_code": "78",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "79",
@@ -15412,8 +16581,7 @@
     "level": "group",
     "parent_code": "7",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "790",
@@ -15421,8 +16589,7 @@
     "level": "subgroup",
     "parent_code": "79",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "8",
@@ -15430,8 +16597,7 @@
     "level": "class",
     "parent_code": null,
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "80",
@@ -15439,8 +16605,7 @@
     "level": "group",
     "parent_code": "8",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "800",
@@ -15448,8 +16613,7 @@
     "level": "subgroup",
     "parent_code": "80",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "801",
@@ -15457,8 +16621,7 @@
     "level": "subgroup",
     "parent_code": "80",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "81",
@@ -15466,8 +16629,7 @@
     "level": "group",
     "parent_code": "8",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "810",
@@ -15475,8 +16637,7 @@
     "level": "subgroup",
     "parent_code": "81",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "811",
@@ -15484,8 +16645,7 @@
     "level": "subgroup",
     "parent_code": "81",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "812",
@@ -15493,8 +16653,7 @@
     "level": "subgroup",
     "parent_code": "81",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "813",
@@ -15502,8 +16661,7 @@
     "level": "subgroup",
     "parent_code": "81",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "82",
@@ -15511,8 +16669,7 @@
     "level": "group",
     "parent_code": "8",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "820",
@@ -15520,8 +16677,15 @@
     "level": "subgroup",
     "parent_code": "82",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "8200",
+    "name": "",
+    "level": "account",
+    "parent_code": "820",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "821",
@@ -15529,8 +16693,7 @@
     "level": "subgroup",
     "parent_code": "82",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "83",
@@ -15538,8 +16701,7 @@
     "level": "group",
     "parent_code": "8",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "830",
@@ -15547,8 +16709,7 @@
     "level": "subgroup",
     "parent_code": "83",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "831",
@@ -15556,8 +16717,7 @@
     "level": "subgroup",
     "parent_code": "83",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "832",
@@ -15565,8 +16725,7 @@
     "level": "subgroup",
     "parent_code": "83",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "833",
@@ -15574,8 +16733,7 @@
     "level": "subgroup",
     "parent_code": "83",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "84",
@@ -15583,8 +16741,7 @@
     "level": "group",
     "parent_code": "8",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "840",
@@ -15592,8 +16749,7 @@
     "level": "subgroup",
     "parent_code": "84",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "841",
@@ -15601,8 +16757,7 @@
     "level": "subgroup",
     "parent_code": "84",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "842",
@@ -15610,8 +16765,7 @@
     "level": "subgroup",
     "parent_code": "84",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "843",
@@ -15619,8 +16773,7 @@
     "level": "subgroup",
     "parent_code": "84",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "844",
@@ -15628,8 +16781,7 @@
     "level": "subgroup",
     "parent_code": "84",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "845",
@@ -15637,8 +16789,7 @@
     "level": "subgroup",
     "parent_code": "84",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "846",
@@ -15646,8 +16797,7 @@
     "level": "subgroup",
     "parent_code": "84",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "847",
@@ -15655,8 +16805,7 @@
     "level": "subgroup",
     "parent_code": "84",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "848",
@@ -15664,8 +16813,7 @@
     "level": "subgroup",
     "parent_code": "84",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "849",
@@ -15673,8 +16821,7 @@
     "level": "subgroup",
     "parent_code": "84",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "85",
@@ -15682,8 +16829,7 @@
     "level": "group",
     "parent_code": "8",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "850",
@@ -15691,8 +16837,7 @@
     "level": "subgroup",
     "parent_code": "85",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "851",
@@ -15700,8 +16845,7 @@
     "level": "subgroup",
     "parent_code": "85",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "86",
@@ -15709,8 +16853,7 @@
     "level": "group",
     "parent_code": "8",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "860",
@@ -15718,8 +16861,7 @@
     "level": "subgroup",
     "parent_code": "86",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "87",
@@ -15727,8 +16869,7 @@
     "level": "group",
     "parent_code": "8",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "870",
@@ -15736,8 +16877,7 @@
     "level": "subgroup",
     "parent_code": "87",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "871",
@@ -15745,8 +16885,7 @@
     "level": "subgroup",
     "parent_code": "87",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "88",
@@ -15754,8 +16893,7 @@
     "level": "group",
     "parent_code": "8",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "880",
@@ -15763,8 +16901,7 @@
     "level": "subgroup",
     "parent_code": "88",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "881",
@@ -15772,8 +16909,7 @@
     "level": "subgroup",
     "parent_code": "88",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "882",
@@ -15781,8 +16917,7 @@
     "level": "subgroup",
     "parent_code": "88",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "883",
@@ -15790,8 +16925,7 @@
     "level": "subgroup",
     "parent_code": "88",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "89",
@@ -15799,8 +16933,7 @@
     "level": "group",
     "parent_code": "8",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "890",
@@ -15808,8 +16941,7 @@
     "level": "subgroup",
     "parent_code": "89",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "891",
@@ -15817,8 +16949,7 @@
     "level": "subgroup",
     "parent_code": "89",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "892",
@@ -15826,8 +16957,55 @@
     "level": "subgroup",
     "parent_code": "89",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "8920",
+    "name": "Дивиденди или удел во добивката на домашни правни лица",
+    "level": "account",
+    "parent_code": "892",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "8921",
+    "name": "Дивиденди или удел во добивката на странски правни лица",
+    "level": "account",
+    "parent_code": "892",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "8922",
+    "name": "Дивиденди или удел во добивката на физички лица",
+    "level": "account",
+    "parent_code": "892",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "8923",
+    "name": "Лични примања на сопствениците (награди, трошоци за лекување, рекреација и слично)",
+    "level": "account",
+    "parent_code": "892",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "8924",
+    "name": "Останати примања од добивката за членови на управниот одбор, надзорен одбор, одбор на директори и управители",
+    "level": "account",
+    "parent_code": "892",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "8925",
+    "name": "Бруто плата од добивката",
+    "level": "account",
+    "parent_code": "892",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "893",
@@ -15835,8 +17013,31 @@
     "level": "subgroup",
     "parent_code": "89",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "8930",
+    "name": "Законски резерви",
+    "level": "account",
+    "parent_code": "893",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "8931",
+    "name": "Статутарни резерви",
+    "level": "account",
+    "parent_code": "893",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "8932",
+    "name": "Останати резерви",
+    "level": "account",
+    "parent_code": "893",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "899",
@@ -15844,8 +17045,7 @@
     "level": "subgroup",
     "parent_code": "89",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "9",
@@ -15853,8 +17053,7 @@
     "level": "class",
     "parent_code": null,
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "90",
@@ -15862,8 +17061,7 @@
     "level": "group",
     "parent_code": "9",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "900",
@@ -15871,8 +17069,79 @@
     "level": "subgroup",
     "parent_code": "90",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9000",
+    "name": "Основна главнина - обични акции",
+    "level": "account",
+    "parent_code": "900",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9001",
+    "name": "Основна главнина - приоритетни акции",
+    "level": "account",
+    "parent_code": "900",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9002",
+    "name": "Основна главнина - учество кое нема контрола",
+    "level": "account",
+    "parent_code": "900",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9003",
+    "name": "Основна главнина - удели на содружници",
+    "level": "account",
+    "parent_code": "900",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9004",
+    "name": "Основна главнина - удели во командитно друштво",
+    "level": "account",
+    "parent_code": "900",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9005",
+    "name": "Основна главнина на јавно трговско друштво",
+    "level": "account",
+    "parent_code": "900",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9006",
+    "name": "Основна главнина - државен капитал",
+    "level": "account",
+    "parent_code": "900",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9007",
+    "name": "Основна главнина - останат капитал",
+    "level": "account",
+    "parent_code": "900",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9008",
+    "name": "Зголемување на основната главнина",
+    "level": "account",
+    "parent_code": "900",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "901",
@@ -15880,8 +17149,23 @@
     "level": "subgroup",
     "parent_code": "90",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9010",
+    "name": "Запишани, а неуплатени акции",
+    "level": "account",
+    "parent_code": "901",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9011",
+    "name": "Запишани, а неуплатени удели",
+    "level": "account",
+    "parent_code": "901",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "902",
@@ -15889,8 +17173,23 @@
     "level": "subgroup",
     "parent_code": "90",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9020",
+    "name": "Откупени сопствени акции",
+    "level": "account",
+    "parent_code": "902",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9021",
+    "name": "Откупени сопствени удели",
+    "level": "account",
+    "parent_code": "902",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "91",
@@ -15898,8 +17197,7 @@
     "level": "group",
     "parent_code": "9",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "910",
@@ -15907,8 +17205,7 @@
     "level": "subgroup",
     "parent_code": "91",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "911",
@@ -15916,8 +17213,7 @@
     "level": "subgroup",
     "parent_code": "91",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "912",
@@ -15925,8 +17221,7 @@
     "level": "subgroup",
     "parent_code": "91",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "93",
@@ -15934,8 +17229,7 @@
     "level": "group",
     "parent_code": "9",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "930",
@@ -15943,8 +17237,55 @@
     "level": "subgroup",
     "parent_code": "93",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9300",
+    "name": "Ревалоризациони резерви за нематеријални средства",
+    "level": "account",
+    "parent_code": "930",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9301",
+    "name": "Ревалоризациони резерви на земјиште",
+    "level": "account",
+    "parent_code": "930",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9302",
+    "name": "Ревалоризациони резерви на градежни објекти",
+    "level": "account",
+    "parent_code": "930",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9303",
+    "name": "Ревалоризациони резерви за постројки",
+    "level": "account",
+    "parent_code": "930",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9304",
+    "name": "Ревалоризациони резерви за опрема",
+    "level": "account",
+    "parent_code": "930",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9305",
+    "name": "Ревалоризациони резерви за останати материјални средства",
+    "level": "account",
+    "parent_code": "930",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "931",
@@ -15952,8 +17293,7 @@
     "level": "subgroup",
     "parent_code": "93",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "932",
@@ -15961,8 +17301,7 @@
     "level": "subgroup",
     "parent_code": "93",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "933",
@@ -15970,8 +17309,7 @@
     "level": "subgroup",
     "parent_code": "93",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "934",
@@ -15979,8 +17317,7 @@
     "level": "subgroup",
     "parent_code": "93",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "935",
@@ -15988,8 +17325,7 @@
     "level": "subgroup",
     "parent_code": "93",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "94",
@@ -15997,8 +17333,7 @@
     "level": "group",
     "parent_code": "9",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "940",
@@ -16006,8 +17341,39 @@
     "level": "subgroup",
     "parent_code": "94",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9400",
+    "name": "Резерви согласно ЗТД",
+    "level": "account",
+    "parent_code": "940",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9401",
+    "name": "Резерви за зголемување на капитал",
+    "level": "account",
+    "parent_code": "940",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9402",
+    "name": "Резерви за откуп на сопствени акции",
+    "level": "account",
+    "parent_code": "940",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9403",
+    "name": "Резерви за откуп на сопствени удели",
+    "level": "account",
+    "parent_code": "940",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "941",
@@ -16015,8 +17381,31 @@
     "level": "subgroup",
     "parent_code": "94",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9410",
+    "name": "Резерви за одржување на финансиска стабилност",
+    "level": "account",
+    "parent_code": "941",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9411",
+    "name": "Резерви за преструктуирање",
+    "level": "account",
+    "parent_code": "941",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9412",
+    "name": "Резерви за покривање на загуба",
+    "level": "account",
+    "parent_code": "941",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "942",
@@ -16024,8 +17413,23 @@
     "level": "subgroup",
     "parent_code": "94",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9420",
+    "name": "Резерви за награди",
+    "level": "account",
+    "parent_code": "942",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9421",
+    "name": "Резерви за останати намени",
+    "level": "account",
+    "parent_code": "942",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "95",
@@ -16033,8 +17437,7 @@
     "level": "group",
     "parent_code": "9",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "950",
@@ -16042,8 +17445,15 @@
     "level": "subgroup",
     "parent_code": "95",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9500",
+    "name": "Акумулирана добивка",
+    "level": "account",
+    "parent_code": "950",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "951",
@@ -16051,8 +17461,15 @@
     "level": "subgroup",
     "parent_code": "95",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9510",
+    "name": "Акумулирана добивка од тековната година",
+    "level": "account",
+    "parent_code": "951",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "96",
@@ -16060,8 +17477,7 @@
     "level": "group",
     "parent_code": "9",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "960",
@@ -16069,8 +17485,7 @@
     "level": "subgroup",
     "parent_code": "96",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "961",
@@ -16078,8 +17493,15 @@
     "level": "subgroup",
     "parent_code": "96",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "97",
+    "name": "УЧЕСТВО ВО КАПИТАЛОТ КОЕ НЕМА КОНТРОЛА",
+    "level": "group",
+    "parent_code": "9",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "99",
@@ -16087,8 +17509,7 @@
     "level": "group",
     "parent_code": "9",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
   },
   {
     "code": "990",
@@ -16096,8 +17517,31 @@
     "level": "subgroup",
     "parent_code": "99",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9900",
+    "name": "Примени постројки и опрема на испитување, контрола и поправка",
+    "level": "account",
+    "parent_code": "990",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9901",
+    "name": "Примени недвижности, постројки и опрема земени под закуп",
+    "level": "account",
+    "parent_code": "990",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9902",
+    "name": "Примени постројки и опрема на чување",
+    "level": "account",
+    "parent_code": "990",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "991",
@@ -16105,8 +17549,191 @@
     "level": "subgroup",
     "parent_code": "99",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9910",
+    "name": "Примени материјали",
+    "level": "account",
+    "parent_code": "991",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99100",
+    "name": "Примени материјали во доработка и обработка",
+    "level": "account",
+    "parent_code": "9910",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99101",
+    "name": "Примени материјали од увоз за туѓа сметка",
+    "level": "account",
+    "parent_code": "9910",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99102",
+    "name": "Примени материјали за заедничко работење",
+    "level": "account",
+    "parent_code": "9910",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99103",
+    "name": "Примени материјали за лон работење",
+    "level": "account",
+    "parent_code": "9910",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99104",
+    "name": "Примени материјали за чување",
+    "level": "account",
+    "parent_code": "9910",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99105",
+    "name": "Примена туѓа повратна амбалажа",
+    "level": "account",
+    "parent_code": "9910",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9911",
+    "name": "Примени полупроизводи",
+    "level": "account",
+    "parent_code": "991",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99110",
+    "name": "Примени полупроизводи во доработка и обработка",
+    "level": "account",
+    "parent_code": "9911",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99111",
+    "name": "Примени полупроизводи за производство на заеднички производ",
+    "level": "account",
+    "parent_code": "9911",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99112",
+    "name": "Примени полупроизводи за лон работење",
+    "level": "account",
+    "parent_code": "9911",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99113",
+    "name": "Примени полупроизводи за чување",
+    "level": "account",
+    "parent_code": "9911",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9912",
+    "name": "Примени производи",
+    "level": "account",
+    "parent_code": "991",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99120",
+    "name": "Примени производи во доработка и обработка",
+    "level": "account",
+    "parent_code": "9912",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99121",
+    "name": "Примени производи на поправка",
+    "level": "account",
+    "parent_code": "9912",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99122",
+    "name": "Примени производи на чување",
+    "level": "account",
+    "parent_code": "9912",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9913",
+    "name": "Примени стоки",
+    "level": "account",
+    "parent_code": "991",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99130",
+    "name": "Примена стока во јавен склад",
+    "level": "account",
+    "parent_code": "9913",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99131",
+    "name": "Примена стока во консигнација и комисион",
+    "level": "account",
+    "parent_code": "9913",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99132",
+    "name": "Примена стока за увоз за туѓа сметка",
+    "level": "account",
+    "parent_code": "9913",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99133",
+    "name": "Примена стока за извоз за туѓа сметка",
+    "level": "account",
+    "parent_code": "9913",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99134",
+    "name": "Примена стока за заедничко работење",
+    "level": "account",
+    "parent_code": "9913",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99135",
+    "name": "Примена стока на доработка и обработка",
+    "level": "account",
+    "parent_code": "9913",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "992",
@@ -16114,8 +17741,71 @@
     "level": "subgroup",
     "parent_code": "99",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9920",
+    "name": "Меници за потрошувачки кредит",
+    "level": "account",
+    "parent_code": "992",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9921",
+    "name": "Меници за долгорочен кредит",
+    "level": "account",
+    "parent_code": "992",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9922",
+    "name": "Бланко акцептирани меници",
+    "level": "account",
+    "parent_code": "992",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9923",
+    "name": "Бланко авалирани меници",
+    "level": "account",
+    "parent_code": "992",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9924",
+    "name": "Примени авали на меници",
+    "level": "account",
+    "parent_code": "992",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9925",
+    "name": "Примени гаранции",
+    "level": "account",
+    "parent_code": "992",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9926",
+    "name": "Примени обврзници за заеми",
+    "level": "account",
+    "parent_code": "992",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9927",
+    "name": "Влезници за културни, спортски и слични манифестации",
+    "level": "account",
+    "parent_code": "992",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "993",
@@ -16123,8 +17813,47 @@
     "level": "subgroup",
     "parent_code": "99",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9930",
+    "name": "Право на лоро акредитив (домашен и странски)",
+    "level": "account",
+    "parent_code": "993",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9931",
+    "name": "Право на користење на патенти, лиценци и слични права",
+    "level": "account",
+    "parent_code": "993",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9932",
+    "name": "Укнижување на хипотека на недвижности",
+    "level": "account",
+    "parent_code": "993",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9933",
+    "name": "Укнижување на залог",
+    "level": "account",
+    "parent_code": "993",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9934",
+    "name": "Договорени неискористени кредити",
+    "level": "account",
+    "parent_code": "993",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "994",
@@ -16132,8 +17861,31 @@
     "level": "subgroup",
     "parent_code": "99",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9940",
+    "name": "Дадени аванси за туѓи меници",
+    "level": "account",
+    "parent_code": "994",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9941",
+    "name": "Дадени гаранции за туѓи обврски",
+    "level": "account",
+    "parent_code": "994",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9949",
+    "name": "Останата вонбилансна евиденција",
+    "level": "account",
+    "parent_code": "994",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "995",
@@ -16141,8 +17893,31 @@
     "level": "subgroup",
     "parent_code": "99",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9950",
+    "name": "Обврски за примени постројки и опрема на испитување, контрола и поправка",
+    "level": "account",
+    "parent_code": "995",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9951",
+    "name": "Обврски за примени недвижности, постројки и опрема земена под закуп",
+    "level": "account",
+    "parent_code": "995",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9952",
+    "name": "Обврски за примени постројки и опрема за чување",
+    "level": "account",
+    "parent_code": "995",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "996",
@@ -16150,8 +17925,191 @@
     "level": "subgroup",
     "parent_code": "99",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9960",
+    "name": "Обврски за примени материјали",
+    "level": "account",
+    "parent_code": "996",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99600",
+    "name": "Обврски за примени материјали во доработка и обработка",
+    "level": "account",
+    "parent_code": "9960",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99601",
+    "name": "Обврски за примени материјали за увоз на туѓа сметка",
+    "level": "account",
+    "parent_code": "9960",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99602",
+    "name": "Обврски за примени материјали за заедничко работење",
+    "level": "account",
+    "parent_code": "9960",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99603",
+    "name": "Обврски за примени материјали за лон работење",
+    "level": "account",
+    "parent_code": "9960",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99604",
+    "name": "Обврски за примени материјали за чување",
+    "level": "account",
+    "parent_code": "9960",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99605",
+    "name": "Обврски за примена туѓа повратна амбалажа",
+    "level": "account",
+    "parent_code": "9960",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9961",
+    "name": "Обврски за примени полупроизводи",
+    "level": "account",
+    "parent_code": "996",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99610",
+    "name": "Обврски за примени полупроизводи во доработка и обработка",
+    "level": "account",
+    "parent_code": "9961",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99611",
+    "name": "Обврски за примени полупроизводи за производство на заеднички производ",
+    "level": "account",
+    "parent_code": "9961",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99612",
+    "name": "Обврски за примени полупроизводи за лон работење",
+    "level": "account",
+    "parent_code": "9961",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99613",
+    "name": "Обврски за примени полупроизводи на чување",
+    "level": "account",
+    "parent_code": "9961",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9962",
+    "name": "Обврски за примени туѓи производи",
+    "level": "account",
+    "parent_code": "996",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99620",
+    "name": "Обврски за примени производи во доработка и обработка",
+    "level": "account",
+    "parent_code": "9962",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99621",
+    "name": "Обврски за примени производи за поправка",
+    "level": "account",
+    "parent_code": "9962",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99622",
+    "name": "Обврски за примени производи на чување",
+    "level": "account",
+    "parent_code": "9962",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9963",
+    "name": "Обврски за примени туѓи стоки",
+    "level": "account",
+    "parent_code": "996",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99630",
+    "name": "Обврски за примени стоки во јавен склад",
+    "level": "account",
+    "parent_code": "9963",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99631",
+    "name": "Обврски за примени стоки во консигнација и комисион",
+    "level": "account",
+    "parent_code": "9963",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99632",
+    "name": "Обврски за примени стоки од увоз за туѓа сметка",
+    "level": "account",
+    "parent_code": "9963",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99633",
+    "name": "Обврски за примени стоки за извоз за туѓа сметка",
+    "level": "account",
+    "parent_code": "9963",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99634",
+    "name": "Обврски за примени стоки за заедничко работење",
+    "level": "account",
+    "parent_code": "9963",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99635",
+    "name": "Обврски за примени стоки во доработка и обработка",
+    "level": "account",
+    "parent_code": "9963",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "997",
@@ -16159,8 +18117,39 @@
     "level": "subgroup",
     "parent_code": "99",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9970",
+    "name": "Должници за меници за потрошувачки кредит",
+    "level": "account",
+    "parent_code": "997",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9971",
+    "name": "Должници за меници за долгорочен кредит",
+    "level": "account",
+    "parent_code": "997",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9972",
+    "name": "Должници по бланко акцептирани меници",
+    "level": "account",
+    "parent_code": "997",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9973",
+    "name": "Должници по бланко авалирани меници",
+    "level": "account",
+    "parent_code": "997",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "998",
@@ -16168,8 +18157,47 @@
     "level": "subgroup",
     "parent_code": "99",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9980",
+    "name": "Обврски за права на лоро акредитив (домашен и странски)",
+    "level": "account",
+    "parent_code": "998",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9981",
+    "name": "Обврски за права на користење патенти, лиценци и слични права",
+    "level": "account",
+    "parent_code": "998",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9982",
+    "name": "Укнижување на хипотека на недвижности",
+    "level": "account",
+    "parent_code": "998",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9983",
+    "name": "Укнижување на залог",
+    "level": "account",
+    "parent_code": "998",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9984",
+    "name": "Обврски за договорени неискористени кредити",
+    "level": "account",
+    "parent_code": "998",
+    "must_debit": false,
+    "must_credit": false
   },
   {
     "code": "999",
@@ -16177,7 +18205,86 @@
     "level": "subgroup",
     "parent_code": "99",
     "must_debit": false,
-    "must_credit": false,
-    "carried": true
+    "must_credit": false
+  },
+  {
+    "code": "9990",
+    "name": "Обврски за авали, гаранции и слично",
+    "level": "account",
+    "parent_code": "999",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99900",
+    "name": "Обврски за авали за туѓи меници",
+    "level": "account",
+    "parent_code": "9990",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99901",
+    "name": "Обврски за гаранции за туѓи обврски",
+    "level": "account",
+    "parent_code": "9990",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9991",
+    "name": "Права",
+    "level": "account",
+    "parent_code": "999",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99910",
+    "name": "Обврски за право за лоро акредитив (домашен и странски)",
+    "level": "account",
+    "parent_code": "9991",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "99911",
+    "name": "Обврски за право на користење на патенти, лиценци и слични права",
+    "level": "account",
+    "parent_code": "9991",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9992",
+    "name": "Укнижување на хипотека на недвижности",
+    "level": "account",
+    "parent_code": "999",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9993",
+    "name": "Укнижување на залог",
+    "level": "account",
+    "parent_code": "999",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9994",
+    "name": "Договорен неискористен кредит",
+    "level": "account",
+    "parent_code": "999",
+    "must_debit": false,
+    "must_credit": false
+  },
+  {
+    "code": "9999",
+    "name": "Останата пасивна вонбилансна евиденција",
+    "level": "account",
+    "parent_code": "999",
+    "must_debit": false,
+    "must_credit": false
   }
 ]

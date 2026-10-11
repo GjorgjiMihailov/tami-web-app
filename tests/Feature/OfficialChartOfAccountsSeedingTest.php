@@ -95,7 +95,10 @@ class OfficialChartOfAccountsSeedingTest extends TestCase
 
         foreach ($entries as $entry) {
             $code = $entry['code'];
-            if (trim($entry['name']) === '' || mb_strlen($entry['name']) > 255) {
+            // 740135 and 8200 come without a name in the owner's spreadsheet
+            // and stay that way on his instruction (2026-10-11).
+            $mayBeUnnamed = in_array($code, ['740135', '8200'], true);
+            if ((! $mayBeUnnamed && trim($entry['name']) === '') || mb_strlen($entry['name']) > 255) {
                 $problems[] = "{$code}: empty or too long name";
             }
             if (($levels[strlen($code)] ?? 'account') !== $entry['level']) {
