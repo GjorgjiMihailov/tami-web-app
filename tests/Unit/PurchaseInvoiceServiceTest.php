@@ -516,10 +516,13 @@ class PurchaseInvoiceServiceTest extends TestCase
         $changed = $this->service->changeSupplierNumber($confirmed, 'NEW-2', $user->id);
 
         $this->assertSame('NEW-2', $changed->supplier_invoice_number);
-        $entry = $changed->journalEntry()->with('lines')->first();
-        $this->assertStringContainsString('NEW-2', $entry->description);
-        $this->assertStringNotContainsString('OLD-1', $entry->description);
-        $entry->lines->each(fn ($line) => $this->assertStringContainsString('NEW-2', $line->description));
+        // Налогот е месечен и заеднички — бројот е само во ставките на фактурата.
+        $lines = app(\App\Services\Posting\InvoiceJournal::class)->linesOf($changed);
+        $this->assertGreaterThan(0, $lines->count());
+        $lines->each(function ($line) {
+            $this->assertStringContainsString('NEW-2', $line->description);
+            $this->assertStringNotContainsString('OLD-1', $line->description);
+        });
     }
 
     public function test_recording_a_payment_posts_ap_debit_and_bank_credit(): void
@@ -604,8 +607,8 @@ class PurchaseInvoiceServiceTest extends TestCase
 
         $entry = $confirmed->journalEntry()->with('journalGroup')->first();
         $this->assertNotNull($entry->journalGroup);
-        $this->assertSame('99', $entry->journalGroup->code);
-        $this->assertSame('Автоматски (фактури)', $entry->journalGroup->name);
+        $this->assertSame('20', $entry->journalGroup->code);
+        $this->assertSame('Влезни фактури', $entry->journalGroup->name);
     }
 
     public function test_confirming_two_invoices_for_the_same_company_reuses_the_same_system_group(): void
@@ -645,10 +648,12 @@ class PurchaseInvoiceServiceTest extends TestCase
 
         $entry = $confirmed->journalEntry()->with('lines')->first();
         $this->assertGreaterThan(0, $entry->lines->count());
-        $entry->lines->each(function ($line) use ($entry) {
+        // Ставката го носи датумот на издавање; налогот е на крајот на месецот.
+        $entry->lines->each(function ($line) {
             $this->assertNotNull($line->line_date);
-            $this->assertSame($entry->entry_date->toDateString(), $line->line_date->toDateString());
+            $this->assertSame('2026-03-01', $line->line_date->toDateString());
         });
+        $this->assertSame('2026-03-31', $entry->entry_date->toDateString());
     }
 
     public function test_recording_a_payment_gives_its_posted_lines_a_line_date_matching_the_payment_date(): void

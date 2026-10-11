@@ -15,9 +15,7 @@ class PostedInvoiceAccounts
 {
     public static function receivable(SalesInvoice $invoice): Account
     {
-        $entry = $invoice->journalEntry()->with('lines.account')->first();
-
-        $line = $entry?->lines
+        $line = app(InvoiceJournal::class)->linesOf($invoice)
             ->first(fn ($l) => bccomp((string) $l->debit, '0', 2) > 0 && $l->partner_id === $invoice->partner_id);
 
         if ($line?->account !== null) {
@@ -30,9 +28,7 @@ class PostedInvoiceAccounts
     /** Сметката на којашто влезната фактура ја отворила обврската кон добавувачот. */
     public static function payable(PurchaseInvoice $invoice): Account
     {
-        $entry = $invoice->journalEntry()->with('lines.account')->first();
-
-        $line = $entry?->lines
+        $line = app(InvoiceJournal::class)->linesOf($invoice)
             ->first(fn ($l) => bccomp((string) $l->credit, '0', 2) > 0 && $l->partner_id === $invoice->partner_id);
 
         if ($line?->account !== null) {

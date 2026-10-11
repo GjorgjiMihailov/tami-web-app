@@ -145,6 +145,14 @@ class JournalEntryForm extends Component
     {
         Gate::authorize($this->journalEntry ? 'update' : 'create', $this->journalEntry ?? JournalEntry::class);
 
+        // Месечниот налог на фактури го пишат самите фактури. Зачувувањето овде
+        // ги заменува сите ставки и би ја прекинало врската со фактурите.
+        if ($this->journalEntry?->auto_kind !== null) {
+            $this->addError('lines', 'Овој налог е автоматски од фактурите — ставките се менуваат преку самите фактури.');
+
+            return;
+        }
+
         // Normalize an empty-string partner_id (the default "no partner selected"
         // value) to null so the nullable exists() rule below treats it as absent
         // rather than trying to look up '' as a partner id.

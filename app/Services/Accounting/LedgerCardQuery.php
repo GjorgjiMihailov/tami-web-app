@@ -25,13 +25,14 @@ class LedgerCardQuery
             ->when($partnerId, fn ($q) => $q->where('journal_entry_lines.partner_id', $partnerId));
 
         $openingBalance = (clone $baseQuery())
-            ->where('journal_entries.entry_date', '<', $from->toDateString())
+            // Датумот на ставката, не на налогот (месечен налог на фактури).
+            ->whereRaw('DATE(COALESCE(journal_entry_lines.line_date, journal_entries.entry_date)) < ?', [$from->toDateString()])
             ->selectRaw('COALESCE(SUM(debit), 0) - COALESCE(SUM(credit), 0) as balance')
             ->value('balance');
 
         $lines = (clone $baseQuery())
-            ->whereBetween('journal_entries.entry_date', [$from->toDateString(), $to->toDateString()])
-            ->orderBy('journal_entries.entry_date')
+            ->whereRaw('DATE(COALESCE(journal_entry_lines.line_date, journal_entries.entry_date)) between ? and ?', [$from->toDateString(), $to->toDateString()])
+            ->orderByRaw('DATE(COALESCE(journal_entry_lines.line_date, journal_entries.entry_date))')
             ->orderBy('journal_entry_lines.id')
             ->with(['journalEntry', 'partner'])
             ->get(['journal_entry_lines.*']);
@@ -42,7 +43,7 @@ class LedgerCardQuery
             $runningBalance += (float) $line->debit - (float) $line->credit;
 
             return [
-                'date' => $line->journalEntry->entry_date,
+                'date' => $line->line_date ?? $line->journalEntry->entry_date,
                 'description' => $line->description,
                 'partner' => $line->partner?->name,
                 'debit' => (float) $line->debit,

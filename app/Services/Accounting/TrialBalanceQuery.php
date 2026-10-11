@@ -38,11 +38,13 @@ class TrialBalanceQuery
             ->with(['account', 'partner']);
 
         $openingLines = (clone $baseQuery())
-            ->where('journal_entries.entry_date', '<', $from->toDateString())
+            // Датумот на ставката, не на налогот: месечниот налог на фактури
+            // собира документи од цел месец под еден датум на налог.
+            ->whereRaw('DATE(COALESCE(journal_entry_lines.line_date, journal_entries.entry_date)) < ?', [$from->toDateString()])
             ->get(['journal_entry_lines.*']);
 
         $movementLines = (clone $baseQuery())
-            ->whereBetween('journal_entries.entry_date', [$from->toDateString(), $to->toDateString()])
+            ->whereRaw('DATE(COALESCE(journal_entry_lines.line_date, journal_entries.entry_date)) between ? and ?', [$from->toDateString(), $to->toDateString()])
             ->get(['journal_entry_lines.*']);
 
         $openingTotals = self::totalsByKey($openingLines, $keyFor);

@@ -71,7 +71,7 @@ class SalesInvoiceSchemePostingTest extends TestCase
         $this->assertEqualsCanonicalizing(['1200 D 210.00', '74001 C 200.00', '2301 C 10.00'], $this->codes($confirmed));
     }
 
-    public function test_the_entry_keeps_group_99_the_description_and_the_labels(): void
+    public function test_the_entry_is_the_monthly_group_30_entry_and_the_lines_keep_the_labels(): void
     {
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $invoice = $this->draft($company, '100.00', '18.00');
@@ -79,8 +79,8 @@ class SalesInvoiceSchemePostingTest extends TestCase
         $confirmed = app(SalesInvoiceService::class)->confirm($invoice->fresh(), User::factory()->create()->id);
         $entry = $confirmed->journalEntry()->with('lines', 'journalGroup')->first();
 
-        $this->assertSame('99', $entry->journalGroup->code);
-        $this->assertStringStartsWith('Sales Invoice ', $entry->description);
+        $this->assertSame('30', $entry->journalGroup->code);
+        $this->assertSame('Излезни фактури — март 2026', $entry->description);
         $this->assertTrue($entry->lines->contains(fn ($l) => str_starts_with($l->description, 'VAT on Invoice ')));
         $this->assertTrue($entry->lines->every(fn ($l) => str_contains($l->description, 'Invoice '.$confirmed->invoice_number_formatted)));
     }

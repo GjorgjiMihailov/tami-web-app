@@ -10,6 +10,7 @@ use App\Models\JournalGroup;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoicePayment;
 use App\Services\Inventory\StockMovementService;
+use App\Services\Posting\InvoiceJournal;
 use App\Services\Posting\PostedInvoiceAccounts;
 use App\Services\Posting\PostingSchemeEngine;
 use App\Services\Posting\PostingSchemes;
@@ -33,6 +34,7 @@ class SalesInvoiceService
     public function __construct(
         private StockMovementService $stockMovementService,
         private PostingSchemeEngine $postingEngine,
+        private InvoiceJournal $invoiceJournal,
     ) {}
 
     public function confirm(SalesInvoice $invoice, int $userId): SalesInvoice
@@ -136,21 +138,11 @@ class SalesInvoiceService
                 $importCogsTotal = bcadd($importCogsTotal, $lineImport, 2);
             }
 
-            $label = 'Invoice '.$formattedNumber;
             $context = SalesInvoicePostingContext::build($invoice, $formattedNumber, $cogsTotal, $importCogsTotal);
             $lines = $this->postingEngine->lines(PostingSchemes::for($invoice->company, PostingDocType::SALES_INVOICE), $context);
 
-            $entry = JournalEntry::create([
-                'company_id' => $invoice->company_id,
-                'journal_group_id' => $this->systemJournalGroup($invoice->company)->id,
-                'entry_date' => $invoice->invoice_date,
-                'description' => "Sales {$label}",
-                'created_by' => $userId,
-            ]);
-
-            foreach ($lines as $line) {
-                $entry->lines()->create($line->journalColumns($invoice->invoice_date));
-            }
+            // Сите излезни фактури од месецот се ставки на еден налог (група 30).
+            $entry = $this->invoiceJournal->post($invoice, $lines, $userId);
 
             $invoice->update([
                 'fiscal_year' => $fiscalYear,
@@ -205,10 +197,12 @@ class SalesInvoiceService
             }
 
             // Прво се брише фактурата (таа покажува кон книжењето со journal_entry_id,
-            // не обратно), па дури потоа книжењето — инаку странскиот клуч пука.
+            // не обратно), па дури потоа нејзините ставки од месечниот налог —
+            // инаку странскиот клуч пука. Туѓите ставки на налогот не се допираат.
             $journalEntry = $invoice->journalEntry;
+            $invoiceId = $invoice->id;
             $invoice->delete();
-            $journalEntry?->delete();
+            $this->invoiceJournal->remove(InvoiceJournal::SALES, $invoiceId, $journalEntry);
         });
     }
 
@@ -251,15 +245,19 @@ class SalesInvoiceService
             $invoice->update(['invoice_number_formatted' => $newFormattedNumber]);
 
             if ($invoice->journal_entry_id !== null && filled($oldFormattedNumber)) {
-                $invoice->loadMissing('journalEntry.lines');
+                $invoice->loadMissing('journalEntry');
                 $oldLabel = 'Invoice '.$oldFormattedNumber;
                 $newLabel = 'Invoice '.$newFormattedNumber;
 
-                $invoice->journalEntry->update([
-                    'description' => str_replace($oldLabel, $newLabel, $invoice->journalEntry->description),
-                ]);
+                // Месечниот налог е заеднички и неговиот опис не го носи бројот;
+                // само старото книжење (еден налог = една фактура) го носи.
+                if ($invoice->journalEntry->auto_kind === null) {
+                    $invoice->journalEntry->update([
+                        'description' => str_replace($oldLabel, $newLabel, $invoice->journalEntry->description),
+                    ]);
+                }
 
-                foreach ($invoice->journalEntry->lines as $line) {
+                foreach ($this->invoiceJournal->linesOf($invoice) as $line) {
                     $line->update(['description' => str_replace($oldLabel, $newLabel, $line->description)]);
                 }
             }

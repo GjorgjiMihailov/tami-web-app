@@ -94,7 +94,7 @@ class PurchaseInvoiceSchemePostingTest extends TestCase
         $this->assertEqualsCanonicalizing(['4620 D 1180.00', '2200 C 1180.00'], $this->codes($this->confirm($invoice)));
     }
 
-    public function test_the_entry_keeps_group_99_the_description_the_partner_and_the_labels(): void
+    public function test_the_entry_is_the_monthly_group_20_entry_and_the_lines_keep_the_partner_and_labels(): void
     {
         $company = Company::factory()->create(['is_vat_registered' => true]);
         $invoice = $this->draft($company);
@@ -103,8 +103,8 @@ class PurchaseInvoiceSchemePostingTest extends TestCase
         $confirmed = $this->confirm($invoice);
         $entry = $confirmed->journalEntry()->with('lines', 'journalGroup')->first();
 
-        $this->assertSame('99', $entry->journalGroup->code);
-        $this->assertSame('Purchase bill Добавувач #77', $entry->description);
+        $this->assertSame('20', $entry->journalGroup->code);
+        $this->assertSame('Влезни фактури — март 2026', $entry->description);
         $this->assertTrue($entry->lines->every(fn ($l) => $l->partner_id === $invoice->partner_id));
         $this->assertTrue($entry->lines->contains(fn ($l) => $l->description === 'Input VAT on Purchase bill Добавувач #77'));
     }

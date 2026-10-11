@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\Company;
 use App\Models\JournalEntryLine;
 use App\Support\WorkingYear;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Готовински тек за една година, за таблата на Финансии.
@@ -45,11 +46,11 @@ class CashFlowQuery
             ->leftJoin('journal_groups', 'journal_groups.id', '=', 'journal_entries.journal_group_id')
             ->where('journal_entries.company_id', $company->id)
             ->whereIn('journal_entry_lines.account_id', $accountIds)
-            ->whereDate('journal_entries.entry_date', '<=', $end)
+            ->whereRaw('DATE(COALESCE(journal_entry_lines.line_date, journal_entries.entry_date)) <= ?', [$end])
             ->get([
                 'journal_entry_lines.debit',
                 'journal_entry_lines.credit',
-                'journal_entries.entry_date',
+                DB::raw('DATE(COALESCE(journal_entry_lines.line_date, journal_entries.entry_date)) as entry_date'),
                 'journal_groups.code as group_code',
             ]);
 

@@ -27,6 +27,12 @@ class JournalEntry extends Model
         static::creating(function (JournalEntry $entry) {
             $entry->fiscal_year = Carbon::parse($entry->entry_date)->year;
 
+            // Месечниот налог на фактури носи однапред одреден број (бројот на
+            // месецот) — него не го презапишуваме.
+            if ($entry->entry_number !== null) {
+                return;
+            }
+
             $max = static::where('company_id', $entry->company_id)
                 ->where('fiscal_year', $entry->fiscal_year)
                 ->where('journal_group_id', $entry->journal_group_id)
