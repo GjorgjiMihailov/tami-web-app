@@ -5,48 +5,30 @@ namespace App\Support\Bank;
 use App\Models\BankStatement;
 use App\Models\CompanyBankAccount;
 use App\Models\JournalGroup;
-use RuntimeException;
+use App\Support\JournalGroupCodes;
 
 /**
- * Секоја банкарска сметка добива своја група на налози: 10, 11, 12…
- * Сите пари се на конто 1000; сметките се разликуваат само по групата.
+ * Групата на налозите на изводите: денарските во 10 (заедно со плаќањата од
+ * основната сметка), девизните во 11 — по вид на извод, не по банкарска сметка.
+ * Сите пари се на конто 1000; сметките се разликуваат само по самиот извод.
  */
 class BankAccountGroups
 {
     public static function groupFor(BankStatement $statement): JournalGroup
     {
+        // Сметката останува запишана во профилот на фирмата (како и порано).
         $account = CompanyBankAccount::firstOrCreate(
             ['company_id' => $statement->company_id, 'account_number' => $statement->account],
             ['bank_name' => $statement->bank],
         );
 
-        if ($account->journal_group_id !== null) {
-            return JournalGroup::findOrFail($account->journal_group_id);
+        $code = $statement->kind->isForeign() ? JournalGroupCodes::FOREIGN_BANK : JournalGroupCodes::DENAR_BANK;
+        $group = JournalGroupCodes::group($statement->company, $code);
+
+        if ($account->journal_group_id === null) {
+            $account->update(['journal_group_id' => $group->id]);
         }
-
-        $group = JournalGroup::create([
-            'company_id' => $statement->company_id,
-            'code' => self::nextCode($statement->company_id),
-            'name' => "Извод — {$statement->bank} {$statement->account}",
-            'sort_order' => 10,
-        ]);
-
-        $account->update(['journal_group_id' => $group->id]);
 
         return $group;
-    }
-
-    private static function nextCode(int $companyId): string
-    {
-        $taken = JournalGroup::where('company_id', $companyId)->pluck('code')->all();
-
-        // 00 е за почетна состојба и 99 за автоматските налози; кодот е два знака.
-        for ($n = 10; $n <= 98; $n++) {
-            if (! in_array((string) $n, $taken, true)) {
-                return (string) $n;
-            }
-        }
-
-        throw new RuntimeException('Нема слободна група за налози на изводи.');
     }
 }

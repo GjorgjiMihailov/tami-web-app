@@ -6,12 +6,12 @@ use App\Models\Account;
 use App\Models\Company;
 use App\Models\Employee;
 use App\Models\JournalEntry;
-use App\Models\JournalGroup;
 use App\Models\PayrollMonthHours;
 use App\Models\PayrollParameter;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunEmployee;
 use App\Models\PayrollRunLine;
+use App\Support\JournalGroupCodes;
 use App\Support\Payroll\LineType;
 use App\Support\Payroll\MonthCoverage;
 use App\Support\Payroll\MpinObvrznik;
@@ -284,7 +284,7 @@ class PayrollRunService
 
                 $entry = JournalEntry::create([
                     'company_id' => $run->company_id,
-                    'journal_group_id' => $this->systemJournalGroup($run->company)->id,
+                    'journal_group_id' => JournalGroupCodes::group($run->company, JournalGroupCodes::PAYROLL)->id,
                     'entry_date' => $run->endOfMonth(),
                     'description' => $label,
                     'created_by' => $userId,
@@ -388,13 +388,5 @@ class PayrollRunService
     private function account(Company $company, string $code): Account
     {
         return Account::where('company_id', $company->id)->where('code', $code)->firstOrFail();
-    }
-
-    private function systemJournalGroup(Company $company): JournalGroup
-    {
-        return JournalGroup::firstOrCreate(
-            ['company_id' => $company->id, 'code' => '99'],
-            ['name' => 'Автоматски (фактури)', 'sort_order' => 99]
-        );
     }
 }

@@ -82,6 +82,24 @@ class PayrollRunPostingTest extends TestCase
         $this->assertSame('2026-07-31', $run->journalEntry->entry_date->toDateString());
     }
 
+    public function test_the_payroll_entry_is_in_group_50_and_its_reversal_stays_there(): void
+    {
+        $company = $this->company();
+        $this->employeeOn($company, 38507);
+        $user = User::factory()->create();
+        $service = app(PayrollRunService::class);
+
+        $run = $service->confirm($service->open($company, 2026, 7), $user->id);
+        $entry = JournalEntry::with('journalGroup')->find($run->journal_entry_id);
+
+        $this->assertSame('50-0001', $entry->displayNumber());
+
+        $service->returnToDraft($run->fresh(), $user->id);
+
+        $reversal = JournalEntry::with('journalGroup')->where('description', 'like', 'Сторно:%')->firstOrFail();
+        $this->assertSame('50', $reversal->journalGroup->code);
+    }
+
     public function test_the_entry_hits_the_expected_accounts(): void
     {
         $company = $this->company();

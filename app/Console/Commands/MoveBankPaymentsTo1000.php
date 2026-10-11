@@ -34,7 +34,7 @@ class MoveBankPaymentsTo1000 extends Command
             $onHeading = JournalEntryLine::where('account_id', $heading->id);
             $automatic = (clone $onHeading)->whereHas('journalEntry', fn ($entry) => $entry
                 ->where('description', 'like', 'Payment for%')
-                ->whereHas('journalGroup', fn ($group) => $group->where('code', '99')));
+                ->whereHas('journalGroup', fn ($group) => $group->whereIn('code', ['99', '10'])));
 
             $moving = (clone $automatic)->count();
             $manual = (clone $onHeading)->count() - $moving;

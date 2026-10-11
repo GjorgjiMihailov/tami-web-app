@@ -14,6 +14,7 @@ use App\Models\PurchaseInvoicePayment;
 use App\Services\Inventory\LandedCostAllocator;
 use App\Services\Inventory\StockMovementService;
 use App\Services\Posting\InvoiceJournal;
+use App\Support\JournalGroupCodes;
 use App\Services\Posting\PostedInvoiceAccounts;
 use App\Services\Posting\PostingSchemeEngine;
 use App\Services\Posting\PostingSchemes;
@@ -266,7 +267,7 @@ class PurchaseInvoiceService
 
             $entry = JournalEntry::create([
                 'company_id' => $invoice->company_id,
-                'journal_group_id' => $this->systemJournalGroup($invoice->company)->id,
+                'journal_group_id' => $this->paymentJournalGroup($invoice->company, $paymentMethod)->id,
                 'entry_date' => $paymentDate,
                 'description' => $label,
                 'created_by' => $userId,
@@ -353,11 +354,15 @@ class PurchaseInvoiceService
         }
     }
 
-    private function systemJournalGroup(Company $company): JournalGroup
+    /**
+     * Плаќање од банка е во групата на денарските изводи (10), заедно со
+     * изводите; готовинско останува во групата за останато автоматско (99).
+     */
+    private function paymentJournalGroup(Company $company, string $paymentMethod): JournalGroup
     {
-        return JournalGroup::firstOrCreate(
-            ['company_id' => $company->id, 'code' => '99'],
-            ['name' => 'Автоматски (фактури)', 'sort_order' => 99]
+        return JournalGroupCodes::group(
+            $company,
+            $paymentMethod === 'cash' ? JournalGroupCodes::OTHER_AUTOMATIC : JournalGroupCodes::DENAR_BANK
         );
     }
 }

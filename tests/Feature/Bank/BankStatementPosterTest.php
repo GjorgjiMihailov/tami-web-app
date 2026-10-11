@@ -241,7 +241,7 @@ class BankStatementPosterTest extends TestCase
         $this->assertSame(0, $invoice->payments()->count());
     }
 
-    public function test_each_bank_account_posts_into_its_own_group(): void
+    public function test_all_denar_accounts_post_into_group_10_in_one_series(): void
     {
         $a = $this->statement('0.00', '100.00', ['account' => '300000000000001']);
         $this->line($a, LineDirection::IN, '100.00', ['account_id' => $this->account('7400')->id]);
@@ -252,8 +252,8 @@ class BankStatementPosterTest extends TestCase
         $entryB = $this->poster()->post($b, $this->user->id)->load('journalGroup');
 
         $this->assertSame('10', $entryA->journalGroup->code);
-        $this->assertSame('11', $entryB->journalGroup->code);
+        $this->assertSame('10', $entryB->journalGroup->code);
         $this->assertSame('10-0001', $entryA->displayNumber());
-        $this->assertSame('11-0001', $entryB->displayNumber());
+        $this->assertSame('10-0002', $entryB->displayNumber());
     }
 }

@@ -5,7 +5,7 @@ namespace App\Services\Posting;
 use App\Models\Company;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
-use App\Models\JournalGroup;
+use App\Support\JournalGroupCodes;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -27,9 +27,9 @@ class InvoiceJournal
 
     public const PURCHASE = 'purchase_invoice';
 
-    private const KINDS = [
-        self::SALES => ['code' => '30', 'name' => 'Излезни фактури', 'sort' => 30],
-        self::PURCHASE => ['code' => '20', 'name' => 'Влезни фактури', 'sort' => 20],
+    private const GROUPS = [
+        self::SALES => JournalGroupCodes::SALES_INVOICES,
+        self::PURCHASE => JournalGroupCodes::PURCHASE_INVOICES,
     ];
 
     private const MONTHS = [
@@ -66,12 +66,7 @@ class InvoiceJournal
 
     public function monthlyEntry(Company $company, string $kind, Carbon $date, int $userId): JournalEntry
     {
-        $config = self::KINDS[$kind];
-
-        $group = JournalGroup::firstOrCreate(
-            ['company_id' => $company->id, 'code' => $config['code']],
-            ['name' => $config['name'], 'sort_order' => $config['sort']]
-        );
+        $group = JournalGroupCodes::group($company, self::GROUPS[$kind]);
 
         $find = fn () => JournalEntry::where('company_id', $company->id)
             ->where('journal_group_id', $group->id)
@@ -91,7 +86,7 @@ class InvoiceJournal
             'company_id' => $company->id,
             'journal_group_id' => $group->id,
             'entry_date' => $date->copy()->endOfMonth()->toDateString(),
-            'description' => $config['name'].' — '.self::MONTHS[$date->month].' '.$date->year,
+            'description' => JournalGroupCodes::name(self::GROUPS[$kind]).' — '.self::MONTHS[$date->month].' '.$date->year,
             'created_by' => $userId,
         ]);
         $entry->auto_kind = $kind;
