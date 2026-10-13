@@ -48,11 +48,16 @@ class StatementSequence
             ->all();
     }
 
-    /** Дали за таа сметка и година веќе постои извод со тој број. */
-    public static function numberTaken(int $companyId, string $account, int $number, int $year): bool
+    /**
+     * Дали за таа сметка и година веќе постои извод со тој број. Сметката може
+     * да е запишана на повеќе начини, па се прима листа на облици.
+     *
+     * @param  string|list<string>  $accounts
+     */
+    public static function numberTaken(int $companyId, string|array $accounts, int $number, int $year): bool
     {
         return BankStatement::where('company_id', $companyId)
-            ->where('account', $account)
+            ->whereIn('account', (array) $accounts)
             ->where('number', $number)
             ->whereYear('statement_date', $year)
             ->exists();

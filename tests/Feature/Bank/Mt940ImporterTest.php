@@ -10,8 +10,10 @@ use App\Services\Bank\Mt940Importer;
 use App\Services\Bank\Mt940ImportOutcome;
 use App\Support\Bank\LineDirection;
 use App\Support\Bank\LineKind;
+use App\Support\Bank\Mt940\Mt940Statement;
 use App\Support\BankStatementKind;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Spatie\Permission\Models\Role;
 use Tests\Support\Mt940Fixture;
 use Tests\TestCase;
@@ -215,6 +217,86 @@ class Mt940ImporterTest extends TestCase
         $this->assertSame(1, collect($outcomes)->where('ok', true)->count());
         $this->assertSame(1, collect($outcomes)->where('ok', false)->count());
         $this->assertSame(1, BankStatement::count());
+    }
+
+    public function test_an_unexpected_error_in_one_file_does_not_abort_the_batch(): void
+    {
+        $importer = new class extends Mt940Importer
+        {
+            public function import(Company $company, Mt940Statement $parsed, string $name, ?TemporaryUploadedFile $file = null): Mt940ImportOutcome
+            {
+                if ($parsed->number === 1) {
+                    throw new \RuntimeException('boom');
+                }
+
+                return parent::import($company, $parsed, $name, $file);
+            }
+        };
+
+        $outcomes = $importer->importMany($this->company, [
+            ['name' => 'one.txt', 'text' => Mt940Fixture::statement(['number' => 1])],
+            ['name' => 'two.txt', 'text' => Mt940Fixture::statement(['number' => 2, 'date' => '2026-02-11'])],
+        ]);
+
+        $this->assertCount(2, $outcomes);
+        $this->assertSame(1, collect($outcomes)->where('ok', true)->count());
+        $this->assertSame('one.txt', collect($outcomes)->firstWhere('ok', false)->file);
+        $this->assertSame(1, BankStatement::count());
+    }
+
+    public function test_a_dashed_spelling_in_the_profile_is_the_same_account_for_duplicates(): void
+    {
+        CompanyBankAccount::create([
+            'company_id' => $this->company->id, 'bank_name' => 'Банка', 'account_number' => '100-0000000000-01',
+        ]);
+        BankStatement::factory()->for($this->company)->create([
+            'account' => '100-0000000000-01', 'number' => 5, 'statement_date' => '2026-02-02',
+        ]);
+
+        $outcome = $this->importOne(['number' => 5]);
+
+        $this->assertFalse($outcome->ok);
+        $this->assertStringContainsString('веќе постои', $outcome->message);
+        $this->assertSame(1, BankStatement::count());
+    }
+
+    public function test_a_new_statement_keeps_the_spelling_the_company_already_uses(): void
+    {
+        CompanyBankAccount::create([
+            'company_id' => $this->company->id, 'bank_name' => 'Банка', 'account_number' => '100-0000000000-01',
+        ]);
+
+        $outcome = $this->importOne(['number' => 1, 'lines' => [['dir' => 'in', 'amount' => '10.00']]]);
+
+        $this->assertTrue($outcome->ok);
+        $this->assertSame('100-0000000000-01', BankStatement::firstOrFail()->account);
+        $this->assertFalse(collect($outcome->warnings)->contains(fn ($w) => str_contains($w, 'профилот')));
+    }
+
+    public function test_an_iban_in_the_profile_is_the_same_domestic_account(): void
+    {
+        CompanyBankAccount::create([
+            'company_id' => $this->company->id, 'bank_name' => 'Банка', 'account_number' => 'MK07'.Mt940Fixture::ACCOUNT,
+        ]);
+
+        $outcome = $this->importOne(['number' => 1, 'lines' => [['dir' => 'in', 'amount' => '10.00']]]);
+
+        $this->assertTrue($outcome->ok);
+        $this->assertSame('MK07'.Mt940Fixture::ACCOUNT, BankStatement::firstOrFail()->account);
+        $this->assertSame([], $outcome->warnings);
+    }
+
+    public function test_another_companys_dashed_account_is_still_that_companys_account(): void
+    {
+        $other = Company::factory()->create();
+        CompanyBankAccount::create([
+            'company_id' => $other->id, 'bank_name' => 'Туѓа', 'account_number' => '100-0000000000-01',
+        ]);
+
+        $outcome = $this->importOne(['number' => 1]);
+
+        $this->assertFalse($outcome->ok);
+        $this->assertSame(0, BankStatement::count());
     }
 
     public function test_a_file_saved_by_windows_is_imported(): void
