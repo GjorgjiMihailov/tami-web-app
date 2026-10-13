@@ -15,6 +15,7 @@ use App\Models\SalesInvoice;
 use App\Services\Bank\BankStatementPoster;
 use App\Support\Bank\LineDirection;
 use App\Support\Bank\LineKind;
+use App\Support\Bank\MatchConfidence;
 use App\Support\Bank\StatementControls;
 use App\Support\Bcmath;
 use App\Support\Format;
@@ -276,6 +277,30 @@ class BankStatementBook extends Component
         $this->statement = $this->statement->fresh();
     }
 
+    /**
+     * Ги потврдува сите предложени ставки одеднаш: означени „проверете“, веќе
+     * со избрано конто или фактура. Сметководителот ги видел во табелата пред
+     * да притисне; нејасните остануваат за проверка една по една.
+     */
+    public function confirmSuggested(): void
+    {
+        if ($this->statement->isBooked()) {
+            return;
+        }
+
+        $indexes = $this->suggestedIndexes();
+
+        if ($indexes === []) {
+            return;
+        }
+
+        foreach ($indexes as $i) {
+            $this->lines[$i]['reviewed'] = true;
+        }
+
+        $this->persist();
+    }
+
     /** Ја отвора проверката на првата непотврдена ставка. */
     public function startReview(): void
     {
@@ -418,6 +443,37 @@ class BankStatementBook extends Component
         return $indexes;
     }
 
+    /**
+     * Предложени за групно потврдување: „проверете“, непотврдени, со избрано
+     * конто (вид конто) или фактура (плаќање на фактура).
+     *
+     * @return list<int>
+     */
+    private function suggestedIndexes(): array
+    {
+        $saved = $this->statement->lines()->get()->keyBy('id');
+        $indexes = [];
+
+        foreach ($this->lines as $i => $line) {
+            if (! empty($line['reviewed'])) {
+                continue;
+            }
+
+            if ($saved->get($line['id'] ?? 0)?->match_confidence !== MatchConfidence::CHECK) {
+                continue;
+            }
+
+            $resolved = ($line['kind'] === LineKind::ACCOUNT->value && ! empty($line['account_id']))
+                || ($line['kind'] === LineKind::INVOICE_PAYMENT->value && ! empty($line['invoice_id']));
+
+            if ($resolved) {
+                $indexes[] = $i;
+            }
+        }
+
+        return $indexes;
+    }
+
     /** @return list<int> означени за преглед, а сè уште непотврдени */
     private function pendingIndexes(): array
     {
@@ -523,6 +579,7 @@ class BankStatementBook extends Component
             'partners' => Partner::where('company_id', $this->company->id)->orderBy('name')->get(['id', 'name']),
             'problems' => $this->statement->isBooked() ? [] : StatementControls::problems($this->statement->fresh('lines')),
             'pendingCount' => $this->statement->isBooked() ? 0 : count($this->pendingIndexes()),
+            'suggestedCount' => $this->statement->isBooked() ? 0 : count($this->suggestedIndexes()),
             'reviewable' => $this->reviewing ? $this->reviewable() : [],
             'lineMeta' => $this->statement->lines()->get()->keyBy('id'),
         ]);

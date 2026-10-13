@@ -14,7 +14,12 @@
     @if ($pendingCount > 0)
         <div class="mb-4 p-3 rounded bg-amber-50 text-amber-800 text-sm flex items-center gap-3">
             <span>{{ $pendingCount === 1 ? '1 ставка чека проверка' : $pendingCount.' ставки чекаат проверка' }}</span>
-            <button type="button" wire:click="startReview" class="ml-auto px-3 py-1 rounded bg-amber-500 text-white text-sm hover:bg-amber-600">Проверка една по една</button>
+            @if ($suggestedCount > 0)
+                <button type="button" wire:click="confirmSuggested"
+                        wire:confirm="Ќе се потврдат {{ $suggestedCount }} предложени ставки со избраното конто или фактура. Продолжи?"
+                        class="ml-auto px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700">Потврди ги сите предложени ({{ $suggestedCount }})</button>
+            @endif
+            <button type="button" wire:click="startReview" class="{{ $suggestedCount > 0 ? '' : 'ml-auto' }} px-3 py-1 rounded bg-amber-500 text-white text-sm hover:bg-amber-600">Проверка една по една</button>
         </div>
     @endif
 
