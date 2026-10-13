@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\PurchaseInvoice;
 use App\Services\Invoicing\PurchaseInvoiceService;
 use App\Support\WorkingYear;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -68,6 +69,13 @@ class PurchaseInvoiceShow extends Component
             $service->delete($this->purchaseInvoice, auth()->id());
         } catch (InvalidInvoiceStateException $e) {
             $this->addError('delete', $e->getMessage());
+
+            return;
+        } catch (QueryException $e) {
+            // Сигурносна мрежа: врска од друга табела не смее да стигне до
+            // корисникот како празна страница со грешка.
+            report($e);
+            $this->addError('delete', 'Фактурата не може да се избрише поради врска со други записи. Обидете се повторно или контактирајте поддршка.');
 
             return;
         }

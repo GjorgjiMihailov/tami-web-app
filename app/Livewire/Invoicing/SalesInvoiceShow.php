@@ -81,6 +81,13 @@ class SalesInvoiceShow extends Component
             $this->addError('delete', $e->getMessage());
 
             return;
+        } catch (QueryException $e) {
+            // Сигурносна мрежа: врска од друга табела не смее да стигне до
+            // корисникот како празна страница со грешка.
+            report($e);
+            $this->addError('delete', 'Фактурата не може да се избрише поради врска со други записи. Обидете се повторно или контактирајте поддршка.');
+
+            return;
         }
 
         return $this->redirect(route('sales-invoices.index', $this->company), navigate: true);
