@@ -4,6 +4,8 @@ namespace App\Livewire\Bank;
 
 use App\Models\BankStatement;
 use App\Models\Company;
+use App\Models\JournalEntry;
+use App\Services\Bank\Mt940Importer;
 use App\Services\DocumentStorage;
 use App\Support\Bank\BankLedgerTotals;
 use App\Support\Bank\StatementSequence;
@@ -40,6 +42,12 @@ class BankStatementIndex extends Component
     public string $statementDate = '';
 
     public $newFile = null;
+
+    /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
+    public array $mt940Files = [];
+
+    /** @var array<int, array<string, mixed>> */
+    public array $importResults = [];
 
     public function mount(Company $company): void
     {
@@ -106,13 +114,43 @@ class BankStatementIndex extends Component
         $this->reset(['number', 'statementDate', 'newFile']);
     }
 
+    /**
+     * Увоз на MT940: ист праг како за книжење, зашто од фајлот се создаваат
+     * ставки што сметководителот ги книжи.
+     */
+    public function importMt940Files(Mt940Importer $importer): void
+    {
+        Gate::authorize('view', $this->company);
+        Gate::authorize('create', JournalEntry::class);
+
+        $this->validate([
+            'mt940Files' => ['required', 'array', 'min:1', 'max:60'],
+            'mt940Files.*' => ['file', 'max:1024', 'extensions:txt,sta,mt940'],
+        ], [
+            'mt940Files.required' => 'Изберете барем една MT940 датотека.',
+            'mt940Files.min' => 'Изберете барем една MT940 датотека.',
+            'mt940Files.max' => 'Најмногу 60 датотеки одеднаш.',
+            'mt940Files.*.max' => 'Датотеката не смее да биде поголема од 1 MB.',
+            'mt940Files.*.extensions' => 'Датотеката мора да е .txt, .sta или .mt940.',
+        ]);
+
+        $items = collect($this->mt940Files)->map(fn ($file) => [
+            'name' => basename($file->getClientOriginalName()),
+            'text' => $file->get(),
+            'file' => $file,
+        ])->all();
+
+        $this->importResults = array_map(
+            fn ($outcome) => $outcome->toArray(),
+            $importer->importMany($this->company, $items),
+        );
+
+        $this->reset('mt940Files');
+    }
+
     private function numberIsTaken(int $number, string $account, string $date): bool
     {
-        return BankStatement::where('company_id', $this->company->id)
-            ->where('account', $account)
-            ->where('number', $number)
-            ->whereYear('statement_date', (int) substr($date, 0, 4))
-            ->exists();
+        return StatementSequence::numberTaken($this->company->id, $account, $number, (int) substr($date, 0, 4));
     }
 
     public function render()

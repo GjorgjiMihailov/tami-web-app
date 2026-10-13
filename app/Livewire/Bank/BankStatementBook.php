@@ -287,11 +287,18 @@ class BankStatementBook extends Component
                 'closing_balance' => $this->closingBalance === '' ? null : $this->closingBalance,
             ]);
 
+            // Ставките се бришат и создаваат одново. Податоците што дошле со
+            // фајлот (другата страна, повикување на број) ги нема во формата, па
+            // се пренесуваат по id од досегашните ставки на ОВОЈ извод — не од
+            // формата, чии вредности клиентот може да ги измени.
+            $previous = $this->statement->lines()->get()->keyBy('id');
+
             $this->statement->lines()->delete();
 
             foreach (array_values($this->lines) as $position => $line) {
                 $isIn = $line['direction'] === LineDirection::IN->value;
                 $isInvoice = $line['kind'] === LineKind::INVOICE_PAYMENT->value;
+                $kept = $previous->get($line['id'] ?? 0);
 
                 $this->statement->lines()->create([
                     'position' => $position + 1,
@@ -300,6 +307,10 @@ class BankStatementBook extends Component
                     'amount' => $line['amount'],
                     'partner_id' => $line['partner_id'] ?: null,
                     'description' => $line['description'] ?: null,
+                    'reference_number' => $kept?->reference_number,
+                    'purpose_code' => $kept?->purpose_code,
+                    'counterparty_account' => $kept?->counterparty_account,
+                    'counterparty_name' => $kept?->counterparty_name,
                     'kind' => $line['kind'],
                     'account_id' => $isInvoice ? null : ($line['account_id'] ?: null),
                     'sales_invoice_id' => $isInvoice && $isIn ? ($line['invoice_id'] ?: null) : null,
@@ -312,6 +323,14 @@ class BankStatementBook extends Component
 
         $this->statement = $this->statement->fresh();
 
+        // Ставките се создадени со нови id-ја; формата мора да ги знае, инаку
+        // второто зачувување нема од каде да ги пренесе податоците.
+        $this->lines = array_values($this->lines);
+
+        foreach ($this->statement->lines as $position => $saved) {
+            $this->lines[$position]['id'] = $saved->id;
+        }
+
         return true;
     }
 
@@ -321,6 +340,7 @@ class BankStatementBook extends Component
             'accounts' => Account::where('company_id', $this->company->id)->analytical()->where('is_active', true)->orderBy('code')->get(['id', 'code', 'name']),
             'partners' => Partner::where('company_id', $this->company->id)->orderBy('name')->get(['id', 'name']),
             'problems' => $this->statement->isBooked() ? [] : StatementControls::problems($this->statement->fresh('lines')),
+            'lineMeta' => $this->statement->lines()->get()->keyBy('id'),
         ]);
     }
 }

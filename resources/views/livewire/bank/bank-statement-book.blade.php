@@ -100,7 +100,17 @@
                                 </select>
                             @endif
                         </td>
-                        <td><x-text-input wire:model="lines.{{ $i }}.description" class="w-full" :disabled="$statement->isBooked()" /></td>
+                        <td>
+                            <x-text-input wire:model="lines.{{ $i }}.description" class="w-full" :disabled="$statement->isBooked()" />
+                            @php($meta = ! empty($line['id']) ? $lineMeta->get($line['id']) : null)
+                            @if ($meta !== null && ($meta->counterparty_name || $meta->counterparty_account || $meta->reference_number))
+                                <div class="mt-1 text-xs text-gray-500">
+                                    {{ $meta->counterparty_name }}
+                                    @if ($meta->counterparty_account) · {{ $meta->counterparty_account }} @endif
+                                    @if ($meta->reference_number) · реф. {{ $meta->reference_number }} @endif
+                                </div>
+                            @endif
+                        </td>
                         <td>
                             @unless ($statement->isBooked())
                                 <button type="button" wire:click="removeLine({{ $i }})" class="text-red-600 text-sm">Бриши</button>

@@ -1,6 +1,38 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-800 mb-4">Банкарски документи — {{ $company->name }}</h1>
 
+    @if ($canBook)
+        <x-card class="mb-6">
+            <h2 class="font-semibold text-gray-700 mb-2">Увези MT940</h2>
+            <form wire:submit="importMt940Files" class="flex flex-wrap gap-3 items-end">
+                <div>
+                    <x-input-label for="mt940Files" value="MT940 датотеки (може повеќе одеднаш)" />
+                    <input type="file" id="mt940Files" wire:model="mt940Files" multiple accept=".txt,.sta,.mt940" class="text-sm">
+                    @error('mt940Files') <span class="text-red-600 text-sm block">{{ $message }}</span> @enderror
+                    @error('mt940Files.*') <span class="text-red-600 text-sm block">{{ $message }}</span> @enderror
+                </div>
+                <x-primary-button type="submit">Увези</x-primary-button>
+            </form>
+
+            @if ($importResults !== [])
+                <ul class="mt-4 space-y-2 text-sm">
+                    @foreach ($importResults as $result)
+                        <li class="{{ $result['ok'] ? 'text-green-800' : 'text-red-700' }}">
+                            <span class="font-medium">{{ $result['file'] }}</span> —
+                            {{ $result['message'] }}
+                            @if ($result['ok'])
+                                <a href="{{ route('bank-statements.book', [$company, $result['statement_id']]) }}" class="text-brand hover:underline">Отвори</a>
+                            @endif
+                            @foreach ($result['warnings'] as $warning)
+                                <div class="ml-4 text-amber-700">⚠ {{ $warning }}</div>
+                            @endforeach
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </x-card>
+    @endif
+
     <x-card class="mb-6">
         <h2 class="font-semibold text-gray-700 mb-2">Прикачи извод</h2>
         <form wire:submit="saveStatement" class="flex flex-wrap gap-3 items-end">

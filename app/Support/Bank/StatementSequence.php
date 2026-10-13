@@ -49,6 +49,21 @@ class StatementSequence
     }
 
     /**
+     * Дали за таа сметка и година веќе постои извод со тој број. Сметката може
+     * да е запишана на повеќе начини, па се прима листа на облици.
+     *
+     * @param  string|list<string>  $accounts
+     */
+    public static function numberTaken(int $companyId, string|array $accounts, int $number, int $year): bool
+    {
+        return BankStatement::where('company_id', $companyId)
+            ->whereIn('account', (array) $accounts)
+            ->where('number', $number)
+            ->whereYear('statement_date', $year)
+            ->exists();
+    }
+
+    /**
      * @param  Collection<int, BankStatement>  $ordered
      * @return array<int, array<string, mixed>>
      */
