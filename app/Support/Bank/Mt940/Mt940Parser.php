@@ -19,6 +19,9 @@ final class Mt940Parser
 
     private const MAX_TEXT = 255;
 
+    /** Колоната reference_number е string(64). */
+    private const MAX_REFERENCE = 64;
+
     /** Тргнува BOM и ги претвора не-UTF-8 бајти (Windows-1252/ISO-8859-1) во UTF-8. */
     public static function decode(string $raw): string
     {
@@ -150,7 +153,8 @@ final class Mt940Parser
     /** „17,“ → 17.00, „17,5“ → 17.50. Нема разделник на илјади — се одбива. */
     private static function amount(string $raw): string
     {
-        if (preg_match('/^(\d+)(?:,(\d{0,2}))?$/D', $raw, $m) !== 1) {
+        // Најмногу 13 цели цифри: колоните за износ се decimal(15,2).
+        if (preg_match('/^(\d{1,13})(?:,(\d{0,2}))?$/D', $raw, $m) !== 1) {
             throw new Mt940Exception("Неважечки износ „{$raw}“.");
         }
 
@@ -185,7 +189,10 @@ final class Mt940Parser
         foreach ($fields as [$tag, $value]) {
             if ($tag === '62F') {
                 $closed = true;
-            } elseif ($tag === '61' && ! $closed) {
+            } elseif ($tag === '61' && $closed) {
+                // Ставка по крајната состојба: тивко отфрлање би изоставило пари.
+                throw new Mt940Exception('Ставка :61: по крајната состојба (:62F:) — фајлот не е поддржан.');
+            } elseif ($tag === '61') {
                 $pairs[] = ['61' => $value, '86' => null];
             } elseif ($tag === '86' && ! $closed && $pairs !== []) {
                 $last = count($pairs) - 1;
@@ -245,6 +252,8 @@ final class Mt940Parser
         if ($references !== null && preg_match('/^[0\/\s]*$/', $references) === 1) {
             $references = null;
         }
+
+        $references = $references === null ? null : mb_substr($references, 0, self::MAX_REFERENCE);
 
         $description = (string) self::clean(implode(' ', array_map(self::unslash(...), array_slice($rows, 3))));
 

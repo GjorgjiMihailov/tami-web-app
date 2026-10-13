@@ -211,6 +211,48 @@ class Mt940ParserTest extends TestCase
         Mt940Parser::parse($text);
     }
 
+    public function test_a_reference_longer_than_the_column_is_cut(): void
+    {
+        $statement = Mt940Parser::parse(Mt940Fixture::statement([
+            'lines' => [['dir' => 'in', 'amount' => '10.00', 'refs' => str_repeat('1', 40).'//'.str_repeat('2', 40)]],
+        ]));
+
+        $this->assertSame(64, strlen((string) $statement->lines[0]->referenceNumber));
+    }
+
+    public function test_the_widest_amount_that_fits_the_column_is_accepted(): void
+    {
+        $statement = Mt940Parser::parse(Mt940Fixture::statement([
+            'lines' => [['dir' => 'in', 'amount' => '1234567890123.00']],
+        ]));
+
+        $this->assertSame('1234567890123.00', $statement->lines[0]->amount);
+    }
+
+    public function test_an_amount_that_does_not_fit_the_column_is_refused(): void
+    {
+        $this->expectException(Mt940Exception::class);
+        $this->expectExceptionMessage('Неважечки износ');
+
+        Mt940Parser::parse(Mt940Fixture::statement([
+            'lines' => [['dir' => 'in', 'amount' => '12345678901234.00']],
+        ]));
+    }
+
+    public function test_a_line_after_the_closing_balance_is_refused_instead_of_dropped(): void
+    {
+        $text = str_replace(
+            "\n-}",
+            "\n:61:2602020202CD5,NMSCNONREF//1000009\n-}",
+            Mt940Fixture::statement(['lines' => [['dir' => 'in', 'amount' => '10.00']]]),
+        );
+
+        $this->expectException(Mt940Exception::class);
+        $this->expectExceptionMessage('по крајната состојба');
+
+        Mt940Parser::parse($text);
+    }
+
     public function test_a_missing_account_field_is_refused(): void
     {
         $text = preg_replace('/^:25:.*\n/m', '', Mt940Fixture::statement());
