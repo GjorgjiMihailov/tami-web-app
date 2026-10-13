@@ -46,6 +46,9 @@ class BankStatementBook extends Component
     /** @var array<int, array<string, mixed>> */
     public array $lines = [];
 
+    /** Режим „Проверка една по една“ е отворен. */
+    public bool $reviewing = false;
+
     public function mount(Company $company, BankStatement $statement): void
     {
         Gate::authorize('view', $company);
@@ -70,6 +73,7 @@ class BankStatementBook extends Component
             'account_id' => $line->account_id,
             'invoice_id' => $line->sales_invoice_id ?? $line->purchase_invoice_id,
             'existing_payment_id' => $line->sales_invoice_payment_id ?? $line->purchase_invoice_payment_id,
+            'reviewed' => $line->reviewed_at !== null,
         ])->all();
     }
 
@@ -92,6 +96,7 @@ class BankStatementBook extends Component
             'account_id' => null,
             'invoice_id' => null,
             'existing_payment_id' => null,
+            'reviewed' => true,
         ];
     }
 
@@ -216,6 +221,13 @@ class BankStatementBook extends Component
                 }
             }
         }
+
+        // Сметководителот сам ја одредил ставката (конто, фактура, партнер, вид):
+        // тоа е ист преглед како „Потврди“. Во режимот на проверка тоа го прави
+        // копчето „Потврди и следна“, не самото менување.
+        if (! $this->reviewing && preg_match('/^lines\.(\d+)\.(kind|account_id|partner_id|invoice_id|existing_payment_id)$/', $name, $m)) {
+            $this->lines[(int) $m[1]]['reviewed'] = true;
+        }
     }
 
     public function save(): void
@@ -255,6 +267,32 @@ class BankStatementBook extends Component
         }
 
         $this->statement = $this->statement->fresh();
+    }
+
+    /**
+     * Индекси на ставки означени за преглед (не „сигурно“). Ознаката се чита од
+     * базата по id, не од формата.
+     *
+     * @return list<int>
+     */
+    private function reviewable(): array
+    {
+        $saved = $this->statement->lines()->get()->keyBy('id');
+        $indexes = [];
+
+        foreach ($this->lines as $i => $line) {
+            if ($saved->get($line['id'] ?? 0)?->match_confidence?->needsReview()) {
+                $indexes[] = $i;
+            }
+        }
+
+        return $indexes;
+    }
+
+    /** @return list<int> означени за преглед, а сè уште непотврдени */
+    private function pendingIndexes(): array
+    {
+        return array_values(array_filter($this->reviewable(), fn (int $i) => empty($this->lines[$i]['reviewed'])));
     }
 
     private function persist(): bool
@@ -311,6 +349,9 @@ class BankStatementBook extends Component
                     'purpose_code' => $kept?->purpose_code,
                     'counterparty_account' => $kept?->counterparty_account,
                     'counterparty_name' => $kept?->counterparty_name,
+                    'match_confidence' => $kept?->match_confidence,
+                    'match_reason' => $kept?->match_reason,
+                    'reviewed_at' => ! empty($line['reviewed']) ? ($kept?->reviewed_at ?? now()) : null,
                     'kind' => $line['kind'],
                     'account_id' => $isInvoice ? null : ($line['account_id'] ?: null),
                     'sales_invoice_id' => $isInvoice && $isIn ? ($line['invoice_id'] ?: null) : null,
@@ -340,6 +381,7 @@ class BankStatementBook extends Component
             'accounts' => Account::where('company_id', $this->company->id)->analytical()->where('is_active', true)->orderBy('code')->get(['id', 'code', 'name']),
             'partners' => Partner::where('company_id', $this->company->id)->orderBy('name')->get(['id', 'name']),
             'problems' => $this->statement->isBooked() ? [] : StatementControls::problems($this->statement->fresh('lines')),
+            'pendingCount' => $this->statement->isBooked() ? 0 : count($this->pendingIndexes()),
             'lineMeta' => $this->statement->lines()->get()->keyBy('id'),
         ]);
     }

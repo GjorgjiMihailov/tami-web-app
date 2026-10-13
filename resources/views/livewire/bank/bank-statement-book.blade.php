@@ -11,6 +11,12 @@
         <div class="mb-4 p-3 rounded bg-red-50 text-red-700 text-sm whitespace-pre-line">{{ $message }}</div>
     @enderror
 
+    @if ($pendingCount > 0)
+        <div class="mb-4 p-3 rounded bg-amber-50 text-amber-800 text-sm flex items-center gap-3">
+            <span>{{ $pendingCount === 1 ? '1 ставка чека проверка' : $pendingCount.' ставки чекаат проверка' }}</span>
+        </div>
+    @endif
+
     <x-card class="mb-4">
         <div class="flex flex-wrap gap-4">
             <div class="w-64">
@@ -31,6 +37,7 @@
             <thead>
                 <tr class="text-left text-gray-500 bg-gray-50">
                     <th class="py-1 w-6">#</th>
+                    <th class="py-1 w-24">Ознака</th>
                     <th class="py-1 w-36">Датум</th>
                     <th class="py-1 w-28">Вид</th>
                     <th class="py-1 w-32 text-right">Износ</th>
@@ -45,6 +52,17 @@
                 @foreach ($lines as $i => $line)
                     <tr wire:key="line-{{ $i }}">
                         <td class="py-1">{{ $i + 1 }}</td>
+                        <td class="py-1">
+                            @php($saved = ! empty($line['id']) ? $lineMeta->get($line['id']) : null)
+                            @if ($saved?->match_confidence)
+                                @php($confidence = $saved->match_confidence)
+                                <span class="px-2 py-0.5 rounded text-xs {{ ['sure' => 'bg-green-100 text-green-800', 'check' => 'bg-amber-100 text-amber-800', 'unclear' => 'bg-red-100 text-red-800'][$confidence->value] }}"
+                                      title="{{ $saved->match_reason }}">{{ $confidence->label() }}</span>
+                                @if ($confidence->needsReview() && ! empty($line['reviewed']))
+                                    <span class="block text-xs text-green-700">✓ проверено</span>
+                                @endif
+                            @endif
+                        </td>
                         <td><x-text-input type="date" wire:model="lines.{{ $i }}.line_date" class="w-full" :disabled="$statement->isBooked()" /></td>
                         <td>
                             <select wire:model.live="lines.{{ $i }}.direction" class="border-gray-300 rounded-md text-sm w-full" @disabled($statement->isBooked())>
