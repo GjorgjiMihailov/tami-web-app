@@ -21,6 +21,7 @@ use App\Support\Format;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -46,6 +47,12 @@ class BankStatementBook extends Component
     /** @var array<int, array<string, mixed>> */
     public array $lines = [];
 
+    /** Режим „Проверка една по една“ е отворен. */
+    public bool $reviewing = false;
+
+    /** Индексот во `$lines` на ставката што е на ред за проверка. */
+    public ?int $reviewIndex = null;
+
     public function mount(Company $company, BankStatement $statement): void
     {
         Gate::authorize('view', $company);
@@ -70,6 +77,7 @@ class BankStatementBook extends Component
             'account_id' => $line->account_id,
             'invoice_id' => $line->sales_invoice_id ?? $line->purchase_invoice_id,
             'existing_payment_id' => $line->sales_invoice_payment_id ?? $line->purchase_invoice_payment_id,
+            'reviewed' => $line->reviewed_at !== null,
         ])->all();
     }
 
@@ -92,6 +100,7 @@ class BankStatementBook extends Component
             'account_id' => null,
             'invoice_id' => null,
             'existing_payment_id' => null,
+            'reviewed' => true,
         ];
     }
 
@@ -103,6 +112,9 @@ class BankStatementBook extends Component
 
         unset($this->lines[$index]);
         $this->lines = array_values($this->lines);
+
+        // Индексите се поместени: отворената проверка би покажала друга ставка.
+        $this->stopReview();
     }
 
     /** Разлика во живо: почетна + движење − крајна. */
@@ -216,6 +228,13 @@ class BankStatementBook extends Component
                 }
             }
         }
+
+        // Сметководителот сам ја одредил ставката (конто, фактура, партнер, вид):
+        // тоа е ист преглед како „Потврди“. Во режимот на проверка тоа го прави
+        // копчето „Потврди и следна“, не самото менување.
+        if (! $this->reviewing && preg_match('/^lines\.(\d+)\.(kind|account_id|partner_id|invoice_id|existing_payment_id)$/', $name, $m)) {
+            $this->lines[(int) $m[1]]['reviewed'] = true;
+        }
     }
 
     public function save(): void
@@ -257,6 +276,154 @@ class BankStatementBook extends Component
         $this->statement = $this->statement->fresh();
     }
 
+    /** Ја отвора проверката на првата непотврдена ставка. */
+    public function startReview(): void
+    {
+        if ($this->statement->isBooked()) {
+            return;
+        }
+
+        $pending = $this->pendingIndexes();
+
+        if ($pending === []) {
+            $this->stopReview();
+
+            return;
+        }
+
+        $this->resetErrorBag('review');
+        $this->reviewing = true;
+        $this->reviewIndex = $pending[0];
+    }
+
+    public function stopReview(): void
+    {
+        $this->reviewing = false;
+        $this->reviewIndex = null;
+        $this->resetErrorBag('review');
+    }
+
+    /** Ја потврдува тековната ставка (зачувува) и оди на следната непотврдена. */
+    public function confirmAndNext(): void
+    {
+        $i = $this->currentReviewIndex();
+
+        if ($i === null) {
+            return;
+        }
+
+        $line = $this->lines[$i];
+
+        $error = match (true) {
+            $line['kind'] === LineKind::INVOICE_PAYMENT->value && empty($line['invoice_id']) => 'Изберете фактура.',
+            $line['kind'] === LineKind::ACCOUNT->value && empty($line['account_id']) => 'Изберете конто.',
+            $line['kind'] === LineKind::UNCLEAR->value => 'Изберете „Плаќање на фактура“ или „Конто“.',
+            default => null,
+        };
+
+        if ($error !== null) {
+            $this->addError('review', $error);
+
+            return;
+        }
+
+        $this->resetErrorBag('review');
+        $wasReviewed = ! empty($this->lines[$i]['reviewed']);
+        $this->lines[$i]['reviewed'] = true;
+
+        try {
+            $saved = $this->persist();
+        } catch (ValidationException $e) {
+            // Се враќа каква што била: ставка потврдена порано не се „одпотврдува“.
+            $this->lines[$i]['reviewed'] = $wasReviewed;
+
+            throw $e;
+        }
+
+        if (! $saved) {
+            return;
+        }
+
+        $pending = $this->pendingIndexes();
+        $after = array_values(array_filter($pending, fn (int $n) => $n > $i));
+        $target = $after[0] ?? ($pending[0] ?? null);
+
+        if ($target === null) {
+            $this->stopReview();
+
+            return;
+        }
+
+        $this->reviewIndex = $target;
+    }
+
+    /** Следна ставка за преглед (потврдена или не), кружно. */
+    public function skipLine(): void
+    {
+        $i = $this->currentReviewIndex();
+
+        if ($i === null) {
+            return;
+        }
+
+        $all = $this->reviewable();
+        $after = array_values(array_filter($all, fn (int $n) => $n > $i));
+        $this->reviewIndex = $after[0] ?? $all[0];
+    }
+
+    public function previousLine(): void
+    {
+        $i = $this->currentReviewIndex();
+
+        if ($i === null) {
+            return;
+        }
+
+        $before = array_values(array_filter($this->reviewable(), fn (int $n) => $n < $i));
+        $this->reviewIndex = $before === [] ? $i : end($before);
+    }
+
+    /** Тековната ставка ако режимот е валиден; инаку го затвора. */
+    private function currentReviewIndex(): ?int
+    {
+        $i = $this->reviewIndex;
+
+        if ($this->reviewing && $i !== null && ! $this->statement->isBooked()
+            && isset($this->lines[$i]) && in_array($i, $this->reviewable(), true)) {
+            return $i;
+        }
+
+        $this->stopReview();
+
+        return null;
+    }
+
+    /**
+     * Индекси на ставки означени за преглед (не „сигурно“). Ознаката се чита од
+     * базата по id, не од формата.
+     *
+     * @return list<int>
+     */
+    private function reviewable(): array
+    {
+        $saved = $this->statement->lines()->get()->keyBy('id');
+        $indexes = [];
+
+        foreach ($this->lines as $i => $line) {
+            if ($saved->get($line['id'] ?? 0)?->match_confidence?->needsReview()) {
+                $indexes[] = $i;
+            }
+        }
+
+        return $indexes;
+    }
+
+    /** @return list<int> означени за преглед, а сè уште непотврдени */
+    private function pendingIndexes(): array
+    {
+        return array_values(array_filter($this->reviewable(), fn (int $i) => empty($this->lines[$i]['reviewed'])));
+    }
+
     private function persist(): bool
     {
         Gate::authorize('create', JournalEntry::class);
@@ -282,16 +449,28 @@ class BankStatementBook extends Component
         ]);
 
         DB::transaction(function () {
+            // Ставките се бришат и создаваат одново. Податоците што дошле со
+            // фајлот (другата страна, повикување на број, ознаки, потврди) ги
+            // нема во формата, па се пренесуваат по id од досегашните ставки на
+            // ОВОЈ извод — не од формата, чии вредности клиентот може да ги измени.
+            $previous = $this->statement->lines()->get()->keyBy('id');
+
+            // Id што го нема меѓу тековните ставки значи дека изводот е сменет
+            // откако е отворен овој прозорец (друг таб го зачувал и ставките се
+            // создадени одново) или дека id е изменет. Зачувување од стара копија
+            // би ги избришало ознаките и потврдите и би ја заобиколило проверката.
+            foreach ($this->lines as $line) {
+                if (! empty($line['id']) && ! $previous->has((int) $line['id'])) {
+                    throw ValidationException::withMessages([
+                        'post' => 'Изводот е изменет во друг прозорец — освежете ја страницата.',
+                    ]);
+                }
+            }
+
             $this->statement->update([
                 'opening_balance' => $this->openingBalance === '' ? null : $this->openingBalance,
                 'closing_balance' => $this->closingBalance === '' ? null : $this->closingBalance,
             ]);
-
-            // Ставките се бришат и создаваат одново. Податоците што дошле со
-            // фајлот (другата страна, повикување на број) ги нема во формата, па
-            // се пренесуваат по id од досегашните ставки на ОВОЈ извод — не од
-            // формата, чии вредности клиентот може да ги измени.
-            $previous = $this->statement->lines()->get()->keyBy('id');
 
             $this->statement->lines()->delete();
 
@@ -311,6 +490,9 @@ class BankStatementBook extends Component
                     'purpose_code' => $kept?->purpose_code,
                     'counterparty_account' => $kept?->counterparty_account,
                     'counterparty_name' => $kept?->counterparty_name,
+                    'match_confidence' => $kept?->match_confidence,
+                    'match_reason' => $kept?->match_reason,
+                    'reviewed_at' => ! empty($line['reviewed']) ? ($kept?->reviewed_at ?? now()) : null,
                     'kind' => $line['kind'],
                     'account_id' => $isInvoice ? null : ($line['account_id'] ?: null),
                     'sales_invoice_id' => $isInvoice && $isIn ? ($line['invoice_id'] ?: null) : null,
@@ -340,6 +522,8 @@ class BankStatementBook extends Component
             'accounts' => Account::where('company_id', $this->company->id)->analytical()->where('is_active', true)->orderBy('code')->get(['id', 'code', 'name']),
             'partners' => Partner::where('company_id', $this->company->id)->orderBy('name')->get(['id', 'name']),
             'problems' => $this->statement->isBooked() ? [] : StatementControls::problems($this->statement->fresh('lines')),
+            'pendingCount' => $this->statement->isBooked() ? 0 : count($this->pendingIndexes()),
+            'reviewable' => $this->reviewing ? $this->reviewable() : [],
             'lineMeta' => $this->statement->lines()->get()->keyBy('id'),
         ]);
     }

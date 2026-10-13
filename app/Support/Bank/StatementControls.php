@@ -127,6 +127,10 @@ class StatementControls
     {
         $problems = [];
 
+        if ($line->needsReview()) {
+            $problems[] = 'ставката чека проверка („Проверка една по една“).';
+        }
+
         if (bccomp((string) $line->amount, '0', 2) <= 0) {
             $problems[] = 'износот мора да е поголем од нула.';
         }

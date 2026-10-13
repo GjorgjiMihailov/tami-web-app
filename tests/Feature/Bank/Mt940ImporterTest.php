@@ -87,6 +87,8 @@ class Mt940ImporterTest extends TestCase
         $this->assertSame(LineDirection::OUT, $lines[0]->direction);
         $this->assertSame('7800.00', $lines[0]->amount);
         $this->assertSame(LineKind::UNCLEAR, $lines[0]->kind);
+        $this->assertSame(\App\Support\Bank\MatchConfidence::UNCLEAR, $lines[0]->match_confidence);
+        $this->assertNull($lines[0]->reviewed_at);
         $this->assertNull($lines[0]->partner_id);
         $this->assertSame('100000000000009', $lines[0]->counterparty_account);
         $this->assertSame('CARINSKA TEST', $lines[0]->counterparty_name);

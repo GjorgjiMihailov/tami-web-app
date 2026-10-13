@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\Bank\LineDirection;
 use App\Support\Bank\LineKind;
+use App\Support\Bank\MatchConfidence;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,7 @@ class BankStatementLine extends Model
     protected $fillable = [
         'bank_statement_id', 'position', 'line_date', 'direction', 'amount', 'partner_id',
         'description', 'reference_number', 'purpose_code', 'counterparty_account', 'counterparty_name',
+        'match_confidence', 'match_reason', 'reviewed_at',
         'kind', 'account_id',
         'sales_invoice_id', 'purchase_invoice_id', 'sales_invoice_payment_id',
         'purchase_invoice_payment_id', 'created_payment',
@@ -30,6 +32,8 @@ class BankStatementLine extends Model
             'line_date' => 'date',
             'direction' => LineDirection::class,
             'kind' => LineKind::class,
+            'match_confidence' => MatchConfidence::class,
+            'reviewed_at' => 'datetime',
             'amount' => 'decimal:2',
             'created_payment' => 'boolean',
         ];
@@ -41,6 +45,12 @@ class BankStatementLine extends Model
         $amount = (string) $this->amount;
 
         return $this->direction === LineDirection::OUT ? bcmul($amount, '-1', 2) : bcadd($amount, '0', 2);
+    }
+
+    /** Означена за преглед од човек, а сè уште непрегледана. */
+    public function needsReview(): bool
+    {
+        return $this->match_confidence?->needsReview() === true && $this->reviewed_at === null;
     }
 
     public function bankStatement(): BelongsTo

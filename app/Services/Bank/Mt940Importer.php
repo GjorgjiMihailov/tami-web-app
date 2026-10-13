@@ -8,6 +8,7 @@ use App\Models\CompanyBankAccount;
 use App\Services\DocumentStorage;
 use App\Support\Bank\AccountNumber;
 use App\Support\Bank\LineKind;
+use App\Support\Bank\MatchConfidence;
 use App\Support\Bank\Mt940\BankDirectory;
 use App\Support\Bank\Mt940\Mt940Exception;
 use App\Support\Bank\Mt940\Mt940Parser;
@@ -112,6 +113,8 @@ class Mt940Importer
                     'counterparty_account' => $line->counterpartyAccount,
                     'counterparty_name' => $line->counterpartyName,
                     'kind' => LineKind::UNCLEAR,
+                    'match_confidence' => MatchConfidence::UNCLEAR,
+                    'match_reason' => 'Другата страна не е препознаена.',
                 ]);
             }
 
