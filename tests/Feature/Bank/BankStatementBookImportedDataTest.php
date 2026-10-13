@@ -93,11 +93,10 @@ class BankStatementBookImportedDataTest extends TestCase
 
         $this->screen($own)
             ->set('lines.0.id', $otherLineId)
-            ->call('save');
+            ->call('save')
+            ->assertHasErrors('post');
 
-        $line = $own->fresh()->lines()->firstOrFail();
-        $this->assertNull($line->counterparty_account);
-        $this->assertNull($line->counterparty_name);
+        $this->assertSame('100000000000002', $own->fresh()->lines()->firstOrFail()->counterparty_account);
         $this->assertSame('100000000000003', $other->fresh()->lines()->firstOrFail()->counterparty_account);
     }
 

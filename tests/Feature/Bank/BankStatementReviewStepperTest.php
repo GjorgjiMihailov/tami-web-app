@@ -122,10 +122,15 @@ class BankStatementReviewStepperTest extends TestCase
             ->call('startReview')
             ->set('lines.0.kind', 'account')
             ->set('lines.0.account_id', $this->konto()->id)
+            ->assertSet('lines.0.reviewed', false)
+            ->call('save')
+            ->assertSet('lines.0.reviewed', false)
             ->call('skipLine')
             ->assertSet('reviewIndex', 1);
 
-        $this->assertNull($statement->fresh()->lines()->firstOrFail()->reviewed_at);
+        $first = $statement->fresh()->lines()->firstOrFail();
+        $this->assertNull($first->reviewed_at);
+        $this->assertSame($this->konto()->id, $first->account_id);
     }
 
     public function test_the_last_confirmation_closes_the_mode_and_clears_the_queue(): void
@@ -228,5 +233,49 @@ class BankStatementReviewStepperTest extends TestCase
             ->call('confirmAndNext')
             ->assertHasErrors('lines.0.amount')
             ->assertSet('lines.0.reviewed', false);
+    }
+
+    public function test_a_failed_confirm_does_not_unconfirm_a_line_that_was_already_confirmed(): void
+    {
+        $this->screen($this->twoLines())
+            ->call('startReview')
+            ->set('lines.0.kind', 'account')
+            ->set('lines.0.account_id', $this->konto()->id)
+            ->call('confirmAndNext')
+            ->call('previousLine')
+            ->assertSet('reviewIndex', 0)
+            ->set('lines.0.amount', 'abc')
+            ->call('confirmAndNext')
+            ->assertHasErrors('lines.0.amount')
+            ->assertSet('lines.0.reviewed', true);
+    }
+
+    public function test_removing_a_line_closes_the_review_mode(): void
+    {
+        $this->screen($this->twoLines())
+            ->call('startReview')
+            ->call('skipLine')
+            ->assertSet('reviewIndex', 1)
+            ->call('removeLine', 1)
+            ->assertSet('reviewing', false)
+            ->assertSet('reviewIndex', null);
+    }
+
+    public function test_a_stale_window_cannot_save_or_book_over_a_newer_save(): void
+    {
+        $statement = $this->twoLines();
+
+        $stale = $this->screen($statement);
+        $this->screen($statement)->call('save');
+
+        $stale->call('save')->assertHasErrors('post');
+        $stale->set('lines.0.kind', 'account')
+            ->set('lines.0.account_id', $this->konto()->id)
+            ->call('post')
+            ->assertHasErrors('post');
+
+        $fresh = $statement->fresh();
+        $this->assertFalse($fresh->isBooked());
+        $this->assertSame('unclear', $fresh->lines()->firstOrFail()->match_confidence->value);
     }
 }

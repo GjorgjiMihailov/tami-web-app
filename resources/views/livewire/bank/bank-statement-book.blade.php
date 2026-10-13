@@ -18,7 +18,7 @@
         </div>
     @endif
 
-    @if ($reviewing && $reviewIndex !== null && isset($lines[$reviewIndex]))
+    @if ($reviewing && $reviewIndex !== null && isset($lines[$reviewIndex]) && in_array($reviewIndex, $reviewable, true) && ! $statement->isBooked())
         @php($i = $reviewIndex)
         @php($line = $lines[$i])
         @php($saved = ! empty($line['id']) ? $lineMeta->get($line['id']) : null)

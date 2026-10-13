@@ -112,6 +112,9 @@ class BankStatementBook extends Component
 
         unset($this->lines[$index]);
         $this->lines = array_values($this->lines);
+
+        // Индексите се поместени: отворената проверка би покажала друга ставка.
+        $this->stopReview();
     }
 
     /** Разлика во живо: почетна + движење − крајна. */
@@ -325,12 +328,14 @@ class BankStatementBook extends Component
         }
 
         $this->resetErrorBag('review');
+        $wasReviewed = ! empty($this->lines[$i]['reviewed']);
         $this->lines[$i]['reviewed'] = true;
 
         try {
             $saved = $this->persist();
         } catch (ValidationException $e) {
-            $this->lines[$i]['reviewed'] = false;
+            // Се враќа каква што била: ставка потврдена порано не се „одпотврдува“.
+            $this->lines[$i]['reviewed'] = $wasReviewed;
 
             throw $e;
         }
@@ -444,16 +449,28 @@ class BankStatementBook extends Component
         ]);
 
         DB::transaction(function () {
+            // Ставките се бришат и создаваат одново. Податоците што дошле со
+            // фајлот (другата страна, повикување на број, ознаки, потврди) ги
+            // нема во формата, па се пренесуваат по id од досегашните ставки на
+            // ОВОЈ извод — не од формата, чии вредности клиентот може да ги измени.
+            $previous = $this->statement->lines()->get()->keyBy('id');
+
+            // Id што го нема меѓу тековните ставки значи дека изводот е сменет
+            // откако е отворен овој прозорец (друг таб го зачувал и ставките се
+            // создадени одново) или дека id е изменет. Зачувување од стара копија
+            // би ги избришало ознаките и потврдите и би ја заобиколило проверката.
+            foreach ($this->lines as $line) {
+                if (! empty($line['id']) && ! $previous->has((int) $line['id'])) {
+                    throw ValidationException::withMessages([
+                        'post' => 'Изводот е изменет во друг прозорец — освежете ја страницата.',
+                    ]);
+                }
+            }
+
             $this->statement->update([
                 'opening_balance' => $this->openingBalance === '' ? null : $this->openingBalance,
                 'closing_balance' => $this->closingBalance === '' ? null : $this->closingBalance,
             ]);
-
-            // Ставките се бришат и создаваат одново. Податоците што дошле со
-            // фајлот (другата страна, повикување на број) ги нема во формата, па
-            // се пренесуваат по id од досегашните ставки на ОВОЈ извод — не од
-            // формата, чии вредности клиентот може да ги измени.
-            $previous = $this->statement->lines()->get()->keyBy('id');
 
             $this->statement->lines()->delete();
 
