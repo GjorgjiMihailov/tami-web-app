@@ -72,13 +72,18 @@
             </label>
             <div class="grid gap-3 md:grid-cols-3" x-show="sellable">
                 <div>
-                    <x-input-label for="sellingPrice" value="Продажна цена (нето)" />
-                    <x-text-input id="sellingPrice" wire:model="sellingPrice" class="w-full" />
+                    <x-input-label for="sellingPrice" value="Продажна цена без ДДВ" />
+                    <x-text-input id="sellingPrice" wire:model.live.debounce.400ms="sellingPrice" class="w-full" />
                     @error('sellingPrice') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <div>
+                    <x-input-label for="sellingPriceGross" value="Продажна цена со ДДВ" />
+                    <x-text-input id="sellingPriceGross" wire:model.live.debounce.400ms="sellingPriceGross" class="w-full" />
+                    @error('sellingPriceGross') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                </div>
+                <div>
                     <x-input-label for="vatRate" value="ДДВ % при продажба" />
-                    <x-text-input id="vatRate" wire:model="vatRate" class="w-full" />
+                    <x-text-input id="vatRate" wire:model.live.debounce.400ms="vatRate" class="w-full" />
                     @error('vatRate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                 </div>
             </div>
@@ -92,13 +97,18 @@
             </label>
             <div class="grid gap-3 md:grid-cols-3" x-show="purchasable">
                 <div>
-                    <x-input-label for="costPrice" value="Набавна цена (нето)" />
-                    <x-text-input id="costPrice" wire:model="costPrice" class="w-full" />
+                    <x-input-label for="costPrice" value="Набавна цена без ДДВ" />
+                    <x-text-input id="costPrice" wire:model.live.debounce.400ms="costPrice" class="w-full" />
                     @error('costPrice') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <div>
+                    <x-input-label for="costPriceGross" value="Набавна цена со ДДВ" />
+                    <x-text-input id="costPriceGross" wire:model.live.debounce.400ms="costPriceGross" class="w-full" />
+                    @error('costPriceGross') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                </div>
+                <div>
                     <x-input-label for="purchaseVatRate" value="ДДВ % при набавка" />
-                    <x-text-input id="purchaseVatRate" wire:model="purchaseVatRate" class="w-full" placeholder="иста како при продажба" />
+                    <x-text-input id="purchaseVatRate" wire:model.live.debounce.400ms="purchaseVatRate" class="w-full" placeholder="иста како при продажба" />
                     @error('purchaseVatRate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <div>

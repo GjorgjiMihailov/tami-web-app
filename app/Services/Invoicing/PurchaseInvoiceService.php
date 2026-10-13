@@ -6,6 +6,7 @@ use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidInvoiceStateException;
 use App\Models\Account;
 use App\Models\Company;
+use App\Models\IncomingEfakturaDocument;
 use App\Models\JournalEntry;
 use App\Models\JournalGroup;
 use App\Models\PurchaseInvoice;
@@ -175,6 +176,13 @@ class PurchaseInvoiceService
             // не обратно), па дури потоа книжењето — инаку странскиот клуч пука.
             $journalEntry = $invoice->journalEntry;
             $invoiceId = $invoice->id;
+
+            // Примена е-Фактура што е прифатена како оваа фактура покажува кон неа;
+            // врската нема правило за бришење, па без ова базата го одбива
+            // бришењето. Одлуката кај УЈП (прифатена) останува — се тргнува само
+            // локалната врска.
+            IncomingEfakturaDocument::where('purchase_invoice_id', $invoiceId)->update(['purchase_invoice_id' => null]);
+
             $invoice->delete();
             $this->invoiceJournal->remove(InvoiceJournal::PURCHASE, $invoiceId, $journalEntry);
         });

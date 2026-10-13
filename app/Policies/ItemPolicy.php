@@ -27,4 +27,10 @@ class ItemPolicy
         return $user->hasAnyRole(['admin', 'accountant', 'internal_client', 'freelancer_client'])
             && $user->visibleCompanies()->whereKey($item->company_id)->exists();
     }
+
+    /** Трајно бришење: исто право како за менување; дали е дозволено по состојба го проверува ItemIndex. */
+    public function delete(User $user, Item $item): bool
+    {
+        return $this->update($user, $item);
+    }
 }

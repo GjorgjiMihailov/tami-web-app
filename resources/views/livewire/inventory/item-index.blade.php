@@ -22,6 +22,18 @@
                        class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-brand text-white text-xl leading-none" title="Нов артикл" aria-label="Нов артикл">+</a>
                 @endcan
             </div>
+
+            @if ($bulkMessage !== '')
+                <div class="px-3 py-2 text-sm bg-green-50 text-green-800 border-b border-sand">{{ $bulkMessage }}</div>
+            @endif
+
+            @if ($filter === 'inactive' && $items->isNotEmpty())
+                <div class="px-3 py-2 border-b border-sand">
+                    <button type="button" wire:click="deleteUnusedInactive"
+                            wire:confirm="Сите неактивни артикли што не се користат во фактури или залиха ќе се избришат трајно. Продолжи?"
+                            class="text-sm text-red-700 hover:underline">Избриши ги неискористените неактивни трајно</button>
+                </div>
+            @endif
             <div class="p-3 border-b border-sand">
                 <x-text-input wire:model.live="search" placeholder="Пребарувај по назив или шифра" class="w-full" />
             </div>
@@ -65,9 +77,20 @@
                                     {{ $selected->is_active ? 'Деактивирај' : 'Активирај' }}
                                 </button>
                             @endcan
+                            @unless ($selected->is_active)
+                                @can('delete', $selected)
+                                    <button type="button" wire:click="deleteItem({{ $selected->id }})"
+                                            wire:confirm="Артиклот ќе се избрише трајно и не може да се врати. Продолжи?"
+                                            class="text-red-700 hover:underline text-sm">Избриши трајно</button>
+                                @endcan
+                            @endunless
                             <button type="button" wire:click="closeDetail" class="text-gray-500 hover:text-gray-700 text-xl leading-none lg:hidden" aria-label="Назад">×</button>
                         </div>
                     </div>
+
+                    @error('delete')
+                        <div class="mb-4 p-3 rounded bg-red-50 text-red-700 text-sm">{{ $message }}</div>
+                    @enderror
 
                     <nav class="flex gap-1 border-b border-sand mb-4">
                         @foreach (['overview' => 'Преглед', 'transactions' => 'Трансакции'] as $key => $label)
