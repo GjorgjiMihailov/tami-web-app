@@ -106,6 +106,8 @@ class ItemBulkImport extends Component
                     }
                     if ($row['selling_price_provided']) {
                         $updateData['selling_price'] = $row['selling_price'];
+                        // Нето од датотека ја заменува старата бруто цена.
+                        $updateData['selling_price_gross'] = null;
                     }
                     if ($row['type'] !== null) {
                         $updateData['type'] = $row['type'];

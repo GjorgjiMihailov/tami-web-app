@@ -492,7 +492,14 @@ class SalesInvoiceForm extends Component
                 $this->lines[$index]['unit_price'] = (string) $item->selling_price;
             }
 
-            $this->lines[$index]['price_basis'] = 'net';
+            // Цена внесена со ДДВ на артиклот останува точно онаква на фактурата.
+            if ($item->selling_price_gross !== null && $this->company->is_vat_registered) {
+                $this->lines[$index]['unit_price_gross'] = (string) $item->selling_price_gross;
+                $this->lines[$index]['price_basis'] = 'gross';
+            } else {
+                $this->lines[$index]['price_basis'] = 'net';
+            }
+
             $this->refreshPrices($index);
         }
     }
