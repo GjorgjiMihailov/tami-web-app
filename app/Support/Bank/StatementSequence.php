@@ -48,6 +48,16 @@ class StatementSequence
             ->all();
     }
 
+    /** Дали за таа сметка и година веќе постои извод со тој број. */
+    public static function numberTaken(int $companyId, string $account, int $number, int $year): bool
+    {
+        return BankStatement::where('company_id', $companyId)
+            ->where('account', $account)
+            ->where('number', $number)
+            ->whereYear('statement_date', $year)
+            ->exists();
+    }
+
     /**
      * @param  Collection<int, BankStatement>  $ordered
      * @return array<int, array<string, mixed>>

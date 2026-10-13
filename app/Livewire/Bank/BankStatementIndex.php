@@ -108,11 +108,7 @@ class BankStatementIndex extends Component
 
     private function numberIsTaken(int $number, string $account, string $date): bool
     {
-        return BankStatement::where('company_id', $this->company->id)
-            ->where('account', $account)
-            ->where('number', $number)
-            ->whereYear('statement_date', (int) substr($date, 0, 4))
-            ->exists();
+        return StatementSequence::numberTaken($this->company->id, $account, $number, (int) substr($date, 0, 4));
     }
 
     public function render()
