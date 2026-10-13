@@ -29,7 +29,11 @@ class BankCounterpartyMemory
                 continue;
             }
 
-            $record = BankCounterparty::firstOrNew(['company_id' => $statement->company_id, 'account_key' => $key]);
+            $record = BankCounterparty::firstOrNew([
+                'company_id' => $statement->company_id,
+                'account_key' => $key,
+                'direction' => $line->direction->value,
+            ]);
             $record->name_seen = $line->counterparty_name ?? $record->name_seen;
             $record->last_used_at = now();
 

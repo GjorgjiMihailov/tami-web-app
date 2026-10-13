@@ -118,7 +118,7 @@ class Mt940Importer
                     'match_confidence' => MatchConfidence::UNCLEAR,
                     'match_reason' => 'Другата страна не е препознаена.',
                     // Запомнето од претходно книжење по сметка на другата страна.
-                    ...$this->recognizer->attributesFor($company, $line->counterpartyAccount),
+                    ...$this->recognizer->attributesFor($company, $line),
                 ]);
             }
 

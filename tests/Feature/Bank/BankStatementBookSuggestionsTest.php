@@ -30,10 +30,12 @@ class BankStatementBookSuggestionsTest extends TestCase
         $this->actingAs($admin);
         $this->company = Company::factory()->create();
 
-        BankCounterparty::create([
-            'company_id' => $this->company->id, 'account_key' => '100000000000007',
-            'account_id' => $this->konto()->id,
-        ]);
+        foreach (['in', 'out'] as $direction) {
+            BankCounterparty::create([
+                'direction' => $direction, 'company_id' => $this->company->id, 'account_key' => '100000000000007',
+                'account_id' => $this->konto()->id,
+            ]);
+        }
     }
 
     private function konto(): Account
@@ -121,5 +123,36 @@ class BankStatementBookSuggestionsTest extends TestCase
         $this->screen($statement->fresh())->call('confirmSuggested');
 
         $this->assertSame(0, $statement->fresh()->lines()->whereNotNull('reviewed_at')->count());
+    }
+
+    public function test_a_line_whose_partner_has_an_open_invoice_is_not_swept_up(): void
+    {
+        $partner = \App\Models\Partner::factory()->for($this->company)->create();
+        BankCounterparty::where('direction', 'in')->update(['partner_id' => $partner->id]);
+        $invoice = \App\Models\SalesInvoice::factory()->for($this->company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => '10.00', 'vat_rate' => '0']);
+        app(\App\Services\Invoicing\SalesInvoiceService::class)->confirm($invoice->fresh(), \App\Models\User::factory()->create()->id);
+
+        $statement = $this->importedStatement();
+
+        $this->screen($statement)
+            ->assertSee('Потврди ги сите предложени (1)')
+            ->call('confirmSuggested');
+
+        $lines = $statement->fresh()->lines()->get();
+        $this->assertNull($lines[0]->reviewed_at);
+        $this->assertNotNull($lines[1]->reviewed_at);
+    }
+
+    public function test_a_check_line_that_did_not_come_from_memory_is_not_suggested(): void
+    {
+        $statement = $this->importedStatement();
+        $statement->lines()->firstOrFail()->update(['match_source' => null]);
+
+        $this->screen($statement->fresh())->call('confirmSuggested');
+
+        $lines = $statement->fresh()->lines()->get();
+        $this->assertNull($lines[0]->reviewed_at);
+        $this->assertNotNull($lines[1]->reviewed_at);
     }
 }

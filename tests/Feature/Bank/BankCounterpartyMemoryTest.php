@@ -92,7 +92,7 @@ class BankCounterpartyMemoryTest extends TestCase
     {
         $partner = Partner::factory()->for($this->company)->create();
         BankCounterparty::create([
-            'company_id' => $this->company->id, 'account_key' => '100000000000002', 'account_id' => $this->konto()->id,
+            'direction' => 'in', 'company_id' => $this->company->id, 'account_key' => '100000000000002', 'account_id' => $this->konto()->id,
         ]);
 
         $invoice = SalesInvoice::factory()->for($this->company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
@@ -148,9 +148,29 @@ class BankCounterpartyMemoryTest extends TestCase
         $this->assertSame($this->konto()->id, BankCounterparty::where('company_id', $this->company->id)->firstOrFail()->account_id);
     }
 
-    public function test_a_draft_remembers_nothing(): void
+    public function test_each_direction_has_its_own_record(): void
     {
-        $this->statementWith([]);
+        $statement = $this->statementWith([]);
+        BankStatementLine::factory()->for($statement)->create([
+            'line_date' => '2026-03-05', 'direction' => LineDirection::OUT, 'amount' => '4.00',
+            'kind' => LineKind::ACCOUNT, 'account_id' => $this->konto('7410')->id,
+            'counterparty_account' => '100000000000002',
+        ]);
+        $statement->update(['closing_balance' => '6.00']);
+
+        $this->book($statement->fresh());
+
+        $this->assertSame(2, BankCounterparty::count());
+        $this->assertSame($this->konto()->id, BankCounterparty::where('direction', 'in')->firstOrFail()->account_id);
+        $this->assertSame($this->konto('7410')->id, BankCounterparty::where('direction', 'out')->firstOrFail()->account_id);
+    }
+
+    public function test_importing_remembers_nothing(): void
+    {
+        app(\App\Services\Bank\Mt940Importer::class)->importMany($this->company, [[
+            'name' => 'a.txt',
+            'text' => \Tests\Support\Mt940Fixture::statement(['lines' => [['dir' => 'in', 'amount' => '10.00']]]),
+        ]]);
 
         $this->assertSame(0, BankCounterparty::count());
     }

@@ -54,7 +54,7 @@ class BankCounterpartyRecognizerTest extends TestCase
     {
         $partner = Partner::factory()->for($this->company)->create();
         BankCounterparty::create([
-            'company_id' => $this->company->id, 'account_key' => '100000000000002',
+            'direction' => 'in', 'company_id' => $this->company->id, 'account_key' => '100000000000002',
             'account_id' => $this->konto()->id, 'partner_id' => $partner->id,
         ]);
 
@@ -72,7 +72,7 @@ class BankCounterpartyRecognizerTest extends TestCase
     public function test_a_dashed_spelling_in_the_file_is_recognised(): void
     {
         BankCounterparty::create([
-            'company_id' => $this->company->id, 'account_key' => '100000000000002', 'account_id' => $this->konto()->id,
+            'direction' => 'in', 'company_id' => $this->company->id, 'account_key' => '100000000000002', 'account_id' => $this->konto()->id,
         ]);
 
         $statement = $this->import(['lines' => [['dir' => 'in', 'amount' => '10.00', 'party' => 'MK07100000000000002']]]);
@@ -82,23 +82,93 @@ class BankCounterpartyRecognizerTest extends TestCase
 
     public function test_another_companys_memory_is_not_used(): void
     {
+        // Записот на другата фирма покажува кон КОНТО И ПАРТНЕР на оваа фирма:
+        // само филтерот по фирма на самиот запис може да го запре.
+        $partner = Partner::factory()->for($this->company)->create();
         $other = Company::factory()->create();
         BankCounterparty::create([
-            'company_id' => $other->id, 'account_key' => '100000000000002', 'account_id' => $this->konto('7400', $other)->id,
+            'direction' => 'in', 'company_id' => $other->id, 'account_key' => '100000000000002',
+            'account_id' => $this->konto()->id, 'partner_id' => $partner->id,
         ]);
 
         $line = $this->import(['lines' => [['dir' => 'in', 'amount' => '10.00', 'party' => '100000000000002']]])->lines()->firstOrFail();
 
         $this->assertSame(LineKind::UNCLEAR, $line->kind);
         $this->assertNull($line->account_id);
+        $this->assertNull($line->partner_id);
         $this->assertSame(MatchConfidence::UNCLEAR, $line->match_confidence);
+    }
+
+    public function test_a_remembered_account_is_used_only_for_the_same_direction(): void
+    {
+        BankCounterparty::create([
+            'direction' => 'out', 'company_id' => $this->company->id, 'account_key' => '100000000000002',
+            'account_id' => $this->konto()->id,
+        ]);
+
+        $statement = $this->import(['lines' => [
+            ['dir' => 'in', 'amount' => '10.00', 'party' => '100000000000002'],
+            ['dir' => 'out', 'amount' => '3.00', 'party' => '100000000000002'],
+        ]]);
+
+        $lines = $statement->lines()->get();
+        $this->assertNull($lines[0]->account_id);
+        $this->assertSame(MatchConfidence::UNCLEAR, $lines[0]->match_confidence);
+        $this->assertSame($this->konto()->id, $lines[1]->account_id);
+    }
+
+    public function test_an_inactive_account_in_the_memory_is_ignored(): void
+    {
+        $account = $this->konto();
+        $account->update(['is_active' => false]);
+        BankCounterparty::create([
+            'direction' => 'in', 'company_id' => $this->company->id, 'account_key' => '100000000000002',
+            'account_id' => $account->id,
+        ]);
+
+        $line = $this->import(['lines' => [['dir' => 'in', 'amount' => '10.00', 'party' => '100000000000002']]])->lines()->firstOrFail();
+
+        $this->assertNull($line->account_id);
+    }
+
+    public function test_an_invoice_marker_in_the_text_prevents_the_prefill(): void
+    {
+        $partner = Partner::factory()->for($this->company)->create();
+        BankCounterparty::create([
+            'direction' => 'in', 'company_id' => $this->company->id, 'account_key' => '100000000000002',
+            'account_id' => $this->konto()->id, 'partner_id' => $partner->id,
+        ]);
+
+        foreach (['faktura 00001-26', 'fra 00001-26', 'Plakane po faktura br. 5'] as $text) {
+            $line = $this->import([
+                'number' => random_int(1, 9999),
+                'lines' => [['dir' => 'in', 'amount' => '10.00', 'party' => '100000000000002', 'desc' => $text]],
+            ])->lines()->firstOrFail();
+
+            $this->assertNull($line->account_id, $text);
+            $this->assertSame(LineKind::UNCLEAR, $line->kind, $text);
+            $this->assertSame(MatchConfidence::UNCLEAR, $line->match_confidence, $text);
+            $this->assertStringContainsString('фактура', mb_strtolower((string) $line->match_reason), $text);
+        }
+    }
+
+    public function test_a_prefilled_line_records_that_it_came_from_memory(): void
+    {
+        BankCounterparty::create([
+            'direction' => 'in', 'company_id' => $this->company->id, 'account_key' => '100000000000002',
+            'account_id' => $this->konto()->id,
+        ]);
+
+        $line = $this->import(['lines' => [['dir' => 'in', 'amount' => '10.00', 'party' => '100000000000002']]])->lines()->firstOrFail();
+
+        $this->assertSame('memory', $line->match_source);
     }
 
     public function test_an_account_of_another_company_in_the_memory_is_ignored(): void
     {
         $other = Company::factory()->create();
         BankCounterparty::create([
-            'company_id' => $this->company->id, 'account_key' => '100000000000002', 'account_id' => $this->konto('7400', $other)->id,
+            'direction' => 'in', 'company_id' => $this->company->id, 'account_key' => '100000000000002', 'account_id' => $this->konto('7400', $other)->id,
         ]);
 
         $line = $this->import(['lines' => [['dir' => 'in', 'amount' => '10.00', 'party' => '100000000000002']]])->lines()->firstOrFail();
@@ -111,7 +181,7 @@ class BankCounterpartyRecognizerTest extends TestCase
     {
         $heading = Account::where('company_id', $this->company->id)->where('is_analytical', false)->firstOrFail();
         BankCounterparty::create([
-            'company_id' => $this->company->id, 'account_key' => '100000000000002', 'account_id' => $heading->id,
+            'direction' => 'in', 'company_id' => $this->company->id, 'account_key' => '100000000000002', 'account_id' => $heading->id,
         ]);
 
         $line = $this->import(['lines' => [['dir' => 'in', 'amount' => '10.00', 'party' => '100000000000002']]])->lines()->firstOrFail();
@@ -123,7 +193,7 @@ class BankCounterpartyRecognizerTest extends TestCase
     {
         $partner = Partner::factory()->for($this->company)->create();
         BankCounterparty::create([
-            'company_id' => $this->company->id, 'account_key' => '100000000000002', 'partner_id' => $partner->id,
+            'direction' => 'in', 'company_id' => $this->company->id, 'account_key' => '100000000000002', 'partner_id' => $partner->id,
         ]);
 
         $line = $this->import(['lines' => [['dir' => 'in', 'amount' => '10.00', 'party' => '100000000000002']]])->lines()->firstOrFail();

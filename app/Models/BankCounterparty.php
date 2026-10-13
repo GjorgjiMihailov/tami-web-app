@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class BankCounterparty extends Model
 {
-    protected $fillable = ['company_id', 'account_key', 'name_seen', 'partner_id', 'account_id', 'last_used_at'];
+    protected $fillable = ['company_id', 'account_key', 'direction', 'name_seen', 'partner_id', 'account_id', 'last_used_at'];
 
     protected function casts(): array
     {

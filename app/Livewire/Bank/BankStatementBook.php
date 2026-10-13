@@ -12,6 +12,7 @@ use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
+use App\Services\Bank\BankCounterpartyRecognizer;
 use App\Services\Bank\BankStatementPoster;
 use App\Support\Bank\LineDirection;
 use App\Support\Bank\LineKind;
@@ -459,7 +460,14 @@ class BankStatementBook extends Component
                 continue;
             }
 
-            if ($saved->get($line['id'] ?? 0)?->match_confidence !== MatchConfidence::CHECK) {
+            $row = $saved->get($line['id'] ?? 0);
+
+            // Само предлог од запомнетото, и само ако партнерот нема отворена
+            // фактура во таа насока: тогаш може да е плаќање на фактура, а не на
+            // запомнатото конто — и тоа го одлучува човек, не групното копче.
+            if ($row?->match_confidence !== MatchConfidence::CHECK
+                || $row->match_source !== BankCounterpartyRecognizer::SOURCE
+                || $this->invoiceOptions($i) !== []) {
                 continue;
             }
 
@@ -548,6 +556,7 @@ class BankStatementBook extends Component
                     'counterparty_name' => $kept?->counterparty_name,
                     'match_confidence' => $kept?->match_confidence,
                     'match_reason' => $kept?->match_reason,
+                    'match_source' => $kept?->match_source,
                     'reviewed_at' => ! empty($line['reviewed']) ? ($kept?->reviewed_at ?? now()) : null,
                     'kind' => $line['kind'],
                     'account_id' => $isInvoice ? null : ($line['account_id'] ?: null),

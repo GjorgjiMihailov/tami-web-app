@@ -13,6 +13,9 @@ return new class extends Migration
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             // AccountNumber::key — сметка без цртички, IBAN сведен на домашен број.
             $table->string('account_key', 34);
+            // Истата сметка има различна намена по насока (провизија што излегува
+            // наспроти поврат што влегува; позајмица наспроти враќање).
+            $table->string('direction', 3);
             $table->string('name_seen')->nullable();
             $table->foreignId('partner_id')->nullable()->constrained('partners')->nullOnDelete();
             // Конто по основ за ставки од оваа сметка (само аналитичко).
@@ -20,7 +23,7 @@ return new class extends Migration
             $table->timestamp('last_used_at')->nullable();
             $table->timestamps();
 
-            $table->unique(['company_id', 'account_key'], 'bank_cp_company_key_unique');
+            $table->unique(['company_id', 'account_key', 'direction'], 'bank_cp_company_key_dir_unique');
         });
     }
 
