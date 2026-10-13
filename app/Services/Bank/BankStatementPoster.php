@@ -25,6 +25,7 @@ class BankStatementPoster
     public function __construct(
         private readonly SalesInvoiceService $sales,
         private readonly PurchaseInvoiceService $purchases,
+        private readonly BankCounterpartyMemory $memory,
     ) {}
 
     public function post(BankStatement $statement, int $userId): JournalEntry
@@ -57,6 +58,9 @@ class BankStatementPoster
             }
 
             $statement->update(['status' => BankStatement::STATUS_BOOKED, 'journal_entry_id' => $entry->id]);
+
+            // Потврдени податоци: сметка на другата страна → партнер и конто.
+            $this->memory->remember($statement);
 
             return $entry;
         });
