@@ -26,6 +26,8 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
  */
 class Mt940Importer
 {
+    public function __construct(private readonly BankCounterpartyRecognizer $recognizer) {}
+
     /**
      * Фајловите се читаат сите најпрво и се увезуваат по сметка и датум,
      * зашто проверката на ланецот гледа претходниот извод.
@@ -115,6 +117,8 @@ class Mt940Importer
                     'kind' => LineKind::UNCLEAR,
                     'match_confidence' => MatchConfidence::UNCLEAR,
                     'match_reason' => 'Другата страна не е препознаена.',
+                    // Запомнето од претходно книжење по сметка на другата страна.
+                    ...$this->recognizer->attributesFor($company, $line->counterpartyAccount),
                 ]);
             }
 

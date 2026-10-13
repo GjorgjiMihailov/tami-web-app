@@ -6,6 +6,7 @@ use App\Models\BankStatement;
 use App\Models\Company;
 use App\Models\CompanyBankAccount;
 use App\Models\User;
+use App\Services\Bank\BankCounterpartyRecognizer;
 use App\Services\Bank\Mt940Importer;
 use App\Services\Bank\Mt940ImportOutcome;
 use App\Support\Bank\LineDirection;
@@ -223,7 +224,7 @@ class Mt940ImporterTest extends TestCase
 
     public function test_an_unexpected_error_in_one_file_does_not_abort_the_batch(): void
     {
-        $importer = new class extends Mt940Importer
+        $importer = new class(app(BankCounterpartyRecognizer::class)) extends Mt940Importer
         {
             public function import(Company $company, Mt940Statement $parsed, string $name, ?TemporaryUploadedFile $file = null): Mt940ImportOutcome
             {
