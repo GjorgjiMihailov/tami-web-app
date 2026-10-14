@@ -127,15 +127,19 @@ class Mt940Importer
             return $statement;
         });
 
+        $documentWarning = null;
+
         if ($file !== null) {
             try {
-                DocumentStorage::store($statement, $file, 'Bank Statement');
+                $this->storeDocument($statement, $file);
             } catch (\Throwable $e) {
-                // Извод без фајл е ред што не води никаде.
+                // Податоците од изводот се важното, а оригиналниот фајл го има
+                // корисникот. Одбивање на целиот извод поради складиште што не
+                // одговара (на пример истечен пристап до Google Drive) го
+                // блокира работењето; затоа се увезува, со причината наведена.
                 report($e);
-                $statement->delete();
-
-                return Mt940ImportOutcome::rejected($name, 'Фајлот не можеше да се зачува, изводот не е увезен.');
+                $documentWarning = 'Фајлот не е зачуван како документ ('.class_basename($e).': '
+                    .mb_substr($e->getMessage(), 0, 200).'). Изводот е увезен — оригиналниот фајл чувајте го сами.';
             }
         }
 
@@ -146,7 +150,7 @@ class Mt940Importer
             "Извод бр. {$parsed->number} од ".Format::date($statement->statement_date).": {$lineCount} ставки.",
             $statement->id,
             $lineCount,
-            $this->warnings($statement, $parsed, $configured !== null),
+            array_values(array_filter([$documentWarning, ...$this->warnings($statement, $parsed, $configured !== null)])),
         );
     }
 
@@ -197,6 +201,12 @@ class Mt940Importer
 
         return "Сметката {$account} е запишана кај друга фирма: {$name} ({$holder['via']}). "
             .'Ако е грешка, избришете го тој извод (или тргнете ја сметката од профилот на таа фирма) и увезете пак.';
+    }
+
+    /** Преку овој метод може да се замени складирањето (тестови, друг диск). */
+    protected function storeDocument(BankStatement $statement, TemporaryUploadedFile $file): void
+    {
+        DocumentStorage::store($statement, $file, 'Bank Statement');
     }
 
     /** @return list<string> */

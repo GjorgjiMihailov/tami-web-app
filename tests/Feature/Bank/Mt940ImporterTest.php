@@ -315,6 +315,34 @@ class Mt940ImporterTest extends TestCase
         $this->assertTrue($outcome->ok, $outcome->message);
     }
 
+    public function test_a_failing_document_store_still_imports_the_statement_and_says_why(): void
+    {
+        // Google Drive може да не одговара (истечен пристап). Податоците од
+        // изводот се важното — фајлот го има корисникот — па изводот се увезува
+        // со предупредување што ја кажува причината.
+        $importer = new class(app(BankCounterpartyRecognizer::class)) extends Mt940Importer
+        {
+            protected function storeDocument(BankStatement $statement, TemporaryUploadedFile $file): void
+            {
+                throw new \RuntimeException('invalid_grant: Token has been expired or revoked.');
+            }
+        };
+
+        $outcomes = $importer->importMany($this->company, [[
+            'name' => 'a.txt',
+            'text' => Mt940Fixture::statement(['lines' => [['dir' => 'in', 'amount' => '10.00']]]),
+            'file' => \Mockery::mock(TemporaryUploadedFile::class),
+        ]]);
+
+        $this->assertTrue($outcomes[0]->ok, $outcomes[0]->message);
+        $this->assertSame(1, BankStatement::count());
+        $this->assertSame(1, BankStatement::firstOrFail()->lines()->count());
+
+        $warning = collect($outcomes[0]->warnings)->first(fn ($w) => str_contains($w, 'не е зачуван'));
+        $this->assertNotNull($warning);
+        $this->assertStringContainsString('invalid_grant', $warning);
+    }
+
     public function test_a_file_saved_by_windows_is_imported(): void
     {
         $outcomes = app(Mt940Importer::class)->importMany($this->company, [[
