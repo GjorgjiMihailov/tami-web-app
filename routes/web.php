@@ -100,6 +100,10 @@ Route::domain(PortalApp::PORTAL->domain())->group(function () {
     // пренасочуваат.
     Route::view('/', 'marketing.home')->name('home');
 
+    // Јавна страница за приватност (ја бара и Google за OAuth-апликацијата што
+    // го користи Google Drive за документите).
+    Route::view('privacy', 'marketing.privacy')->name('privacy');
+
     Route::get('dashboard', [Dashboard::class, '__invoke'])
         ->middleware(['auth', 'verified'])
         ->name('dashboard');
