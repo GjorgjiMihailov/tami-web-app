@@ -11,6 +11,7 @@ use App\Support\Bank\BankLedgerTotals;
 use App\Support\Bank\StatementSequence;
 use App\Support\BankStatementKind;
 use App\Support\WorkingYear;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -146,6 +147,31 @@ class BankStatementIndex extends Component
         );
 
         $this->reset('mt940Files');
+    }
+
+    /**
+     * Брише извод во нацрт (со ставките и документот). Прокнижен не се брише —
+     * прво се отвора за измена. Нужно кога изводот е увезен кај погрешна фирма.
+     */
+    public function deleteStatement(int $statementId): void
+    {
+        Gate::authorize('view', $this->company);
+        Gate::authorize('create', JournalEntry::class);
+
+        $statement = BankStatement::where('company_id', $this->company->id)->findOrFail($statementId);
+
+        $this->resetErrorBag('delete');
+
+        if ($statement->isBooked()) {
+            $this->addError('delete', 'Прокнижен извод не може да се избрише. Прво отворете го за измена.');
+
+            return;
+        }
+
+        DB::transaction(function () use ($statement) {
+            $statement->documents()->delete();
+            $statement->delete();
+        });
     }
 
     private function numberIsTaken(int $number, string $account, string $date): bool
