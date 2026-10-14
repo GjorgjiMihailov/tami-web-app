@@ -17,7 +17,7 @@ class BankStatementLine extends Model
     protected $fillable = [
         'bank_statement_id', 'position', 'line_date', 'direction', 'amount', 'partner_id',
         'description', 'reference_number', 'purpose_code', 'counterparty_account', 'counterparty_name',
-        'match_confidence', 'match_reason', 'reviewed_at',
+        'match_confidence', 'match_reason', 'match_source', 'reviewed_at',
         'kind', 'account_id',
         'sales_invoice_id', 'purchase_invoice_id', 'sales_invoice_payment_id',
         'purchase_invoice_payment_id', 'created_payment',
