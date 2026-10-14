@@ -87,4 +87,51 @@
             </ul>
         @endif
     </x-card>
+
+    @if ($workedCompanies->isNotEmpty())
+        <x-card class="mt-6">
+            <h2 class="font-semibold text-gray-800">Фирми што ги води сметководител</h2>
+            <p class="text-sm text-gray-500 mb-3">
+                Немаат своја сметка на порталот, па не се во листата погоре. Ако имате две исти фирми,
+                избришете ја онаа без податоци (бришењето е трајно и со неа заминува сето внесено).
+            </p>
+            <ul class="divide-y divide-gray-100">
+                @foreach ($workedCompanies as $company)
+                    @php($counts = $dataCounts[$company->id])
+                    @php($isEmpty = array_sum($counts) === 0)
+                    <li class="py-3" wire:key="worked-{{ $company->id }}">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <a href="{{ route('companies.profile', $company) }}" wire:navigate
+                               class="font-medium text-brand hover:underline">{{ $company->name }}</a>
+                            <x-badge status="active">{{ $company->type->label() }}</x-badge>
+                            @if ($isDuplicate($company))
+                                <x-badge status="pending">Можен дупликат</x-badge>
+                            @endif
+                            <span class="ms-auto text-xs">
+                                <button type="button" wire:click="requestDelete('company', {{ $company->id }})" class="text-red-600 hover:underline">Избриши</button>
+                            </span>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-0.5">
+                            @if ($company->accountants->isEmpty())
+                                Без сметководител.
+                            @else
+                                Сметководител: {{ $company->accountants->pluck('name')->join(', ') }}
+                            @endif
+                        </p>
+                        <p class="text-sm mt-0.5 {{ $isEmpty ? 'text-green-700' : 'text-gray-700' }}">
+                            @if ($isEmpty)
+                                Нема внесени податоци.
+                            @else
+                                Податоци:
+                                {{ $counts['sales'] }} {{ $counts['sales'] === 1 ? 'излезна фактура' : 'излезни фактури' }},
+                                {{ $counts['purchases'] }} {{ $counts['purchases'] === 1 ? 'влезна фактура' : 'влезни фактури' }},
+                                {{ $counts['statements'] }} {{ $counts['statements'] === 1 ? 'извод' : 'изводи' }},
+                                {{ $counts['entries'] }} {{ $counts['entries'] === 1 ? 'налог' : 'налози' }}.
+                            @endif
+                        </p>
+                    </li>
+                @endforeach
+            </ul>
+        </x-card>
+    @endif
 </div>
