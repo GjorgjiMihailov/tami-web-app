@@ -70,8 +70,10 @@ class Mt940Importer
     {
         $year = (int) substr($parsed->date, 0, 4);
 
-        if ($this->belongsElsewhere($company, $parsed->account)) {
-            return Mt940ImportOutcome::rejected($name, "Сметката {$parsed->account} е сметка на друга фирма — изводот не е увезен.");
+        $holder = $this->holderElsewhere($company, $parsed->account);
+
+        if ($holder !== null) {
+            return Mt940ImportOutcome::rejected($name, $this->foreignAccountMessage($parsed->account, $holder));
         }
 
         // Сметката е запишана на фирмата можеби на друг начин (со цртички, како
@@ -148,13 +150,53 @@ class Mt940Importer
         );
     }
 
-    /** Дали истата сметка (во кој било облик) е запишана на друга фирма. */
-    private function belongsElsewhere(Company $company, string $account): bool
+    /**
+     * Каде е запишана истата сметка (во кој било облик) кај друга фирма: во
+     * профилот или во некој извод. Празно = слободна.
+     *
+     * @return array{company_id: int, via: string}|null
+     */
+    private function holderElsewhere(Company $company, string $account): ?array
     {
-        $others = CompanyBankAccount::where('company_id', '!=', $company->id)->pluck('account_number')
-            ->merge(BankStatement::where('company_id', '!=', $company->id)->distinct()->pluck('account'));
+        $profile = CompanyBankAccount::where('company_id', '!=', $company->id)->get(['company_id', 'account_number'])
+            ->first(fn (CompanyBankAccount $row) => AccountNumber::same($row->account_number, $account));
 
-        return $others->contains(fn (string $other) => AccountNumber::same($other, $account));
+        if ($profile !== null) {
+            return ['company_id' => $profile->company_id, 'via' => 'во профилот'];
+        }
+
+        $statement = BankStatement::where('company_id', '!=', $company->id)
+            ->select('company_id', 'account')->distinct()->get()
+            ->first(fn (BankStatement $row) => AccountNumber::same($row->account, $account));
+
+        if ($statement === null) {
+            return null;
+        }
+
+        $number = BankStatement::where('company_id', $statement->company_id)
+            ->where('account', $statement->account)->orderBy('statement_date')->value('number');
+
+        return ['company_id' => $statement->company_id, 'via' => "во извод бр. {$number}"];
+    }
+
+    /**
+     * Името на другата фирма се покажува само ако корисникот ја гледа таа фирма;
+     * инаку сметководител би ги испитувал сметките на туѓи клиенти.
+     *
+     * @param  array{company_id: int, via: string}  $holder
+     */
+    private function foreignAccountMessage(string $account, array $holder): string
+    {
+        $visible = auth()->user()?->visibleCompanies()->whereKey($holder['company_id'])->exists() ?? false;
+
+        if (! $visible) {
+            return "Сметката {$account} е запишана кај друга фирма што не ви е доделена — изводот не е увезен.";
+        }
+
+        $name = Company::find($holder['company_id'])?->name ?? '—';
+
+        return "Сметката {$account} е запишана кај друга фирма: {$name} ({$holder['via']}). "
+            .'Ако е грешка, избришете го тој извод (или тргнете ја сметката од профилот на таа фирма) и увезете пак.';
     }
 
     /** @return list<string> */

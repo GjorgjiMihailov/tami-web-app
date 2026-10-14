@@ -12,14 +12,15 @@ namespace App\Support\Bank;
 final class AccountNumber
 {
     /** Сметка без цртички и празни места; IBAN МК се сведува на домашниот број од 15 знаци. */
-    public static function key(string $value): string
+    public static function key(?string $value): string
     {
-        $key = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $value));
+        // Редот за банка во профилот може да нема број на сметка (колоната е празна).
+        $key = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', (string) $value));
 
         return preg_match('/^MK\d{2}([0-9A-Z]{15})$/', $key, $m) === 1 ? $m[1] : $key;
     }
 
-    public static function same(string $a, string $b): bool
+    public static function same(?string $a, ?string $b): bool
     {
         $key = self::key($a);
 

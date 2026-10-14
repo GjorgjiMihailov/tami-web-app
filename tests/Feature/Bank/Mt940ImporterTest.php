@@ -302,6 +302,19 @@ class Mt940ImporterTest extends TestCase
         $this->assertSame(0, BankStatement::count());
     }
 
+    public function test_a_profile_bank_row_without_an_account_number_does_not_break_the_import(): void
+    {
+        // Ред за банка без број на сметка е возможен (колоната е празна). Ова
+        // порано фрлаше грешка на типот и увозот завршуваше со „неочекувана грешка“.
+        $other = Company::factory()->create();
+        CompanyBankAccount::create(['company_id' => $other->id, 'bank_name' => 'Банка', 'account_number' => null]);
+        CompanyBankAccount::create(['company_id' => $this->company->id, 'bank_name' => 'Банка', 'account_number' => null]);
+
+        $outcome = $this->importOne(['number' => 1, 'lines' => [['dir' => 'in', 'amount' => '10.00']]]);
+
+        $this->assertTrue($outcome->ok, $outcome->message);
+    }
+
     public function test_a_file_saved_by_windows_is_imported(): void
     {
         $outcomes = app(Mt940Importer::class)->importMany($this->company, [[

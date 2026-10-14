@@ -90,6 +90,10 @@
         </x-card>
     @endif
 
+    @error('delete')
+        <div class="mb-4 p-3 rounded bg-red-50 text-red-700 text-sm">{{ $message }}</div>
+    @enderror
+
     @forelse ($groups as $group)
         <x-card class="mb-4">
             <h2 class="font-semibold text-gray-700 mb-2">
@@ -151,6 +155,11 @@
                                         @else
                                             <a href="{{ route('bank-statements.book', [$company, $statement]) }}" class="text-brand hover:underline">Книжи</a>
                                         @endif
+                                        @unless ($statement->isBooked())
+                                            <button type="button" wire:click="deleteStatement({{ $statement->id }})"
+                                                    wire:confirm="Изводот и неговите ставки ќе се избришат. Продолжи?"
+                                                    class="ml-3 text-red-700 hover:underline">Избриши</button>
+                                        @endunless
                                     </td>
                                 @endif
                             </tr>
