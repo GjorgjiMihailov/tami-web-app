@@ -227,6 +227,50 @@ class BankStatementBookTest extends TestCase
             ->assertSet('lines.0.kind', 'account');
     }
 
+    public function test_typing_in_debit_or_credit_sets_direction_and_amount_and_the_totals(): void
+    {
+        $component = $this->screen($this->draft())
+            ->call('addLine')
+            ->set('lines.0.credit', '120.00')
+            ->assertSet('lines.0.direction', 'in')
+            ->assertSet('lines.0.amount', '120.00')
+            ->assertSet('lines.0.debit', '');
+
+        $component->call('addLine')
+            ->set('lines.1.debit', '45.50')
+            ->assertSet('lines.1.direction', 'out')
+            ->assertSet('lines.1.amount', '45.50')
+            ->assertSet('lines.1.credit', '');
+
+        $this->assertSame(['debit' => '45.50', 'credit' => '120.00'], $component->instance()->totals());
+        $component->assertSee('Вкупно должи (исплати)')->assertSee('Вкупно побарува (уплати)');
+
+        // Преместување на износот од едната на другата колона ја менува насоката.
+        $component->set('lines.0.debit', '120.00')
+            ->assertSet('lines.0.direction', 'out')
+            ->assertSet('lines.0.credit', '');
+    }
+
+    public function test_the_columns_follow_a_direction_changed_elsewhere_and_a_posted_line_keeps_its_side(): void
+    {
+        $partner = Partner::factory()->for($this->company)->create();
+
+        $component = $this->screen($this->draft())
+            ->call('addLine')
+            ->set('lines.0.direction', 'out')
+            ->set('lines.0.amount', '30.00')
+            ->assertSet('lines.0.debit', '30.00')
+            ->assertSet('lines.0.credit', '')
+            ->set('lines.0.account_id', $this->account('7400')->id)
+            ->set('lines.0.partner_id', $partner->id)
+            ->set('openingBalance', '100.00')
+            ->set('closingBalance', '70.00')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $component->assertSet('lines.0.debit', '30.00');
+    }
+
     public function test_a_fully_paid_invoice_is_not_offered(): void
     {
         $partner = Partner::factory()->for($this->company)->create();

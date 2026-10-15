@@ -123,7 +123,14 @@
 
     <x-card class="mb-4">
         @php($locked = $statement->isBooked())
-        <div class="overflow-x-auto">
+        {{-- Тастатура: Tab оди од поле до поле; Tab на последното поле од последната ставка додава нова. --}}
+        <div class="overflow-x-auto" x-data="{
+                jepAccounts: @js($accountsForJs),
+                async addAndFocus(n) {
+                    await this.$wire.addLine();
+                    this.$nextTick(() => document.querySelector(`[data-line-first='${n}'] input`)?.focus());
+                },
+            }">
         <table class="min-w-full text-sm">
             <thead>
                 <tr class="text-left text-xs text-gray-500 bg-gray-50">
@@ -133,8 +140,8 @@
                     <th class="py-1 pr-2 w-32">Датум на извод</th>
                     <th class="py-1 pr-2 w-20">Бр. на извод</th>
                     <th class="py-1 pr-2 w-60">Затворање на фактура</th>
-                    <th class="py-1 pr-2 w-24">Вид</th>
-                    <th class="py-1 pr-2 w-28 text-right">Износ</th>
+                    <th class="py-1 pr-2 w-28 text-right">Должи<span class="block font-normal text-gray-400">исплата</span></th>
+                    <th class="py-1 pr-2 w-28 text-right">Побарува<span class="block font-normal text-gray-400">уплата</span></th>
                     <th class="py-1 pr-2 min-w-[16rem]">Опис</th>
                     <th></th>
                 </tr>
@@ -144,7 +151,7 @@
                     @php($saved = ! empty($line['id']) ? $lineMeta->get($line['id']) : null)
                     @php($hasInvoice = $line['kind'] === 'invoice_payment' && ! empty($line['invoice_id']))
                     @php($openInvoices = empty($line['partner_id']) ? [] : $this->invoiceOptions($i))
-                    <tr wire:key="line-{{ $i }}" class="align-top border-t border-gray-100">
+                    <tr wire:key="line-{{ $line['_key'] }}" class="align-top border-t border-gray-100">
                         <td class="py-1 pr-2">
                             <span class="text-gray-500">{{ $i + 1 }}</span>
                             @if ($saved?->match_confidence)
@@ -169,12 +176,22 @@
                                     <span class="block py-1 text-xs text-gray-500">Затворање на фактура</span>
                                 @endif
                             @else
-                                <select wire:model.live="lines.{{ $i }}.account_id" class="border-gray-300 rounded-md text-xs py-1 w-full" @disabled($locked)>
-                                    <option value="">— конто —</option>
-                                    @foreach ($accounts as $account)
-                                        <option value="{{ $account->id }}">{{ $account->code }} {{ $account->name }}</option>
-                                    @endforeach
-                                </select>
+                                @php($selectedAccount = $accounts->firstWhere('id', $line['account_id'] ?? null))
+                                <div class="relative" data-line-first="{{ $i }}"
+                                     x-data="journalEntryPicker(jepAccounts, 'lines.{{ $i }}.account_id', @js($selectedAccount ? $selectedAccount->code.' — '.$selectedAccount->name : ''))"
+                                     @click.outside="open = false">
+                                    <input type="text" x-model="query" @focus="open = true; $event.target.select()" @input="onInput()"
+                                           @keydown="onKeydown($event)" :title="query" autocomplete="off"
+                                           placeholder="Шифра или име…" class="border-gray-300 rounded-md text-xs py-1 w-full" @disabled($locked) />
+                                    <div x-show="open && filtered.length" x-cloak
+                                         class="absolute z-20 bg-white border border-sand rounded-md shadow-md mt-1 max-h-56 overflow-y-auto w-80">
+                                        <template x-for="(item, index) in filtered" :key="item.id">
+                                            <div @click="select(item)" @mouseenter="active = index"
+                                                 :class="index === active ? 'bg-gray-100' : ''"
+                                                 class="px-2 py-1 text-xs cursor-pointer" x-text="item.label"></div>
+                                        </template>
+                                    </div>
+                                </div>
                             @endif
                         </td>
 
@@ -236,21 +253,19 @@
                             @endif
                         </td>
 
+                        {{-- Должи = исплата, Побарува = уплата (од гледна точка на банката и на избраното конто). --}}
                         <td class="py-1 pr-2">
-                            <select wire:model.live="lines.{{ $i }}.direction" class="border-gray-300 rounded-md text-xs py-1 w-full" @disabled($locked)>
-                                @foreach (\App\Support\Bank\LineDirection::cases() as $direction)
-                                    <option value="{{ $direction->value }}">{{ $direction->label() }}</option>
-                                @endforeach
-                            </select>
+                            <x-text-input inputmode="decimal" wire:model.live.debounce.300ms="lines.{{ $i }}.debit" class="w-full text-right text-xs py-1" :disabled="$locked" />
                         </td>
                         <td class="py-1 pr-2">
-                            <x-text-input wire:model.live.debounce.300ms="lines.{{ $i }}.amount" class="w-full text-right text-xs py-1" :disabled="$locked" />
+                            <x-text-input inputmode="decimal" wire:model.live.debounce.300ms="lines.{{ $i }}.credit" class="w-full text-right text-xs py-1" :disabled="$locked" />
                             @error("lines.$i.amount") <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
                         </td>
 
                         {{-- Опис: на крај, ситен фонт --}}
                         <td class="py-1 pr-2">
                             <textarea wire:model="lines.{{ $i }}.description" rows="2" @disabled($locked)
+                                      @if ($loop->last && ! $locked) @keydown.tab="if (! $event.shiftKey) { $event.preventDefault(); addAndFocus({{ $i + 1 }}); }" @endif
                                       class="w-full border-gray-300 rounded-md text-xs text-gray-600 leading-snug py-1"></textarea>
                             @if ($saved !== null && ($saved->counterparty_name || $saved->counterparty_account || $saved->reference_number))
                                 <div class="mt-0.5 text-xs text-gray-500">
@@ -262,7 +277,7 @@
                         </td>
                         <td class="py-1">
                             @unless ($locked)
-                                <button type="button" wire:click="removeLine({{ $i }})" class="text-red-600 text-xs">Бриши</button>
+                                <button type="button" tabindex="-1" wire:click="removeLine({{ $i }})" class="text-red-600 text-xs">Бриши</button>
                             @endunless
                         </td>
                     </tr>
@@ -273,11 +288,21 @@
 
         @unless ($statement->isBooked())
             <button type="button" wire:click="addLine" class="mt-3 text-brand text-sm hover:underline">+ Додај ставка</button>
+            <span class="ml-3 text-xs text-gray-400">Tab оди на следното поле; Tab на последното поле додава нова ставка.</span>
         @endunless
+
+        <p class="mt-2 text-xs text-gray-500">
+            Износот се впишува во колоната на избраното конто: <strong>Должи</strong> за исплата, <strong>Побарува</strong> за уплата.
+            Банката (1000) се книжи автоматски на спротивната страна.
+        </p>
     </x-card>
 
     <x-card class="mb-4">
         @php($diff = $this->difference)
+        <p class="text-sm mb-2 flex flex-wrap gap-x-6 font-semibold text-gray-800">
+            <span>Вкупно должи (исплати): {{ \App\Support\Format::money($this->totals['debit'], '') }}</span>
+            <span>Вкупно побарува (уплати): {{ \App\Support\Format::money($this->totals['credit'], '') }}</span>
+        </p>
         <p class="text-sm">
             Разлика (почетна + движење − крајна):
             @if ($diff === null)

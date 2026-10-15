@@ -24,6 +24,7 @@ use App\Support\Format;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -71,10 +72,14 @@ class BankStatementBook extends Component
         $this->openingBalance = $statement->opening_balance === null ? '' : (string) $statement->opening_balance;
         $this->closingBalance = $statement->closing_balance === null ? '' : (string) $statement->closing_balance;
         $this->lines = $statement->lines->map(fn (BankStatementLine $line) => [
+            '_key' => (string) Str::uuid(),
             'id' => $line->id,
             'line_date' => $line->line_date->toDateString(),
             'direction' => $line->direction->value,
             'amount' => (string) $line->amount,
+            // Изводот е од гледна точка на банката: исплата = Должи, уплата = Побарува.
+            'debit' => $line->direction === LineDirection::OUT ? (string) $line->amount : '',
+            'credit' => $line->direction === LineDirection::IN ? (string) $line->amount : '',
             'partner_id' => $line->partner_id,
             'description' => (string) $line->description,
             'kind' => $line->kind->value,
@@ -94,10 +99,13 @@ class BankStatementBook extends Component
         $last = $this->lines === [] ? null : end($this->lines);
 
         $this->lines[] = [
+            '_key' => (string) Str::uuid(),
             'id' => null,
             'line_date' => $last['line_date'] ?? $this->statement->statement_date->toDateString(),
             'direction' => LineDirection::IN->value,
             'amount' => '',
+            'debit' => '',
+            'credit' => '',
             'partner_id' => null,
             'description' => '',
             'kind' => LineKind::ACCOUNT->value,
@@ -119,6 +127,32 @@ class BankStatementBook extends Component
 
         // Индексите се поместени: отворената проверка би покажала друга ставка.
         $this->stopReview();
+    }
+
+    /**
+     * Вкупно Должи (исплати) и Побарува (уплати) од тоа што е на екранот.
+     *
+     * @return array{debit: string, credit: string}
+     */
+    #[Computed]
+    public function totals(): array
+    {
+        $debit = '0.00';
+        $credit = '0.00';
+
+        foreach ($this->lines as $line) {
+            if (! Bcmath::isPlainNumber((string) $line['amount'])) {
+                continue;
+            }
+
+            if ($line['direction'] === LineDirection::OUT->value) {
+                $debit = bcadd($debit, (string) $line['amount'], 2);
+            } else {
+                $credit = bcadd($credit, (string) $line['amount'], 2);
+            }
+        }
+
+        return ['debit' => $debit, 'credit' => $credit];
     }
 
     /** Разлика во живо: почетна + движење − крајна. */
@@ -242,6 +276,18 @@ class BankStatementBook extends Component
 
     public function updated(string $name, mixed $value): void
     {
+        // Внесот е во Должи/Побарува; насоката и износот се изведуваат од тоа.
+        // Должи (исплата) и Побарува (уплата) се исклучуваат меѓусебно.
+        if (preg_match('/^lines\.(\d+)\.(debit|credit)$/', $name, $m)) {
+            $this->applySide((int) $m[1], $m[2] === 'debit');
+        }
+
+        // Насока или износ сменети на друго место (преглед една по една):
+        // двете колони го следат тоа.
+        if (preg_match('/^lines\.(\d+)\.(direction|amount)$/', $name, $m)) {
+            $this->syncSides((int) $m[1]);
+        }
+
         // Насока, партнер или вид ја менуваат смислата на избраната фактура
         // (излезна наспроти влезна), па изборот се чисти — инаку старото id
         // би покажало на погрешна фактура од другата страна.
@@ -259,6 +305,7 @@ class BankStatementBook extends Component
             foreach ($this->invoiceOptions($index) as $option) {
                 if ($option['id'] === (int) $value && $this->lines[$index]['amount'] === '') {
                     $this->lines[$index]['amount'] = $option['balance'];
+                    $this->syncSides($index);
                 }
             }
         }
@@ -279,6 +326,52 @@ class BankStatementBook extends Component
         if (! $this->reviewing && preg_match('/^lines\.(\d+)\.(kind|account_id|partner_id|invoice_id|existing_payment_id)$/', $name, $m)) {
             $this->lines[(int) $m[1]]['reviewed'] = true;
         }
+    }
+
+    private function applySide(int $index, bool $isDebit): void
+    {
+        if (! isset($this->lines[$index])) {
+            return;
+        }
+
+        $mine = $isDebit ? 'debit' : 'credit';
+        $other = $isDebit ? 'credit' : 'debit';
+        $value = trim((string) ($this->lines[$index][$mine] ?? ''));
+        $this->lines[$index][$mine] = $value;
+
+        if ($value === '') {
+            // Празна колона: износот се чисти само ако е празна и другата.
+            if (($this->lines[$index][$other] ?? '') === '') {
+                $this->lines[$index]['amount'] = '';
+            }
+
+            return;
+        }
+
+        $direction = $isDebit ? LineDirection::OUT->value : LineDirection::IN->value;
+
+        // Насоката ја менува смислата на избраната фактура (излезна/влезна).
+        if ($this->lines[$index]['direction'] !== $direction) {
+            $this->lines[$index]['invoice_id'] = null;
+            $this->lines[$index]['existing_payment_id'] = null;
+        }
+
+        $this->lines[$index]['direction'] = $direction;
+        $this->lines[$index]['amount'] = $value;
+        $this->lines[$index][$other] = '';
+    }
+
+    private function syncSides(int $index): void
+    {
+        if (! isset($this->lines[$index])) {
+            return;
+        }
+
+        $amount = (string) ($this->lines[$index]['amount'] ?? '');
+        $isOut = ($this->lines[$index]['direction'] ?? '') === LineDirection::OUT->value;
+
+        $this->lines[$index]['debit'] = $isOut ? $amount : '';
+        $this->lines[$index]['credit'] = $isOut ? '' : $amount;
     }
 
     public function save(): void
@@ -625,9 +718,12 @@ class BankStatementBook extends Component
 
     public function render()
     {
+        $accounts = Account::where('company_id', $this->company->id)->analytical()->where('is_active', true)->orderBy('code')->get(['id', 'code', 'name']);
+
         return view('livewire.bank.bank-statement-book', [
-            'accounts' => Account::where('company_id', $this->company->id)->analytical()->where('is_active', true)->orderBy('code')->get(['id', 'code', 'name']),
+            'accounts' => $accounts,
             'partners' => Partner::where('company_id', $this->company->id)->orderBy('name')->get(['id', 'name']),
+            'accountsForJs' => $accounts->map(fn ($a) => ['id' => $a->id, 'label' => "{$a->code} — {$a->name}"])->values(),
             'problems' => $this->statement->isBooked() ? [] : StatementControls::problems($this->statement->fresh('lines')),
             'pendingCount' => $this->statement->isBooked() ? 0 : count($this->pendingIndexes()),
             'suggestedCount' => $this->statement->isBooked() ? 0 : count($this->suggestedIndexes()),
