@@ -14,12 +14,14 @@ use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
 use App\Services\Bank\BankCounterpartyRecognizer;
 use App\Services\Bank\BankStatementPoster;
+use App\Services\Posting\PostedInvoiceAccounts;
 use App\Support\Bank\LineDirection;
 use App\Support\Bank\LineKind;
 use App\Support\Bank\MatchConfidence;
 use App\Support\Bank\StatementControls;
 use App\Support\Bcmath;
 use App\Support\Format;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -208,6 +210,36 @@ class BankStatementBook extends Component
             ->all();
     }
 
+    /**
+     * Сметката што ја затвора ставката со избрана фактура: онаму каде што
+     * фактурата го отворила побарувањето/обврската (120/220 за денарски, 121/221
+     * за девизни). Истата сметка ја користи книжењето — овде само се покажува.
+     */
+    public function closingAccount(int $index): ?Account
+    {
+        $line = $this->lines[$index] ?? null;
+
+        if ($line === null || empty($line['invoice_id'])) {
+            return null;
+        }
+
+        $isIn = $line['direction'] === LineDirection::IN->value;
+
+        try {
+            if ($isIn) {
+                $invoice = SalesInvoice::where('company_id', $this->company->id)->find($line['invoice_id']);
+
+                return $invoice === null ? null : PostedInvoiceAccounts::receivable($invoice);
+            }
+
+            $invoice = PurchaseInvoice::where('company_id', $this->company->id)->find($line['invoice_id']);
+
+            return $invoice === null ? null : PostedInvoiceAccounts::payable($invoice);
+        } catch (ModelNotFoundException) {
+            return null;
+        }
+    }
+
     public function updated(string $name, mixed $value): void
     {
         // Насока, партнер или вид ја менуваат смислата на избраната фактура
@@ -229,6 +261,16 @@ class BankStatementBook extends Component
                     $this->lines[$index]['amount'] = $option['balance'];
                 }
             }
+        }
+
+        // Табелата нема посебен избор „Намена“: изборот на конто или на фактура
+        // за затворање сам го одредува видот на ставката.
+        if (preg_match('/^lines\.(\d+)\.account_id$/', $name, $m) && $value) {
+            $this->lines[(int) $m[1]]['kind'] = LineKind::ACCOUNT->value;
+        }
+
+        if (preg_match('/^lines\.(\d+)\.invoice_id$/', $name, $m) && $value) {
+            $this->lines[(int) $m[1]]['kind'] = LineKind::INVOICE_PAYMENT->value;
         }
 
         // Сметководителот сам ја одредил ставката (конто, фактура, партнер, вид):

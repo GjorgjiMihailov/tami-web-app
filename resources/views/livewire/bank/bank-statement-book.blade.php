@@ -122,84 +122,54 @@
     </x-card>
 
     <x-card class="mb-4">
+        @php($locked = $statement->isBooked())
+        <div class="overflow-x-auto">
         <table class="min-w-full text-sm">
             <thead>
-                <tr class="text-left text-gray-500 bg-gray-50">
-                    <th class="py-1 w-6">#</th>
-                    <th class="py-1 w-24">Ознака</th>
-                    <th class="py-1 w-36">Датум</th>
-                    <th class="py-1 w-28">Вид</th>
-                    <th class="py-1 w-32 text-right">Износ</th>
-                    <th class="py-1 w-48">Партнер</th>
-                    <th class="py-1 w-40">Намена</th>
-                    <th class="py-1">Конто / фактура</th>
-                    <th class="py-1">Опис</th>
+                <tr class="text-left text-xs text-gray-500 bg-gray-50">
+                    <th class="py-1 pr-2 w-20">#</th>
+                    <th class="py-1 pr-2 w-56">Конто</th>
+                    <th class="py-1 pr-2 w-48">Партнер (кооперант)</th>
+                    <th class="py-1 pr-2 w-32">Датум на извод</th>
+                    <th class="py-1 pr-2 w-20">Бр. на извод</th>
+                    <th class="py-1 pr-2 w-60">Затворање на фактура</th>
+                    <th class="py-1 pr-2 w-24">Вид</th>
+                    <th class="py-1 pr-2 w-28 text-right">Износ</th>
+                    <th class="py-1 pr-2 min-w-[16rem]">Опис</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($lines as $i => $line)
-                    <tr wire:key="line-{{ $i }}">
-                        <td class="py-1">{{ $i + 1 }}</td>
-                        <td class="py-1">
-                            @php($saved = ! empty($line['id']) ? $lineMeta->get($line['id']) : null)
+                    @php($saved = ! empty($line['id']) ? $lineMeta->get($line['id']) : null)
+                    @php($hasInvoice = $line['kind'] === 'invoice_payment' && ! empty($line['invoice_id']))
+                    @php($openInvoices = empty($line['partner_id']) ? [] : $this->invoiceOptions($i))
+                    <tr wire:key="line-{{ $i }}" class="align-top border-t border-gray-100">
+                        <td class="py-1 pr-2">
+                            <span class="text-gray-500">{{ $i + 1 }}</span>
                             @if ($saved?->match_confidence)
                                 @php($confidence = $saved->match_confidence)
-                                <span class="px-2 py-0.5 rounded text-xs {{ ['sure' => 'bg-green-100 text-green-800', 'check' => 'bg-amber-100 text-amber-800', 'unclear' => 'bg-red-100 text-red-800'][$confidence->value] }}"
+                                <span class="block mt-1 px-1.5 py-0.5 rounded text-xs w-fit {{ ['sure' => 'bg-green-100 text-green-800', 'check' => 'bg-amber-100 text-amber-800', 'unclear' => 'bg-red-100 text-red-800'][$confidence->value] }}"
                                       title="{{ $saved->match_reason }}">{{ $confidence->label() }}</span>
                                 @if ($confidence->needsReview() && ! empty($line['reviewed']))
                                     <span class="block text-xs text-green-700">✓ проверено</span>
                                 @endif
                             @endif
                         </td>
-                        <td><x-text-input type="date" wire:model="lines.{{ $i }}.line_date" class="w-full" :disabled="$statement->isBooked()" /></td>
-                        <td>
-                            <select wire:model.live="lines.{{ $i }}.direction" class="border-gray-300 rounded-md text-sm w-full" @disabled($statement->isBooked())>
-                                @foreach (\App\Support\Bank\LineDirection::cases() as $direction)
-                                    <option value="{{ $direction->value }}">{{ $direction->label() }}</option>
-                                @endforeach
-                            </select>
-                        </td>
-                        <td>
-                            <x-text-input wire:model.live.debounce.300ms="lines.{{ $i }}.amount" class="w-full text-right" :disabled="$statement->isBooked()" />
-                            @error("lines.$i.amount") <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
-                        </td>
-                        <td>
-                            <select wire:model.live="lines.{{ $i }}.partner_id" class="border-gray-300 rounded-md text-sm w-full" @disabled($statement->isBooked())>
-                                <option value="">—</option>
-                                @foreach ($partners as $partner)
-                                    <option value="{{ $partner->id }}">{{ $partner->name }}</option>
-                                @endforeach
-                            </select>
-                        </td>
-                        <td>
-                            <select wire:model.live="lines.{{ $i }}.kind" class="border-gray-300 rounded-md text-sm w-full" @disabled($statement->isBooked())>
-                                @foreach (\App\Support\Bank\LineKind::cases() as $kind)
-                                    <option value="{{ $kind->value }}">{{ $kind->label() }}</option>
-                                @endforeach
-                            </select>
-                        </td>
-                        <td>
-                            @if ($line['kind'] === 'invoice_payment')
-                                <select wire:model.live="lines.{{ $i }}.invoice_id" class="border-gray-300 rounded-md text-sm w-full" @disabled($statement->isBooked())>
-                                    <option value="">— фактура —</option>
-                                    @foreach ($this->invoiceOptions($i) as $option)
-                                        <option value="{{ $option['id'] }}">{{ $option['label'] }}</option>
-                                    @endforeach
-                                </select>
-                                @if (! empty($line['invoice_id']))
-                                    @php($payments = $this->paymentOptions($i))
-                                    @if ($payments !== [])
-                                        <select wire:model.live="lines.{{ $i }}.existing_payment_id" class="mt-1 border-gray-300 rounded-md text-sm w-full" @disabled($statement->isBooked())>
-                                            <option value="">— ново плаќање —</option>
-                                            @foreach ($payments as $payment)
-                                                <option value="{{ $payment['id'] }}">Веќе внесено: {{ $payment['label'] }}</option>
-                                            @endforeach
-                                        </select>
-                                    @endif
+
+                        {{-- Конто --}}
+                        <td class="py-1 pr-2">
+                            @if ($hasInvoice)
+                                @php($closing = $this->closingAccount($i))
+                                @if ($closing !== null)
+                                    <span class="block py-1 text-xs text-gray-700">{{ $closing->code }} {{ $closing->name }}
+                                        <span class="block text-gray-400">затвора на сметката од отворањето (група {{ mb_substr($closing->code, 0, 3) }})</span>
+                                    </span>
+                                @else
+                                    <span class="block py-1 text-xs text-gray-500">Затворање на фактура</span>
                                 @endif
                             @else
-                                <select wire:model="lines.{{ $i }}.account_id" class="border-gray-300 rounded-md text-sm w-full" @disabled($statement->isBooked())>
+                                <select wire:model.live="lines.{{ $i }}.account_id" class="border-gray-300 rounded-md text-xs py-1 w-full" @disabled($locked)>
                                     <option value="">— конто —</option>
                                     @foreach ($accounts as $account)
                                         <option value="{{ $account->id }}">{{ $account->code }} {{ $account->name }}</option>
@@ -207,26 +177,99 @@
                                 </select>
                             @endif
                         </td>
-                        <td>
-                            <x-text-input wire:model="lines.{{ $i }}.description" class="w-full" :disabled="$statement->isBooked()" />
-                            @php($meta = ! empty($line['id']) ? $lineMeta->get($line['id']) : null)
-                            @if ($meta !== null && ($meta->counterparty_name || $meta->counterparty_account || $meta->reference_number))
-                                <div class="mt-1 text-xs text-gray-500">
-                                    {{ $meta->counterparty_name }}
-                                    @if ($meta->counterparty_account) · {{ $meta->counterparty_account }} @endif
-                                    @if ($meta->reference_number) · реф. {{ $meta->reference_number }} @endif
+
+                        {{-- Партнер --}}
+                        <td class="py-1 pr-2">
+                            <select wire:model.live="lines.{{ $i }}.partner_id" class="border-gray-300 rounded-md text-xs py-1 w-full" @disabled($locked)>
+                                <option value="">—</option>
+                                @foreach ($partners as $partner)
+                                    <option value="{{ $partner->id }}">{{ $partner->name }}</option>
+                                @endforeach
+                            </select>
+                        </td>
+
+                        {{-- Датум на изводот --}}
+                        <td class="py-1 pr-2">
+                            <x-text-input type="date" wire:model="lines.{{ $i }}.line_date" class="w-full text-xs py-1" :disabled="$locked" />
+                        </td>
+
+                        {{-- Број на изводот --}}
+                        <td class="py-1 pr-2 text-xs text-gray-600"><span class="block py-1">{{ $statement->number }}</span></td>
+
+                        {{-- Затворање на отворени фактури --}}
+                        <td class="py-1 pr-2">
+                            @if (empty($line['partner_id']))
+                                <span class="block py-1 text-xs text-gray-400">Изберете партнер</span>
+                            @elseif ($openInvoices === [] && empty($line['invoice_id']))
+                                <span class="block py-1 text-xs text-gray-400">Нема отворени фактури</span>
+                            @else
+                                <select wire:model.live="lines.{{ $i }}.invoice_id" class="border-gray-300 rounded-md text-xs py-1 w-full" @disabled($locked)>
+                                    <option value="">— без затворање —</option>
+                                    @foreach ($openInvoices as $option)
+                                        <option value="{{ $option['id'] }}">{{ $option['label'] }}</option>
+                                    @endforeach
+                                </select>
+
+                                @if ($hasInvoice)
+                                    @php($picked = collect($openInvoices)->firstWhere('id', (int) $line['invoice_id']))
+                                    @if ($picked !== null && \App\Support\Bcmath::isPlainNumber((string) $line['amount']))
+                                        @php($rest = bcsub($picked['balance'], (string) $line['amount'], 2))
+                                        @if (bccomp($rest, '0', 2) > 0)
+                                            <span class="block mt-1 text-xs text-amber-700">делумно затворање — останува {{ \App\Support\Format::money($rest, '') }}</span>
+                                        @elseif (bccomp($rest, '0', 2) === 0)
+                                            <span class="block mt-1 text-xs text-green-700">целосно затворање</span>
+                                        @else
+                                            <span class="block mt-1 text-xs text-red-700">износот е поголем од салдото</span>
+                                        @endif
+                                    @endif
+
+                                    @php($payments = $this->paymentOptions($i))
+                                    @if ($payments !== [])
+                                        <select wire:model.live="lines.{{ $i }}.existing_payment_id" class="mt-1 border-gray-300 rounded-md text-xs py-1 w-full" @disabled($locked)>
+                                            <option value="">— ново плаќање —</option>
+                                            @foreach ($payments as $payment)
+                                                <option value="{{ $payment['id'] }}">Веќе внесено: {{ $payment['label'] }}</option>
+                                            @endforeach
+                                        </select>
+                                    @endif
+                                @endif
+                            @endif
+                        </td>
+
+                        <td class="py-1 pr-2">
+                            <select wire:model.live="lines.{{ $i }}.direction" class="border-gray-300 rounded-md text-xs py-1 w-full" @disabled($locked)>
+                                @foreach (\App\Support\Bank\LineDirection::cases() as $direction)
+                                    <option value="{{ $direction->value }}">{{ $direction->label() }}</option>
+                                @endforeach
+                            </select>
+                        </td>
+                        <td class="py-1 pr-2">
+                            <x-text-input wire:model.live.debounce.300ms="lines.{{ $i }}.amount" class="w-full text-right text-xs py-1" :disabled="$locked" />
+                            @error("lines.$i.amount") <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
+                        </td>
+
+                        {{-- Опис: на крај, ситен фонт --}}
+                        <td class="py-1 pr-2">
+                            <textarea wire:model="lines.{{ $i }}.description" rows="2" @disabled($locked)
+                                      class="w-full border-gray-300 rounded-md text-xs text-gray-600 leading-snug py-1"></textarea>
+                            @if ($saved !== null && ($saved->counterparty_name || $saved->counterparty_account || $saved->reference_number))
+                                <div class="mt-0.5 text-xs text-gray-500">
+                                    {{ $saved->counterparty_name }}
+                                    @if ($saved->counterparty_account) · {{ $saved->counterparty_account }} @endif
+                                    @if ($saved->reference_number) · реф. {{ $saved->reference_number }} @endif
                                 </div>
                             @endif
                         </td>
-                        <td>
-                            @unless ($statement->isBooked())
-                                <button type="button" wire:click="removeLine({{ $i }})" class="text-red-600 text-sm">Бриши</button>
+                        <td class="py-1">
+                            @unless ($locked)
+                                <button type="button" wire:click="removeLine({{ $i }})" class="text-red-600 text-xs">Бриши</button>
                             @endunless
                         </td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
+        </div>
 
         @unless ($statement->isBooked())
             <button type="button" wire:click="addLine" class="mt-3 text-brand text-sm hover:underline">+ Додај ставка</button>

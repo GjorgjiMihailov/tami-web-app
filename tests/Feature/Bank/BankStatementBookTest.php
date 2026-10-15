@@ -12,6 +12,7 @@ use App\Models\SalesInvoice;
 use App\Models\SalesInvoicePayment;
 use App\Models\User;
 use App\Services\Invoicing\SalesInvoiceService;
+use App\Services\Posting\PostedInvoiceAccounts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -201,6 +202,29 @@ class BankStatementBookTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame('paid', $invoice->fresh(['lines', 'payments'])->paymentStatus());
+    }
+
+    public function test_choosing_an_invoice_or_an_account_sets_the_kind_and_shows_partial_or_full_closing(): void
+    {
+        $partner = Partner::factory()->for($this->company)->create();
+        $invoice = $this->confirmedInvoice($partner);
+
+        $component = $this->screen($this->draft())
+            ->call('addLine')
+            ->set('lines.0.direction', 'in')
+            ->set('lines.0.partner_id', $partner->id)
+            ->set('lines.0.invoice_id', $invoice->id)
+            ->assertSet('lines.0.kind', 'invoice_payment')
+            ->assertSee('целосно затворање')
+            ->assertSee(PostedInvoiceAccounts::receivable($invoice->fresh())->code.' ');
+
+        $component->set('lines.0.amount', '100.00')
+            ->assertSee('делумно затворање')
+            ->assertSee('останува 200,00');
+
+        $component->set('lines.0.invoice_id', null)
+            ->set('lines.0.account_id', $this->account('7400')->id)
+            ->assertSet('lines.0.kind', 'account');
     }
 
     public function test_a_fully_paid_invoice_is_not_offered(): void
