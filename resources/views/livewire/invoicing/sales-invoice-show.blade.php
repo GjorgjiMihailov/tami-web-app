@@ -172,6 +172,11 @@
         @if (in_array($invoice->status, ['draft', 'confirmed']) && $invoice->payments->isEmpty() && ! $invoice->isEfakturaLocked())
             <button type="button" wire:click="delete" wire:confirm="Да ја избришам трајно оваа фактура? {{ $invoice->status === 'confirmed' ? 'Книжењето и залихата ќе се сторнираат, а записот целосно ќе исчезне.' : '' }} Ова не може да се врати." class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 rounded-full font-semibold text-sm text-red-600 shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 transition sm:ml-auto">Избриши фактура</button>
         @endif
+        @if (in_array($invoice->status, ['draft', 'confirmed']) && $invoice->payments->isEmpty() && $invoice->isEfakturaLocked() && auth()->user()->hasRole('admin'))
+            <button type="button" wire:click="deleteEfakturaAccepted"
+                    wire:confirm="Оваа фактура е прифатена во е-Фактура кај УЈП. Ќе се избрише САМО овде (книжењето и залихата се сторнираат), а документот кај УЈП останува. Користете го само во тест фаза. Да ја избришам трајно?"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 rounded-full font-semibold text-sm text-red-600 shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 transition sm:ml-auto">Избриши (тест е-Фактура)</button>
+        @endif
     </div>
 
     {{-- Блокот го гледа и оној што може само да го запише уредот (клиент без токен), за да го добие советот. --}}

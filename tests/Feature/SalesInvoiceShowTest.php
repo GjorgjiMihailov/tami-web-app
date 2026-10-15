@@ -99,6 +99,55 @@ class SalesInvoiceShowTest extends TestCase
         $this->assertDatabaseHas('sales_invoice_payments', ['sales_invoice_id' => $invoice->id, 'amount' => '100.00']);
     }
 
+    private function lockedInvoice(Company $company): SalesInvoice
+    {
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+        $confirmed = app(\App\Services\Invoicing\SalesInvoiceService::class)->confirm($invoice->fresh(), User::factory()->create()->id);
+        $confirmed->update(['efaktura_status' => 'sent', 'efaktura_ujp_status_code' => '03']);
+
+        return $confirmed->fresh();
+    }
+
+    public function test_admin_can_delete_an_efaktura_accepted_invoice_with_the_special_button(): void
+    {
+        $company = Company::factory()->create();
+        $invoice = $this->lockedInvoice($company);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $component = Livewire::test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->assertSee('Избриши (тест е-Фактура)')
+            ->assertDontSee('Избриши фактура');
+
+        $component->call('delete')->assertHasErrors(['delete']);
+        $this->assertDatabaseHas('sales_invoices', ['id' => $invoice->id]);
+
+        $component->call('deleteEfakturaAccepted')->assertHasNoErrors();
+        $this->assertDatabaseMissing('sales_invoices', ['id' => $invoice->id]);
+    }
+
+    public function test_the_special_delete_is_refused_for_a_non_admin(): void
+    {
+        $company = Company::factory()->create();
+        $invoice = $this->lockedInvoice($company);
+        Role::findOrCreate('accountant');
+        $user = User::factory()->create();
+        $user->assignRole('accountant');
+        $user->assignedCompanies()->attach($company);
+        $this->actingAs($user);
+
+        Livewire::test(SalesInvoiceShow::class, ['company' => $company, 'salesInvoice' => $invoice])
+            ->assertDontSee('Избриши (тест е-Фактура)')
+            ->call('deleteEfakturaAccepted')
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('sales_invoices', ['id' => $invoice->id]);
+    }
+
     public function test_a_payment_amount_with_three_decimals_is_rejected(): void
     {
         // Реценизијата на гранката foreign-currency-invoice најде дека

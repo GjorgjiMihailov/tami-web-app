@@ -162,14 +162,19 @@ class SalesInvoiceService
      * го сторнира книжењето и залихата (истата логика што порано ја правеше
      * „Откажи"), но записот potoa целосно се брише, не остава „откажана"
      * фактура зад себе. Сопственикот изречно го избра ова однесување.
+     *
+     * Фактура прифатена преку е-Фактура е заклучена. Само додека е-Фактура е
+     * во тест фаза, сопственикот може изречно да ја избрише: `$allowEfakturaLocked`
+     * го бара само посебното копче за администратор. Документот кај УЈП
+     * останува — се брише само локалниот запис.
      */
-    public function delete(SalesInvoice $invoice, int $userId): void
+    public function delete(SalesInvoice $invoice, int $userId, bool $allowEfakturaLocked = false): void
     {
         if (! in_array($invoice->status, ['draft', 'confirmed'], true)) {
             throw new InvalidInvoiceStateException("Фактура #{$invoice->id} не може да се избрише од оваа состојба.");
         }
 
-        if ($invoice->isEfakturaLocked()) {
+        if ($invoice->isEfakturaLocked() && ! $allowEfakturaLocked) {
             throw new InvalidInvoiceStateException('Фактура испратена и прифатена преку е-Фактура не може да се брише.');
         }
 

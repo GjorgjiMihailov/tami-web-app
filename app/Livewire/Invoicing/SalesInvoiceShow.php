@@ -73,10 +73,33 @@ class SalesInvoiceShow extends Component
 
     public function delete(SalesInvoiceService $service)
     {
+        return $this->deleteInvoice($service, false);
+    }
+
+    /**
+     * Бришење на фактура прифатена во е-Фактура — само администратор и само за
+     * заклучена фактура (тест фаза на е-Фактура). Останатите фактури одат низ
+     * обичното бришење.
+     */
+    public function deleteEfakturaAccepted(SalesInvoiceService $service)
+    {
+        abort_unless(auth()->user()->hasRole('admin'), 403);
+
+        if (! $this->salesInvoice->isEfakturaLocked()) {
+            $this->addError('delete', 'Фактурата не е прифатена во е-Фактура — користете „Избриши фактура“.');
+
+            return;
+        }
+
+        return $this->deleteInvoice($service, true);
+    }
+
+    private function deleteInvoice(SalesInvoiceService $service, bool $allowEfakturaLocked)
+    {
         Gate::authorize('update', $this->salesInvoice);
 
         try {
-            $service->delete($this->salesInvoice, auth()->id());
+            $service->delete($this->salesInvoice, auth()->id(), $allowEfakturaLocked);
         } catch (InvalidInvoiceStateException $e) {
             $this->addError('delete', $e->getMessage());
 

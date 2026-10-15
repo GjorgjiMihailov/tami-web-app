@@ -256,6 +256,22 @@ class SalesInvoiceServiceTest extends TestCase
         $this->service->delete($confirmed->fresh(), $user->id);
     }
 
+    public function test_an_efaktura_locked_invoice_can_be_deleted_when_explicitly_allowed(): void
+    {
+        $company = Company::factory()->create();
+        $this->seedAccounts($company);
+        $partner = Partner::factory()->for($company)->create();
+        $user = User::factory()->create();
+        $invoice = SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'invoice_date' => '2026-03-01']);
+        $invoice->lines()->create(['description' => 'Line', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0']);
+        $confirmed = $this->service->confirm($invoice->fresh(), $user->id);
+        $confirmed->update(['efaktura_status' => 'sent', 'efaktura_ujp_status_code' => '03']);
+
+        $this->service->delete($confirmed->fresh(), $user->id, true);
+
+        $this->assertDatabaseMissing('sales_invoices', ['id' => $invoice->id]);
+    }
+
     public function test_change_number_updates_the_formatted_number_and_journal_entry_labels(): void
     {
         $company = Company::factory()->create();
