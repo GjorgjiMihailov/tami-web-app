@@ -44,6 +44,7 @@ class SalesInvoice extends Model
         'language', 'currency', 'exchange_rate',
         'efaktura_status', 'efaktura_doc_id', 'efaktura_sent_at', 'efaktura_error',
         'efaktura_ujp_status_code', 'efaktura_ujp_status_name', 'efaktura_pdf_path',
+        'is_imported', 'imported_total',
     ];
 
     /**
@@ -56,6 +57,7 @@ class SalesInvoice extends Model
         'currency' => 'MKD',
         'exchange_rate' => '1.000000',
         'payment_type_code' => 'P12',
+        'is_imported' => false,
     ];
 
     protected function casts(): array
@@ -66,6 +68,8 @@ class SalesInvoice extends Model
             'sent_at' => 'datetime',
             'efaktura_sent_at' => 'datetime',
             'exchange_rate' => 'decimal:6',
+            'is_imported' => 'boolean',
+            'imported_total' => 'decimal:2',
             'language' => InvoiceLanguage::class,
         ];
     }
@@ -103,6 +107,32 @@ class SalesInvoice extends Model
     public function isEfakturaLocked(): bool
     {
         return $this->efaktura_status === 'sent' && $this->isEfakturaAccepted();
+    }
+
+    /** Издадена во друга програма и внесена масовно — не се испраќа до УЈП. */
+    public function isImported(): bool
+    {
+        return (bool) $this->is_imported;
+    }
+
+    /**
+     * Предупредување кога збирот на ставките не е како износот од хартијата.
+     * Нема износ од хартија — нема проверка.
+     */
+    public function importedTotalMismatch(): ?string
+    {
+        if ($this->imported_total === null) {
+            return null;
+        }
+
+        $paper = bcadd((string) $this->imported_total, '0', 2);
+        $ours = $this->grandTotal();
+
+        if (bccomp($paper, $ours, 2) === 0) {
+            return null;
+        }
+
+        return "Збирот на ставките ({$ours}) не е ист со износот од хартијата ({$paper}).";
     }
 
     /** Дали фактурата е во странска валута, т.е. дали курсот воопшто значи нешто. */
