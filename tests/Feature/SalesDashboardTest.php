@@ -201,6 +201,56 @@ class SalesDashboardTest extends TestCase
             ->assertSee('board-link board-link--orange', false);
     }
 
+    /** Класите на елемент пронајден со XPath во излезот на таблата. */
+    private function classesOf(Company $company, string $xpath): ?string
+    {
+        $html = $this->actingAs($this->admin())->get(route('prodazba.dashboard', $company))->getContent();
+
+        $dom = new \DOMDocument;
+        @$dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
+        $node = (new \DOMXPath($dom))->query($xpath)->item(0);
+
+        return $node?->getAttribute('class');
+    }
+
+    private function buttonXpath(string $label): string
+    {
+        return '//a[contains(@class,"board-link")][.//span[normalize-space()="'.$label.'"]]';
+    }
+
+    private function cardXpath(string $title): string
+    {
+        return '//div[@data-board-card][.//span[normalize-space()="'.$title.'"]]';
+    }
+
+    public function test_the_buttons_are_two_across_with_partners_on_its_own_full_row(): void
+    {
+        $company = Company::factory()->create();
+
+        $this->assertStringContainsString('sm:col-span-2', $this->classesOf($company, $this->buttonXpath('Кооперанти')));
+        $this->assertStringNotContainsString('sm:col-span-2', $this->classesOf($company, $this->buttonXpath('Излезни фактури')));
+        $this->assertStringNotContainsString('sm:col-span-2', $this->classesOf($company, $this->buttonXpath('Влезни фактури')));
+        $this->assertStringContainsString('sm:grid-cols-2', $this->classesOf($company, '//div[@data-board="buttons"]'));
+    }
+
+    public function test_the_lists_are_two_across_with_partners_on_its_own_full_row(): void
+    {
+        $company = Company::factory()->create();
+
+        $this->assertStringContainsString('lg:col-span-2', $this->classesOf($company, $this->cardXpath('Кооперанти')));
+        $this->assertStringNotContainsString('lg:col-span-2', $this->classesOf($company, $this->cardXpath('Последни излезни фактури')));
+        $this->assertStringNotContainsString('lg:col-span-2', $this->classesOf($company, $this->cardXpath('Последни влезни фактури')));
+        $this->assertStringContainsString('lg:grid-cols-2', $this->classesOf($company, '//div[@data-board="lists"]'));
+    }
+
+    public function test_a_lone_invoice_list_takes_the_whole_row(): void
+    {
+        // Физичко лице нема влезни фактури — излезните не смеат да остават на пола.
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+
+        $this->assertStringContainsString('lg:col-span-2', $this->classesOf($company, $this->cardXpath('Последни излезни фактури')));
+    }
+
     /** Партнер на оваа фирма, со дадено име. */
     private function partnerNamed(Company $company, string $name): Partner
     {

@@ -4,10 +4,10 @@
 
     {{-- Долго име на променливата намерно: @foreach ја презапишува променливата
          и по јамката, Blade нема опсег на јамка. --}}
-    <div class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div data-board="buttons" class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
         @foreach ($this->links() as $boardLink)
             <a href="{{ $boardLink['url'] }}" wire:navigate
-               class="board-link {{ $boardLink['tone'] }} press"
+               class="board-link {{ $boardLink['tone'] }} press{{ $boardLink['key'] === 'partners' ? ' sm:col-span-2' : '' }}"
                style="--i: {{ $loop->index }}">
                 <span class="board-link__icon" aria-hidden="true">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -22,9 +22,9 @@
         @endforeach
     </div>
 
-    <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div data-board="lists" class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
         @if ($recentSales !== null)
-            <x-card padding="p-0" class="overflow-hidden">
+            <x-card data-board-card padding="p-0" class="overflow-hidden {{ $recentPurchases === null ? 'lg:col-span-2' : '' }}">
                 <div class="flex items-center justify-between px-3 py-2 border-b border-sand">
                     <span class="text-xs font-semibold tracking-wide text-stone">Последни излезни фактури</span>
                     <a href="{{ route('sales-invoices.index', $company) }}" wire:navigate class="text-xs text-brand hover:underline">сите →</a>
@@ -50,7 +50,7 @@
         @endif
 
         @if ($recentPurchases !== null)
-            <x-card padding="p-0" class="overflow-hidden">
+            <x-card data-board-card padding="p-0" class="overflow-hidden {{ $recentSales === null ? 'lg:col-span-2' : '' }}">
                 <div class="flex items-center justify-between px-3 py-2 border-b border-sand">
                     <span class="text-xs font-semibold tracking-wide text-stone">Последни влезни фактури</span>
                     <a href="{{ route('purchase-invoices.index', $company) }}" wire:navigate class="text-xs text-brand hover:underline">сите →</a>
@@ -75,7 +75,7 @@
             </x-card>
         @endif
 
-        <x-card padding="p-0" class="overflow-hidden">
+        <x-card data-board-card padding="p-0" class="overflow-hidden lg:col-span-2">
             <div class="flex items-center justify-between px-3 py-2 border-b border-sand">
                 <span class="text-xs font-semibold tracking-wide text-stone">Кооперанти</span>
                 <a href="{{ route('partners.index', $company) }}" wire:navigate class="text-xs text-brand hover:underline">сите →</a>
