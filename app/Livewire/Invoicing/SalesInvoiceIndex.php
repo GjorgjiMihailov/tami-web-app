@@ -19,6 +19,9 @@ class SalesInvoiceIndex extends Component
 
     public string $statusFilter = '';
 
+    /** 'desc' = од последна кон прва (најнови прво), 'asc' = од прва кон последна. */
+    public string $sortDirection = 'desc';
+
     public function mount(Company $company): void
     {
         Gate::authorize('view', $company);
@@ -31,13 +34,16 @@ class SalesInvoiceIndex extends Component
         // Scoped on invoice_date, not fiscal_year: fiscal_year is NULL until an
         // invoice is confirmed, so filtering on it would hide every draft.
         // For confirmed invoices the two are identical by construction.
+        // Непозната вредност (рачно изменета состојба на клиентот) се враќа на најнови прво.
+        $direction = $this->sortDirection === 'asc' ? 'asc' : 'desc';
+
         $invoices = SalesInvoice::where('company_id', $this->company->id)
             ->whereBetween('invoice_date', [$this->workingYearStart(), $this->workingYearEnd()])
             ->when(in_array($this->statusFilter, ['draft', 'confirmed', 'cancelled'], true), fn ($q) => $q->where('status', $this->statusFilter))
             ->when(in_array($this->statusFilter, ['unpaid', 'overdue', 'paid'], true), fn ($q) => $q->where('status', 'confirmed'))
             ->with(['partner', 'lines', 'payments'])
-            ->orderByDesc('invoice_date')
-            ->orderByDesc('id')
+            ->orderBy('invoice_date', $direction)
+            ->orderBy('id', $direction)
             ->get();
 
         // Платежните филтри зависат од уплатите, па се применуваат врз потврдените.

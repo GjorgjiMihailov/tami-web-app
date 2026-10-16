@@ -55,6 +55,62 @@ class SalesInvoiceIndexTest extends TestCase
             ->assertDontSee('Draft Customer');
     }
 
+    private function threeInvoicesInEntryOrder(Company $company): void
+    {
+        // Истиот датум за првите две: редоследот на внесување (ID) ја решава врската.
+        foreach ([['Прв Купувач', '2026-03-01'], ['Втор Купувач', '2026-03-01'], ['Трет Купувач', '2026-04-01']] as [$name, $date]) {
+            $partner = Partner::factory()->for($company)->create(['name' => $name]);
+            SalesInvoice::factory()->for($company)->create(['partner_id' => $partner->id, 'status' => 'draft', 'invoice_date' => $date, 'due_date' => $date]);
+        }
+    }
+
+    public function test_the_list_defaults_to_newest_first(): void
+    {
+        $company = Company::factory()->create();
+        $this->threeInvoicesInEntryOrder($company);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $component = Livewire::test(SalesInvoiceIndex::class, ['company' => $company])
+            ->assertSet('sortDirection', 'desc');
+
+        $this->assertSame(['Трет Купувач', 'Втор Купувач', 'Прв Купувач'], $this->listedNames($component));
+    }
+
+    private function listedNames($component): array
+    {
+        return $component->viewData('invoices')->map(fn ($invoice) => $invoice->partner->name)->all();
+    }
+
+    public function test_the_order_can_be_flipped_from_first_to_last(): void
+    {
+        $company = Company::factory()->create();
+        $this->threeInvoicesInEntryOrder($company);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $component = Livewire::test(SalesInvoiceIndex::class, ['company' => $company])
+            ->set('sortDirection', 'asc');
+
+        $this->assertSame(['Прв Купувач', 'Втор Купувач', 'Трет Купувач'], $this->listedNames($component));
+    }
+
+    public function test_an_unknown_order_value_falls_back_to_newest_first(): void
+    {
+        $company = Company::factory()->create();
+        $this->threeInvoicesInEntryOrder($company);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $component = Livewire::test(SalesInvoiceIndex::class, ['company' => $company])
+            ->set('sortDirection', 'sideways');
+
+        $this->assertSame(['Трет Купувач', 'Втор Купувач', 'Прв Купувач'], $this->listedNames($component));
+    }
+
     public function test_the_index_page_renders_successfully_over_http(): void
     {
         $company = Company::factory()->create();

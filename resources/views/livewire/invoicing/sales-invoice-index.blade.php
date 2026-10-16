@@ -43,7 +43,7 @@
             </ul>
         </x-card>
     @else
-        <div class="mb-4">
+        <div class="mb-4 flex flex-wrap items-center gap-2">
             <select wire:model.live="statusFilter" aria-label="Филтер" class="border-gray-300 rounded-md text-sm">
                 <option value="">Сите фактури</option>
                 <option value="draft">Нацрти</option>
@@ -52,6 +52,10 @@
                 <option value="overdue">Доспеани</option>
                 <option value="paid">Платени</option>
                 <option value="cancelled">Откажани</option>
+            </select>
+            <select wire:model.live="sortDirection" aria-label="Редослед" class="border-gray-300 rounded-md text-sm">
+                <option value="desc">Од последна кон прва</option>
+                <option value="asc">Од прва кон последна</option>
             </select>
         </div>
 
