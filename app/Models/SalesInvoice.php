@@ -121,7 +121,8 @@ class SalesInvoice extends Model
      */
     public function importedTotalMismatch(): ?string
     {
-        if ($this->imported_total === null) {
+        // Нацрт без ставки сè уште не е внесен — предупредувањето има смисла дури кога има што да се собере.
+        if ($this->imported_total === null || $this->lines->isEmpty()) {
             return null;
         }
 

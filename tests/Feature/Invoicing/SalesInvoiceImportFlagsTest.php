@@ -52,6 +52,13 @@ class SalesInvoiceImportFlagsTest extends TestCase
         $this->assertStringContainsString('1180.00', $message);
     }
 
+    public function test_a_fresh_import_without_lines_does_not_warn_yet(): void
+    {
+        $invoice = SalesInvoice::factory()->create(['is_imported' => true, 'imported_total' => '2360.00']);
+
+        $this->assertNull($invoice->fresh()->importedTotalMismatch());
+    }
+
     public function test_is_imported_reflects_the_flag(): void
     {
         $this->assertTrue($this->invoiceWithOneLine(null)->isImported());
