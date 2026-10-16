@@ -21,6 +21,7 @@ use App\Http\Controllers\ProformaDeliveryNotePdfController;
 use App\Http\Controllers\ProformaPdfController;
 use App\Http\Controllers\SalesInvoiceDeliveryNotePdfController;
 use App\Http\Controllers\SalesInvoicePdfController;
+use App\Http\Controllers\SalesInvoiceImportTemplateController;
 use App\Livewire\Invoicing\ProformaForm;
 use App\Livewire\Invoicing\ProformaIndex;
 use App\Http\Controllers\StockOnHandPdfController;
@@ -221,6 +222,7 @@ Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.
     Route::middleware(['auth', EnsureCompanyModule::class.':material'])->prefix('companies/{company}')->name('sales-invoices.')->group(function () {
         Route::get('/sales-invoices', [SalesInvoiceIndex::class, '__invoke'])->name('index');
         Route::get('/sales-invoices/create', [SalesInvoiceForm::class, '__invoke'])->name('create');
+        Route::get('/sales-invoices/bulk-import/template', [SalesInvoiceImportTemplateController::class, '__invoke'])->name('bulk-import.template');
         Route::get('/sales-invoices/{salesInvoice}/edit', [SalesInvoiceForm::class, '__invoke'])->name('edit');
         Route::get('/sales-invoices/{salesInvoice}', [SalesInvoiceShow::class, '__invoke'])->name('show');
         Route::get('/sales-invoices/{salesInvoice}/pdf', [SalesInvoicePdfController::class, '__invoke'])->name('pdf');
