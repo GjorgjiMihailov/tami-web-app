@@ -26,6 +26,13 @@ class InvoiceSettings extends Component
 
     public string $prefix = '';
 
+    /**
+     * За фирма што доаѓа од друга програма: бројот од кој продолжуваат новите
+     * фактури. Празно = без подлога. Текст, не int — празно поле во Livewire
+     * не смее да се претвори во 0.
+     */
+    public string $nextNumber = '';
+
     /** Префикс на профактурата — годината, разделникот и должината се исти како кај фактурата. */
     public string $proformaPrefix = 'ПФ-';
 
@@ -45,6 +52,7 @@ class InvoiceSettings extends Component
         $this->separator = $company->invoice_number_separator === '' ? 'none' : (string) $company->invoice_number_separator;
         $this->padding = (int) $company->invoice_number_padding;
         $this->prefix = (string) ($company->invoice_number_prefix ?? '');
+        $this->nextNumber = (string) ($company->invoice_number_next ?? '');
         $this->proformaPrefix = (string) ($company->proforma_number_prefix ?? '');
         $this->deliveryNotePrefix = (string) ($company->delivery_note_number_prefix ?? '');
     }
@@ -60,6 +68,7 @@ class InvoiceSettings extends Component
             'separator' => 'required|string|in:/,-,.,none',
             'padding' => 'required|integer|min:1|max:6',
             'prefix' => 'nullable|string|max:10',
+            'nextNumber' => 'nullable|integer|min:1|max:999999',
             'proformaPrefix' => 'nullable|string|max:10',
             'deliveryNotePrefix' => 'nullable|string|max:10',
         ]);
@@ -71,6 +80,7 @@ class InvoiceSettings extends Component
             'invoice_number_separator' => $this->separatorValue(),
             'invoice_number_padding' => $validated['padding'],
             'invoice_number_prefix' => $validated['prefix'] !== '' ? $validated['prefix'] : null,
+            'invoice_number_next' => filled($validated['nextNumber']) ? (int) $validated['nextNumber'] : null,
             'proforma_number_prefix' => $validated['proformaPrefix'] !== '' ? $validated['proformaPrefix'] : null,
             'delivery_note_number_prefix' => $validated['deliveryNotePrefix'] !== '' ? $validated['deliveryNotePrefix'] : null,
         ]);

@@ -60,6 +60,13 @@
             </div>
 
             <div>
+                <x-input-label for="nextNumber" value="Следен број (незадолжително)" />
+                <x-text-input id="nextNumber" wire:model.live="nextNumber" inputmode="numeric" class="w-full md:w-1/2" placeholder="пр. 201" />
+                <p class="text-xs text-gray-500 mt-1">За фирма што ја преземате од друга програма: бројот од кој продолжуваат новите фактури. Бројачот никогаш не оди под него. Оставете празно ако не ви треба.</p>
+                @error('nextNumber') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+            </div>
+
+            <div>
                 <x-input-label for="proformaPrefix" value="Префикс на профактурата (незадолжително)" />
                 <x-text-input id="proformaPrefix" wire:model.live="proformaPrefix" class="w-full md:w-1/2" placeholder="пр. ПФ-" />
                 <p class="text-xs text-gray-500 mt-1">Профактурите имаат своја серија, а годината, разделникот и должината се истите како кај фактурите.</p>

@@ -91,7 +91,11 @@ class SalesInvoiceService
                 }
 
                 $maxNumber = $numberQuery->lockForUpdate()->max('invoice_number');
-                $invoiceNumber = ($maxNumber ?? 0) + 1;
+                // „Следен број" е само подлога: фирма што доаѓа од друга програма
+                // продолжува од нејзиниот последен број, а бројачот никогаш не се
+                // враќа наназад под постоечка фактура.
+                $floor = max(0, ((int) $invoice->company->invoice_number_next) - 1);
+                $invoiceNumber = max((int) ($maxNumber ?? 0), $floor) + 1;
                 $formattedNumber = InvoiceNumber::format($invoice->company, $fiscalYear, $invoiceNumber);
 
                 // Скенирана фактура носи `invoice_number = null`, па бројачот
