@@ -6,6 +6,29 @@ document.addEventListener('alpine:init', () => {
         open: false,
         active: 0,
 
+        // Патеката до полето во Livewire. Ако елементот носи data-wire-model, се чита
+        // од него при секој избор: редовите се префрлаат кога се брише ставка, а
+        // почетната патека од x-data тогаш би покажувала на погрешен ред.
+        path() {
+            return this.$root.dataset.wireModel || wireModel;
+        },
+
+        // Текстот се усогласува кога серверот ќе го смени избраниот запис
+        // (data-label), освен додека корисникот пишува во полето.
+        init() {
+            if (this.$root.dataset.label === undefined) {
+                return;
+            }
+            new MutationObserver(() => {
+                const label = this.$root.dataset.label ?? '';
+                const typing = this.$root.contains(document.activeElement) && this.query !== this.selectedLabel;
+                if (label !== this.selectedLabel && ! typing) {
+                    this.query = label;
+                    this.selectedLabel = label;
+                }
+            }).observe(this.$root, { attributes: true, attributeFilter: ['data-label'] });
+        },
+
         // Најнапред шифри што почнуваат со впишаното (пишување бројки), потоа
         // останатите што го содржат во шифрата или името.
         get filtered() {
@@ -30,7 +53,7 @@ document.addEventListener('alpine:init', () => {
             this.query = item.label;
             this.selectedLabel = item.label;
             this.open = false;
-            this.$wire.set(wireModel, item.id);
+            this.$wire.set(this.path(), item.id);
         },
 
         onInput() {
@@ -38,7 +61,7 @@ document.addEventListener('alpine:init', () => {
             this.active = 0;
             if (this.selectedLabel !== '' && this.query !== this.selectedLabel) {
                 this.selectedLabel = '';
-                this.$wire.set(wireModel, '', false);
+                this.$wire.set(this.path(), '', false);
             }
         },
 

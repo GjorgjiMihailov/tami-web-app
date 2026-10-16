@@ -720,9 +720,12 @@ class BankStatementBook extends Component
     {
         $accounts = Account::where('company_id', $this->company->id)->analytical()->where('is_active', true)->orderBy('code')->get(['id', 'code', 'name']);
 
+        $partners = Partner::where('company_id', $this->company->id)->orderBy('name')->get(['id', 'name']);
+
         return view('livewire.bank.bank-statement-book', [
             'accounts' => $accounts,
-            'partners' => Partner::where('company_id', $this->company->id)->orderBy('name')->get(['id', 'name']),
+            'partners' => $partners,
+            'partnersForJs' => $partners->map(fn ($p) => ['id' => $p->id, 'label' => $p->name])->values(),
             'accountsForJs' => $accounts->map(fn ($a) => ['id' => $a->id, 'label' => "{$a->code} — {$a->name}"])->values(),
             'problems' => $this->statement->isBooked() ? [] : StatementControls::problems($this->statement->fresh('lines')),
             'pendingCount' => $this->statement->isBooked() ? 0 : count($this->pendingIndexes()),

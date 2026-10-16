@@ -55,14 +55,24 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="w-64">
+                <div class="w-64" x-data="{ jepPartners: @js($partnersForJs) }">
                     <x-input-label value="Партнер" />
-                    <select wire:model.live="lines.{{ $i }}.partner_id" class="border-gray-300 rounded-md text-sm w-full">
-                        <option value="">—</option>
-                        @foreach ($partners as $partner)
-                            <option value="{{ $partner->id }}">{{ $partner->name }}</option>
-                        @endforeach
-                    </select>
+                    @php($reviewPartner = $partners->firstWhere('id', $line['partner_id'] ?? null))
+                    <div class="relative" x-data="journalEntryPicker(jepPartners, 'lines.{{ $i }}.partner_id', @js($reviewPartner?->name ?? ''))"
+                         data-wire-model="lines.{{ $i }}.partner_id" data-label="{{ $reviewPartner?->name ?? '' }}"
+                         @click.outside="open = false">
+                        <input type="text" x-model="query" @focus="open = true; $event.target.select()" @input="onInput()"
+                               @keydown="onKeydown($event)" :title="query" autocomplete="off"
+                               placeholder="Почни да пишуваш…" class="border-gray-300 rounded-md text-sm w-full" />
+                        <div x-show="open && filtered.length" x-cloak
+                             class="absolute z-20 bg-white border border-sand rounded-md shadow-md mt-1 max-h-56 overflow-y-auto w-full">
+                            <template x-for="(item, index) in filtered" :key="item.id">
+                                <div @click="select(item)" @mouseenter="active = index"
+                                     :class="index === active ? 'bg-gray-100' : ''"
+                                     class="px-2 py-1 text-sm cursor-pointer" x-text="item.label"></div>
+                            </template>
+                        </div>
+                    </div>
                 </div>
                 <div class="w-72">
                     @if ($line['kind'] === 'invoice_payment')
@@ -126,6 +136,7 @@
         {{-- Тастатура: Tab оди од поле до поле; Tab на последното поле од последната ставка додава нова. --}}
         <div class="overflow-x-auto" x-data="{
                 jepAccounts: @js($accountsForJs),
+                jepPartners: @js($partnersForJs),
                 async addAndFocus(n) {
                     await this.$wire.addLine();
                     this.$nextTick(() => document.querySelector(`[data-line-first='${n}'] input`)?.focus());
@@ -197,12 +208,22 @@
 
                         {{-- Партнер --}}
                         <td class="py-1 pr-2">
-                            <select wire:model.live="lines.{{ $i }}.partner_id" class="border-gray-300 rounded-md text-xs py-1 w-full" @disabled($locked)>
-                                <option value="">—</option>
-                                @foreach ($partners as $partner)
-                                    <option value="{{ $partner->id }}">{{ $partner->name }}</option>
-                                @endforeach
-                            </select>
+                            @php($tablePartner = $partners->firstWhere('id', $line['partner_id'] ?? null))
+                            <div class="relative" x-data="journalEntryPicker(jepPartners, 'lines.{{ $i }}.partner_id', @js($tablePartner?->name ?? ''))"
+                                 data-wire-model="lines.{{ $i }}.partner_id" data-label="{{ $tablePartner?->name ?? '' }}"
+                                 @click.outside="open = false">
+                                <input type="text" x-model="query" @focus="open = true; $event.target.select()" @input="onInput()"
+                                       @keydown="onKeydown($event)" :title="query" autocomplete="off"
+                                       placeholder="Партнер…" class="border-gray-300 rounded-md text-xs py-1 w-full" @disabled($locked) />
+                                <div x-show="open && filtered.length" x-cloak
+                                     class="absolute z-20 bg-white border border-sand rounded-md shadow-md mt-1 max-h-56 overflow-y-auto w-80">
+                                    <template x-for="(item, index) in filtered" :key="item.id">
+                                        <div @click="select(item)" @mouseenter="active = index"
+                                             :class="index === active ? 'bg-gray-100' : ''"
+                                             class="px-2 py-1 text-xs cursor-pointer" x-text="item.label"></div>
+                                    </template>
+                                </div>
+                            </div>
                         </td>
 
                         {{-- Датум на изводот --}}
