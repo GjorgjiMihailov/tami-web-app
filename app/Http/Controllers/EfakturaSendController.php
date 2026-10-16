@@ -84,6 +84,8 @@ class EfakturaSendController extends Controller
         abort_if($salesInvoice->company_id !== $company->id, 404);
         Gate::authorize('signEfaktura', $company);
         abort_unless($salesInvoice->status === 'confirmed', 422, 'Само потврдени фактури можат да се потпишат и испратат.');
+        // Издадена е во старата програма. Повторно на УЈП значи двојна фактура.
+        abort_if($salesInvoice->isImported(), 422, 'Фактурата е увезена од друга програма и не се испраќа до УЈП.');
         // УЈП прима денарски износи. Девизна фактура таму нема што да бара, а
         // погрешно испратен износ е поскап од заклучено копче.
         abort_if(

@@ -68,6 +68,10 @@
         @endif
     </p>
 
+    @if ($paperMismatch = $invoice->importedTotalMismatch())
+        <div class="mb-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900">{{ $paperMismatch }}</div>
+    @endif
+
     @error('confirm') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
     @error('cancel') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
 
@@ -180,7 +184,11 @@
     </div>
 
     {{-- Блокот го гледа и оној што може само да го запише уредот (клиент без токен), за да го добие советот. --}}
-    @if ($invoice->status === 'confirmed' && auth()->user()->can('workWithEfaktura', $company))
+    @if ($invoice->isImported())
+        <p class="mt-4 mb-4 text-sm text-gray-500">Увезена од друга програма — не се испраќа до УЈП.</p>
+    @endif
+
+    @if ($invoice->status === 'confirmed' && ! $invoice->isImported() && auth()->user()->can('workWithEfaktura', $company))
         <div class="mt-4 mb-4 border-t border-b pt-4 pb-4" x-data="efakturaSend()">
             @if ($invoice->efaktura_status === 'sent')
                 <x-badge status="active">Испратена до УЈП ({{ optional($invoice->efaktura_sent_at)->format('d.m.Y H:i') }})</x-badge>

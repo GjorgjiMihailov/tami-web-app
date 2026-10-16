@@ -17,6 +17,10 @@
         {{ $salesInvoice ? 'Измени нацрт фактура' : 'Нова излезна фактура' }} — {{ $company->name }}
     </h1>
 
+    @if ($salesInvoice && ($paperMismatch = $salesInvoice->importedTotalMismatch()))
+        <div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900">{{ $paperMismatch }}</div>
+    @endif
+
     @if ($this->canReadScans() && ! $salesInvoice)
         <x-card class="mb-4">
             <x-input-label for="scanFile" value="Прикачи скенирана фактура" />
