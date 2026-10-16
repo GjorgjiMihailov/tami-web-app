@@ -96,6 +96,57 @@ class BankStatementPosterTest extends TestCase
         $this->assertSame($entry->id, $fresh->journal_entry_id);
     }
 
+    public function test_account_1000_is_one_line_per_side_for_the_whole_entry(): void
+    {
+        $partnerA = Partner::factory()->for($this->company)->create();
+        $partnerB = Partner::factory()->for($this->company)->create();
+        $statement = $this->statement('1000.00', '1650.50');
+        $this->line($statement, LineDirection::IN, '500.00', ['account_id' => $this->account('7400')->id, 'partner_id' => $partnerA->id]);
+        $this->line($statement, LineDirection::IN, '300.25', ['account_id' => $this->account('7400')->id, 'partner_id' => $partnerB->id]);
+        $this->line($statement, LineDirection::IN, '100.00', ['account_id' => $this->account('7400')->id]);
+        $this->line($statement, LineDirection::OUT, '200.00', ['account_id' => $this->account('4200')->id]);
+        $this->line($statement, LineDirection::OUT, '49.75', ['account_id' => $this->account('4200')->id]);
+
+        $entry = $this->poster()->post($statement, $this->user->id)->load('lines.account');
+
+        // 5 спротивни ставки (по ред од изводот) + една 1000 за уплатите + една 1000 за исплатите.
+        $this->assertCount(7, $entry->lines);
+        $bankLines = $entry->lines->where('account.code', '1000');
+        $this->assertCount(2, $bankLines);
+        $this->assertSame('900.25', (string) $bankLines->firstWhere('debit', '900.25')->debit);
+        $this->assertSame('249.75', (string) $bankLines->firstWhere('credit', '249.75')->credit);
+
+        // Спротивните ставки го задржуваат партнерот од редот.
+        $counters = $entry->lines->where('account.code', '7400');
+        $this->assertSame([$partnerA->id, $partnerB->id], $counters->pluck('partner_id')->filter()->values()->all());
+        $this->assertSame('0.00', bcsub((string) $entry->lines->sum('debit'), (string) $entry->lines->sum('credit'), 2));
+    }
+
+    public function test_a_statement_with_only_receipts_has_a_single_1000_line(): void
+    {
+        $statement = $this->statement('0.00', '700.00');
+        $this->line($statement, LineDirection::IN, '400.00', ['account_id' => $this->account('7400')->id]);
+        $this->line($statement, LineDirection::IN, '300.00', ['account_id' => $this->account('7400')->id]);
+
+        $entry = $this->poster()->post($statement, $this->user->id)->load('lines.account');
+
+        $this->assertCount(1, $entry->lines->where('account.code', '1000'));
+        $this->assertSame('700.00', (string) $entry->lines->firstWhere('account.code', '1000')->debit);
+    }
+
+    public function test_reopening_a_statement_removes_the_combined_entry(): void
+    {
+        $statement = $this->statement('0.00', '700.00');
+        $this->line($statement, LineDirection::IN, '400.00', ['account_id' => $this->account('7400')->id]);
+        $this->line($statement, LineDirection::IN, '300.00', ['account_id' => $this->account('7400')->id]);
+        $entry = $this->poster()->post($statement, $this->user->id);
+
+        $this->poster()->reopen($statement->fresh());
+
+        $this->assertFalse($statement->fresh()->isBooked());
+        $this->assertNull(JournalEntry::find($entry->id));
+    }
+
     public function test_an_unbalanced_statement_is_refused_and_posts_nothing(): void
     {
         $statement = $this->statement('1000.00', '9999.00');

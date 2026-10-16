@@ -53,9 +53,26 @@ class BankStatementPoster
                 'created_by' => $userId,
             ]);
 
+            // Конто 1000 е по една ставка за цел налог (по страна), не по ред од изводот:
+            // спротивните ставки го носат партнерот и описот на секој ред.
+            $bankIn = '0';
+            $bankOut = '0';
+
             foreach ($statement->lines as $line) {
-                $this->postLine($statement, $entry, $bank, $line, $userId);
+                $posted = $this->postLine($statement, $entry, $line, $userId);
+
+                if ($posted === null) {
+                    continue;
+                }
+
+                if ($posted['isIn']) {
+                    $bankIn = bcadd($bankIn, $posted['amount'], 2);
+                } else {
+                    $bankOut = bcadd($bankOut, $posted['amount'], 2);
+                }
             }
+
+            $this->postBankTotals($statement, $entry, $bank, $bankIn, $bankOut);
 
             $statement->update(['status' => BankStatement::STATUS_BOOKED, 'journal_entry_id' => $entry->id]);
 
@@ -108,7 +125,8 @@ class BankStatementPoster
         });
     }
 
-    private function postLine(BankStatement $statement, JournalEntry $entry, Account $bank, BankStatementLine $line, int $userId): void
+    /** @return array{isIn: bool, amount: string}|null износот за 1000, или null ако редот не се книжи овде */
+    private function postLine(BankStatement $statement, JournalEntry $entry, BankStatementLine $line, int $userId): ?array
     {
         $isIn = $line->direction === LineDirection::IN;
         $partnerId = $line->partner_id;
@@ -118,7 +136,7 @@ class BankStatementPoster
 
             if ($existing !== null) {
                 // Веќе книжено со свој налог (на 1000) — второ книжење би го удвоило.
-                return;
+                return null;
             }
 
             // Свеж запис: фактурата закачена на ставката е веќе вчитана од
@@ -153,8 +171,23 @@ class BankStatementPoster
         $amount = (string) $line->amount;
         $common = ['partner_id' => $partnerId, 'description' => $label, 'line_date' => $line->line_date];
 
-        $entry->lines()->create($common + ['account_id' => $bank->id, 'debit' => $isIn ? $amount : '0', 'credit' => $isIn ? '0' : $amount]);
         $entry->lines()->create($common + ['account_id' => $counter->id, 'debit' => $isIn ? '0' : $amount, 'credit' => $isIn ? $amount : '0']);
+
+        return ['isIn' => $isIn, 'amount' => $amount];
+    }
+
+    /** Една ставка на 1000 за уплатите (должи) и една за исплатите (побарува). */
+    private function postBankTotals(BankStatement $statement, JournalEntry $entry, Account $bank, string $in, string $out): void
+    {
+        $common = ['account_id' => $bank->id, 'line_date' => $statement->statement_date];
+
+        if (bccomp($in, '0', 2) > 0) {
+            $entry->lines()->create($common + ['description' => "Извод бр. {$statement->number} — вкупно уплати", 'debit' => $in, 'credit' => '0']);
+        }
+
+        if (bccomp($out, '0', 2) > 0) {
+            $entry->lines()->create($common + ['description' => "Извод бр. {$statement->number} — вкупно исплати", 'debit' => '0', 'credit' => $out]);
+        }
     }
 
     private function account(BankStatement $statement, string $code): Account
