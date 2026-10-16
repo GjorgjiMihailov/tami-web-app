@@ -8,6 +8,9 @@
                         <span x-show="busy" x-text="statusText"></span>
                     </button>
                 @endif
+                @if (auth()->user()->hasAnyRole(['admin', 'accountant']))
+                    <a href="{{ route('sales-invoices.bulk-import', $company) }}" class="border border-brand text-brand px-3 py-1.5 rounded-md text-sm">Масовен внес</a>
+                @endif
                 <a href="{{ route('sales-invoices.create', $company) }}" class="bg-brand text-white px-3 py-1.5 rounded-md text-sm">+ Нова фактура</a>
         </div>
     </div>

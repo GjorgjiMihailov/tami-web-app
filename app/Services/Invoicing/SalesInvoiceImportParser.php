@@ -149,7 +149,7 @@ class SalesInvoiceImportParser
         }
     }
 
-    private static function normalizeName(string $name): string
+    public static function normalizeName(string $name): string
     {
         return mb_strtolower(trim((string) preg_replace('/\s+/u', ' ', $name)));
     }

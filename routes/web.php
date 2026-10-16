@@ -72,6 +72,7 @@ use App\Livewire\Invoicing\PurchaseInvoiceForm;
 use App\Livewire\Invoicing\PurchaseInvoiceIndex;
 use App\Livewire\Invoicing\PurchaseInvoiceShow;
 use App\Livewire\Invoicing\SalesInvoiceForm;
+use App\Livewire\Invoicing\SalesInvoiceBulkImport;
 use App\Livewire\Invoicing\SalesInvoiceIndex;
 use App\Livewire\Invoicing\SalesInvoiceShow;
 use App\Livewire\OfficeUsers;
@@ -222,6 +223,7 @@ Route::domain(PortalApp::PRODAZBA->domain())->middleware(EnsureAppAccess::class.
     Route::middleware(['auth', EnsureCompanyModule::class.':material'])->prefix('companies/{company}')->name('sales-invoices.')->group(function () {
         Route::get('/sales-invoices', [SalesInvoiceIndex::class, '__invoke'])->name('index');
         Route::get('/sales-invoices/create', [SalesInvoiceForm::class, '__invoke'])->name('create');
+        Route::get('/sales-invoices/bulk-import', [SalesInvoiceBulkImport::class, '__invoke'])->name('bulk-import');
         Route::get('/sales-invoices/bulk-import/template', [SalesInvoiceImportTemplateController::class, '__invoke'])->name('bulk-import.template');
         Route::get('/sales-invoices/{salesInvoice}/edit', [SalesInvoiceForm::class, '__invoke'])->name('edit');
         Route::get('/sales-invoices/{salesInvoice}', [SalesInvoiceShow::class, '__invoke'])->name('show');
