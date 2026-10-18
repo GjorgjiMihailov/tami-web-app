@@ -3,8 +3,10 @@
 namespace App\Livewire;
 
 use App\Models\Company;
+use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Services\PartnerInsights;
+use App\Support\CompanyModule;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -78,6 +80,12 @@ class PartnerIndex extends Component
             ? Partner::where('company_id', $this->company->id)->with(['bankAccounts', 'contacts'])->find($this->selectedId)
             : null;
 
+        // Банкарските изводи ги гледа само сметководството, и само таму каде
+        // фирмата го користи Финансии (изводите не важат за физичко лице).
+        $canSeeBank = $this->company->type->isLegal()
+            && $this->company->usesModule(CompanyModule::FINANCE)
+            && Gate::allows('create', JournalEntry::class);
+
         return view('livewire.partner-index', [
             'partners' => $partners,
             'hasPartners' => Partner::where('company_id', $this->company->id)->exists(),
@@ -93,6 +101,8 @@ class PartnerIndex extends Component
             'salesPayments' => $selected && $tab === 'transactions' ? PartnerInsights::salesPayments($selected) : collect(),
             'purchaseInvoices' => $selected && $tab === 'transactions' ? PartnerInsights::purchaseInvoices($selected) : collect(),
             'purchasePayments' => $selected && $tab === 'transactions' ? PartnerInsights::purchasePayments($selected) : collect(),
+            'canSeeBank' => $canSeeBank,
+            'unclosedLines' => $selected && $tab === 'transactions' && $canSeeBank ? PartnerInsights::unclosedBankLines($selected) : collect(),
             'statement' => $selected && $tab === 'statement' ? PartnerInsights::statement($selected, $period) : null,
         ]);
     }

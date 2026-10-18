@@ -314,6 +314,34 @@
                                         </table>
                                     </div>
                                 </div>
+
+                                @if ($canSeeBank)
+                                    <div class="{{ $section }}">
+                                        <button type="button" class="{{ $head }}" @click="toggle('unclosed')">
+                                            <span>Незатворени уплати и исплати ({{ $unclosedLines->count() }})</span>
+                                            <span x-text="shown('unclosed') ? '−' : '+'"></span>
+                                        </button>
+                                        <div x-show="shown('unclosed')" x-cloak class="px-4 pb-4">
+                                            <p class="text-xs text-gray-500 mb-2">Банкарски ставки за овој кооперант што не се врзани за ниту една фактура.</p>
+                                            <table class="min-w-full text-sm">
+                                                <thead><tr><th class="{{ $th }}">Датум</th><th class="{{ $th }}">Вид</th><th class="{{ $th }}">Опис</th><th class="{{ $th }}">Извод</th><th class="{{ $th }} text-right">Износ</th></tr></thead>
+                                                <tbody class="divide-y divide-gray-100">
+                                                    @forelse ($unclosedLines as $line)
+                                                        <tr class="hover:bg-orange-50">
+                                                            <td class="py-1 px-3 whitespace-nowrap">{{ \App\Support\Format::date($line->line_date) }}</td>
+                                                            <td class="py-1 px-3">{{ $line->direction->label() }}</td>
+                                                            <td class="py-1 px-3">{{ $line->description }}</td>
+                                                            <td class="py-1 px-3 whitespace-nowrap">бр. {{ $line->bankStatement->number }}{{ $line->bankStatement->isBooked() ? '' : ' (нацрт)' }}</td>
+                                                            <td class="py-1 px-3 text-right whitespace-nowrap">{{ \App\Support\Format::money($line->signedAmount(), '') }}</td>
+                                                        </tr>
+                                                    @empty
+                                                        <tr><td colspan="5" class="py-3 px-3 text-gray-500">Нема незатворени уплати или исплати.</td></tr>
+                                                    @endforelse
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
 
                         {{-- ИЗВОД --}}

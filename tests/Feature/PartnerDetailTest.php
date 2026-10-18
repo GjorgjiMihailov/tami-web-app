@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Livewire\Invoicing\SalesInvoiceForm;
 use App\Livewire\PartnerIndex;
+use App\Models\BankStatement;
+use App\Models\BankStatementLine;
 use App\Models\Company;
 use App\Models\Partner;
 use App\Models\PurchaseInvoice;
@@ -269,6 +271,47 @@ class PartnerDetailTest extends TestCase
             ->set('tab', 'transactions')
             ->assertDontSee('ТУЃА-ФАКТУРА')
             ->assertSee('Нема излезни фактури.');
+    }
+
+    public function test_transactions_list_unclosed_bank_lines_of_this_partner_only(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $other = Partner::factory()->for($company)->create();
+        $statement = BankStatement::factory()->for($company)->create(['number' => 41]);
+        $sale = $this->invoice($company, $partner, '2026-03-01');
+
+        BankStatementLine::factory()->create(['bank_statement_id' => $statement->id, 'partner_id' => $partner->id, 'direction' => 'in', 'amount' => '777.00', 'description' => 'АВАНС-ОТВОРЕН', 'sales_invoice_id' => null, 'purchase_invoice_id' => null, 'sales_invoice_payment_id' => null, 'purchase_invoice_payment_id' => null]);
+        BankStatementLine::factory()->create(['bank_statement_id' => $statement->id, 'partner_id' => $partner->id, 'direction' => 'out', 'amount' => '55.00', 'description' => 'ЗАТВОРЕНА-СО-ФАКТУРА', 'sales_invoice_id' => $sale->id]);
+        BankStatementLine::factory()->create(['bank_statement_id' => $statement->id, 'partner_id' => $other->id, 'direction' => 'in', 'amount' => '99.00', 'description' => 'ТУЃА-СТАВКА', 'sales_invoice_id' => null, 'purchase_invoice_id' => null, 'sales_invoice_payment_id' => null, 'purchase_invoice_payment_id' => null]);
+        $this->admin();
+
+        Livewire::test(PartnerIndex::class, ['company' => $company])
+            ->call('select', $partner->id)
+            ->set('tab', 'transactions')
+            ->assertSee('Незатворени уплати и исплати (1)')
+            ->assertSee('АВАНС-ОТВОРЕН')
+            ->assertSee('777,00')
+            ->assertDontSee('ЗАТВОРЕНА-СО-ФАКТУРА')
+            ->assertDontSee('ТУЃА-СТАВКА');
+    }
+
+    public function test_a_client_without_accounting_rights_never_sees_unclosed_bank_lines(): void
+    {
+        $company = Company::factory()->create();
+        $partner = Partner::factory()->for($company)->create();
+        $statement = BankStatement::factory()->for($company)->create();
+        BankStatementLine::factory()->create(['bank_statement_id' => $statement->id, 'partner_id' => $partner->id, 'description' => 'БАНКАРСКА-ТАЈНА', 'sales_invoice_id' => null, 'purchase_invoice_id' => null, 'sales_invoice_payment_id' => null, 'purchase_invoice_payment_id' => null]);
+        $client = User::factory()->create(['company_id' => $company->id]);
+        $client->assignRole('internal_client');
+        $this->actingAs($client);
+
+        Livewire::test(PartnerIndex::class, ['company' => $company])
+            ->call('select', $partner->id)
+            ->set('tab', 'transactions')
+            ->assertSee('Излезни фактури')
+            ->assertDontSee('Незатворени уплати')
+            ->assertDontSee('БАНКАРСКА-ТАЈНА');
     }
 
     // ---- Извод ----

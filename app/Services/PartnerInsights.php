@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BankStatementLine;
 use App\Models\Company;
 use App\Models\Partner;
 use App\Models\PurchaseInvoice;
@@ -139,6 +140,27 @@ class PartnerInsights
             ->sortByDesc(fn (array $row) => $row['payment']->payment_date->toDateString())
             ->take($limit)
             ->values();
+    }
+
+    /**
+     * Уплати и исплати од банка за кооперантот што не се врзани за ниту една
+     * фактура (ни за готово плаќање): авансни, позајмици, неразјаснети. Се
+     * гледаат и од извод во нацрт, за да се знае што уште чека затворање.
+     *
+     * @return Collection<int, BankStatementLine>
+     */
+    public static function unclosedBankLines(Partner $partner, int $limit = 100): Collection
+    {
+        return BankStatementLine::where('partner_id', $partner->id)
+            ->whereNull('sales_invoice_id')
+            ->whereNull('purchase_invoice_id')
+            ->whereNull('sales_invoice_payment_id')
+            ->whereNull('purchase_invoice_payment_id')
+            ->whereHas('bankStatement', fn ($q) => $q->where('company_id', $partner->company_id))
+            ->with('bankStatement')
+            ->orderByDesc('line_date')->orderByDesc('id')
+            ->limit($limit)
+            ->get();
     }
 
     /** @return array{0: ?CarbonImmutable, 1: CarbonImmutable} */
