@@ -374,5 +374,15 @@
             <x-primary-button type="button" wire:click="post">Потврди и прокнижи</x-primary-button>
         @endif
         <a href="{{ route('bank-statements.index', $company) }}" class="text-sm text-gray-600 hover:underline">Назад</a>
+
+        {{-- Движење меѓу изводите на оваа сметка; нацртот се зачувува пред да се замине. --}}
+        <div class="ml-auto flex gap-2">
+            <x-secondary-button type="button" wire:click="goToSibling('previous')" :disabled="$siblings['previous'] === null">
+                ← {{ $siblings['previous'] ? 'Извод '.$siblings['previous']['number'] : 'Нема претходен' }}
+            </x-secondary-button>
+            <x-secondary-button type="button" wire:click="goToSibling('next')" :disabled="$siblings['next'] === null">
+                {{ $siblings['next'] ? 'Извод '.$siblings['next']['number'] : 'Нема следен' }} →
+            </x-secondary-button>
+        </div>
     </div>
 </div>

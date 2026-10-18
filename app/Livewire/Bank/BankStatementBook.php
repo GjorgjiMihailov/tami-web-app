@@ -809,6 +809,52 @@ class BankStatementBook extends Component
         return true;
     }
 
+    /**
+     * Соседните изводи на иста сметка, во иста година, по број (прокнижените се дел од низата).
+     *
+     * @return array{previous: ?array{id: int, number: int}, next: ?array{id: int, number: int}}
+     */
+    private function siblings(): array
+    {
+        $neighbour = function (string $operator, string $order) {
+            $found = BankStatement::where('company_id', $this->company->id)
+                ->where('account', $this->statement->account)
+                ->where('kind', $this->statement->kind)
+                ->whereYear('statement_date', $this->statement->statement_date->year)
+                ->where('number', $operator, $this->statement->number)
+                ->orderBy('number', $order)
+                ->first(['id', 'number']);
+
+            return $found === null ? null : ['id' => $found->id, 'number' => (int) $found->number];
+        };
+
+        return ['previous' => $neighbour('<', 'desc'), 'next' => $neighbour('>', 'asc')];
+    }
+
+    /**
+     * Оди на претходниот/следниот извод. Нацртот прво се зачувува (истата проверка
+     * како „Зачувај нацрт“) — невалиден нацрт останува на екранот со објаснување, наместо
+     * да се изгубат внесените ставки.
+     */
+    public function goToSibling(string $direction): void
+    {
+        if (! in_array($direction, ['previous', 'next'], true)) {
+            return;
+        }
+
+        $target = $this->siblings()[$direction];
+
+        if ($target === null) {
+            return;
+        }
+
+        if (! $this->statement->isBooked()) {
+            $this->persist();
+        }
+
+        $this->redirect(route('bank-statements.book', [$this->company, $target['id']]), navigate: true);
+    }
+
     public function render()
     {
         $accounts = Account::where('company_id', $this->company->id)->analytical()->where('is_active', true)->orderBy('code')->get(['id', 'code', 'name']);
@@ -816,6 +862,7 @@ class BankStatementBook extends Component
         $partners = Partner::where('company_id', $this->company->id)->orderBy('name')->get(['id', 'name']);
 
         return view('livewire.bank.bank-statement-book', [
+            'siblings' => $this->siblings(),
             'accounts' => $accounts,
             'partners' => $partners,
             'partnersForJs' => $partners->map(fn ($p) => ['id' => $p->id, 'label' => $p->name])->values(),
