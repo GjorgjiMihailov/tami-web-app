@@ -94,7 +94,78 @@
         <div class="mb-4 p-3 rounded bg-red-50 text-red-700 text-sm">{{ $message }}</div>
     @enderror
 
-    @forelse ($groups as $group)
+    {{-- Организатор: основно се гледаат само непрокнижените. --}}
+    <x-card class="mb-4">
+        <div class="flex flex-wrap gap-3 items-end">
+            <div class="w-44">
+                <x-input-label for="statusFilter" value="Состојба" />
+                <select id="statusFilter" wire:model.live="statusFilter" class="border-gray-300 rounded-md text-sm w-full">
+                    <option value="open">Непрокнижени</option>
+                    <option value="booked">Прокнижени</option>
+                    <option value="all">Сите</option>
+                </select>
+            </div>
+            <div class="w-40">
+                <x-input-label for="kindFilter" value="Вид" />
+                <select id="kindFilter" wire:model.live="kindFilter" class="border-gray-300 rounded-md text-sm w-full">
+                    <option value="">Сите</option>
+                    @foreach ($kinds as $option)
+                        <option value="{{ $option->value }}">{{ $option->label() }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="w-64">
+                <x-input-label for="accountFilter" value="Сметка" />
+                <select id="accountFilter" wire:model.live="accountFilter" class="border-gray-300 rounded-md text-sm w-full">
+                    <option value="">Сите сметки</option>
+                    @foreach ($accountOptions as $accountNumber => $accountLabel)
+                        <option value="{{ $accountNumber }}">{{ $accountLabel }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="w-36">
+                <x-input-label for="dateFrom" value="Од датум" />
+                <x-text-input id="dateFrom" type="date" wire:model.live="dateFrom" class="w-full" />
+            </div>
+            <div class="w-36">
+                <x-input-label for="dateTo" value="До датум" />
+                <x-text-input id="dateTo" type="date" wire:model.live="dateTo" class="w-full" />
+            </div>
+            <div class="w-40">
+                <x-input-label for="sortBy" value="Подреди по" />
+                <select id="sortBy" wire:model.live="sortBy" class="border-gray-300 rounded-md text-sm w-full">
+                    <option value="number">Број на извод</option>
+                    <option value="date">Датум</option>
+                    <option value="uploaded">Време на прикачување</option>
+                </select>
+            </div>
+            <div class="w-44">
+                <x-input-label for="sortDirection" value="Редослед" />
+                <select id="sortDirection" wire:model.live="sortDirection" class="border-gray-300 rounded-md text-sm w-full">
+                    <option value="asc">Од прв кон последен</option>
+                    <option value="desc">Од последен кон прв</option>
+                </select>
+            </div>
+            <button type="button" wire:click="resetFilters" class="text-sm text-gray-600 hover:underline pb-2">Врати основно</button>
+        </div>
+    </x-card>
+
+    @if ($gapNotices !== [])
+        <div class="mb-4 p-3 rounded bg-red-50 text-red-700 text-sm">
+            @foreach ($gapNotices as $notice)
+                <div>
+                    {{ $notice['bank'] }} — {{ $notice['account'] }} ({{ $notice['year'] }}):
+                    @if ($notice['from'] === $notice['to'])
+                        недостига извод {{ $notice['from'] }}.
+                    @else
+                        Недостигаат изводите од {{ $notice['from'] }} до {{ $notice['to'] }}.
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    @endif
+
+    @forelse ($visible as $group)
         <x-card class="mb-4">
             <h2 class="font-semibold text-gray-700 mb-2">
                 {{ $group['bank'] }} — {{ $group['account'] }}
@@ -170,7 +241,11 @@
         </x-card>
     @empty
         <x-card>
-            <p class="text-sm text-gray-500">Сè уште нема прикачени изводи.</p>
+            @if ($hasStatements)
+                <p class="text-sm text-gray-500">Нема изводи за избраниот филтер. Променете го филтерот или притиснете „Врати основно“.</p>
+            @else
+                <p class="text-sm text-gray-500">Сè уште нема прикачени изводи.</p>
+            @endif
         </x-card>
     @endforelse
 </div>

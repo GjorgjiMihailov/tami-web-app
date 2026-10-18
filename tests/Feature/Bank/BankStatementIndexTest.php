@@ -297,7 +297,11 @@ class BankStatementIndexTest extends TestCase
         BankStatement::factory()->for($company)->create(['status' => BankStatement::STATUS_BOOKED]);
         $this->actingAs($this->admin());
 
-        Livewire::test(BankStatementIndex::class, ['company' => $company])->assertSee('Прокнижен');
+        // Основно се гледаат само непрокнижените; прокнижениот се бара преку организаторот.
+        Livewire::test(BankStatementIndex::class, ['company' => $company])
+            ->assertDontSee('Прокнижен · Отвори')
+            ->set('statusFilter', 'booked')
+            ->assertSee('Прокнижен · Отвори');
     }
 
     public function test_an_internal_client_sees_neither_the_book_link_nor_the_1000_check(): void

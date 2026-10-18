@@ -50,6 +50,25 @@ class BankStatementIndex extends Component
     /** @var array<int, array<string, mixed>> */
     public array $importResults = [];
 
+    /** Организатор: основно се гледаат само непрокнижените. 'open' | 'booked' | 'all'. */
+    public string $statusFilter = 'open';
+
+    /** '' = сите, инаку вредност на BankStatementKind. */
+    public string $kindFilter = '';
+
+    /** '' = сите сметки. */
+    public string $accountFilter = '';
+
+    public string $dateFrom = '';
+
+    public string $dateTo = '';
+
+    /** 'number' | 'date' | 'uploaded'. */
+    public string $sortBy = 'number';
+
+    /** 'asc' | 'desc'. */
+    public string $sortDirection = 'asc';
+
     public function mount(Company $company): void
     {
         Gate::authorize('view', $company);
@@ -179,6 +198,101 @@ class BankStatementIndex extends Component
         return StatementSequence::numberTaken($this->company->id, $account, $number, (int) substr($date, 0, 4));
     }
 
+    public function resetFilters(): void
+    {
+        $this->reset(['statusFilter', 'kindFilter', 'accountFilter', 'dateFrom', 'dateTo', 'sortBy', 'sortDirection']);
+    }
+
+    /** Непозната вредност (изменета состојба на клиентот) се враќа на основната. */
+    private function allowed(string $value, array $allowed, string $default): string
+    {
+        return in_array($value, $allowed, true) ? $value : $default;
+    }
+
+    private function validDate(string $value): ?string
+    {
+        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1 && strtotime($value) !== false ? $value : null;
+    }
+
+    /**
+     * Од целата низа (со прекини) го остава само она што организаторот го бара.
+     * Низата се чита од СИТЕ изводи — скриен прокнижен извод не е прекин.
+     *
+     * @param  array<int, array<string, mixed>>  $groups
+     * @return array{0: array<int, array<string, mixed>>, 1: bool}  групи за приказ и дали се покажани прекините во низата
+     */
+    private function visibleGroups(array $groups): array
+    {
+        $status = $this->allowed($this->statusFilter, ['open', 'booked', 'all'], 'open');
+        $kind = $this->allowed($this->kindFilter, array_merge([''], array_map(fn ($k) => $k->value, BankStatementKind::cases())), '');
+        $from = $this->validDate($this->dateFrom);
+        $to = $this->validDate($this->dateTo);
+        $sortBy = $this->allowed($this->sortBy, ['number', 'date', 'uploaded'], 'number');
+        $descending = $this->allowed($this->sortDirection, ['asc', 'desc'], 'asc') === 'desc';
+
+        $narrowed = $status !== 'all' || $kind !== '' || $this->accountFilter !== '' || $from !== null || $to !== null;
+        $gapsInline = ! $narrowed && $sortBy === 'number' && ! $descending;
+
+        $visible = [];
+
+        foreach ($groups as $group) {
+            if ($this->accountFilter !== '' && $group['account'] !== $this->accountFilter) {
+                continue;
+            }
+
+            if ($kind !== '' && $group['kind']->value !== $kind) {
+                continue;
+            }
+
+            if ($gapsInline) {
+                $visible[] = $group;
+
+                continue;
+            }
+
+            $statements = collect($group['rows'])->where('type', 'statement')->pluck('statement')
+                ->filter(fn (BankStatement $statement) => match ($status) {
+                    'open' => ! $statement->isBooked(),
+                    'booked' => $statement->isBooked(),
+                    default => true,
+                })
+                ->filter(fn (BankStatement $statement) => ($from === null || $statement->statement_date->toDateString() >= $from)
+                    && ($to === null || $statement->statement_date->toDateString() <= $to));
+
+            $statements = $statements->sortBy(fn (BankStatement $statement) => match ($sortBy) {
+                'date' => [$statement->statement_date->toDateString(), $statement->number],
+                'uploaded' => [$statement->created_at?->toDateTimeString() ?? '', $statement->number],
+                default => [$statement->number],
+            }, SORT_REGULAR, $descending)->values();
+
+            if ($statements->isEmpty()) {
+                continue;
+            }
+
+            $visible[] = array_merge($group, [
+                'rows' => $statements->map(fn ($statement) => ['type' => 'statement', 'statement' => $statement])->all(),
+            ]);
+        }
+
+        return [$visible, $gapsInline];
+    }
+
+    /** Прекините во низата (од сите изводи), за предупредување кога не се покажуваат во табелата. */
+    private function gapNotices(array $groups): array
+    {
+        $notices = [];
+
+        foreach ($groups as $group) {
+            foreach ($group['rows'] as $row) {
+                if ($row['type'] === 'gap') {
+                    $notices[] = ['bank' => $group['bank'], 'account' => $group['account'], 'year' => $group['year'], 'from' => $row['from'], 'to' => $row['to']];
+                }
+            }
+        }
+
+        return $notices;
+    }
+
     public function render()
     {
         $statements = BankStatement::where('company_id', $this->company->id)
@@ -188,8 +302,15 @@ class BankStatementIndex extends Component
         $year = WorkingYear::for($this->company);
         $canBook = auth()->user()?->hasAnyRole(['admin', 'accountant']) ?? false;
 
+        $groups = StatementSequence::groups($statements);
+        [$visible, $gapsInline] = $this->visibleGroups($groups);
+
         return view('livewire.bank.bank-statement-index', [
-            'groups' => StatementSequence::groups($statements),
+            'groups' => $groups,
+            'visible' => $visible,
+            'gapNotices' => $gapsInline ? [] : $this->gapNotices($groups),
+            'hasStatements' => $statements->isNotEmpty(),
+            'accountOptions' => $statements->groupBy('account')->map(fn ($rows, $account) => $rows->first()->bank.' — '.$account)->sortKeys()->all(),
             'kinds' => BankStatementKind::cases(),
             'canBook' => $canBook,
             'year' => $year,
