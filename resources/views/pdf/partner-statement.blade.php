@@ -29,7 +29,7 @@
                     <strong>{{ $company->name }}</strong>
                 </td>
                 <td class="right">
-                    <div style="font-size: 16px; font-weight: bold;">Извод на сметка</div>
+                    <div style="font-size: 16px; font-weight: bold;">Картичка за кооперант</div>
                     <div class="muted">
                         {{ $statement['from'] ? \App\Support\Format::date($statement['from']).' — ' : 'до ' }}{{ \App\Support\Format::date($statement['to']) }}
                     </div>

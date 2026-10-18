@@ -338,7 +338,7 @@ class PartnerDetailTest extends TestCase
             ->call('select', $partner->id)
             ->set('tab', 'statement')
             ->set('period', 'nonsense')
-            ->assertSee('Извод на сметка за')
+            ->assertSee('Картичка за кооперант')
             ->assertSee('*** Почетно салдо ***')
             ->assertSee('118,00 ден')
             ->assertSeeHtml(route('partners.statement.pdf', [$company, $partner, 'period' => 'nonsense']));

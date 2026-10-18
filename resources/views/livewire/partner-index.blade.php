@@ -80,7 +80,7 @@
                         </div>
 
                         <nav class="flex gap-1 border-b border-sand mb-4">
-                            @foreach (['overview' => 'Преглед', 'transactions' => 'Трансакции', 'statement' => 'Извод'] as $key => $label)
+                            @foreach (['overview' => 'Преглед', 'transactions' => 'Трансакции', 'statement' => 'Картичка'] as $key => $label)
                                 <button type="button" wire:click="$set('tab', '{{ $key }}')"
                                         class="px-4 py-2 text-sm font-medium rounded-t-lg {{ $tab === $key ? 'bg-brand text-white' : 'text-gray-600 hover:bg-orange-50' }}">
                                     {{ $label }}
@@ -330,7 +330,7 @@
                             </div>
 
                             <p class="text-sm text-gray-500 mb-4">
-                                Извод на сметка за <strong>{{ $selected->name }}</strong>
+                                Картичка за кооперант <strong>{{ $selected->name }}</strong>
                                 — {{ $statement['from'] ? \App\Support\Format::date($statement['from']).' до ' : 'до ' }}{{ \App\Support\Format::date($statement['to']) }}
                             </p>
 

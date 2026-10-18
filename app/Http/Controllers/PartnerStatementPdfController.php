@@ -28,6 +28,6 @@ class PartnerStatementPdfController extends Controller
             'statement' => PartnerInsights::statement($partner, $period),
         ]);
 
-        return $pdf->download('izvod-'.Str::slug($partner->name, '-', 'mk').'.pdf');
+        return $pdf->download('kartichka-'.Str::slug($partner->name, '-', 'mk').'.pdf');
     }
 }
