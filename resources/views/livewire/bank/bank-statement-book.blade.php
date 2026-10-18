@@ -133,6 +133,9 @@
 
     <x-card class="mb-4">
         @php($locked = $statement->isBooked())
+        @if ($splitNotice)
+            <div class="mb-3 p-2 rounded bg-amber-50 text-amber-800 text-sm">{{ $splitNotice }}</div>
+        @endif
         {{-- Тастатура: Tab оди од поле до поле; Tab на последното поле од последната ставка додава нова. --}}
         <div class="overflow-x-auto" x-data="{
                 jepAccounts: @js($accountsForJs),
@@ -247,6 +250,26 @@
                                         <option value="{{ $option['id'] }}">{{ $option['label'] }}</option>
                                     @endforeach
                                 </select>
+
+                                @if (! $locked && count($openInvoices) > 1 && \App\Support\Bcmath::isPlainNumber((string) $line['amount']))
+                                    {{-- Една уплата за повеќе фактури: означете ги, ставката се дели по фактура (најстарата прва). --}}
+                                    <div x-data="{ open: false, picked: [] }" class="mt-1">
+                                        <button type="button" @click="open = ! open" class="text-xs text-brand hover:underline">Затвори повеќе фактури…</button>
+                                        <div x-show="open" x-cloak class="mt-1 border border-sand rounded-md p-2 bg-white">
+                                            @foreach ($openInvoices as $option)
+                                                <label class="flex items-start gap-2 text-xs py-0.5 cursor-pointer">
+                                                    <input type="checkbox" value="{{ $option['id'] }}" x-model="picked" class="mt-0.5 rounded border-gray-300">
+                                                    <span>{{ $option['label'] }}</span>
+                                                </label>
+                                            @endforeach
+                                            <button type="button"
+                                                    @click="$wire.splitAcrossInvoices({{ $i }}, picked.map(Number)); open = false; picked = []"
+                                                    :disabled="picked.length === 0"
+                                                    class="mt-2 px-2 py-1 rounded bg-brand text-white text-xs disabled:opacity-40">Распредели ја уплатата</button>
+                                            <p class="mt-1 text-[11px] text-gray-500">Најстарите фактури се затвораат прво, секоја до своето салдо, додека не се потроши износот.</p>
+                                        </div>
+                                    </div>
+                                @endif
 
                                 @if ($hasInvoice)
                                     @php($picked = collect($openInvoices)->firstWhere('id', (int) $line['invoice_id']))

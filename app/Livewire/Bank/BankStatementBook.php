@@ -58,6 +58,9 @@ class BankStatementBook extends Component
     /** Индексот во `$lines` на ставката што е на ред за проверка. */
     public ?int $reviewIndex = null;
 
+    /** Порака по делење на уплата на повеќе фактури. */
+    public ?string $splitNotice = null;
+
     public function mount(Company $company, BankStatement $statement): void
     {
         Gate::authorize('view', $company);
@@ -199,9 +202,99 @@ class BankStatementBook extends Component
                 'label' => ($isIn ? $invoice->formattedNumber() : $invoice->supplier_invoice_number)
                     .' — салдо '.Format::money($invoice->balanceDue(), ''),
                 'balance' => $invoice->balanceDue(),
+                'date' => $invoice->invoice_date->toDateString(),
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Една уплата (исплата) затвора повеќе фактури: ставката се дели на по една
+     * ставка за фактура. Најстарите се затвораат прво, секоја до своето салдо, додека
+     * не се потроши износот; ако остане, остатокот е ставка без фактура за да не се
+     * наруши збирот на изводот. Секоја нова ставка е обична ставка — книжењето не знае
+     * за делењето.
+     *
+     * @param  array<int, int|string>  $invoiceIds
+     */
+    public function splitAcrossInvoices(int $index, array $invoiceIds): void
+    {
+        if ($this->statement->isBooked() || ! isset($this->lines[$index])) {
+            return;
+        }
+
+        $this->resetErrorBag("lines.$index.amount");
+        $this->splitNotice = null;
+
+        $line = $this->lines[$index];
+        $amount = (string) $line['amount'];
+
+        if (! Bcmath::isPlainNumber($amount) || bccomp($amount, '0', 2) <= 0) {
+            $this->addError("lines.$index.amount", 'Прво внесете го износот на уплатата.');
+
+            return;
+        }
+
+        // Само отворени фактури на партнерот на ставката (од свежо пресметаните опции) —
+        // ID-јата од прелистувачот не се доверливи.
+        $wanted = array_map('intval', $invoiceIds);
+        $options = collect($this->invoiceOptions($index))
+            ->filter(fn (array $option) => in_array($option['id'], $wanted, true))
+            ->sortBy([['date', 'asc'], ['id', 'asc']])
+            ->values();
+
+        if ($options->isEmpty()) {
+            $this->addError("lines.$index.amount", 'Изберете барем една отворена фактура на партнерот.');
+
+            return;
+        }
+
+        $remaining = bcadd($amount, '0', 2);
+        $allocations = [];
+
+        foreach ($options as $option) {
+            if (bccomp($remaining, '0', 2) <= 0) {
+                break;
+            }
+
+            $take = bccomp($option['balance'], $remaining, 2) < 0 ? bcadd($option['balance'], '0', 2) : $remaining;
+            $allocations[] = ['invoice_id' => $option['id'], 'amount' => $take];
+            $remaining = bcsub($remaining, $take, 2);
+        }
+
+        $notUsed = $options->count() - count($allocations);
+
+        if (bccomp($remaining, '0', 2) > 0) {
+            $allocations[] = ['invoice_id' => null, 'amount' => $remaining];
+            $this->splitNotice = 'Остана '.Format::money($remaining, '').' без фактура — изберете конто или фактура за последната ставка.';
+        } elseif ($notUsed > 0) {
+            $this->splitNotice = 'Уплатата се потроши — '.$notUsed.' од избраните фактури не се затворени.';
+        }
+
+        $rows = [];
+
+        foreach ($allocations as $position => $allocation) {
+            $isInvoice = $allocation['invoice_id'] !== null;
+            $base = $position === 0 ? $line : array_merge($line, ['_key' => (string) Str::uuid(), 'id' => null]);
+
+            $rows[] = array_merge($base, [
+                'amount' => $allocation['amount'],
+                'kind' => $isInvoice ? LineKind::INVOICE_PAYMENT->value : LineKind::ACCOUNT->value,
+                'invoice_id' => $allocation['invoice_id'],
+                'account_id' => null,
+                'existing_payment_id' => null,
+                'reviewed' => true,
+            ]);
+        }
+
+        array_splice($this->lines, $index, 1, $rows);
+
+        foreach (array_keys($rows) as $offset) {
+            $this->syncSides($index + $offset);
+        }
+
+        // Индексите се поместени: отворената проверка би покажала друга ставка.
+        $this->stopReview();
     }
 
     /**
