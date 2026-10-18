@@ -200,7 +200,7 @@
 
                         {{-- ТРАНСАКЦИИ --}}
                         @elseif ($tab === 'transactions')
-                            <div x-data="{ open: 'invoices' }" class="space-y-3">
+                            <div x-data="{ open: ['invoices'], toggle(k) { this.open = this.open.includes(k) ? this.open.filter(x => x !== k) : [...this.open, k] }, shown(k) { return this.open.includes(k) } }" class="space-y-3">
                                 @php
                                     $section = 'rounded-2xl border border-sand';
                                     $head = 'w-full flex items-center justify-between px-4 py-3 text-left font-semibold text-gray-700';
@@ -208,11 +208,11 @@
                                 @endphp
 
                                 <div class="{{ $section }}">
-                                    <button type="button" class="{{ $head }}" @click="open = open === 'invoices' ? '' : 'invoices'">
+                                    <button type="button" class="{{ $head }}" @click="toggle('invoices')">
                                         <span>Излезни фактури ({{ $salesInvoices->count() }})</span>
-                                        <span x-text="open === 'invoices' ? '−' : '+'"></span>
+                                        <span x-text="shown('invoices') ? '−' : '+'"></span>
                                     </button>
-                                    <div x-show="open === 'invoices'" class="px-4 pb-4">
+                                    <div x-show="shown('invoices')" class="px-4 pb-4">
                                         <div class="mb-2">
                                             <select wire:model.live="invoiceStatus" aria-label="Статус" class="border-gray-300 rounded-md text-sm">
                                                 <option value="all">Статус: сите</option>
@@ -243,11 +243,11 @@
                                 </div>
 
                                 <div class="{{ $section }}">
-                                    <button type="button" class="{{ $head }}" @click="open = open === 'payments' ? '' : 'payments'">
+                                    <button type="button" class="{{ $head }}" @click="toggle('payments')">
                                         <span>Уплати од купувачот ({{ $salesPayments->count() }})</span>
-                                        <span x-text="open === 'payments' ? '−' : '+'"></span>
+                                        <span x-text="shown('payments') ? '−' : '+'"></span>
                                     </button>
-                                    <div x-show="open === 'payments'" x-cloak class="px-4 pb-4">
+                                    <div x-show="shown('payments')" x-cloak class="px-4 pb-4">
                                         <table class="min-w-full text-sm">
                                             <thead><tr><th class="{{ $th }}">Датум</th><th class="{{ $th }}">Фактура</th><th class="{{ $th }}">Начин</th><th class="{{ $th }} text-right">Износ</th></tr></thead>
                                             <tbody class="divide-y divide-gray-100">
@@ -267,11 +267,11 @@
                                 </div>
 
                                 <div class="{{ $section }}">
-                                    <button type="button" class="{{ $head }}" @click="open = open === 'bills' ? '' : 'bills'">
+                                    <button type="button" class="{{ $head }}" @click="toggle('bills')">
                                         <span>Влезни фактури ({{ $purchaseInvoices->count() }})</span>
-                                        <span x-text="open === 'bills' ? '−' : '+'"></span>
+                                        <span x-text="shown('bills') ? '−' : '+'"></span>
                                     </button>
-                                    <div x-show="open === 'bills'" x-cloak class="px-4 pb-4">
+                                    <div x-show="shown('bills')" x-cloak class="px-4 pb-4">
                                         <table class="min-w-full text-sm">
                                             <thead><tr><th class="{{ $th }}">Датум</th><th class="{{ $th }}">Број на добавувач</th><th class="{{ $th }} text-right">Износ</th><th class="{{ $th }} text-right">За плаќање</th><th class="{{ $th }}">Статус</th></tr></thead>
                                             <tbody class="divide-y divide-gray-100">
@@ -292,11 +292,11 @@
                                 </div>
 
                                 <div class="{{ $section }}">
-                                    <button type="button" class="{{ $head }}" @click="open = open === 'billpayments' ? '' : 'billpayments'">
+                                    <button type="button" class="{{ $head }}" @click="toggle('billpayments')">
                                         <span>Плаќања кон добавувачот ({{ $purchasePayments->count() }})</span>
-                                        <span x-text="open === 'billpayments' ? '−' : '+'"></span>
+                                        <span x-text="shown('billpayments') ? '−' : '+'"></span>
                                     </button>
-                                    <div x-show="open === 'billpayments'" x-cloak class="px-4 pb-4">
+                                    <div x-show="shown('billpayments')" x-cloak class="px-4 pb-4">
                                         <table class="min-w-full text-sm">
                                             <thead><tr><th class="{{ $th }}">Датум</th><th class="{{ $th }}">Фактура</th><th class="{{ $th }}">Начин</th><th class="{{ $th }} text-right">Износ</th></tr></thead>
                                             <tbody class="divide-y divide-gray-100">
