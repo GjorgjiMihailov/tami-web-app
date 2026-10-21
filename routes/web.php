@@ -20,10 +20,8 @@ use App\Http\Controllers\PayslipPdfController;
 use App\Http\Controllers\ProformaDeliveryNotePdfController;
 use App\Http\Controllers\ProformaPdfController;
 use App\Http\Controllers\SalesInvoiceDeliveryNotePdfController;
-use App\Http\Controllers\SalesInvoicePdfController;
 use App\Http\Controllers\SalesInvoiceImportTemplateController;
-use App\Livewire\Invoicing\ProformaForm;
-use App\Livewire\Invoicing\ProformaIndex;
+use App\Http\Controllers\SalesInvoicePdfController;
 use App\Http\Controllers\StockOnHandPdfController;
 use App\Http\Middleware\EnsureAccountingAccess;
 use App\Http\Middleware\EnsureAppAccess;
@@ -31,21 +29,24 @@ use App\Http\Middleware\EnsureCompanyModule;
 use App\Http\Middleware\EnsureIndividual;
 use App\Http\Middleware\EnsureLegalEntity;
 use App\Livewire\Accounting\AccountIndex;
-use App\Livewire\Accounting\PostingSchemeEdit;
-use App\Livewire\Accounting\PostingSchemeIndex;
 use App\Livewire\Accounting\JournalEntryForm;
 use App\Livewire\Accounting\JournalEntryIndex;
 use App\Livewire\Accounting\JournalGroupIndex;
 use App\Livewire\Accounting\LedgerCardReport;
+use App\Livewire\Accounting\PostingSchemeEdit;
+use App\Livewire\Accounting\PostingSchemeIndex;
 use App\Livewire\Accounting\TrialBalanceReport;
 use App\Livewire\Apps\FinanceDashboard;
 use App\Livewire\Apps\SalesDashboard;
+use App\Livewire\Bank\BankLineRuleIndex;
 use App\Livewire\Bank\BankStatementBook;
 use App\Livewire\Bank\BankStatementIndex;
 use App\Livewire\Bank\Form743Upload;
 use App\Livewire\Bank\Form743Worklist;
+use App\Livewire\ClientAccountantShow;
+use App\Livewire\ClientCreate;
+use App\Livewire\ClientIndex;
 use App\Livewire\ComingSoon;
-use App\Livewire\OfficePostingSchemes;
 use App\Livewire\CompanyDashboard;
 use App\Livewire\CompanyIndex;
 use App\Livewire\CompanyModules;
@@ -68,13 +69,16 @@ use App\Livewire\Inventory\StockOnHandReport;
 use App\Livewire\Inventory\StockValuationReport;
 use App\Livewire\Inventory\WarehouseIndex;
 use App\Livewire\Invoicing\InvoiceSettings;
+use App\Livewire\Invoicing\ProformaForm;
+use App\Livewire\Invoicing\ProformaIndex;
 use App\Livewire\Invoicing\PurchaseInvoiceForm;
 use App\Livewire\Invoicing\PurchaseInvoiceIndex;
 use App\Livewire\Invoicing\PurchaseInvoiceShow;
-use App\Livewire\Invoicing\SalesInvoiceForm;
 use App\Livewire\Invoicing\SalesInvoiceBulkImport;
+use App\Livewire\Invoicing\SalesInvoiceForm;
 use App\Livewire\Invoicing\SalesInvoiceIndex;
 use App\Livewire\Invoicing\SalesInvoiceShow;
+use App\Livewire\OfficePostingSchemes;
 use App\Livewire\OfficeUsers;
 use App\Livewire\PartnerForm;
 use App\Livewire\PartnerIndex;
@@ -127,9 +131,9 @@ Route::domain(PortalApp::PORTAL->domain())->group(function () {
 
     // Клиенти на админот: еден список и по една страница за внес на секој вид профил.
     Route::middleware(['auth'])->group(function () {
-        Route::get('/klienti', \App\Livewire\ClientIndex::class)->name('clients.index');
-        Route::get('/klienti/nov/{kind}', \App\Livewire\ClientCreate::class)->name('clients.create');
-        Route::get('/klienti/smetkovoditel/{user}', \App\Livewire\ClientAccountantShow::class)->name('clients.accountant');
+        Route::get('/klienti', ClientIndex::class)->name('clients.index');
+        Route::get('/klienti/nov/{kind}', ClientCreate::class)->name('clients.create');
+        Route::get('/klienti/smetkovoditel/{user}', ClientAccountantShow::class)->name('clients.accountant');
     });
 
     // Array-callable form (not bare class-string) for the same reason noted
@@ -370,6 +374,7 @@ Route::domain(PortalApp::FINANSII->domain())->middleware(EnsureAppAccess::class.
 
     Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':finance'])->prefix('companies/{company}')->name('bank-statements.')->group(function () {
         Route::get('/izvodi', [BankStatementIndex::class, '__invoke'])->name('index');
+        Route::get('/izvodi/zapamteni-konta', [BankLineRuleIndex::class, '__invoke'])->name('rules');
         Route::get('/izvodi/{statement}/knizenje', [BankStatementBook::class, '__invoke'])->name('book');
     });
 

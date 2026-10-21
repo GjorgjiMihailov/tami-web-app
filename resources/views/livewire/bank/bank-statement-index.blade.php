@@ -1,5 +1,10 @@
 <div>
-    <h1 class="text-2xl font-bold text-gray-800 mb-4">Банкарски документи — {{ $company->name }}</h1>
+    <div class="flex flex-wrap items-baseline justify-between gap-2 mb-4">
+        <h1 class="text-2xl font-bold text-gray-800">Банкарски документи — {{ $company->name }}</h1>
+        @if ($canBook)
+            <a href="{{ route('bank-statements.rules', $company) }}" class="text-sm text-brand hover:underline">Запомнати конта</a>
+        @endif
+    </div>
 
     @if ($canBook)
         <x-card class="mb-6">

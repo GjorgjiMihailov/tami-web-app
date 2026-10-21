@@ -3,8 +3,11 @@
 namespace App\Services\Bank;
 
 use App\Models\BankCounterparty;
+use App\Models\BankLineRule;
 use App\Models\BankStatement;
+use App\Models\BankStatementLine;
 use App\Support\Bank\AccountNumber;
+use App\Support\Bank\BankLinePattern;
 use App\Support\Bank\LineKind;
 
 /**
@@ -43,6 +46,8 @@ class BankCounterpartyMemory
                 if ($line->partner_id !== null) {
                     $record->partner_id = $line->partner_id;
                 }
+
+                $this->rememberRule($statement->company_id, $key, $line);
             } elseif ($line->kind === LineKind::INVOICE_PAYMENT) {
                 $partnerId = $line->partner_id ?? $line->salesInvoice?->partner_id ?? $line->purchaseInvoice?->partner_id;
 
@@ -53,5 +58,29 @@ class BankCounterpartyMemory
 
             $record->save();
         }
+    }
+
+    /** Конто по вид на ставка: сметка + насока + образец на текстот. Последното книжење важи. */
+    private function rememberRule(int $companyId, string $key, BankStatementLine $line): void
+    {
+        $pattern = BankLinePattern::from($line->description);
+
+        if ($pattern === null) {
+            return;
+        }
+
+        $rule = BankLineRule::firstOrNew([
+            'company_id' => $companyId,
+            'account_key' => $key,
+            'direction' => $line->direction->value,
+            'pattern' => $pattern,
+        ]);
+        $rule->account_id = $line->account_id;
+        $rule->partner_id = $line->partner_id ?? $rule->partner_id;
+        $rule->name_seen = $line->counterparty_name ?? $rule->name_seen;
+        $rule->example_text = mb_substr((string) $line->description, 0, 255);
+        $rule->times_used = $rule->times_used + 1;
+        $rule->last_used_at = now();
+        $rule->save();
     }
 }
