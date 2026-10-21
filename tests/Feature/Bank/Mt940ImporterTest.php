@@ -7,10 +7,12 @@ use App\Models\Company;
 use App\Models\CompanyBankAccount;
 use App\Models\User;
 use App\Services\Bank\BankCounterpartyRecognizer;
+use App\Services\Bank\BankLineMatcher;
 use App\Services\Bank\Mt940Importer;
 use App\Services\Bank\Mt940ImportOutcome;
 use App\Support\Bank\LineDirection;
 use App\Support\Bank\LineKind;
+use App\Support\Bank\MatchConfidence;
 use App\Support\Bank\Mt940\Mt940Statement;
 use App\Support\BankStatementKind;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -88,7 +90,7 @@ class Mt940ImporterTest extends TestCase
         $this->assertSame(LineDirection::OUT, $lines[0]->direction);
         $this->assertSame('7800.00', $lines[0]->amount);
         $this->assertSame(LineKind::UNCLEAR, $lines[0]->kind);
-        $this->assertSame(\App\Support\Bank\MatchConfidence::UNCLEAR, $lines[0]->match_confidence);
+        $this->assertSame(MatchConfidence::UNCLEAR, $lines[0]->match_confidence);
         $this->assertNull($lines[0]->reviewed_at);
         $this->assertNull($lines[0]->partner_id);
         $this->assertSame('100000000000009', $lines[0]->counterparty_account);
@@ -224,7 +226,7 @@ class Mt940ImporterTest extends TestCase
 
     public function test_an_unexpected_error_in_one_file_does_not_abort_the_batch(): void
     {
-        $importer = new class(app(BankCounterpartyRecognizer::class)) extends Mt940Importer
+        $importer = new class(app(BankCounterpartyRecognizer::class), app(BankLineMatcher::class)) extends Mt940Importer
         {
             public function import(Company $company, Mt940Statement $parsed, string $name, ?TemporaryUploadedFile $file = null): Mt940ImportOutcome
             {
@@ -320,7 +322,7 @@ class Mt940ImporterTest extends TestCase
         // Google Drive може да не одговара (истечен пристап). Податоците од
         // изводот се важното — фајлот го има корисникот — па изводот се увезува
         // со предупредување што ја кажува причината.
-        $importer = new class(app(BankCounterpartyRecognizer::class)) extends Mt940Importer
+        $importer = new class(app(BankCounterpartyRecognizer::class), app(BankLineMatcher::class)) extends Mt940Importer
         {
             protected function storeDocument(BankStatement $statement, TemporaryUploadedFile $file): void
             {

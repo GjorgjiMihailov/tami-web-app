@@ -26,7 +26,13 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
  */
 class Mt940Importer
 {
-    public function __construct(private readonly BankCounterpartyRecognizer $recognizer) {}
+    /** Отворените фактури за време на увоз на повеќе извода одеднаш (салдата се намалуваат меѓу ставките). */
+    private ?BankMatchSession $session = null;
+
+    public function __construct(
+        private readonly BankCounterpartyRecognizer $recognizer,
+        private readonly BankLineMatcher $matcher,
+    ) {}
 
     /**
      * Фајловите се читаат сите најпрво и се увезуваат по сметка и датум,
@@ -51,16 +57,22 @@ class Mt940Importer
         usort($ready, fn (array $a, array $b) => [$a['statement']->account, $a['statement']->date, $a['statement']->number]
             <=> [$b['statement']->account, $b['statement']->date, $b['statement']->number]);
 
-        foreach ($ready as $entry) {
-            try {
-                $outcomes[] = $this->import($company, $entry['statement'], $entry['item']['name'], $entry['item']['file'] ?? null);
-            } catch (\Throwable $e) {
-                // Една неочекувана грешка не смее да ја прекине серијата: фајловите
-                // пред неа веќе се прокнижени во базата, а корисникот мора да види
-                // што се случило со секој.
-                report($e);
-                $outcomes[] = Mt940ImportOutcome::rejected($entry['item']['name'], 'Неочекувана грешка при увоз — изводот не е увезен.');
+        $this->session = $this->matcher->session($company);
+
+        try {
+            foreach ($ready as $entry) {
+                try {
+                    $outcomes[] = $this->import($company, $entry['statement'], $entry['item']['name'], $entry['item']['file'] ?? null);
+                } catch (\Throwable $e) {
+                    // Една неочекувана грешка не смее да ја прекине серијата: фајловите
+                    // пред неа веќе се прокнижени во базата, а корисникот мора да види
+                    // што се случило со секој.
+                    report($e);
+                    $outcomes[] = Mt940ImportOutcome::rejected($entry['item']['name'], 'Неочекувана грешка при увоз — изводот не е увезен.');
+                }
             }
+        } finally {
+            $this->session = null;
         }
 
         return $outcomes;
@@ -93,7 +105,9 @@ class Mt940Importer
 
         $bank = $configured?->bank_name ?: (BankDirectory::name($parsed->bic) ?? $parsed->bic ?? 'Непозната банка');
 
-        $statement = DB::transaction(function () use ($company, $parsed, $bank, $account) {
+        $session = $this->session ?? $this->matcher->session($company);
+
+        $statement = DB::transaction(function () use ($company, $parsed, $bank, $account, $session) {
             $statement = BankStatement::create([
                 'company_id' => $company->id,
                 'bank' => $bank,
@@ -107,6 +121,8 @@ class Mt940Importer
             ]);
 
             foreach ($parsed->lines as $position => $line) {
+                $recognized = $this->recognizer->attributesFor($company, $line);
+
                 $statement->lines()->create([
                     'position' => $position + 1,
                     'line_date' => $line->date,
@@ -120,7 +136,9 @@ class Mt940Importer
                     'match_confidence' => MatchConfidence::UNCLEAR,
                     'match_reason' => 'Другата страна не е препознаена.',
                     // Запомнето од претходно книжење по сметка на другата страна.
-                    ...$this->recognizer->attributesFor($company, $line),
+                    ...$recognized,
+                    // Врска со отворена фактура (број, партнер, име, износ) има предност над запомнатото конто.
+                    ...$this->matcher->attributesFor($session, $line, $recognized),
                 ]);
             }
 
