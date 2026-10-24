@@ -22,7 +22,7 @@ class EmployeeAccessTest extends TestCase
         Role::findOrCreate('internal_client');
     }
 
-    public function test_a_client_sees_the_payroll_group_without_the_unbuilt_entry(): void
+    public function test_a_client_sees_the_whole_built_payroll_group(): void
     {
         $company = Company::factory()->create();
         $client = User::factory()->create(['company_id' => $company->id]);
@@ -32,10 +32,10 @@ class EmployeeAccessTest extends TestCase
         $payroll = $groups->firstWhere('key', 'payroll');
 
         $this->assertNotNull($payroll, 'A client should now see the ПЛАТИ И ЧР group.');
-        $this->assertSame(['Вработени', 'Плата (МПИН)'], array_column($payroll['items'], 'label'));
+        $this->assertSame(['Вработени', 'Плата (МПИН)', 'Исплати на физички лица'], array_column($payroll['items'], 'label'));
     }
 
-    public function test_an_admin_still_sees_the_two_unbuilt_entries(): void
+    public function test_an_admin_sees_the_whole_payroll_group(): void
     {
         $company = Company::factory()->create();
         $admin = User::factory()->create();
@@ -44,7 +44,7 @@ class EmployeeAccessTest extends TestCase
         $payroll = collect(Menu::for($admin, $company, PortalApp::PLATA))->firstWhere('key', 'payroll');
 
         $this->assertSame(
-            ['Вработени', 'Плата (МПИН)', 'е-ПДД'],
+            ['Вработени', 'Плата (МПИН)', 'Исплати на физички лица'],
             array_column($payroll['items'], 'label')
         );
     }

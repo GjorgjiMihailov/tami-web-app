@@ -129,11 +129,11 @@ class MenuTest extends TestCase
         $company = Company::factory()->create();
 
         $this->assertSame(
-            ['Вработени', 'Плата (МПИН)'],
+            ['Вработени', 'Плата (МПИН)', 'Исплати на физички лица'],
             $this->itemLabels(Menu::for($this->userWithRole('internal_client', $company), $company, PortalApp::PLATA), 'payroll')
         );
         $this->assertSame(
-            ['Вработени', 'Плата (МПИН)', 'е-ПДД'],
+            ['Вработени', 'Плата (МПИН)', 'Исплати на физички лица'],
             $this->itemLabels(Menu::for($this->userWithRole('admin'), $company, PortalApp::PLATA), 'payroll')
         );
     }

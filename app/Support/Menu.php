@@ -239,7 +239,7 @@ class Menu
                 'items' => [
                     ['label' => 'Вработени', 'url' => route('employees.index', $company), 'pattern' => 'employees.*', 'roles' => null, 'module' => CompanyModule::PAYROLL],
                     ['label' => 'Плата (МПИН)', 'url' => route('payroll-runs.index', $company), 'pattern' => 'payroll-runs.*', 'roles' => null, 'module' => CompanyModule::PAYROLL],
-                    self::soon($company, 'e-pdd', CompanyModule::PAYROLL),
+                    ['label' => 'Исплати на физички лица', 'url' => route('ppf-payments.index', $company), 'pattern' => 'ppf-payments.*', 'roles' => null, 'module' => CompanyModule::PAYROLL],
                 ],
             ],
             [

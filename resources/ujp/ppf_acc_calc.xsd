@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xs:schema version="1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  
+  <!-- UJP PPF xsd schema za xml fajl za Akontativna presmetka 	-->
+  <!-- Dopolnitelni pojasnuvanja: 	
+		- ppfTaxpayer e EDB na obvrznikot
+        - Datumskite polinja treba da bidat popolneti vo format dd.MM.yyyy
+		- Polinjata periodfrom i periodto treba da se >= 01.01.2018
+		- parMunicipality pole treba da se popolni so PMU_CODE od excel file PAR_MUNICIPALITY.xls
+		- type_income pole treba da se polni so PTI_CODE od excel file PPF_TYPEINCOME.xls
+		- subtype_income pole treba da se polni so PSI_CODE2 od excel file PPF_SUBINCOME.xls
+		- grossIncome e bruto/ostvaren prihod 
+		- ddv_iznos se popolnuva kaj prihodi od imot
+		- avans se popolnuva kaj vid prihod pti_code=2
+		- type_payment pole treba da se popolnuva so PTP_CODE od excel PPF_TYPEPAYMENT.xls
+		- paymentdate e datum koj zadolzitelno se popolnuva dokolku type_payment e drug nacin, 
+		   dokolku se raboti za obvrznik - stransko lice i dokolku se raboti za vid na prihod igri na sreka 
+		- brojResenieDo ova pole se polni so broj na odobreno baranje za odredeno stransko lice
+		- datumResenieDo ova pole se polni so datum na odobreno baranje za odredeno stransko lice 
+		 -->
+ 
+  
+  <xs:element name="ujp_ppf_acc_calc" type="calculation"/>
+
+  <xs:complexType name="calculation">
+    <xs:complexContent>
+      <xs:extension base="baseEntity">
+        <xs:sequence>
+		  <xs:element name="ppfTaxpayer" type="ppfTaxpayer"/>
+          <xs:element name="name">
+		    <xs:simpleType>
+		  	    <xs:restriction base="xs:token">
+				  <xs:minLength value="1"/>
+				  <xs:maxLength value="255"/>
+				</xs:restriction>
+			</xs:simpleType>
+		  </xs:element>
+		  <xs:element name="pca_bank_account"  minOccurs="0">
+		  	 <xs:simpleType>
+				<xs:restriction base="xs:string">
+				  <xs:maxLength value="50"/>
+				</xs:restriction>
+			  </xs:simpleType>
+		  </xs:element>
+          <xs:element name="periodfrom" type="xs:string"/>
+          <xs:element name="periodto" type="xs:string"/>
+		  <xs:element name="contact" minOccurs="0">
+		  	<xs:simpleType>
+				<xs:restriction base="xs:string">
+				  <xs:maxLength value="50"/>
+				</xs:restriction>
+			  </xs:simpleType>
+		  </xs:element>
+		  <xs:element name="mail">
+		  	<xs:simpleType>
+		  	    <xs:restriction base="xs:token">
+				  <xs:minLength value="1"/>
+				  <xs:maxLength value="255"/>
+				</xs:restriction>
+			</xs:simpleType>
+		  </xs:element>
+		  <xs:element name="telefon" minOccurs="0">
+		  	<xs:simpleType>
+				<xs:restriction base="xs:string">
+				  <xs:maxLength value="50"/>
+				</xs:restriction>
+			  </xs:simpleType>
+		  </xs:element>
+		  <xs:element name="comment" minOccurs="0">
+		  	<xs:simpleType>
+		  	    <xs:restriction base="xs:token">
+				  <xs:maxLength value="1000"/>
+				</xs:restriction>
+			</xs:simpleType>
+		  </xs:element>
+		  <xs:element name="calculation_detail" type="calculationDetail" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="baseEntity">
+    <xs:sequence/>
+  </xs:complexType>
+
+  <xs:complexType name="calculationDetail">
+    <xs:complexContent>
+      <xs:extension base="baseEntity">
+        <xs:all>
+		  <xs:element name="row_id" type="xs:nonNegativeInteger"/>	
+          <xs:element name="embg">
+			<xs:simpleType>
+		  	    <xs:restriction base="xs:token">
+				  <xs:minLength value="1"/>
+				  <xs:maxLength value="255"/>
+				</xs:restriction>
+			</xs:simpleType>
+		  </xs:element>
+		  <xs:element name="name">
+		    <xs:simpleType>
+		  	    <xs:restriction base="xs:token">
+				  <xs:minLength value="1"/>
+				  <xs:maxLength value="255"/>
+				</xs:restriction>
+			</xs:simpleType>
+		  </xs:element>
+		  <xs:element name="surname">
+		    <xs:simpleType>
+		  	    <xs:restriction base="xs:token">
+				  <xs:minLength value="1"/>
+				  <xs:maxLength value="255"/>
+				</xs:restriction>
+			</xs:simpleType>
+		  </xs:element>
+		  <xs:element name="parMunicipality" type="parMunicipality"/>
+		  <xs:element name="type_income" type="ppfTypeIncome"/>
+		  <xs:element name="subtype_income" type="ppfSubIncome"/>
+          <xs:element name="grossIncome" type="xs:nonNegativeInteger"/>
+		  <xs:element name="avans" type="xs:nonNegativeInteger" minOccurs="0"/>
+		  <xs:element name="ddv_iznos" type="xs:nonNegativeInteger" minOccurs="0"/>
+          <xs:element name="type_payment" type="ppfTypePayment"/>
+		  <xs:element name="bankAccount" type="xs:string" minOccurs="0"/>
+          <xs:element name="paymentdate" type="xs:string" minOccurs="0"/>
+		  <xs:element name="brojResenieDo" type="xs:string" minOccurs="0"/>
+          <xs:element name="datumResenieDo" type="xs:string" minOccurs="0"/>
+		  <xs:element name="commentDoc" minOccurs="0">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+				  <xs:maxLength value="255"/>
+				</xs:restriction>
+			  </xs:simpleType>
+		    </xs:element>
+		  <xs:element name="grossFree" type="xs:nonNegativeInteger" minOccurs="0"/>		  
+        </xs:all>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="parMunicipality">
+    <xs:complexContent>
+      <xs:extension base="baseEntity">
+        <xs:sequence>
+          <xs:element name="municipality_code" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="ppfSubIncome">
+    <xs:complexContent>
+      <xs:extension base="baseEntity">
+        <xs:sequence>
+          <xs:element name="code" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="ppfTypeIncome">
+    <xs:complexContent>
+      <xs:extension base="baseEntity">
+        <xs:sequence>
+          <xs:element name="code" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="ppfTypePayment">
+    <xs:complexContent>
+      <xs:extension base="baseEntity">
+        <xs:sequence>
+          <xs:element name="ptpCode" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="ppfTaxpayer">
+    <xs:complexContent>
+      <xs:extension base="baseEntity">
+        <xs:sequence>
+          <xs:element name="edb" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+</xs:schema>
+

@@ -17,6 +17,7 @@ use App\Http\Controllers\PartnerShowRedirectController;
 use App\Http\Controllers\PartnerStatementPdfController;
 use App\Http\Controllers\PayrollRecapPdfController;
 use App\Http\Controllers\PayslipPdfController;
+use App\Http\Controllers\PpfExportController;
 use App\Http\Controllers\ProformaDeliveryNotePdfController;
 use App\Http\Controllers\ProformaPdfController;
 use App\Http\Controllers\SalesInvoiceDeliveryNotePdfController;
@@ -84,6 +85,8 @@ use App\Livewire\PartnerForm;
 use App\Livewire\PartnerIndex;
 use App\Livewire\Payroll\PayrollRunIndex;
 use App\Livewire\Payroll\PayrollRunShow;
+use App\Livewire\Payroll\PpfPaymentForm;
+use App\Livewire\Payroll\PpfPaymentIndex;
 use App\Livewire\PayrollParameterIndex;
 use App\Livewire\Reports\Ddv04Report;
 use App\Livewire\Reports\ReportIndex;
@@ -415,6 +418,18 @@ Route::domain(PortalApp::PLATA->domain())->middleware(EnsureAppAccess::class.':p
     // — останува затворено.
     Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('payroll.')->group(function () {
         Route::get('/payroll-runs/{run}/mpin.xml', MpinExportController::class)->name('mpin-export');
+    });
+
+    // Исплати на физички лица (ППФ). Читачки екран; формата и бришењето си носат
+    // managePayroll, а XML-от пишува печат на извоз и е канцелариска задача.
+    Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('ppf-payments.')->group(function () {
+        Route::get('/ppf-payments', [PpfPaymentIndex::class, '__invoke'])->name('index');
+        Route::get('/ppf-payments/create', [PpfPaymentForm::class, '__invoke'])->name('create');
+        Route::get('/ppf-payments/{payment}/edit', [PpfPaymentForm::class, '__invoke'])->name('edit');
+    });
+
+    Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('ppf-payments.')->group(function () {
+        Route::get('/ppf-payments/{date}/ppf.xml', PpfExportController::class)->where('date', '\d{4}-\d{2}-\d{2}')->name('export');
     });
 
     // Читачки: mount() веќе прашува Gate::authorize('view', $company).
