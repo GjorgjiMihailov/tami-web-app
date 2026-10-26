@@ -550,6 +550,53 @@
 }
 
 /*
+ * Таблите (Финансии, Продажба): картичките излегуваат една по една, лентите и
+ * столбовите растат од основата, а износите се качуваат од 0 (count-up.js).
+ * Како и редовите, важат само додека е присутен прекинувачот .motion-in, па
+ * освежувањето на Livewire не ја повторува анимацијата. Редоследот го дава
+ * --i (картичка) односно --m (месец) што го пишува самиот екран.
+ */
+.app-main.motion-in .dash-rise {
+    animation: dash-rise 520ms cubic-bezier(.2, .8, .2, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+@keyframes dash-rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+}
+
+.app-main.motion-in .dash-grow-x {
+    transform-origin: left;
+    animation: dash-grow-x 800ms cubic-bezier(.2, .8, .2, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 90ms + 250ms);
+}
+
+@keyframes dash-grow-x {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}
+
+.app-main.motion-in .dash-grow-y {
+    transform-origin: bottom;
+    animation: dash-grow-y 700ms cubic-bezier(.2, .8, .2, 1) backwards;
+    animation-delay: calc(var(--m, 0) * 45ms + 350ms);
+}
+
+@keyframes dash-grow-y {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-main.motion-in .dash-rise,
+    .app-main.motion-in .dash-grow-x,
+    .app-main.motion-in .dash-grow-y {
+        animation: none;
+    }
+}
+
+/*
  * Картичките во екраните исто се подигнуваат. Без анимација на влез — тие
  * не се низа, па редослед нема што да раскаже.
  */

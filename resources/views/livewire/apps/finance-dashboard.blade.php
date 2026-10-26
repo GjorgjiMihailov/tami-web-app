@@ -8,7 +8,7 @@
             ['key' => 'receivables', 'title' => 'Побарувања', 'caption' => 'Вкупно неплатени излезни фактури', 'summary' => $receivables, 'shares' => $receivableShares, 'actions' => $this->receivableActions()],
             ['key' => 'payables', 'title' => 'Обврски', 'caption' => 'Вкупно неплатени влезни фактури', 'summary' => $payables, 'shares' => $payableShares, 'actions' => $this->payableActions()],
         ] as $block)
-            <x-card data-block="{{ $block['key'] }}">
+            <x-card class="dash-rise" style="--i: {{ $loop->index }}" data-block="{{ $block['key'] }}">
                 <div class="flex items-center justify-between">
                     <h2 class="text-base font-semibold text-ink">{{ $block['title'] }}</h2>
 
@@ -29,19 +29,19 @@
                 </div>
 
                 <p class="mt-4 text-sm text-stone">{{ $block['caption'] }}</p>
-                <p class="mt-1 text-2xl font-bold text-ink">{{ \App\Support\Format::money($block['summary']['total']) }}</p>
+                <p class="mt-1 text-2xl font-bold text-ink" x-data="countUp" data-count="{{ $block['summary']['total'] }}" data-count-delay="{{ $loop->index * 90 }}">{{ \App\Support\Format::money($block['summary']['total']) }}</p>
 
                 <div class="mt-4 flex h-2 overflow-hidden rounded-full bg-sand" role="img"
                      aria-label="Тековно {{ $block['shares']['current'] }}%, задоцнето {{ $block['shares']['overdue'] }}%">
-                    <div class="bg-brand" style="width: {{ $block['shares']['current'] }}%"></div>
-                    <div class="bg-orange-400" style="width: {{ $block['shares']['overdue'] }}%"></div>
+                    <div class="dash-grow-x bg-brand" style="--i: {{ $loop->index }}; width: {{ $block['shares']['current'] }}%"></div>
+                    <div class="dash-grow-x bg-orange-400" style="--i: {{ $loop->index }}; width: {{ $block['shares']['overdue'] }}%"></div>
                 </div>
 
                 <div class="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
                     <span><span class="inline-block h-2 w-2 rounded-sm bg-brand" aria-hidden="true"></span> Тековно:
-                        <span class="font-medium">{{ \App\Support\Format::money($block['summary']['current']) }}</span></span>
+                        <span class="font-medium" x-data="countUp" data-count="{{ $block['summary']['current'] }}" data-count-delay="{{ $loop->index * 90 + 150 }}">{{ \App\Support\Format::money($block['summary']['current']) }}</span></span>
                     <span><span class="inline-block h-2 w-2 rounded-sm bg-orange-400" aria-hidden="true"></span> Задоцнето:
-                        <span class="font-medium">{{ \App\Support\Format::money($block['summary']['overdue']) }}</span></span>
+                        <span class="font-medium" x-data="countUp" data-count="{{ $block['summary']['overdue'] }}" data-count-delay="{{ $loop->index * 90 + 250 }}">{{ \App\Support\Format::money($block['summary']['overdue']) }}</span></span>
                 </div>
             </x-card>
         @endforeach
@@ -52,7 +52,7 @@
         @php($totalIn = array_reduce($cashFlow['months'], fn ($carry, $m) => bcadd($carry, $m['in'], 2), '0.00'))
         @php($totalOut = array_reduce($cashFlow['months'], fn ($carry, $m) => bcadd($carry, $m['out'], 2), '0.00'))
 
-        <x-card class="mt-4" data-block="cash-flow">
+        <x-card class="dash-rise mt-4" style="--i: 2" data-block="cash-flow">
             <h2 class="text-base font-semibold text-ink">Готовински тек <span class="font-normal text-stone">· {{ $workingYear }}</span></h2>
 
             <div class="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -62,9 +62,9 @@
                             @php($inHeight = bccomp($cashPeak, '0', 2) > 0 ? max(bccomp($month['in'], '0', 2) > 0 ? 2 : 0, (int) round(((float) $month['in'] / (float) $cashPeak) * 100)) : 0)
                             @php($outHeight = bccomp($cashPeak, '0', 2) > 0 ? max(bccomp($month['out'], '0', 2) > 0 ? 2 : 0, (int) round(((float) $month['out'] / (float) $cashPeak) * 100)) : 0)
                             <div class="flex h-full flex-1 items-end justify-center gap-0.5">
-                                <div class="w-2.5 rounded-t bg-emerald-500" style="height: {{ $inHeight }}%"
+                                <div class="dash-grow-y w-2.5 rounded-t bg-emerald-500" style="--m: {{ $number }}; height: {{ $inHeight }}%"
                                      title="{{ $monthNames[$number - 1] }}: уплати {{ \App\Support\Format::money($month['in']) }}"></div>
-                                <div class="w-2.5 rounded-t bg-rose-500" style="height: {{ $outHeight }}%"
+                                <div class="dash-grow-y w-2.5 rounded-t bg-rose-500" style="--m: {{ $number }}; height: {{ $outHeight }}%"
                                      title="{{ $monthNames[$number - 1] }}: исплати {{ \App\Support\Format::money($month['out']) }}"></div>
                             </div>
                         @endforeach
@@ -79,19 +79,19 @@
                 <dl class="space-y-3 text-sm">
                     <div>
                         <dt class="text-stone">Пари на 1 јануари {{ $workingYear }}</dt>
-                        <dd class="text-lg font-bold text-ink">{{ \App\Support\Format::money($cashFlow['opening']) }}</dd>
+                        <dd class="text-lg font-bold text-ink" x-data="countUp" data-count="{{ $cashFlow['opening'] }}" data-count-delay="400">{{ \App\Support\Format::money($cashFlow['opening']) }}</dd>
                     </div>
                     <div>
                         <dt class="text-stone"><span class="inline-block h-2 w-2 rounded-sm bg-emerald-500" aria-hidden="true"></span> Уплати</dt>
-                        <dd class="font-medium text-ink">{{ \App\Support\Format::money($totalIn) }}</dd>
+                        <dd class="font-medium text-ink" x-data="countUp" data-count="{{ $totalIn }}" data-count-delay="500">{{ \App\Support\Format::money($totalIn) }}</dd>
                     </div>
                     <div>
                         <dt class="text-stone"><span class="inline-block h-2 w-2 rounded-sm bg-rose-500" aria-hidden="true"></span> Исплати</dt>
-                        <dd class="font-medium text-ink">{{ \App\Support\Format::money($totalOut) }}</dd>
+                        <dd class="font-medium text-ink" x-data="countUp" data-count="{{ $totalOut }}" data-count-delay="600">{{ \App\Support\Format::money($totalOut) }}</dd>
                     </div>
                     <div>
                         <dt class="text-stone">Пари на 31 декември {{ $workingYear }}</dt>
-                        <dd class="text-lg font-bold text-ink">{{ \App\Support\Format::money($cashFlow['closing']) }}</dd>
+                        <dd class="text-lg font-bold text-ink" x-data="countUp" data-count="{{ $cashFlow['closing'] }}" data-count-delay="700">{{ \App\Support\Format::money($cashFlow['closing']) }}</dd>
                     </div>
                 </dl>
             </div>
