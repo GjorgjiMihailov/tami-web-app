@@ -4,6 +4,7 @@ namespace App\Livewire\Payroll;
 
 use App\Models\Company;
 use App\Models\PayrollCode;
+use App\Models\PpfCalculation;
 use App\Models\PpfPayee;
 use App\Models\PpfPayment;
 use App\Rules\ValidEmbg;
@@ -27,6 +28,12 @@ class PpfPaymentForm extends Component
     public Company $company;
 
     public ?PpfPayment $payment = null;
+
+    /** Пресметката на која припаѓа исплатата (еден фајл = една пресметка). */
+    public ?PpfCalculation $calculation = null;
+
+    /** Порака по „Зачувај и додај уште една“. */
+    public string $savedNotice = '';
 
     public string $payeeId = '';
 
@@ -62,7 +69,7 @@ class PpfPaymentForm extends Component
 
     public string $comment = '';
 
-    public function mount(Company $company, ?PpfPayment $payment = null): void
+    public function mount(Company $company, ?PpfCalculation $calculation = null, ?PpfPayment $payment = null): void
     {
         Gate::authorize('view', $company);
         Gate::authorize('managePayroll', $company);
@@ -72,6 +79,7 @@ class PpfPaymentForm extends Component
         if ($payment?->exists) {
             abort_unless($payment->company_id === $company->id, 404);
 
+            $this->calculation = $payment->calculation;
             $this->payment = $payment->load('payee');
             $payee = $payment->payee;
             $this->payeeId = (string) $payee->id;
@@ -95,7 +103,11 @@ class PpfPaymentForm extends Component
             return;
         }
 
-        $this->paymentDate = now()->toDateString();
+        // Нова исплата: пресметката е од адресата и мора да е на оваа фирма.
+        abort_unless($calculation?->exists && $calculation->company_id === $company->id, 404);
+
+        $this->calculation = $calculation;
+        $this->paymentDate = $calculation->period_date->toDateString();
     }
 
     /** Избран постоен примател: податоците се префрлаат (може да се поправат). */
@@ -132,7 +144,29 @@ class PpfPaymentForm extends Component
 
     public function save(): mixed
     {
+        $this->persist();
+
+        return $this->redirect(route('ppf-payments.index', $this->company));
+    }
+
+    /** Пресметка има до 6 лица: по зачувување се чистат примателот и износот, а датумот/видот остануваат. */
+    public function saveAndAddAnother(): void
+    {
+        $this->persist();
+
+        foreach (['payeeId', 'name', 'surname', 'embg', 'municipalityCode', 'bankAccount', 'gross', 'advance', 'vatAmount', 'grossFree', 'decisionNumber', 'decisionDate', 'comment'] as $field) {
+            $this->$field = '';
+        }
+
+        $this->resetValidation();
+        $this->savedNotice = 'Исплатата е зачувана — внесете следна на истата пресметка.';
+    }
+
+    private function persist(): void
+    {
         Gate::authorize('managePayroll', $this->company);
+        abort_unless($this->calculation?->company_id === $this->company->id, 404);
+        $this->savedNotice = '';
 
         $date = $this->parsedDate();
         $municipalities = $this->municipalities()->pluck('code')->all();
@@ -190,6 +224,7 @@ class PpfPaymentForm extends Component
             ])->save();
 
             $attributes = [
+                'ppf_calculation_id' => $this->calculation->id,
                 'ppf_payee_id' => $payee->id,
                 'type_income_code' => $validated['typeCode'],
                 'subtype_income_code' => $validated['subtypeCode'] ?: null,
@@ -207,12 +242,12 @@ class PpfPaymentForm extends Component
             if ($this->payment === null) {
                 PpfPayment::create($attributes + ['company_id' => $this->company->id, 'created_by' => auth()->id()]);
             } else {
-                // Променета исплата повторно треба да се симне: печатот на извозот се чисти.
-                $this->payment->update($attributes + ['exported_at' => null, 'exported_by' => null]);
+                $this->payment->update($attributes);
             }
-        });
 
-        return $this->redirect(route('ppf-payments.index', $this->company));
+            // Додадена или променета исплата значи различен фајл: печатот на извозот се чисти.
+            $this->calculation->clearExport();
+        });
     }
 
     private function integerOrNull(mixed $value): ?int

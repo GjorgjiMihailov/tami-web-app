@@ -4,13 +4,12 @@ namespace App\Support\Ppf;
 
 use App\Models\Company;
 use App\Models\PayrollCode;
+use App\Models\PpfCalculation;
 use App\Models\PpfPayment;
 use App\Support\Bank\AccountNumber;
 use App\Support\Embg;
 use Carbon\Carbon;
-use Carbon\CarbonInterface;
 use DOMDocument;
-use Illuminate\Support\Collection;
 
 /**
  * Проверки пред симнување: правилата од шифрарниците и XSD на УЈП
@@ -21,14 +20,18 @@ final class PpfValidator
     /** XSD: датумите на периодот мора да се >= 01.01.2018. */
     private const EARLIEST = '2018-01-01';
 
-    /**
-     * @param  Collection<int, PpfPayment>  $payments  исплати од ист датум, со вчитан payee
-     */
-    public static function check(Company $company, Collection $payments, ?CarbonInterface $period = null): PpfValidationResult
+    public static function check(Company $company, PpfCalculation $calculation): PpfValidationResult
     {
         $company->loadMissing('bankAccounts');
+        $calculation->loadMissing('payments.payee');
+        $payments = $calculation->payments;
+        $period = $calculation->period_date;
         $errors = [];
         $warnings = [];
+
+        if ($calculation->company_id !== $company->id) {
+            return new PpfValidationResult(['Пресметката не припаѓа на оваа фирма.'], []);
+        }
 
         if (! $company->tax_id) {
             $errors[] = 'Фирмата нема внесен ЕДБ.';
@@ -39,21 +42,15 @@ final class PpfValidator
         }
 
         if ($payments->isEmpty()) {
-            $errors[] = 'Нема ниту една исплата за овој датум.';
+            $errors[] = 'Пресметката нема ниту една исплата.';
 
             return new PpfValidationResult($errors, $warnings);
         }
 
-        if ($payments->pluck('payment_date')->map(fn ($d) => $d->toDateString())->unique()->count() > 1) {
-            $errors[] = 'Исплатите во еден фајл мора да бидат од ист датум.';
-        }
-
-        if ($period !== null) {
-            if ($period->lt(Carbon::parse(self::EARLIEST))) {
-                $errors[] = 'УЈП не прима датум на пресметка пред 01.01.2018.';
-            } elseif ($period->lt($payments->min('payment_date'))) {
-                $warnings[] = 'Датумот на пресметката е пред датумот на исплата — проверете дали е намерно.';
-            }
+        if ($period->lt(Carbon::parse(self::EARLIEST))) {
+            $errors[] = 'УЈП не прима датум на пресметка пред 01.01.2018.';
+        } elseif ($period->lt($payments->min('payment_date'))) {
+            $warnings[] = 'Датумот на пресметката е пред датумот на исплата — проверете дали е намерно.';
         }
 
         $hasCompanyAccount = $company->bankAccounts->contains(fn ($a) => AccountNumber::key($a->account_number) !== '');

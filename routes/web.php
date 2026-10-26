@@ -424,12 +424,12 @@ Route::domain(PortalApp::PLATA->domain())->middleware(EnsureAppAccess::class.':p
     // managePayroll, а XML-от пишува печат на извоз и е канцелариска задача.
     Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('ppf-payments.')->group(function () {
         Route::get('/ppf-payments', [PpfPaymentIndex::class, '__invoke'])->name('index');
-        Route::get('/ppf-payments/create', [PpfPaymentForm::class, '__invoke'])->name('create');
+        Route::get('/ppf-calculations/{calculation}/payments/create', [PpfPaymentForm::class, '__invoke'])->name('create');
         Route::get('/ppf-payments/{payment}/edit', [PpfPaymentForm::class, '__invoke'])->name('edit');
     });
 
     Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('ppf-payments.')->group(function () {
-        Route::get('/ppf-payments/{date}/ppf.xml', PpfExportController::class)->where('date', '\d{4}-\d{2}-\d{2}')->name('export');
+        Route::get('/ppf-calculations/{calculation}/ppf.xml', PpfExportController::class)->name('export');
     });
 
     // Читачки: mount() веќе прашува Gate::authorize('view', $company).

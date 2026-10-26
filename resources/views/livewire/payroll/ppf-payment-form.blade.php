@@ -1,8 +1,13 @@
 <div>
     <a href="{{ route('ppf-payments.index', $company) }}" class="text-sm text-brand hover:underline">← Исплати на физички лица</a>
-    <h1 class="text-2xl font-bold text-gray-800 mt-1 mb-4">
+    <h1 class="text-2xl font-bold text-gray-800 mt-1 mb-1">
         {{ $payment ? 'Исплата на физичко лице' : 'Нова исплата на физичко лице' }} — {{ $company->name }}
     </h1>
+    <p class="text-sm text-gray-500 mb-4">Пресметка бр. {{ $calculation->number }} од {{ \App\Support\Format::date($calculation->period_date) }}</p>
+
+    @if ($savedNotice !== '')
+        <div class="mb-4 p-3 rounded bg-green-50 text-green-700 text-sm">{{ $savedNotice }}</div>
+    @endif
 
     <form wire:submit="save">
         <x-card class="mb-6">
@@ -136,6 +141,9 @@
 
         <div class="flex gap-3">
             <x-primary-button type="submit">Зачувај</x-primary-button>
+            @unless ($payment)
+                <button type="button" wire:click="saveAndAddAnother" class="px-4 py-2 text-sm rounded border border-brand text-brand hover:bg-orange-50">Зачувај и додај уште една</button>
+            @endunless
             <a href="{{ route('ppf-payments.index', $company) }}" class="px-4 py-2 text-sm text-gray-600 hover:underline">Откажи</a>
         </div>
     </form>

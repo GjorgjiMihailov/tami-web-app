@@ -4,6 +4,7 @@ namespace Tests\Feature\Ppf;
 
 use App\Models\Company;
 use App\Models\CompanyBankAccount;
+use App\Models\PpfCalculation;
 use App\Models\PpfPayee;
 use App\Models\PpfPayment;
 use App\Support\Ppf\PpfCodes;
@@ -39,14 +40,15 @@ class PpfDocumentTest extends TestCase
     {
         $payee ??= $this->payee();
 
+        // Основно секоја исплата е на своја пресметка (на денот на исплатата); $attributes може да даде заедничка.
         return PpfPayment::factory()->create(array_merge([
             'company_id' => $this->company->id, 'ppf_payee_id' => $payee->id,
-        ], $attributes))->load('payee');
+        ], $attributes))->load('payee', 'calculation');
     }
 
     private function build(PpfPayment ...$payments): string
     {
-        return PpfDocumentBuilder::build($this->company->fresh('bankAccounts'), collect($payments));
+        return PpfDocumentBuilder::build($this->company->fresh('bankAccounts'), collect($payments), $payments[0]->calculation->period_date);
     }
 
     // --- облик како вистинските фајлови ---
@@ -104,8 +106,9 @@ class PpfDocumentTest extends TestCase
 
     public function test_several_payments_get_running_row_ids(): void
     {
-        $a = $this->payment($this->payee(), ['payment_date' => '2026-10-01']);
-        $b = $this->payment($this->payee(['name' => 'Марко']), ['payment_date' => '2026-10-01', 'gross_income' => 5000]);
+        $calculation = PpfCalculation::factory()->create(['company_id' => $this->company->id, 'period_date' => '2026-10-01']);
+        $a = $this->payment($this->payee(), ['payment_date' => '2026-10-01', 'ppf_calculation_id' => $calculation->id]);
+        $b = $this->payment($this->payee(['name' => 'Марко']), ['payment_date' => '2026-10-01', 'gross_income' => 5000, 'ppf_calculation_id' => $calculation->id]);
 
         $xml = $this->build($b, $a);
 
@@ -149,9 +152,11 @@ class PpfDocumentTest extends TestCase
         $this->assertStringNotContainsString('<bankAccount>', $xml);
     }
 
-    public function test_the_file_name_is_by_the_date_of_the_payment(): void
+    public function test_the_file_name_is_by_the_number_of_the_calculation(): void
     {
-        $this->assertSame('Akontativna presmetka 05.03.2026.xml', PpfDocumentBuilder::fileName(Carbon::parse('2026-03-05')));
+        $calculation = PpfCalculation::factory()->create(['company_id' => $this->company->id, 'number' => 7]);
+
+        $this->assertSame('Akontativna presmetka br.7.xml', PpfDocumentBuilder::fileName($calculation));
     }
 
     // --- XSD ---
@@ -165,7 +170,7 @@ class PpfDocumentTest extends TestCase
                 'payment_date' => $legacy ? '2018-06-15' : '2026-06-15',
             ]);
 
-            $result = PpfValidator::check($this->company, collect([$payment]));
+            $result = PpfValidator::check($this->company, $payment->calculation);
 
             $this->assertSame([], $result->errors, "{$subtype['type']}/{$subtype['code']}");
             $payment->payee->delete();
@@ -176,7 +181,7 @@ class PpfDocumentTest extends TestCase
 
     private function errors(PpfPayment ...$payments): array
     {
-        return PpfValidator::check($this->company->fresh(), collect($payments))->errors;
+        return PpfValidator::check($this->company->fresh(), $payments[0]->calculation->fresh())->errors;
     }
 
     private function assertError(string $needle, array $errors): void
@@ -255,15 +260,19 @@ class PpfDocumentTest extends TestCase
         $this->assertError('е-пошта', $errors);
     }
 
-    public function test_payments_of_different_dates_do_not_share_a_file(): void
+    public function test_payments_of_different_dates_can_be_in_one_calculation(): void
     {
-        $this->assertError('ист датум', $this->errors($this->payment(null, ['payment_date' => '2026-10-01']), $this->payment(null, ['payment_date' => '2026-10-02'])));
+        $calculation = PpfCalculation::factory()->create(['company_id' => $this->company->id, 'period_date' => '2026-10-05']);
+        $this->payment(null, ['payment_date' => '2026-10-01', 'ppf_calculation_id' => $calculation->id]);
+        $this->payment(null, ['payment_date' => '2026-10-02', 'ppf_calculation_id' => $calculation->id]);
+
+        $this->assertSame([], PpfValidator::check($this->company->fresh(), $calculation->fresh())->errors);
     }
 
     public function test_a_payee_of_another_company_is_refused(): void
     {
         $foreign = PpfPayee::factory()->create();
-        $payment = PpfPayment::factory()->create(['company_id' => $this->company->id, 'ppf_payee_id' => $foreign->id])->load('payee');
+        $payment = PpfPayment::factory()->create(['company_id' => $this->company->id, 'ppf_payee_id' => $foreign->id])->load('payee', 'calculation');
 
         $this->assertError('не припаѓаат', $this->errors($payment));
     }
@@ -272,7 +281,7 @@ class PpfDocumentTest extends TestCase
     {
         CompanyBankAccount::where('company_id', $this->company->id)->delete();
 
-        $result = PpfValidator::check($this->company->fresh(), collect([$this->payment()]));
+        $result = PpfValidator::check($this->company->fresh(), $this->payment()->calculation);
 
         $this->assertTrue($result->passes());
         $this->assertNotEmpty($result->warnings);
@@ -280,7 +289,9 @@ class PpfDocumentTest extends TestCase
 
     public function test_no_payments_is_an_error(): void
     {
-        $this->assertError('Нема ниту една исплата', PpfValidator::check($this->company, collect())->errors);
+        $empty = PpfCalculation::factory()->create(['company_id' => $this->company->id]);
+
+        $this->assertError('нема ниту една исплата', PpfValidator::check($this->company, $empty)->errors);
     }
 
     public function test_the_period_can_be_a_later_date_than_the_payment(): void
@@ -298,11 +309,13 @@ class PpfDocumentTest extends TestCase
     {
         $payment = $this->payment(null, ['payment_date' => '2026-05-06']);
 
-        $early = PpfValidator::check($this->company->fresh(), collect([$payment]), Carbon::parse('2026-05-01'));
+        $payment->calculation->update(['period_date' => '2026-05-01']);
+        $early = PpfValidator::check($this->company->fresh(), $payment->calculation->fresh());
         $this->assertTrue($early->passes());
         $this->assertNotEmpty($early->warnings);
 
-        $ancient = PpfValidator::check($this->company->fresh(), collect([$payment]), Carbon::parse('2017-12-31'));
+        $payment->calculation->update(['period_date' => '2017-12-31']);
+        $ancient = PpfValidator::check($this->company->fresh(), $payment->calculation->fresh());
         $this->assertError('01.01.2018', $ancient->errors);
     }
 }

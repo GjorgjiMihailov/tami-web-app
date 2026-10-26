@@ -13,9 +13,9 @@ class PpfPayment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'company_id', 'ppf_payee_id', 'type_income_code', 'subtype_income_code', 'gross_income', 'payment_date',
+        'company_id', 'ppf_calculation_id', 'ppf_payee_id', 'type_income_code', 'subtype_income_code', 'gross_income', 'payment_date',
         'payment_type_code', 'advance', 'vat_amount', 'gross_free', 'decision_number', 'decision_date', 'comment',
-        'exported_at', 'exported_by', 'created_by',
+        'created_by',
     ];
 
     protected $attributes = ['payment_type_code' => '00001'];
@@ -25,7 +25,6 @@ class PpfPayment extends Model
         return [
             'payment_date' => 'date',
             'decision_date' => 'date',
-            'exported_at' => 'datetime',
             'gross_income' => 'integer',
             'advance' => 'integer',
             'vat_amount' => 'integer',
@@ -36,6 +35,11 @@ class PpfPayment extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function calculation(): BelongsTo
+    {
+        return $this->belongsTo(PpfCalculation::class, 'ppf_calculation_id');
     }
 
     public function payee(): BelongsTo

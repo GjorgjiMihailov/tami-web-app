@@ -3,13 +3,14 @@
 namespace App\Support\Ppf;
 
 use App\Models\Company;
+use App\Models\PpfCalculation;
 use App\Models\PpfPayment;
 use App\Support\Bank\AccountNumber;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 /**
- * Гради ujp_ppf_acc_calc XML за една дата на исплата, во обликот на вистинските
+ * Гради ujp_ppf_acc_calc XML за една пресметка, во обликот на вистинските
  * поднесени фајлови од MyGPM: декларација без encoding, табови, CRLF, празни
  * ознаки `contact` (и `pca_bank_account` кога нема сметка).
  *
@@ -21,14 +22,13 @@ final class PpfDocumentBuilder
     private const EOL = "\r\n";
 
     /**
-     * @param  Collection<int, PpfPayment>  $payments  исплати од ист датум, со вчитан payee
-     * @param  CarbonInterface|null  $period  датум на пресметката (periodfrom = periodto); основно е денот на исплатата,
-     *                                        но во вистинските фајлови понекогаш се поднесува денови подоцна
+     * @param  Collection<int, PpfPayment>  $payments  исплати на пресметката, со вчитан payee
+     * @param  CarbonInterface  $period  датум на пресметката (periodfrom = periodto)
      */
-    public static function build(Company $company, Collection $payments, ?CarbonInterface $period = null): string
+    public static function build(Company $company, Collection $payments, CarbonInterface $period): string
     {
         $payments = $payments->sortBy('id')->values();
-        $date = self::date($period ?? $payments->first()->payment_date);
+        $date = self::date($period);
 
         $out = ['<?xml version="1.0" standalone="yes"?>', '<ujp_ppf_acc_calc>'];
         $out[] = "\t<ppfTaxpayer>";
@@ -50,9 +50,10 @@ final class PpfDocumentBuilder
         return implode(self::EOL, $out).self::EOL;
     }
 
-    public static function fileName(CarbonInterface $date): string
+    /** Исто име како во MyGPM: „Akontativna presmetka br.N.xml“. */
+    public static function fileName(PpfCalculation $calculation): string
     {
-        return 'Akontativna presmetka '.$date->format('d.m.Y').'.xml';
+        return 'Akontativna presmetka br.'.$calculation->number.'.xml';
     }
 
     /** @return list<string> */
