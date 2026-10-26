@@ -42,6 +42,19 @@ class MarketingHomeTest extends TestCase
     }
 
     /**
+     * Најавата не смее да виси само на копчето горе десно: на телефон има
+     * лепливо копче, а гостинот го добива, најавениот не.
+     */
+    public function test_a_guest_gets_the_sticky_login_bar_and_a_signed_in_user_does_not(): void
+    {
+        $this->get(route('home'))->assertSee('id="login-bar"', false);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('home'))
+            ->assertDontSee('id="login-bar"', false);
+    }
+
+    /**
      * Сликите се дел од страницата, не украс — ако некоја падне од public/,
      * херојот останува празен правоаголник, а тоа никој нема да го забележи
      * без тест.
@@ -50,7 +63,7 @@ class MarketingHomeTest extends TestCase
     {
         $this->get(route('home'))->assertOk();
 
-        foreach (['dashboard', 'sales-invoices', 'payroll'] as $screen) {
+        foreach (['sales-invoices', 'payroll'] as $screen) {
             $this->assertFileExists(
                 public_path("images/screens/{$screen}.png"),
                 "Недостига сликата на екранот: {$screen}.png"

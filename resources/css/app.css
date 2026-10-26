@@ -108,6 +108,114 @@
 }
 
 /*
+ * Херојот на јавната страна (marketing/home.blade.php): темен, со светла што
+ * лебдат, барчиња што растат и фактури што се појавуваат една по една.
+ *
+ * Сето е чист CSS и работи и без JavaScript. Затоа ништо овде не зависи од
+ * `.has-js`: ако анимацијата не тргне, елементите стојат на својата крајна
+ * состојба (`backwards` ја применува почетната само за времето на доцнењето).
+ * Не користиме `both` — тој би го заклучил `transform` и hover-от би престанал.
+ */
+.hero-orb {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(64px);
+    pointer-events: none;
+}
+
+.hero-orb-a { animation: hero-drift-a 11s ease-in-out infinite; }
+.hero-orb-b { animation: hero-drift-b 13s ease-in-out infinite; }
+
+@keyframes hero-drift-a {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(28px, -30px); }
+}
+
+@keyframes hero-drift-b {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-30px, 22px); }
+}
+
+.hero-dots {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+    background-size: 22px 22px;
+    -webkit-mask-image: radial-gradient(ellipse at 60% 40%, #000 20%, transparent 75%);
+    mask-image: radial-gradient(ellipse at 60% 40%, #000 20%, transparent 75%);
+}
+
+.hero-rise { animation: hero-rise 800ms ease-out backwards; }
+.hero-rise-1 { animation-delay: 150ms; }
+.hero-rise-2 { animation-delay: 300ms; }
+.hero-rise-3 { animation-delay: 450ms; }
+
+@keyframes hero-rise {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: none; }
+}
+
+/* Светкање околу главното копче — привлекува око кон најавата. */
+.hero-glow { animation: hero-glow 2.4s ease-out infinite; }
+
+@keyframes hero-glow {
+    0% { box-shadow: 0 0 0 0 rgba(255, 102, 0, 0.5); }
+    70% { box-shadow: 0 0 0 16px rgba(255, 102, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 102, 0, 0); }
+}
+
+.hero-cur { animation: hero-blink 1s steps(1) infinite; }
+
+@keyframes hero-blink {
+    50% { opacity: 0; }
+}
+
+.hero-bar {
+    transform-origin: bottom;
+    animation: hero-grow 1100ms ease-out backwards;
+}
+
+@keyframes hero-grow {
+    from { transform: scaleY(0.05); }
+    to { transform: scaleY(1); }
+}
+
+/* Три реда на еден: секој се појавува, останува, и се гаси. */
+.hero-row {
+    opacity: 0;
+    animation: hero-row 9s ease-in-out infinite;
+}
+
+@keyframes hero-row {
+    0% { opacity: 0; transform: translateX(-12px); }
+    12%, 80% { opacity: 1; transform: none; }
+    100% { opacity: 0; }
+}
+
+/*
+ * Лепливата лента за најава на телефон. Под `.has-js` започнува скриена и се
+ * појавува откако ќе се помине херојот (класата `is-on` ја става скриптата на
+ * дното на страницата); без JS стои цело време, па најавата е секогаш на дофат.
+ */
+.has-js .login-bar {
+    transform: translateY(100%);
+    transition: transform 300ms ease-out;
+}
+
+.has-js .login-bar.is-on { transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-orb-a, .hero-orb-b, .hero-rise, .hero-glow, .hero-cur, .hero-bar {
+        animation: none;
+    }
+
+    .hero-row {
+        animation: none;
+        opacity: 1;
+    }
+
+    .has-js .login-bar { transition: none; }
+}
+
+/*
  * Лесно стискање при клик. Пишано како обична класа, а не како Tailwind
  * помошни класи, за да стои на едно место и да се гаси со едно правило подолу.
  */

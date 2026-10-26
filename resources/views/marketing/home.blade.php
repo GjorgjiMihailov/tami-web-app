@@ -35,23 +35,23 @@
 
     @vite(['resources/css/app.css'])
 </head>
-<body class="font-body bg-paper text-ink antialiased">
+<body class="font-body bg-paper text-ink antialiased @guest pb-20 md:pb-0 @endguest">
 
     {{-- ───────────────────────── Горна лента ───────────────────────── --}}
-    <header class="sticky top-0 z-50 border-b border-sand/70 bg-paper/85 backdrop-blur">
+    <header class="sticky top-0 z-50 border-b border-white/10 bg-night/85 backdrop-blur">
         <div class="mx-auto max-w-6xl px-5 h-16 flex items-center justify-between gap-4">
             <a href="{{ url('/') }}" class="flex items-center gap-2.5 shrink-0">
                 <img src="/images/logo-icon.png" alt="" class="h-8 w-8" width="32" height="32">
-                <span class="font-display text-lg font-semibold tracking-tight">
-                    ТАМИ<span class="text-stone font-body text-sm font-normal ms-2 hidden sm:inline">FinanceBuddy.mk Портал</span>
+                <span class="font-display text-lg font-semibold tracking-tight text-white">
+                    ТАМИ<span class="text-white/60 font-body text-sm font-normal ms-2 hidden sm:inline">FinanceBuddy.mk Портал</span>
                 </span>
             </a>
 
-            <nav class="hidden md:flex items-center gap-7 text-sm text-stone">
-                <a href="#moznosti" class="hover:text-ink transition">Можности</a>
-                <a href="#kako" class="hover:text-ink transition">Како работи</a>
-                <a href="#efaktura" class="hover:text-ink transition">е-Фактура</a>
-                <a href="#kontakt" class="hover:text-ink transition">Контакт</a>
+            <nav class="hidden md:flex items-center gap-7 text-sm text-white/70">
+                <a href="#moznosti" class="hover:text-white transition">Можности</a>
+                <a href="#kako" class="hover:text-white transition">Како работи</a>
+                <a href="#efaktura" class="hover:text-white transition">е-Фактура</a>
+                <a href="#kontakt" class="hover:text-white transition">Контакт</a>
             </nav>
 
             @auth
@@ -69,26 +69,27 @@
     </header>
 
     {{-- ───────────────────────────── Херој ───────────────────────────── --}}
-    <section class="relative overflow-hidden">
-        {{-- Мека портокалова светлина зад содржината, цртана со CSS: без слика,
-             без вчитување, и никогаш не се распикселува. --}}
-        <div aria-hidden="true" class="pointer-events-none absolute inset-0 -z-10">
-            <div class="absolute -top-32 -right-24 h-[28rem] w-[28rem] rounded-full bg-brand/10 blur-3xl"></div>
-            <div class="absolute top-40 -left-32 h-96 w-96 rounded-full bg-paper-warm blur-3xl"></div>
+    <section class="relative overflow-hidden bg-night text-white">
+        {{-- Светла што лебдат и мрежа од точки, сè цртано со CSS: без слика,
+             без вчитување, никогаш не се распикселува. --}}
+        <div aria-hidden="true" class="pointer-events-none absolute inset-0">
+            <div class="hero-orb hero-orb-a -top-28 -right-16 h-[26rem] w-[26rem] bg-brand/35"></div>
+            <div class="hero-orb hero-orb-b -bottom-32 left-1/4 h-80 w-80 bg-brand-light/20"></div>
+            <div class="hero-dots absolute inset-0"></div>
         </div>
 
-        <div class="mx-auto max-w-6xl px-5 pt-16 pb-20 sm:pt-24 sm:pb-28 grid lg:grid-cols-2 gap-14 lg:gap-10 items-center">
-            <div class="reveal">
-                <span class="inline-flex items-center gap-2 rounded-full border border-sand bg-white px-3.5 py-1.5 text-xs font-medium text-stone">
+        <div class="relative mx-auto max-w-6xl px-5 pt-16 pb-20 sm:pt-24 sm:pb-28 grid lg:grid-cols-2 gap-14 lg:gap-10 items-center">
+            <div class="hero-rise">
+                <span class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-white/70">
                     <span class="h-1.5 w-1.5 rounded-full bg-brand"></span>
                     Портал за клиенти на FinanceBuddy.mk
                 </span>
 
                 <h1 class="mt-6 font-display text-4xl sm:text-5xl lg:text-[3.4rem] leading-[1.08] font-semibold tracking-tight">
-                    Сметководството на твојата фирма — <span class="relative whitespace-nowrap">на едно место<svg aria-hidden="true" class="absolute -bottom-1.5 left-0 w-full" height="10" viewBox="0 0 300 10" preserveAspectRatio="none"><path d="M2 7 C 80 2, 220 2, 298 6" stroke="#FF6600" stroke-width="3" fill="none" stroke-linecap="round"/></svg></span>.
+                    Сметководството на твојата фирма <span class="text-brand whitespace-nowrap">на едно место</span>.<span aria-hidden="true" class="hero-cur ms-1 inline-block h-[0.8em] w-[3px] translate-y-[0.08em] bg-brand"></span>
                 </h1>
 
-                <p class="mt-7 text-lg leading-relaxed text-stone max-w-xl">
+                <p class="mt-7 text-lg leading-relaxed text-white/70 max-w-xl">
                     Издавај фактури, испраќај е-Фактури до УЈП, следи плати, залихи и
                     документи — и гледај ја состојбата на фирмата во секој момент.
                     Твојот сметководител работи во истиот систем, во исто време.
@@ -97,53 +98,65 @@
                 <div class="mt-9 flex flex-wrap items-center gap-3">
                     @auth
                         <a href="{{ route('dashboard') }}"
-                           class="inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand/20 transition hover:bg-brand-dark hover:-translate-y-0.5">
-                            Влези во порталот
+                           class="hero-glow inline-flex items-center gap-2 rounded-full bg-brand px-8 py-4 text-base font-bold text-white transition hover:bg-brand-light hover:-translate-y-0.5">
+                            Влези во порталот <span aria-hidden="true">→</span>
                         </a>
                     @else
                         <a href="{{ route('login') }}"
-                           class="inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand/20 transition hover:bg-brand-dark hover:-translate-y-0.5">
-                            Најави се
+                           class="hero-glow inline-flex items-center gap-2 rounded-full bg-brand px-8 py-4 text-base font-bold text-white transition hover:bg-brand-light hover:-translate-y-0.5">
+                            Најави се <span aria-hidden="true">→</span>
                         </a>
                     @endauth
                     <a href="#kontakt"
-                       class="inline-flex items-center gap-2 rounded-full border border-sand bg-white px-7 py-3.5 text-sm font-semibold text-ink transition hover:border-stone/40 hover:-translate-y-0.5">
+                       class="inline-flex items-center gap-2 rounded-full border border-white/25 px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10 hover:-translate-y-0.5">
                         Побарај пристап
                     </a>
                 </div>
 
-                <p class="mt-6 text-sm text-stone">
+                <p class="mt-6 text-sm text-white/50">
                     Работи и на телефон и на таблет — без инсталација.
                 </p>
             </div>
 
-            {{-- Вистински екран од порталот, во рамка на лаптоп. --}}
-            <div class="reveal reveal-delay-1 relative">
-                <div class="relative rounded-2xl border border-sand bg-white shadow-2xl shadow-ink/10 overflow-hidden float-slow">
-                    <div class="flex items-center gap-1.5 border-b border-sand bg-paper-warm/60 px-4 py-2.5">
-                        <span class="h-2.5 w-2.5 rounded-full bg-sand"></span>
-                        <span class="h-2.5 w-2.5 rounded-full bg-sand"></span>
-                        <span class="h-2.5 w-2.5 rounded-full bg-sand"></span>
-                        <span class="ms-3 truncate rounded-md bg-white px-3 py-1 text-[11px] text-stone">portal.financebuddy.mk</span>
+            {{-- „Жив" приказ на апликацијата. Бројките се пример, не податоци на
+                 клиент, и тоа пишува под приказот. Вистинските екрани се подолу. --}}
+            <div class="hero-rise hero-rise-2">
+                <div class="rounded-2xl border border-white/12 bg-white/[0.06] p-4 backdrop-blur-sm shadow-2xl shadow-black/50">
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div class="rounded-xl bg-white/[0.06] px-3.5 py-3">
+                            <span class="block text-[11px] text-white/55">Побарувања</span>
+                            <span class="block mt-0.5 text-lg font-semibold">1.254.920 ден</span>
+                        </div>
+                        <div class="rounded-xl bg-white/[0.06] px-3.5 py-3">
+                            <span class="block text-[11px] text-white/55">Обврски</span>
+                            <span class="block mt-0.5 text-lg font-semibold">362.735 ден</span>
+                        </div>
                     </div>
-                    <img src="/images/screens/dashboard.png"
-                         alt="Почетен екран на порталот со состојбата на фирмата"
-                         width="1440" height="620" loading="eager"
-                         class="block w-full">
-                </div>
 
-                {{-- Мала лебдечка картичка што вади една вистинска можност напред. --}}
-                <div class="hidden sm:flex absolute -bottom-6 -left-6 items-center gap-3 rounded-xl border border-sand bg-white px-4 py-3 shadow-xl shadow-ink/10">
-                    <span class="flex h-9 w-9 items-center justify-center rounded-full bg-forest/10 text-forest">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
-                        </svg>
-                    </span>
-                    <span class="text-sm">
-                        <span class="block font-semibold leading-tight">Прифатена од УЈП</span>
-                        <span class="block text-xs text-stone">е-Фактура · автоматски статус</span>
-                    </span>
+                    <div aria-hidden="true" class="mt-4 flex h-24 items-end gap-2">
+                        @foreach ([35, 55, 42, 70, 60, 88, 76] as $i => $h)
+                            <i class="hero-bar flex-1 rounded-t bg-gradient-to-b from-brand-light to-brand"
+                               style="height: {{ $h }}%; animation-delay: {{ 100 + $i * 100 }}ms"></i>
+                        @endforeach
+                    </div>
+
+                    <div class="mt-3 space-y-1.5">
+                        @foreach ([
+                            ['Фактура 2026-0142', 'Прифатена од УЈП', 0],
+                            ['Фактура 2026-0143', 'Испратена до УЈП', 3],
+                            ['Плата · октомври', 'МПИН подготвен', 6],
+                        ] as [$what, $status, $delay])
+                            <div class="relative h-8">
+                                <div class="hero-row absolute inset-0 flex items-center justify-between rounded-lg bg-white/[0.06] px-3 text-xs"
+                                     style="animation-delay: {{ $delay }}s">
+                                    <span>{{ $what }}</span>
+                                    <span class="text-emerald-300">● {{ $status }}</span>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
+                <p class="mt-3 text-center text-xs text-white/40">Пример · вистинските екрани се подолу</p>
             </div>
         </div>
     </section>
@@ -343,11 +356,33 @@
         </div>
     </footer>
 
+    {{-- Лепливо копче за најава на телефон: горното копче е мало и се губи при
+         скролање. Се појавува откако ќе се помине херојот (види app.css). --}}
+    @guest
+        <div id="login-bar" class="login-bar fixed inset-x-0 bottom-0 z-40 md:hidden border-t border-white/10 bg-night/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+            <a href="{{ route('login') }}"
+               class="flex w-full items-center justify-center gap-2 rounded-full bg-brand px-6 py-3.5 text-base font-bold text-white transition hover:bg-brand-dark">
+                Најави се <span aria-hidden="true">→</span>
+            </a>
+        </div>
+    @endguest
+
     {{-- Појавување при скролање. Ако прелистувачот нема IntersectionObserver
          или JS е исклучен, .reveal останува видлив — видливоста ја пали CSS-от,
          скриптата само го додава класот што ја анимира. --}}
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            var bar = document.getElementById('login-bar');
+
+            if (bar) {
+                var toggleBar = function () {
+                    bar.classList.toggle('is-on', window.scrollY > 480);
+                };
+
+                window.addEventListener('scroll', toggleBar, { passive: true });
+                toggleBar();
+            }
+
             var items = document.querySelectorAll('.reveal');
 
             if (! ('IntersectionObserver' in window)) {
