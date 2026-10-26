@@ -83,6 +83,7 @@ class PayrollAccessTest extends TestCase
         $this->actingAs($client)->get(route('payroll-runs.show', [$company, $run]))->assertOk();
         $this->actingAs($client)->get(route('payroll.recap-pdf', [$company, $run]))->assertOk();
         $this->actingAs($client)->get(route('payroll.mpin-export', [$company, $run]))->assertForbidden();
+        $this->actingAs($client)->get(route('payroll.mpin-export-txt', [$company, $run]))->assertForbidden();
     }
 
     public function test_an_internal_client_cannot_view_another_companys_run_or_pdf(): void

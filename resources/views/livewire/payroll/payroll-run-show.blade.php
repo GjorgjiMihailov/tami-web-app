@@ -34,8 +34,25 @@
         @else
             <a href="{{ route('payroll.mpin-export', [$company, $run]) }}"
                class="mt-3 inline-block rounded bg-orange-600 px-3 py-1 text-sm font-medium text-white hover:bg-orange-700">
-                Извези МПИН
+                Извези МПИН (XML)
             </a>
+
+            {{-- Стариот формат: .txt што стариот софтвер го шифрира во .crp. --}}
+            @if ($mpinTxt && $mpinTxt->errors)
+                <div class="mt-3 rounded border border-red-200 bg-red-50 p-3">
+                    <p class="text-sm font-medium text-red-800">МПИН .txt не е можен:</p>
+                    <ul class="mt-1 list-disc pl-5 text-sm text-red-700">
+                        @foreach ($mpinTxt->errors as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @else
+                <a href="{{ route('payroll.mpin-export-txt', [$company, $run]) }}"
+                   class="mt-3 ml-2 inline-block rounded border border-orange-600 px-3 py-1 text-sm font-medium text-orange-700 hover:bg-orange-50">
+                    Извези МПИН (.txt за стар софтвер)
+                </a>
+            @endif
         @endif
 
         @if ($mpin->warnings)

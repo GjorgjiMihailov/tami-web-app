@@ -12,6 +12,7 @@ use App\Http\Controllers\Form743DocumentController;
 use App\Http\Controllers\ItemImportTemplateController;
 use App\Http\Controllers\JournalEntryPdfController;
 use App\Http\Controllers\MpinExportController;
+use App\Http\Controllers\MpinTxtExportController;
 use App\Http\Controllers\PartnerListPdfController;
 use App\Http\Controllers\PartnerShowRedirectController;
 use App\Http\Controllers\PartnerStatementPdfController;
@@ -418,6 +419,7 @@ Route::domain(PortalApp::PLATA->domain())->middleware(EnsureAppAccess::class.':p
     // — останува затворено.
     Route::middleware(['auth', EnsureAccountingAccess::class, EnsureLegalEntity::class, EnsureCompanyModule::class.':payroll'])->prefix('companies/{company}')->name('payroll.')->group(function () {
         Route::get('/payroll-runs/{run}/mpin.xml', MpinExportController::class)->name('mpin-export');
+        Route::get('/payroll-runs/{run}/mpin.txt', MpinTxtExportController::class)->name('mpin-export-txt');
     });
 
     // Исплати на физички лица (ППФ). Читачки екран; формата и бришењето си носат

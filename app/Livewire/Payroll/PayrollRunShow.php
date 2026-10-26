@@ -8,6 +8,7 @@ use App\Models\PayrollRunEmployee;
 use App\Models\PayrollRunLine;
 use App\Services\Payroll\PayrollRunService;
 use App\Support\Payroll\LineType;
+use App\Support\Payroll\Mpin\MpinTxtValidator;
 use App\Support\Payroll\Mpin\MpinValidator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -252,12 +253,14 @@ class PayrollRunShow extends Component
         // report "must be confirmed first", but the screen already shows a
         // Confirm button for that — reporting it twice would just be noise.
         $mpin = $this->run->isDraft() ? null : MpinValidator::check($this->run);
+        $mpinTxt = $this->run->isDraft() ? null : MpinTxtValidator::check($this->run);
 
         return view('livewire.payroll.payroll-run-show', [
             'rows' => $rows,
             'selected' => $selected,
             'offered' => LineType::OFFERED,
             'mpin' => $mpin,
+            'mpinTxt' => $mpinTxt,
         ]);
     }
 }

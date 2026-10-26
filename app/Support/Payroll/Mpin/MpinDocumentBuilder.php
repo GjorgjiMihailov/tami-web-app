@@ -109,8 +109,12 @@ final class MpinDocumentBuilder
         'DanocnoOslobIznos' => 'taxRelief',
     ];
 
-    /** @return array<string, int> */
-    private static function amounts(PayrollRunEmployee $row, MpinObvrznik $obvrznik): array
+    /**
+     * Заокружените износи на еден работник — истите за XML и за .txt.
+     *
+     * @return array<string, int>
+     */
+    public static function amounts(PayrollRunEmployee $row, MpinObvrznik $obvrznik): array
     {
         // Даночното намалување не се чува како колона зашто не мора:
         // taxBase = max(gross − contributions − allowance, 0), па
