@@ -23,6 +23,14 @@ new class extends Component
 
     public int $workingYear = 0;
 
+    /** @var list<array{id: int, name: string}> */
+    public array $companyOptions = [];
+
+    /** @var list<array{label: string, url: string}> */
+    public array $quickCreate = [];
+
+    public string $initials = '';
+
     public function mount(): void
     {
         $company = request()->route('company');
@@ -36,7 +44,16 @@ new class extends Component
         if ($this->company) {
             $this->workingYear = WorkingYear::for($this->company);
             $this->moduleUrl = Menu::landingUrl(auth()->user(), $this->company, $app) ?? '';
+            $this->quickCreate = Menu::quickCreate(auth()->user(), $this->company);
+            $this->companyOptions = auth()->user()->visibleCompanies()
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (Company $c) => ['id' => $c->id, 'name' => $c->name])
+                ->all();
         }
+
+        $this->initials = collect(preg_split('/\s+/u', trim(auth()->user()->name)))
+            ->filter()->take(2)->map(fn (string $part) => mb_strtoupper(mb_substr($part, 0, 1)))->implode('');
     }
 
     /**
@@ -50,61 +67,109 @@ new class extends Component
     }
 }; ?>
 
-<nav x-data="{ open: false, appsOpen: false }" class="bg-white border-b border-sand">
-    <div class="px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-end h-14 items-center">
+<nav x-data="{ appsOpen: false }" class="bg-white border-b border-sand">
+    <div class="px-3 sm:px-6 lg:px-8">
+        <div class="flex h-14 items-center gap-2 sm:gap-3">
             {{-- Opens the sidebar drawer. Hidden at lg and up, where the
-                 sidebar is a permanent column. me-auto keeps it on the left
-                 without disturbing the desktop layout, since display:none
-                 takes it out of the flex row entirely. --}}
+                 sidebar is a permanent column. --}}
             <button type="button" @click="sidebarOpen = true"
                     aria-label="Отвори мени"
-                    class="me-auto inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition lg:hidden">
+                    class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition lg:hidden">
                 <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
             </button>
 
-            {{-- Каде си: модул · фирма · година. Секогаш видливо, не само на
-                 таблата — за да не мора да се гледа во дното на темната лента
-                 за да се потврди во која фирма/година се работи. --}}
+            {{-- Каде си: модул · година горе, фирмата долу. Секогаш видливо, не
+                 само на таблата. Кога човекот има повеќе фирми, името на фирмата
+                 е и менувач — истото како „Фирма" во дното на левата лента. --}}
             @if ($company)
-                <a href="{{ $moduleUrl ?: '#' }}" @if ($moduleUrl) wire:navigate @endif
-                   class="me-auto hidden lg:inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-100 press">
-                    {{ $moduleLabel }}
-                    <span class="text-gray-300 font-normal">·</span>
-                    <span class="font-normal text-gray-500">{{ $company->name }}</span>
-                    <span class="text-gray-300 font-normal">·</span>
-                    <span class="font-normal text-gray-500">{{ $workingYear }}</span>
-                </a>
+                <div class="relative hidden min-w-0 lg:block" x-data="{ open: false, filter: '' }" @keydown.escape.window="open = false">
+                    <div class="flex items-center gap-1">
+                        <div class="min-w-0 leading-tight">
+                            <a href="{{ $moduleUrl ?: '#' }}" @if ($moduleUrl) wire:navigate @endif class="block text-xs text-stone hover:text-ink">
+                                {{ $moduleLabel }} · {{ $workingYear }}
+                            </a>
+                            @if (count($companyOptions) > 1)
+                                <button type="button" @click="open = ! open; $nextTick(() => $refs.filter && $refs.filter.focus())"
+                                        class="inline-flex max-w-[22rem] items-center gap-1 text-sm font-semibold text-ink hover:text-brand">
+                                    <span class="truncate">{{ $company->name }}</span>
+                                    <svg class="h-3.5 w-3.5 shrink-0 text-stone" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" /></svg>
+                                </button>
+                            @else
+                                <span class="block max-w-[22rem] truncate text-sm font-semibold text-ink">{{ $company->name }}</span>
+                            @endif
+                        </div>
+                    </div>
+
+                    @if (count($companyOptions) > 1)
+                        <div x-show="open" x-cloak @click.outside="open = false" x-transition.opacity
+                             class="absolute left-0 z-30 mt-2 w-80 rounded-xl border border-sand bg-white p-2 shadow-card">
+                            @if (count($companyOptions) > 7)
+                                <input x-ref="filter" x-model="filter" type="text" placeholder="Најди фирма…"
+                                       class="mb-2 block w-full rounded-lg border-sand text-sm focus:border-brand focus:ring-brand">
+                            @endif
+                            <div class="max-h-72 overflow-y-auto">
+                                @foreach ($companyOptions as $option)
+                                    <a href="{{ route('companies.dashboard', $option['id']) }}"
+                                       x-show="! filter || @js(mb_strtolower($option['name'])).includes(filter.toLowerCase())"
+                                       class="block truncate rounded-lg px-3 py-2 text-sm hover:bg-orange-50 {{ $option['id'] === $company->id ? 'font-semibold text-brand' : 'text-ink' }}">
+                                        {{ $option['name'] }}
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                </div>
             @endif
 
-            @if ($apps !== [])
-                <button type="button" @click="appsOpen = true"
-                        class="inline-flex items-center gap-2 px-3 py-2 me-2 text-xs font-semibold tracking-wide text-gray-600 rounded-lg hover:bg-gray-100 press">
-                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M3 3h4v4H3V3zm6 0h4v4H9V3zm6 0h2v4h-2V3zM3 9h4v4H3V9zm6 0h4v4H9V9zm6 0h2v4h-2V9zM3 15h4v2H3v-2zm6 0h4v2H9v-2zm6 0h2v2h-2v-2z" />
-                    </svg>
-                    АПЛИКАЦИИ
-                </button>
-            @endif
+            <div class="ms-auto flex items-center gap-1 sm:gap-2">
+                <livewire:layout.global-search />
 
-            <!-- Settings Dropdown -->
-            <div class="hidden sm:flex sm:items-center">
+                @if ($quickCreate !== [])
+                    <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false">
+                        <button type="button" @click="open = ! open" aria-label="Нова"
+                                class="inline-flex h-9 items-center gap-1.5 rounded-full bg-brand px-3 text-sm font-medium text-white hover:opacity-90 sm:px-4 press">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" /></svg>
+                            <span class="hidden sm:inline">Нова</span>
+                        </button>
+                        <div x-show="open" x-cloak @click.outside="open = false" x-transition.opacity
+                             class="absolute right-0 z-30 mt-2 w-60 rounded-xl border border-sand bg-white py-1 shadow-card">
+                            @foreach ($quickCreate as $action)
+                                <a href="{{ $action['url'] }}" class="block px-4 py-2 text-sm text-ink hover:bg-orange-50">{{ $action['label'] }}</a>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                @if ($company)
+                    <livewire:layout.bell />
+                @endif
+
+                @if ($apps !== [])
+                    <button type="button" @click="appsOpen = true" aria-label="Апликации" title="Апликации"
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 press">
+                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path d="M3 3h4v4H3V3zm6 0h4v4H9V3zm6 0h2v4h-2V3zM3 9h4v4H3V9zm6 0h4v4H9V9zm6 0h2v4h-2V9zM3 15h4v2H3v-2zm6 0h4v2H9v-2zm6 0h2v2h-2v-2z" />
+                        </svg>
+                    </button>
+                @endif
+
+                {{-- Профилот е кругче со иницијали; името и е-поштата се во менито. --}}
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-full text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
-                            <div x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></div>
-
-                            <div class="ms-1">
-                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
-                            </div>
+                        <button type="button" aria-label="Профил"
+                                class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-semibold text-white hover:opacity-90 focus:outline-none press">
+                            {{ $initials }}
                         </button>
                     </x-slot>
 
                     <x-slot name="content">
+                        <div class="border-b border-sand px-4 py-2">
+                            <div class="truncate text-sm font-semibold text-ink" x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></div>
+                            <div class="truncate text-xs text-stone">{{ auth()->user()->email }}</div>
+                        </div>
+
                         <x-dropdown-link :href="route('profile')" wire:navigate>
                             Профил
                         </x-dropdown-link>
@@ -117,39 +182,6 @@ new class extends Component
                         </button>
                     </x-slot>
                 </x-dropdown>
-            </div>
-
-            <!-- Hamburger -->
-            <div class="-me-2 flex items-center sm:hidden">
-                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
-                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                        <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Responsive Navigation Menu -->
-    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
-        <div class="pt-4 pb-1 border-t border-sand">
-            <div class="px-4">
-                <div class="font-medium text-base text-gray-800" x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></div>
-                <div class="font-medium text-sm text-gray-500">{{ auth()->user()->email }}</div>
-            </div>
-
-            <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('profile')" wire:navigate>
-                    Профил
-                </x-responsive-nav-link>
-
-                <!-- Authentication -->
-                <button wire:click="logout" class="w-full text-start">
-                    <x-responsive-nav-link>
-                        Одјави се
-                    </x-responsive-nav-link>
-                </button>
             </div>
         </div>
     </div>

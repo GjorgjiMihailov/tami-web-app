@@ -127,6 +127,66 @@ class Menu
         };
     }
 
+    /**
+     * Шаблоните на ставките што овој човек ги гледа во некоја од своите
+     * апликации (без „наскоро"). Горната лента го чита ова за да не понуди
+     * брзо дејство, резултат од пребарување или известување за екран што
+     * менито веќе го крие — ист извор на вистина, а не втора листа на правила.
+     *
+     * @return array<string, PortalApp> шаблон на рута => апликација
+     */
+    public static function visiblePatterns(User $user, Company $company): array
+    {
+        $patterns = [];
+
+        foreach (self::tree($company) as $group) {
+            if (! $user->canAccessApp($group['app'])) {
+                continue;
+            }
+
+            foreach ($group['items'] as $item) {
+                if (($item['soon'] ?? false) || ! self::itemVisible($user, $company, $item)) {
+                    continue;
+                }
+
+                $patterns[$item['pattern']] ??= $group['app'];
+            }
+        }
+
+        return $patterns;
+    }
+
+    /**
+     * Дејствата од копчето „+ Нова": секое се нуди само ако екранот на кој
+     * припаѓа е видлив за овој човек во оваа фирма (физичко лице нема влезни
+     * фактури, исклучен модул крие и артикли и вработени).
+     *
+     * @return list<array{label: string, url: string}>
+     */
+    public static function quickCreate(User $user, Company $company): array
+    {
+        $visible = self::visiblePatterns($user, $company);
+
+        $actions = [
+            ['pattern' => 'sales-invoices.*', 'label' => 'Излезна фактура', 'route' => 'sales-invoices.create'],
+            ['pattern' => 'proformas.*', 'label' => 'Профактура', 'route' => 'proformas.create'],
+            ['pattern' => 'purchase-invoices.*', 'label' => 'Влезна фактура', 'route' => 'purchase-invoices.create'],
+            ['pattern' => 'partners.*', 'label' => 'Кооперант', 'route' => 'partners.create'],
+            ['pattern' => 'inventory.items.*', 'label' => 'Артикл', 'route' => 'inventory.items.create'],
+            ['pattern' => 'employees.*', 'label' => 'Вработен', 'route' => 'employees.create'],
+        ];
+
+        $result = [];
+
+        foreach ($actions as $action) {
+            if (isset($visible[$action['pattern']])) {
+                $result[] = ['label' => $action['label'], 'url' => route($action['route'], $company)];
+            }
+        }
+
+        return $result;
+    }
+
     private static function itemVisible(User $user, Company $company, array $item): bool
     {
         // Unbuilt entries double as the admin's remaining-work map. A client

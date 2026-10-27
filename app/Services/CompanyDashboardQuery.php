@@ -77,6 +77,24 @@ class CompanyDashboardQuery
     }
 
     /**
+     * Колку излезни фактури се доспеани и неплатени (за ѕвонцето на горната
+     * лента). Истото правило како receivableOverdue(), само бројка.
+     */
+    public static function receivableOverdueCount(Company $company, int $year): int
+    {
+        return self::confirmedSalesInvoicesQuery($company, $year)->with('payments')->get()
+            ->filter(fn (SalesInvoice $invoice) => $invoice->isOverdue())
+            ->count();
+    }
+
+    public static function payableOverdueCount(Company $company, int $year): int
+    {
+        return self::confirmedPurchaseInvoicesQuery($company, $year)->with('payments')->get()
+            ->filter(fn (PurchaseInvoice $invoice) => $invoice->isOverdue())
+            ->count();
+    }
+
+    /**
      * Недоплатена обврска кон добавувачи: истото за влезните фактури.
      */
     public static function payable(Company $company, int $year): string
