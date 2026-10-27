@@ -3,11 +3,13 @@
     <p class="mt-1 text-sm text-stone">Продажба · работна година {{ $workingYear }}</p>
 
     {{-- Долго име на променливата намерно: @foreach ја презапишува променливата
-         и по јамката, Blade нема опсег на јамка. --}}
+         и по јамката, Blade нема опсег на јамка. Последното копче го зафаќа
+         целиот ред само кога остатокот е непарен (три копчиња: Кооперанти
+         долу; две кај физичко лице: едно до друго, без празно место). --}}
     <div data-board="buttons" class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
         @foreach ($this->links() as $boardLink)
             <a href="{{ $boardLink['url'] }}" wire:navigate
-               class="board-link {{ $boardLink['tone'] }} press{{ $boardLink['key'] === 'partners' ? ' sm:col-span-2' : '' }}"
+               class="board-link {{ $boardLink['tone'] }} press{{ $loop->last && $loop->count % 2 === 1 ? ' sm:col-span-2' : '' }}"
                style="--i: {{ $loop->index }}">
                 <span class="board-link__icon" aria-hidden="true">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">

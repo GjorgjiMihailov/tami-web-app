@@ -28,7 +28,7 @@
              физичко лице гледа две, сметководителот три). Решетка со фиксни
              колони би оставила празно место; тука колоните се прилагодуваат на
              бројот, а --n ја ограничува ширината за да не се развлечи една плочка. --}}
-        <div class="tile-grid mb-8" style="--n: {{ count($apps) }}">
+        <div class="tile-grid{{ count($apps) === 1 ? ' tile-grid--solo' : '' }} mb-8">
             @foreach ($apps as $app)
                 @php $look = $tileLook[$app['key']] ?? $tileLook['prodazba']; @endphp
                 <a href="{{ $app['url'] }}"

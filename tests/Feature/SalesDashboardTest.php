@@ -233,6 +233,16 @@ class SalesDashboardTest extends TestCase
         $this->assertStringContainsString('sm:grid-cols-2', $this->classesOf($company, '//div[@data-board="buttons"]'));
     }
 
+    public function test_an_individual_gets_its_two_buttons_side_by_side_without_a_gap(): void
+    {
+        // Две копчиња: ако второто зафаќа цел ред, првото останува на пола и
+        // десно се гледа празно место.
+        $company = Company::factory()->create(['type' => CompanyType::INDIVIDUAL]);
+
+        $this->assertStringNotContainsString('sm:col-span-2', $this->classesOf($company, $this->buttonXpath('Излезни фактури')));
+        $this->assertStringNotContainsString('sm:col-span-2', $this->classesOf($company, $this->buttonXpath('Кооперанти')));
+    }
+
     public function test_the_lists_are_two_across_with_partners_on_its_own_full_row(): void
     {
         $company = Company::factory()->create();
