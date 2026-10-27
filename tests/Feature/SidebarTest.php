@@ -435,7 +435,7 @@ class SidebarTest extends TestCase
             $html = $this->get($url)->assertOk()->getContent();
 
             $this->assertMatchesRegularExpression(
-                '#<a href="'.preg_quote(route('dashboard'), '#').'"\s+class="inline-flex items-center h-9 px-3 rounded-lg bg-white">#',
+                '#<a href="'.preg_quote(route('dashboard'), '#').'"\s+class="flex items-center justify-center h-14 w-full bg-white">#',
                 $html,
             );
         }
