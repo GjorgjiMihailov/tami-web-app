@@ -249,6 +249,19 @@
     animation-delay: calc(var(--i, 0) * 80ms);
 }
 
+/*
+ * Решетка за плочките: колоните се прилагодуваат на бројот (--n), па една,
+ * две или три плочки секогаш ја пополнуваат ширината, а на телефон се редат
+ * една под друга. max-width спречува една единствена плочка да се развлече
+ * преку цел екран.
+ */
+.tile-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    max-width: calc(var(--n, 3) * 34rem);
+}
+
 .app-tile--orange { --tone: #ff6600; --tone-2: #ffa25c; --tone-soft: rgba(255, 102, 0, 0.16); }
 .app-tile--green  { --tone: #059669; --tone-2: #34d399; --tone-soft: rgba(5, 150, 105, 0.16); }
 .app-tile--indigo { --tone: #4f46e5; --tone-2: #818cf8; --tone-soft: rgba(79, 70, 229, 0.16); }

@@ -24,7 +24,11 @@
                 ],
             ];
         @endphp
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        {{-- Бројот на плочки се менува по човек и по вид на фирма (клиентот на
+             физичко лице гледа две, сметководителот три). Решетка со фиксни
+             колони би оставила празно место; тука колоните се прилагодуваат на
+             бројот, а --n ја ограничува ширината за да не се развлечи една плочка. --}}
+        <div class="tile-grid mb-8" style="--n: {{ count($apps) }}">
             @foreach ($apps as $app)
                 @php $look = $tileLook[$app['key']] ?? $tileLook['prodazba']; @endphp
                 <a href="{{ $app['url'] }}"
@@ -132,50 +136,50 @@
     @if ($company->type->isIndividual())
         <p class="mt-1 text-xs text-gray-400">Работна година {{ $workingYear }}</p>
 
-        <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        {{-- Шест картички во една решетка: 2 колони на телефон, 3 на поширок
+             екран — и двете делат 6 без остаток, па нема празно место. Износот
+             на ДЛД останува сив и без бројка: тој се знае дури откако пријавата
+             е внесена во е-ПДД, а таму нема поврзување. Измислена бројка на
+             почетен екран е полоша од именувана празнина. --}}
+        <div class="mt-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
             <a href="{{ route('sales-invoices.index', $company) }}" wire:navigate
-               class="block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition">
+               class="dash-rise block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition" style="--i: 0">
                 <span class="text-sm text-gray-500">Приход</span>
-                <p class="mt-1 text-xl font-semibold text-gray-800">{{ \App\Support\Format::money($revenue) }}</p>
+                <p class="mt-1 text-lg sm:text-xl font-semibold text-gray-800 break-words">{{ \App\Support\Format::money($revenue) }}</p>
             </a>
 
             <a href="{{ route('sales-invoices.index', $company) }}" wire:navigate
-               class="block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition">
+               class="dash-rise block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition" style="--i: 1">
                 <span class="text-sm text-gray-500">Ненаплатено</span>
-                <p class="mt-1 text-xl font-semibold text-gray-800">{{ \App\Support\Format::money($receivable) }}</p>
+                <p class="mt-1 text-lg sm:text-xl font-semibold text-gray-800 break-words">{{ \App\Support\Format::money($receivable) }}</p>
             </a>
-        </div>
 
-        {{-- Износот на ДЛД останува сив и без бројка: тој се знае дури
-             откако пријавата е внесена во е-ПДД, а таму нема поврзување.
-             Измислена бројка на почетен екран е полоша од именувана празнина. --}}
-        <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="dash-rise block bg-white rounded-2xl shadow-card p-4 opacity-60" style="--i: 2">
+                <span class="text-sm text-gray-500">Износ на ДЛД</span>
+                <p class="mt-1">
+                    <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">наскоро</span>
+                </p>
+            </div>
+
             <a href="{{ route('form743.index', $company) }}" wire:navigate
-               class="block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition">
+               class="dash-rise block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition" style="--i: 3">
                 <span class="text-sm text-gray-500">Примени 743 обрасци</span>
-                <p class="mt-1 text-xl font-semibold text-gray-800">{{ $form743Counts['received'] }}</p>
+                <p class="mt-1 text-lg sm:text-xl font-semibold text-gray-800">{{ $form743Counts['received'] }}</p>
             </a>
 
             <a href="{{ route('form743.index', $company) }}" wire:navigate
-               class="block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition">
+               class="dash-rise block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition" style="--i: 4">
                 <span class="text-sm text-gray-500">Необработени</span>
-                <p class="mt-1 text-xl font-semibold {{ $form743Counts['pending'] > 0 ? 'text-amber-700' : 'text-gray-800' }}">
+                <p class="mt-1 text-lg sm:text-xl font-semibold {{ $form743Counts['pending'] > 0 ? 'text-amber-700' : 'text-gray-800' }}">
                     {{ $form743Counts['pending'] }}
                 </p>
             </a>
 
             <a href="{{ route('form743.index', $company) }}" wire:navigate
-               class="block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition">
+               class="dash-rise block bg-white rounded-2xl shadow-card p-4 hover:bg-orange-50 transition" style="--i: 5">
                 <span class="text-sm text-gray-500">Внесени пријави</span>
-                <p class="mt-1 text-xl font-semibold text-gray-800">{{ $form743Counts['filed'] }}</p>
+                <p class="mt-1 text-lg sm:text-xl font-semibold text-gray-800">{{ $form743Counts['filed'] }}</p>
             </a>
-
-            <div class="block bg-white rounded-2xl shadow-card p-4 opacity-60">
-                <span class="font-semibold text-gray-500 flex items-center gap-2">
-                    Износ на ДЛД
-                    <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">наскоро</span>
-                </span>
-            </div>
         </div>
     @endif
 </div>
