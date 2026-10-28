@@ -7,9 +7,11 @@ use App\Exceptions\InvalidInvoiceStateException;
 use App\Models\Company;
 use App\Models\ProformaInvoice;
 use App\Models\SalesInvoice;
+use App\Services\ExchangeRateService;
 use App\Services\Invoicing\SalesInvoiceService;
 use App\Support\WorkingYear;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -26,6 +28,9 @@ class SalesInvoiceShow extends Component
     public string $paymentDate = '';
 
     public string $paymentMethod = 'bank';
+
+    /** Курс на денот на приливот — само за девизна фактура. */
+    public string $paymentRate = '';
 
     public int $workingYear = 0;
 
@@ -150,22 +155,55 @@ class SalesInvoiceShow extends Component
     {
         Gate::authorize('update', $this->salesInvoice);
 
+        $foreign = $this->salesInvoice->isForeignCurrency();
+
+        if ($foreign) {
+            // Девизна наплата е само преку банка (девизна сметка).
+            $this->paymentMethod = 'bank';
+        }
+
         $this->validate([
             'paymentAmount' => 'required|numeric|min:0.01|decimal:0,2',
             'paymentDate' => 'required|date',
             'paymentMethod' => 'required|in:bank,cash',
+            'paymentRate' => $foreign ? 'required|numeric|gt:0|decimal:0,6' : 'nullable',
         ]);
 
         try {
-            $service->recordPayment($this->salesInvoice, $this->paymentAmount, $this->paymentDate, $this->paymentMethod, auth()->id());
+            $service->recordPayment($this->salesInvoice, $this->paymentAmount, $this->paymentDate, $this->paymentMethod, auth()->id(), $foreign ? $this->paymentRate : null);
         } catch (InvalidInvoiceStateException $e) {
             $this->addError('paymentAmount', $e->getMessage());
 
             return;
         }
 
-        $this->reset(['paymentAmount']);
+        $this->reset(['paymentAmount', 'paymentRate']);
         $this->salesInvoice->refresh();
+    }
+
+    /**
+     * Курсот на НБРМ за датумот на приливот. Полето останува рачно: паднат НБРМ
+     * не смее да блокира наплата, па неуспехот е грешка на полето.
+     */
+    public function fetchPaymentRate(): void
+    {
+        if (! $this->salesInvoice->isForeignCurrency()) {
+            return;
+        }
+
+        try {
+            $rate = app(ExchangeRateService::class)->getRate(
+                $this->salesInvoice->currency,
+                Carbon::parse($this->paymentDate)
+            );
+        } catch (\Throwable $e) {
+            $this->addError('paymentRate', 'Курсот не се презеде од НБРМ — впиши го рачно.');
+
+            return;
+        }
+
+        $this->resetErrorBag('paymentRate');
+        $this->paymentRate = (string) $rate;
     }
 
     public function markSent(): void

@@ -413,11 +413,25 @@
                         <x-input-label for="paymentDate" value="Датум" />
                         <x-text-input id="paymentDate" type="date" wire:model="paymentDate" class="w-full" />
                     </div>
+                    @if ($invoice->isForeignCurrency())
+                        <div>
+                            <x-input-label for="paymentRate" value="Курс на денот (1 {{ $invoice->currency }} = ? ден)" />
+                            <div class="flex gap-2">
+                                <x-text-input id="paymentRate" wire:model="paymentRate" class="w-32" />
+                                <button type="button" wire:click="fetchPaymentRate" class="shrink-0 px-3 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
+                                    НБРМ
+                                </button>
+                            </div>
+                            @error('paymentRate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                        </div>
+                    @endif
                     <div>
                         <x-input-label for="paymentMethod" value="Начин" />
                         <select id="paymentMethod" wire:model="paymentMethod" class="border-gray-300 rounded-md text-sm">
                             <option value="bank">Банка</option>
-                            <option value="cash">Готовина</option>
+                            @unless ($invoice->isForeignCurrency())
+                                <option value="cash">Готовина</option>
+                            @endunless
                         </select>
                     </div>
                     <x-primary-button type="submit">Внеси плаќање</x-primary-button>
