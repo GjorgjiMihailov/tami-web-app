@@ -10,6 +10,7 @@ use App\Models\JournalGroup;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoicePayment;
 use App\Services\Inventory\StockMovementService;
+use App\Services\Posting\ForeignReceiptPosting;
 use App\Services\Posting\InvoiceJournal;
 use App\Support\JournalGroupCodes;
 use App\Services\Posting\PostedInvoiceAccounts;
@@ -36,6 +37,7 @@ class SalesInvoiceService
         private StockMovementService $stockMovementService,
         private PostingSchemeEngine $postingEngine,
         private InvoiceJournal $invoiceJournal,
+        private ForeignReceiptPosting $foreignReceipt,
     ) {}
 
     public function confirm(SalesInvoice $invoice, int $userId): SalesInvoice
@@ -314,7 +316,10 @@ class SalesInvoiceService
         ]);
     }
 
-    public function recordPayment(SalesInvoice $invoice, string $amount, string $paymentDate, string $paymentMethod, int $userId): SalesInvoicePayment
+    /**
+     * @param  string|null  $paymentRate  курс на денот на приливот; задолжителен за девизна фактура, игнориран за денарска
+     */
+    public function recordPayment(SalesInvoice $invoice, string $amount, string $paymentDate, string $paymentMethod, int $userId, ?string $paymentRate = null): SalesInvoicePayment
     {
         // Нормализирано на 2 децимали пред каква било пресметка — записот за
         // плаќање (decimal(15,2)) заокружува, а bcadd подолу отсекува; ако не
@@ -326,6 +331,10 @@ class SalesInvoiceService
         $amount = Bcmath::roundHalfUp($amount, 2);
 
         $this->assertPayable($invoice, $amount);
+
+        if ($invoice->isForeignCurrency()) {
+            return $this->recordForeignPayment($invoice, $amount, $paymentDate, $paymentMethod, $userId, $paymentRate);
+        }
 
         return DB::transaction(function () use ($invoice, $amount, $paymentDate, $paymentMethod, $userId) {
             // Пресметано ПРЕД да се создаде овој запис за плаќање — ова е
@@ -373,6 +382,53 @@ class SalesInvoiceService
             );
 
             foreach ($this->postingEngine->lines(PostingSchemes::for($invoice->company, PostingDocType::SALES_PAYMENT), $context) as $line) {
+                $entry->lines()->create($line->journalColumns($paymentDate));
+            }
+
+            return $payment;
+        });
+    }
+
+    /**
+     * Прилив на девизна сметка: 1030 по курсот на денот, побарувањето по курсот
+     * на фактурата, курсната разлика на 4750/7750 (види ForeignReceiptPosting).
+     * Само преку банка — девизна готовина не се поддржува.
+     */
+    private function recordForeignPayment(SalesInvoice $invoice, string $amount, string $paymentDate, string $paymentMethod, int $userId, ?string $paymentRate): SalesInvoicePayment
+    {
+        if ($paymentMethod !== 'bank') {
+            throw new InvalidInvoiceStateException('Девизна фактура се наплатува само преку девизна сметка (банка).');
+        }
+
+        if (! Bcmath::isPlainNumber($paymentRate) || bccomp($paymentRate, '0', 6) <= 0) {
+            throw new InvalidInvoiceStateException('Внеси курс на денот на приливот (поголем од нула).');
+        }
+
+        $rate = Bcmath::roundHalfUp($paymentRate, 6);
+
+        return DB::transaction(function () use ($invoice, $amount, $paymentDate, $userId, $rate) {
+            // Пресметано ПРЕД да се создаде овој запис — состојбата на платено пред уплатава.
+            $paidBefore = $invoice->paidTotal();
+
+            $payment = $invoice->payments()->create([
+                'amount' => $amount,
+                'payment_date' => $paymentDate,
+                'payment_method' => 'bank',
+                'exchange_rate' => $rate,
+                'created_by' => $userId,
+            ]);
+
+            $label = "Payment for invoice {$invoice->formattedNumber()}";
+
+            $entry = JournalEntry::create([
+                'company_id' => $invoice->company_id,
+                'journal_group_id' => JournalGroupCodes::group($invoice->company, JournalGroupCodes::FOREIGN_BANK)->id,
+                'entry_date' => $paymentDate,
+                'description' => $label,
+                'created_by' => $userId,
+            ]);
+
+            foreach ($this->foreignReceipt->lines($invoice, $amount, $paidBefore, $rate, $label) as $line) {
                 $entry->lines()->create($line->journalColumns($paymentDate));
             }
 
