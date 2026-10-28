@@ -44,7 +44,7 @@ class SalesInvoice extends Model
         'language', 'currency', 'exchange_rate',
         'efaktura_status', 'efaktura_doc_id', 'efaktura_sent_at', 'efaktura_error',
         'efaktura_ujp_status_code', 'efaktura_ujp_status_name', 'efaktura_pdf_path',
-        'is_imported', 'imported_total',
+        'is_imported', 'imported_total', 'is_export',
     ];
 
     /**
@@ -58,6 +58,7 @@ class SalesInvoice extends Model
         'exchange_rate' => '1.000000',
         'payment_type_code' => 'P12',
         'is_imported' => false,
+        'is_export' => false,
     ];
 
     protected function casts(): array
@@ -69,6 +70,7 @@ class SalesInvoice extends Model
             'efaktura_sent_at' => 'datetime',
             'exchange_rate' => 'decimal:6',
             'is_imported' => 'boolean',
+            'is_export' => 'boolean',
             'imported_total' => 'decimal:2',
             'language' => InvoiceLanguage::class,
         ];
