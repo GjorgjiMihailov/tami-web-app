@@ -24,6 +24,12 @@ class UpgradeDefaultSalesSchemesMigrationTest extends TestCase
         $scheme = PostingSchemes::for($company, PostingDocType::SALES_INVOICE);
         $scheme->rows()->where('formula', 'НАБАВНА_УВОЗ')->delete();
         $scheme->rows()->where('formula', 'НАБАВНА_ДОМАШНА')->update(['formula' => 'НАБАВНА_ВРЕДНОСТ']);
+        $scheme->rows()->whereIn('formula', ['ВКУПНО_ДОБРА', 'ВКУПНО_УСЛУГИ'])->delete();
+        $scheme->rows()->where('formula', 'ВКУПНО')->update(['condition' => null]);
+
+        foreach ($scheme->rows()->orderBy('position')->get() as $i => $row) {
+            $row->update(['position' => $i + 1]);
+        }
 
         return $scheme->fresh();
     }
@@ -61,6 +67,6 @@ class UpgradeDefaultSalesSchemesMigrationTest extends TestCase
 
         $this->runMigration();
 
-        $this->assertSame(6, $scheme->fresh()->rows()->count());
+        $this->assertSame(8, $scheme->fresh()->rows()->count());
     }
 }

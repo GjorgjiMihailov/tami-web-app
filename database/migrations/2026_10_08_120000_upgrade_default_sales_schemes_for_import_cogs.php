@@ -43,7 +43,7 @@ return new class extends Migration
                 $scheme->rows()->where('account_mode', 'fixed')->where('formula', 'НАБАВНА_ВРЕДНОСТ')->where('side', 'credit')->update(['formula' => 'НАБАВНА_ДОМАШНА']);
 
                 $scheme->rows()->create([
-                    'position' => count($new),
+                    'position' => (int) $scheme->rows()->max('position') + 1,
                     'account_mode' => 'fixed',
                     'account_id' => Account::where('company_id', $scheme->company_id)->where('code', '6601')->value('id'),
                     'side' => 'credit',

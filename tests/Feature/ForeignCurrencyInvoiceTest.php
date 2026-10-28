@@ -481,7 +481,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
 
         $entry = $invoice->fresh()->journalEntry;
-        $receivable = $entry->lines->firstWhere(fn ($line) => $line->account->code === '1200');
+        $receivable = $entry->lines->firstWhere(fn ($line) => $line->account->code === '1211');
         $revenue = $entry->lines->firstWhere(fn ($line) => $line->account->code === '74000');
 
         // 500 EUR × 61,50 = 30.750 денари
@@ -513,7 +513,7 @@ class ForeignCurrencyInvoiceTest extends TestCase
             ->confirm($invoice->fresh(['lines', 'company']), $admin->id);
 
         $receivable = $invoice->fresh()->journalEntry->lines
-            ->firstWhere(fn ($line) => $line->account->code === '1200');
+            ->firstWhere(fn ($line) => $line->account->code === '1211');
 
         $this->assertSame('EUR', $receivable->currency_code);
         $this->assertSame(0, bccomp('61.500000', $receivable->exchange_rate, 6));

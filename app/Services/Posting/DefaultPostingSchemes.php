@@ -43,7 +43,22 @@ class DefaultPostingSchemes
     /** Ги создава редовите и матричните сметки на шемата од дефиниција (стандардна). */
     public static function populate(PostingScheme $scheme, Company $company, array $definition): void
     {
-        foreach ($definition['rows'] as $position => $row) {
+        self::populateRows($scheme, $company, $definition['rows']);
+
+        foreach ($definition['matrix'] as $entry) {
+            $scheme->matrixAccounts()->create([
+                'matrix_key' => $entry['key'],
+                'item_kind' => $entry['kind'],
+                'vat_group' => $entry['group'],
+                'account_id' => self::account($company, $entry['account'])->id,
+            ]);
+        }
+    }
+
+    /** Само редовите на шемата (без матричните сметки) — за надградба на постојна шема. */
+    public static function populateRows(PostingScheme $scheme, Company $company, array $rows): void
+    {
+        foreach ($rows as $position => $row) {
             $scheme->rows()->create([
                 'position' => $position + 1,
                 'account_mode' => $row['mode'],
@@ -54,15 +69,6 @@ class DefaultPostingSchemes
                 'with_partner' => $row['partner'] ?? false,
                 'description' => $row['description'] ?? null,
                 'condition' => $row['condition'] ?? null,
-            ]);
-        }
-
-        foreach ($definition['matrix'] as $entry) {
-            $scheme->matrixAccounts()->create([
-                'matrix_key' => $entry['key'],
-                'item_kind' => $entry['kind'],
-                'vat_group' => $entry['group'],
-                'account_id' => self::account($company, $entry['account'])->id,
             ]);
         }
     }
@@ -80,7 +86,9 @@ class DefaultPostingSchemes
         return [
             'name' => 'Излезна фактура',
             'rows' => [
-                ['mode' => 'fixed', 'account' => '1200', 'side' => 'debit', 'formula' => 'ВКУПНО', 'partner' => true, 'description' => '{фактура}'],
+                ['mode' => 'fixed', 'account' => '1200', 'side' => 'debit', 'formula' => 'ВКУПНО', 'partner' => true, 'description' => '{фактура}', 'condition' => 'not_foreign'],
+                ['mode' => 'fixed', 'account' => '1210', 'side' => 'debit', 'formula' => 'ВКУПНО_ДОБРА', 'partner' => true, 'description' => '{фактура}', 'condition' => 'foreign'],
+                ['mode' => 'fixed', 'account' => '1211', 'side' => 'debit', 'formula' => 'ВКУПНО_УСЛУГИ', 'partner' => true, 'description' => '{фактура}', 'condition' => 'foreign'],
                 ['mode' => 'matrix', 'matrix' => $revenue, 'side' => 'credit', 'formula' => 'ОСНОВИЦА', 'partner' => true, 'description' => '{фактура}'],
                 ['mode' => 'matrix', 'matrix' => $vat, 'side' => 'credit', 'formula' => 'ДДВ', 'partner' => true, 'description' => 'VAT on {фактура}'],
                 ['mode' => 'fixed', 'account' => '7010', 'side' => 'debit', 'formula' => 'НАБАВНА_ВРЕДНОСТ', 'description' => 'COGS for {фактура}', 'condition' => 'has_goods'],

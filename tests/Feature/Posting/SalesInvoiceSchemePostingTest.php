@@ -112,4 +112,39 @@ class SalesInvoiceSchemePostingTest extends TestCase
         $this->assertContains('74000 C 100.00', $this->codes($first->fresh()));
         $this->assertContains('74001 C 100.00', $this->codes($second));
     }
+
+    public function test_a_euro_invoice_with_goods_and_services_books_receivable_on_1210_and_1211(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => false]);
+        $warehouse = Warehouse::factory()->for($company)->create();
+        $item = Item::factory()->for($company)->create(['type' => 'product']);
+        $user = User::factory()->create();
+        app(\App\Services\Inventory\StockMovementService::class)->receipt($item, $warehouse, '10', '60.00', '2026-02-01', $user->id);
+        $invoice = $this->draft($company, '600.00', '0.00', ['item_id' => $item->id, 'vat_treatment' => 'export']);
+        $invoice->lines()->create(['description' => 'Услуга', 'quantity' => '1', 'unit_price' => '400.00', 'vat_rate' => '0.00', 'vat_treatment' => 'export']);
+        $invoice->update(['warehouse_id' => $warehouse->id, 'currency' => 'EUR', 'exchange_rate' => '61.500000']);
+
+        $confirmed = app(SalesInvoiceService::class)->confirm($invoice->fresh(), $user->id);
+
+        $this->assertEqualsCanonicalizing(
+            ['1210 D 36900.00', '1211 D 24600.00', '7421 C 36900.00', '7423 C 24600.00', '7010 D 60.00', '6600 C 60.00'],
+            $this->codes($confirmed)
+        );
+        $lines = $confirmed->journalEntry->lines()->with('account')->get()->keyBy(fn ($l) => $l->account->code);
+        $this->assertSame('EUR', $lines['1210']->currency_code);
+        $this->assertSame('600.00', (string) $lines['1210']->foreign_amount);
+        $this->assertSame('400.00', (string) $lines['1211']->foreign_amount);
+        $this->assertSame(0, bccomp('61.5', (string) $lines['1211']->exchange_rate, 6));
+    }
+
+    public function test_a_euro_service_invoice_has_no_1210_and_no_1200_line(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => false]);
+        $invoice = $this->draft($company, '500.00', '0.00', ['vat_treatment' => 'export']);
+        $invoice->update(['currency' => 'EUR', 'exchange_rate' => '61.500000']);
+
+        $confirmed = app(SalesInvoiceService::class)->confirm($invoice->fresh(), User::factory()->create()->id);
+
+        $this->assertEqualsCanonicalizing(['1211 D 30750.00', '7423 C 30750.00'], $this->codes($confirmed));
+    }
 }

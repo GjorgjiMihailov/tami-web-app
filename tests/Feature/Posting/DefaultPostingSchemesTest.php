@@ -50,7 +50,7 @@ class DefaultPostingSchemesTest extends TestCase
 
         $this->assertSame($first->id, $second->id);
         $this->assertSame(1, PostingScheme::where('company_id', $company->id)->count());
-        $this->assertSame(6, $first->rows()->count());
+        $this->assertSame(8, $first->rows()->count());
         $this->assertSame(12, $first->matrixAccounts()->count());
     }
 
