@@ -10,12 +10,13 @@ class SalesInvoicePayment extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['sales_invoice_id', 'amount', 'payment_date', 'payment_method', 'created_by'];
+    protected $fillable = ['sales_invoice_id', 'amount', 'payment_date', 'payment_method', 'exchange_rate', 'created_by'];
 
     protected function casts(): array
     {
         return [
             'amount' => 'decimal:2',
+            'exchange_rate' => 'decimal:6',
             'payment_date' => 'date',
         ];
     }
