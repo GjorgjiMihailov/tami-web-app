@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\Form743;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
+use App\Support\Bcmath;
 use App\Support\Form743Status;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -179,11 +180,26 @@ class CompanyDashboardQuery
 
     private static function sumGrandTotals(Collection $invoices): string
     {
-        return $invoices->reduce(fn (string $carry, $invoice) => bcadd($carry, $invoice->grandTotal(), 2), '0.00');
+        return $invoices->reduce(fn (string $carry, $invoice) => bcadd($carry, self::inDenars($invoice, $invoice->grandTotal()), 2), '0.00');
     }
 
     private static function sumBalanceDue(Collection $invoices): string
     {
-        return $invoices->reduce(fn (string $carry, $invoice) => bcadd($carry, $invoice->balanceDue(), 2), '0.00');
+        return $invoices->reduce(fn (string $carry, $invoice) => bcadd($carry, self::inDenars($invoice, $invoice->balanceDue()), 2), '0.00');
+    }
+
+    /**
+     * Таблата е во денари: износ од девизна излезна фактура се множи со курсот
+     * на фактурата. Денарска фактура и влезна фактура (нема такв курс) поминуваат недопрени.
+     */
+    private static function inDenars($invoice, string $amount): string
+    {
+        $rate = $invoice->getAttribute('exchange_rate');
+
+        if ($rate === null || bccomp((string) $rate, '1', 6) === 0) {
+            return $amount;
+        }
+
+        return Bcmath::roundHalfUp(bcmul($amount, (string) $rate, 10), 2);
     }
 }

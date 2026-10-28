@@ -105,6 +105,9 @@ class SalesInvoiceForm extends Component
     /** Извозна фактура: во девиза, сите ставки без ДДВ ('Извоз'). */
     public bool $isExport = false;
 
+    /** Третман и стапка на секоја ставка пред штиклирање, за да се вратат при одштиклување. */
+    public array $exportBackup = [];
+
     public array $lines = [];
 
     public int $workingYear = 0;
@@ -427,6 +430,10 @@ class SalesInvoiceForm extends Component
                 $this->updatedCurrency('EUR');
             }
 
+            $this->exportBackup = array_map(
+                fn (array $line) => ['vat_treatment' => $line['vat_treatment'] ?? 'standard', 'vat_rate' => $line['vat_rate'] ?? '0.00'],
+                $this->lines
+            );
             $this->forceExportLines();
 
             return;
@@ -434,13 +441,18 @@ class SalesInvoiceForm extends Component
 
         $this->currency = 'MKD';
         $this->exchangeRate = '1';
-        $rate = $this->company->is_vat_registered ? '18.00' : '0.00';
+        $default = $this->company->is_vat_registered ? '18.00' : '0.00';
 
+        // Ставките се враќаат такви какви што беа (5%, 10%, ослободено…); ставка
+        // додадена во меѓувреме нема претходно, па добива стандардна стапка.
         foreach (array_keys($this->lines) as $index) {
-            $this->lines[$index]['vat_treatment'] = 'standard';
-            $this->lines[$index]['vat_rate'] = $rate;
+            $before = $this->exportBackup[$index] ?? null;
+            $this->lines[$index]['vat_treatment'] = $before['vat_treatment'] ?? 'standard';
+            $this->lines[$index]['vat_rate'] = $before['vat_rate'] ?? $default;
             $this->refreshPrices($index);
         }
+
+        $this->exportBackup = [];
     }
 
     /** Секоја ставка на извозна фактура е „Извоз" со стапка 0 — без ДДВ. */
@@ -510,6 +522,10 @@ class SalesInvoiceForm extends Component
     public function addLine(): void
     {
         $this->lines[] = $this->emptyLine();
+
+        if ($this->isExport) {
+            $this->forceExportLines();
+        }
     }
 
     public function removeLine(int $index): void
@@ -545,6 +561,11 @@ class SalesInvoiceForm extends Component
             }
 
             $this->refreshPrices($index);
+
+            // Стапката на артиклот не смее да врати ДДВ на извозна фактура.
+            if ($this->isExport) {
+                $this->forceExportLines();
+            }
         }
     }
 
@@ -620,6 +641,11 @@ class SalesInvoiceForm extends Component
 
         $this->applyScan($scanned);
         $this->scanRead = true;
+
+        // Прочитаните ставки носат стандарден третман; на извозна фактура остануваат без ДДВ.
+        if ($this->isExport) {
+            $this->forceExportLines();
+        }
     }
 
     public function createSuggestedPartner(): void

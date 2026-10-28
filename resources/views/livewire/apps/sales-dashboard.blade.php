@@ -41,7 +41,7 @@
                                     </a>
                                 </td>
                                 <td class="py-1 px-3 truncate">{{ $salesRow->partner?->name ?? '—' }}</td>
-                                <td class="py-1 px-3 text-right whitespace-nowrap">{{ \App\Support\Format::money($salesRow->grandTotal()) }}</td>
+                                <td class="py-1 px-3 text-right whitespace-nowrap">{{ \App\Support\Format::money($salesRow->grandTotal(), \App\Support\Format::currencyLabel($salesRow->currency)) }}</td>
                             </tr>
                         @empty
                             <tr><td class="py-3 px-3 text-sm text-gray-500">Нема внесени излезни фактури за {{ $workingYear }}</td></tr>
