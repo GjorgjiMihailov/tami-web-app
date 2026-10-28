@@ -94,9 +94,9 @@ class SalesPaymentSchemePostingTest extends TestCase
         $total = $invoice->grandTotal();
         $first = bcdiv($total, '3', 2);
         $second = bcdiv($total, '3', 2);
-        $service->recordPayment($invoice, $first, '2026-03-10', 'bank', $user->id);
-        $service->recordPayment($invoice->fresh(['lines', 'payments']), $second, '2026-03-11', 'bank', $user->id);
-        $service->recordPayment($invoice->fresh(['lines', 'payments']), bcsub(bcsub($total, $first, 2), $second, 2), '2026-03-12', 'bank', $user->id);
+        $service->recordPayment($invoice, $first, '2026-03-10', 'bank', $user->id, '61.512345');
+        $service->recordPayment($invoice->fresh(['lines', 'payments']), $second, '2026-03-11', 'bank', $user->id, '61.512345');
+        $service->recordPayment($invoice->fresh(['lines', 'payments']), bcsub(bcsub($total, $first, 2), $second, 2), '2026-03-12', 'bank', $user->id, '61.512345');
 
         $receivable = PostedInvoiceAccounts::receivable($invoice->fresh());
         $lines = \App\Models\JournalEntryLine::where('account_id', $receivable->id)->get();
