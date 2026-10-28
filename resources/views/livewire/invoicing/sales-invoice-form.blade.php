@@ -160,11 +160,21 @@
                 </select>
                 @error('paymentTypeCode') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
-            @if ($company->type->isIndividual())
+            <div class="col-span-full">
+                <label class="flex items-start gap-3 rounded-lg border border-sand bg-paper-warm px-4 py-3 cursor-pointer">
+                    <input type="checkbox" wire:model.live="isExport" class="mt-0.5 rounded border-gray-300 text-brand focus:ring-brand">
+                    <span>
+                        <span class="block font-semibold text-gray-800">Извозна фактура</span>
+                        <span class="block text-xs text-stone">Штиклирано — фактурата е во девиза (EUR, USD…), сите ставки се без ДДВ, а може да се преземе на македонски и на англиски.</span>
+                    </span>
+                </label>
+            </div>
+            @if ($company->type->isIndividual() || $isExport)
                 <div>
                     <x-input-label for="currency" value="Валута" />
                     <select id="currency" wire:model.live="currency" class="w-full rounded-lg border-gray-300 text-sm">
                         @foreach (\App\Models\SalesInvoice::CURRENCIES as $code)
+                            @continue($isExport && $code === 'MKD')
                             <option value="{{ $code }}">{{ $code }}</option>
                         @endforeach
                     </select>
@@ -294,7 +304,7 @@
 
                             <div>
                                 <span class="{{ $lineLabelClass }}">Третман на ДДВ</span>
-                                <select wire:change="setVatTreatment({{ $index }}, $event.target.value)"
+                                <select wire:change="setVatTreatment({{ $index }}, $event.target.value)" @disabled($isExport)
                                     class="w-full border-gray-300 focus:border-brand focus:ring-brand rounded-lg text-sm py-1">
                                     <option value="standard" @selected($line['vat_treatment'] === 'standard')>Стандарден</option>
                                     <option value="export" @selected($line['vat_treatment'] === 'export')>Извоз</option>

@@ -102,6 +102,9 @@ class SalesInvoiceForm extends Component
 
     public string $exchangeRate = '1';
 
+    /** Извозна фактура: во девиза, сите ставки без ДДВ ('Извоз'). */
+    public bool $isExport = false;
+
     public array $lines = [];
 
     public int $workingYear = 0;
@@ -153,6 +156,7 @@ class SalesInvoiceForm extends Component
             $this->paymentTypeCode = $salesInvoice->payment_type_code;
             $this->currency = $salesInvoice->currency;
             $this->exchangeRate = (string) $salesInvoice->exchange_rate;
+            $this->isExport = (bool) $salesInvoice->is_export;
             $this->lines = $salesInvoice->lines->map(fn ($line) => [
                 'item_id' => $line->item_id === null ? '' : (string) $line->item_id,
                 'description' => (string) $line->description,
@@ -406,6 +410,46 @@ class SalesInvoiceForm extends Component
             $this->dueDate = Carbon::parse($this->invoiceDate)->addDays((int) $this->paymentTermsDays)->toDateString();
         } catch (\Throwable) {
             // Невалиден датум: валидацијата при зачувување го фаќа.
+        }
+    }
+
+    /**
+     * Штиклата „Извозна фактура": вклучена значи девиза и ставки без ДДВ,
+     * исклучена значи назад на денари и стандарден третман.
+     */
+    public function updatedIsExport(bool $value): void
+    {
+        $this->resetErrorBag(['currency', 'exchangeRate']);
+
+        if ($value) {
+            if ($this->currency === 'MKD') {
+                $this->currency = 'EUR';
+                $this->updatedCurrency('EUR');
+            }
+
+            $this->forceExportLines();
+
+            return;
+        }
+
+        $this->currency = 'MKD';
+        $this->exchangeRate = '1';
+        $rate = $this->company->is_vat_registered ? '18.00' : '0.00';
+
+        foreach (array_keys($this->lines) as $index) {
+            $this->lines[$index]['vat_treatment'] = 'standard';
+            $this->lines[$index]['vat_rate'] = $rate;
+            $this->refreshPrices($index);
+        }
+    }
+
+    /** Секоја ставка на извозна фактура е „Извоз" со стапка 0 — без ДДВ. */
+    private function forceExportLines(): void
+    {
+        foreach (array_keys($this->lines) as $index) {
+            $this->lines[$index]['vat_treatment'] = 'export';
+            $this->lines[$index]['vat_rate'] = '0.00';
+            $this->refreshPrices($index);
         }
     }
 
@@ -804,9 +848,14 @@ class SalesInvoiceForm extends Component
 
         // Девизна фактура важи само за физичко лице. Скриено поле во Blade не е
         // заклучување — тоа се прави овде, пред валидацијата.
-        if (! $this->company->type->isIndividual()) {
+        if (! $this->company->type->isIndividual() && ! $this->isExport) {
             $this->currency = 'MKD';
             $this->exchangeRate = '1';
+        }
+
+        // Извозот е без ДДВ, па серверот ги наметнува ставките (не само Blade).
+        if ($this->isExport) {
+            $this->forceExportLines();
         }
 
         // Истото важи и за хартиениот број: тој оди кон УЈП како `docNumber`,
@@ -830,7 +879,7 @@ class SalesInvoiceForm extends Component
             'orderNumber' => 'nullable|string|max:100',
             'terms' => 'nullable|string|max:4000',
             'paymentTypeCode' => ['required', Rule::in(array_keys(SalesInvoice::PAYMENT_TYPES))],
-            'currency' => ['required', Rule::in(SalesInvoice::CURRENCIES)],
+            'currency' => ['required', Rule::in(SalesInvoice::CURRENCIES), $this->isExport ? Rule::notIn(['MKD']) : 'string'],
             'exchangeRate' => [
                 $this->currency === 'MKD' ? 'nullable' : 'required',
                 'numeric',
@@ -848,6 +897,8 @@ class SalesInvoiceForm extends Component
             'lines.*.vat_rate' => 'required|numeric|min:0|max:100',
             'lines.*.discount_percent' => 'nullable|numeric|min:0|max:100',
             'lines.*.vat_treatment' => ['required', Rule::in(SalesInvoiceLine::TREATMENTS)],
+        ], [
+            'currency.not_in' => 'Извозна фактура мора да е во девиза (на пример EUR или USD).',
         ]);
 
         // Двоен испишан број во иста фирма и иста година е вистински проблем —
@@ -937,6 +988,7 @@ class SalesInvoiceForm extends Component
                 $invoice->payment_type_code = $this->paymentTypeCode;
                 $invoice->currency = $this->currency;
                 $invoice->exchange_rate = $this->currency === 'MKD' ? '1' : $this->exchangeRate;
+                $invoice->is_export = $this->isExport;
 
                 // Јазикот се презема од кооперантот на секое зачувување на нацртот,
                 // па промена на купувачот го носи и неговиот јазик. По потврда
