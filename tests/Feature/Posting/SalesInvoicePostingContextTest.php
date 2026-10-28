@@ -111,4 +111,44 @@ class SalesInvoicePostingContextTest extends TestCase
         $this->assertSame($grossForeign, $context->foreignTotals['ВКУПНО']);
         $this->assertSame($invoice->subtotal(), $context->foreignTotals['ОСНОВИЦА']);
     }
+
+    public function test_a_foreign_invoice_splits_gross_into_goods_and_services(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => false]);
+        $product = Item::factory()->for($company)->create(['type' => 'product']);
+        $invoice = $this->invoice($company, ['currency' => 'EUR', 'exchange_rate' => '61.500000']);
+        $invoice->lines()->create(['item_id' => $product->id, 'description' => 'Стока', 'quantity' => '1', 'unit_price' => '600.00', 'vat_rate' => '0.00']);
+        $invoice->lines()->create(['description' => 'Услуга', 'quantity' => '1', 'unit_price' => '400.00', 'vat_rate' => '0.00']);
+
+        $context = $this->build($invoice);
+
+        $this->assertSame('36900.00', $context->totals['ВКУПНО_ДОБРА']);
+        $this->assertSame('24600.00', $context->totals['ВКУПНО_УСЛУГИ']);
+        $this->assertSame('600.00', $context->foreignTotals['ВКУПНО_ДОБРА']);
+        $this->assertSame('400.00', $context->foreignTotals['ВКУПНО_УСЛУГИ']);
+        $this->assertTrue($context->flags['foreign']);
+    }
+
+    public function test_goods_plus_services_always_equals_gross(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => true]);
+        $product = Item::factory()->for($company)->create(['type' => 'product']);
+        $invoice = $this->invoice($company, ['currency' => 'EUR', 'exchange_rate' => '61.473300']);
+        $invoice->lines()->create(['item_id' => $product->id, 'description' => 'Стока', 'quantity' => '3', 'unit_price' => '199.99', 'vat_rate' => '18.00']);
+        $invoice->lines()->create(['description' => 'Услуга', 'quantity' => '1', 'unit_price' => '333.33', 'vat_rate' => '18.00']);
+
+        $context = $this->build($invoice);
+
+        $this->assertSame($context->totals['ВКУПНО'], bcadd($context->totals['ВКУПНО_ДОБРА'], $context->totals['ВКУПНО_УСЛУГИ'], 2));
+        $this->assertSame($context->foreignTotals['ВКУПНО'], bcadd($context->foreignTotals['ВКУПНО_ДОБРА'], $context->foreignTotals['ВКУПНО_УСЛУГИ'], 2));
+    }
+
+    public function test_a_denar_invoice_is_not_foreign(): void
+    {
+        $company = Company::factory()->create(['is_vat_registered' => false]);
+        $invoice = $this->invoice($company);
+        $invoice->lines()->create(['description' => 'Услуга', 'quantity' => '1', 'unit_price' => '100.00', 'vat_rate' => '0.00']);
+
+        $this->assertFalse($this->build($invoice)->flags['foreign']);
+    }
 }

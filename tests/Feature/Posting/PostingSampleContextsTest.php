@@ -52,4 +52,16 @@ class PostingSampleContextsTest extends TestCase
         $this->assertTrue($bucket->is_analytical);
         $this->assertSame('1200', reset($payment)->invoiceAccount->code);
     }
+
+    public function test_sales_invoice_samples_include_a_foreign_document(): void
+    {
+        $company = Company::factory()->create();
+
+        $foreign = collect(PostingSampleContexts::for(PostingDocType::SALES_INVOICE, $company))
+            ->filter(fn ($context) => ($context->flags['foreign'] ?? false) === true);
+
+        $this->assertCount(1, $foreign);
+        $this->assertArrayHasKey('ВКУПНО_ДОБРА', $foreign->first()->totals);
+        $this->assertArrayHasKey('ВКУПНО_УСЛУГИ', $foreign->first()->totals);
+    }
 }

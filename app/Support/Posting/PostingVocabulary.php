@@ -21,6 +21,8 @@ final class PostingVocabulary
                 'НАБАВНА_ВРЕДНОСТ' => 'Набавна вредност на продадената стока (од залиха)',
                 'НАБАВНА_УВОЗ' => 'Дел од набавната вредност од увезена стока (6601)',
                 'НАБАВНА_ДОМАШНА' => 'Дел од набавната вредност од домашна стока (6600)',
+                'ВКУПНО_ДОБРА' => 'Вкупно со ДДВ за добра, во денари',
+                'ВКУПНО_УСЛУГИ' => 'Вкупно со ДДВ за услуги, во денари',
             ],
             PostingDocType::PURCHASE_INVOICE => [
                 'ВКУПНО' => 'Вкупно за плаќање (обврската кон добавувачот)',
@@ -79,7 +81,7 @@ final class PostingVocabulary
     public static function conditions(PostingDocType $type): array
     {
         $pairs = match ($type) {
-            PostingDocType::SALES_INVOICE => ['has_goods' => 'има стока од залиха'],
+            PostingDocType::SALES_INVOICE => ['has_goods' => 'има стока од залиха', 'foreign' => 'девизна фактура'],
             PostingDocType::PURCHASE_INVOICE => ['has_goods' => 'има стока од залиха', 'import' => 'увозна фактура'],
             PostingDocType::SALES_PAYMENT, PostingDocType::PURCHASE_PAYMENT => ['cash' => 'готовинска уплата/исплата'],
         };

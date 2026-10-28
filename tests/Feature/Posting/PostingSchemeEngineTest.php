@@ -261,4 +261,18 @@ class PostingSchemeEngineTest extends TestCase
         $this->assertSame('10.00', $columns['foreign_amount']);
         $this->assertArrayNotHasKey('foreign_amount', $lines[1]->journalColumns('2026-03-01'));
     }
+
+    public function test_foreign_and_not_foreign_conditions_pick_the_right_receivable(): void
+    {
+        $this->row(1, 'fixed', 'debit', 'ВКУПНО', ['account_id' => $this->account('1210')->id, 'condition' => 'foreign']);
+        $this->row(2, 'fixed', 'debit', 'ВКУПНО', ['account_id' => $this->account('1200')->id, 'condition' => 'not_foreign']);
+        $this->row(3, 'fixed', 'credit', 'ВКУПНО', ['account_id' => $this->account('7423')->id]);
+        $engine = new PostingSchemeEngine;
+
+        $foreign = $engine->lines($this->scheme, $this->context(['ВКУПНО' => '100.00'], [], ['foreign' => true]));
+        $domestic = $engine->lines($this->scheme->fresh(), $this->context(['ВКУПНО' => '100.00']));
+
+        $this->assertSame(['1210', '7423'], array_map(fn ($l) => $l->account->code, $foreign));
+        $this->assertSame(['1200', '7423'], array_map(fn ($l) => $l->account->code, $domestic));
+    }
 }

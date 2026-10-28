@@ -64,11 +64,17 @@ final class SalesInvoicePostingContext
 
         self::absorbRounding($slices, $net, $vat);
 
+        // Побарувањето на девизна фактура се дели на 1210 (добра) и 1211
+        // (услуги). Услугите се остаток, па двете точно го даваат вкупното.
+        $goods = array_filter($slices, fn (PostingSlice $s) => $s->itemKind === ItemKind::GOODS);
+        $goodsGross = array_reduce($goods, fn (string $c, PostingSlice $s) => bcadd($c, bcadd($s->base, $s->vat, 2), 2), '0.00');
+        $goodsGrossForeign = array_reduce($goods, fn (string $c, PostingSlice $s) => bcadd($c, bcadd($s->baseForeign, $s->vatForeign, 2), 2), '0.00');
+
         return new PostingContext(
-            totals: ['ВКУПНО' => $gross, 'ОСНОВИЦА' => $net, 'ДДВ' => $vat, 'НАБАВНА_ВРЕДНОСТ' => $cogsTotal, 'НАБАВНА_УВОЗ' => $importCogsTotal, 'НАБАВНА_ДОМАШНА' => bcsub($cogsTotal, $importCogsTotal, 2)],
-            foreignTotals: ['ВКУПНО' => $grossForeign, 'ОСНОВИЦА' => $subtotalForeign, 'ДДВ' => $vatForeign, 'НАБАВНА_ВРЕДНОСТ' => '0.00', 'НАБАВНА_УВОЗ' => '0.00', 'НАБАВНА_ДОМАШНА' => '0.00'],
+            totals: ['ВКУПНО' => $gross, 'ОСНОВИЦА' => $net, 'ДДВ' => $vat, 'НАБАВНА_ВРЕДНОСТ' => $cogsTotal, 'НАБАВНА_УВОЗ' => $importCogsTotal, 'НАБАВНА_ДОМАШНА' => bcsub($cogsTotal, $importCogsTotal, 2), 'ВКУПНО_ДОБРА' => $goodsGross, 'ВКУПНО_УСЛУГИ' => bcsub($gross, $goodsGross, 2)],
+            foreignTotals: ['ВКУПНО' => $grossForeign, 'ОСНОВИЦА' => $subtotalForeign, 'ДДВ' => $vatForeign, 'НАБАВНА_ВРЕДНОСТ' => '0.00', 'НАБАВНА_УВОЗ' => '0.00', 'НАБАВНА_ДОМАШНА' => '0.00', 'ВКУПНО_ДОБРА' => $goodsGrossForeign, 'ВКУПНО_УСЛУГИ' => bcsub($grossForeign, $goodsGrossForeign, 2)],
             slices: $slices,
-            flags: ['has_goods' => bccomp($cogsTotal, '0', 2) > 0, 'cash' => false, 'import' => false],
+            flags: ['has_goods' => bccomp($cogsTotal, '0', 2) > 0, 'cash' => false, 'import' => false, 'foreign' => $foreign],
             partnerId: $invoice->partner_id,
             documentLabel: 'Invoice '.$formattedNumber,
             foreign: $foreign ? ['currency_code' => $invoice->currency, 'exchange_rate' => (string) $invoice->exchange_rate] : null,

@@ -19,7 +19,7 @@ use App\Support\Posting\PostingSlice;
  */
 class PostingSchemeEngine
 {
-    private const KNOWN_FLAGS = ['has_goods', 'cash', 'import'];
+    private const KNOWN_FLAGS = ['has_goods', 'cash', 'import', 'foreign'];
 
     /** @return list<PostingLine> */
     public function lines(PostingScheme $scheme, PostingContext $context): array

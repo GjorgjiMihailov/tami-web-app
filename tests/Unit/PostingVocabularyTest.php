@@ -21,7 +21,7 @@ class PostingVocabularyTest extends TestCase
     {
         $type = PostingDocType::SALES_INVOICE;
 
-        $this->assertSame(['ВКУПНО', 'ОСНОВИЦА', 'ДДВ', 'НАБАВНА_ВРЕДНОСТ', 'НАБАВНА_УВОЗ', 'НАБАВНА_ДОМАШНА'], array_keys(PostingVocabulary::variables($type)));
+        $this->assertSame(['ВКУПНО', 'ОСНОВИЦА', 'ДДВ', 'НАБАВНА_ВРЕДНОСТ', 'НАБАВНА_УВОЗ', 'НАБАВНА_ДОМАШНА', 'ВКУПНО_ДОБРА', 'ВКУПНО_УСЛУГИ'], array_keys(PostingVocabulary::variables($type)));
         $this->assertSame(['fixed', 'matrix'], array_keys(PostingVocabulary::modes($type)));
         $this->assertSame([PostingMatrix::REVENUE, PostingMatrix::OUTPUT_VAT], array_keys(PostingVocabulary::matrices($type)));
     }
