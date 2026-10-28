@@ -28,9 +28,10 @@ class ForeignReceiptPosting
      * @param  string  $amount  износ на наплатата во валутата на фактурата
      * @param  string  $paidBefore  веќе наплатено до сега, во валутата на фактурата
      * @param  string  $rate  курс на денот на приливот
+     * @param  bool  $paidBeforeAtInvoiceRate  претходните наплати се книжени по старото правило (износ × курс на фактурата, на 1200), па затворено до сега е тоа, не пропорцијата
      * @return list<PostingLine>
      */
-    public function lines(SalesInvoice $invoice, string $amount, string $paidBefore, string $rate, string $label): array
+    public function lines(SalesInvoice $invoice, string $amount, string $paidBefore, string $rate, string $label, bool $paidBeforeAtInvoiceRate = false): array
     {
         $receivables = PostedInvoiceAccounts::receivables($invoice);
         $foreignTotal = array_reduce($receivables, fn (string $c, array $r) => bcadd($c, $r['foreign'], 2), '0.00');
@@ -51,11 +52,13 @@ class ForeignReceiptPosting
         $closed = '0.00';
 
         foreach ($receivables as $receivable) {
-            $credit = bcsub(
-                $this->share($receivable['debit'], $paidAfter, $foreignTotal),
-                $this->share($receivable['debit'], $paidBefore, $foreignTotal),
-                2
-            );
+            // Наплатите од пред девизните конта оделе по износ × курс на фактурата
+            // (само на едно конто): тоа е веќе затворено, пропорцијата може да се
+            // разликува за стотинка и би оставила остаток на побарувањето.
+            $closedBefore = $paidBeforeAtInvoiceRate && count($receivables) === 1
+                ? Bcmath::roundHalfUp(bcmul($paidBefore, $invoiceRate, 10), 2)
+                : $this->share($receivable['debit'], $paidBefore, $foreignTotal);
+            $credit = bcsub($this->share($receivable['debit'], $paidAfter, $foreignTotal), $closedBefore, 2);
             $foreignCredit = bcsub(
                 $this->share($receivable['foreign'], $paidAfter, $foreignTotal),
                 $this->share($receivable['foreign'], $paidBefore, $foreignTotal),

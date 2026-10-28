@@ -409,6 +409,8 @@ class SalesInvoiceService
         return DB::transaction(function () use ($invoice, $amount, $paymentDate, $userId, $rate) {
             // Пресметано ПРЕД да се создаде овој запис — состојбата на платено пред уплатава.
             $paidBefore = $invoice->paidTotal();
+            // Наплата без курс е од старото книжење (по курсот на фактурата).
+            $legacyBefore = $invoice->payments()->whereNull('exchange_rate')->exists();
 
             $payment = $invoice->payments()->create([
                 'amount' => $amount,
@@ -428,7 +430,7 @@ class SalesInvoiceService
                 'created_by' => $userId,
             ]);
 
-            foreach ($this->foreignReceipt->lines($invoice, $amount, $paidBefore, $rate, $label) as $line) {
+            foreach ($this->foreignReceipt->lines($invoice, $amount, $paidBefore, $rate, $label, $legacyBefore) as $line) {
                 $entry->lines()->create($line->journalColumns($paymentDate));
             }
 

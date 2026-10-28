@@ -42,10 +42,17 @@ return new class extends Migration
                 continue;
             }
 
-            DB::transaction(function () use ($scheme, $new) {
-                $scheme->rows()->delete();
-                DefaultPostingSchemes::populateRows($scheme, $scheme->company, $new);
-            });
+            // Фирма на која и едно од стандардните конта не е аналитичко се прескокнува
+            // (шемата останува непроменета, девизната фактура паѓа на 1200): една
+            // таква фирма не смее да ја запре миграцијата, а со неа и пуштањето.
+            try {
+                DB::transaction(function () use ($scheme, $new) {
+                    $scheme->rows()->delete();
+                    DefaultPostingSchemes::populateRows($scheme, $scheme->company, $new);
+                });
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
     }
 

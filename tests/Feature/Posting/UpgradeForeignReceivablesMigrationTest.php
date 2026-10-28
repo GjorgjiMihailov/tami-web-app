@@ -72,4 +72,16 @@ class UpgradeForeignReceivablesMigrationTest extends TestCase
 
         $this->assertSame(8, $scheme->fresh()->rows()->count());
     }
+
+    public function test_a_company_with_an_unusable_default_account_is_skipped_and_the_others_still_upgrade(): void
+    {
+        $broken = $this->oldDefault(Company::factory()->create());
+        \App\Models\Account::where('company_id', $broken->company_id)->where('code', '7010')->update(['is_analytical' => false]);
+        $fine = $this->oldDefault(Company::factory()->create());
+
+        $this->runMigration();
+
+        $this->assertSame(6, $broken->fresh()->rows()->count());
+        $this->assertSame(8, $fine->fresh()->rows()->count());
+    }
 }

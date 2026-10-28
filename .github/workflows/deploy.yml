@@ -103,7 +103,7 @@ jobs:
             # сметководителот). Копчето „Преземи“ на екранот е само резерва.
             php artisan accounts:sync-official
             # Само брои (не менува): девизни фактури книжени на 1200 пред девизните конта.
-            php artisan invoices:count-foreign-on-1200
+            php artisan invoices:count-foreign-on-1200 || true
             npm ci
             npm run build
             # Клучот за читање скенирани фактури живее како GitHub тајна, не во
