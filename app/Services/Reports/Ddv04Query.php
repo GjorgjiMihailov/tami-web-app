@@ -18,7 +18,7 @@ class Ddv04Query
             ->where('sales_invoices.company_id', $company->id)
             ->where('sales_invoices.status', 'confirmed')
             ->whereBetween('sales_invoices.invoice_date', [$from->toDateString(), $to->toDateString()])
-            ->get(['sales_invoice_lines.*']);
+            ->get(['sales_invoice_lines.*', 'sales_invoices.exchange_rate as invoice_exchange_rate']);
 
         $purchaseLines = PurchaseInvoiceLine::query()
             ->join('purchase_invoices', 'purchase_invoices.id', '=', 'purchase_invoice_lines.purchase_invoice_id')
@@ -69,7 +69,7 @@ class Ddv04Query
     private static function sumBase(Collection $lines): string
     {
         return Bcmath::roundHalfUp(
-            $lines->reduce(fn (string $carry, $line) => bcadd($carry, $line->lineTotal(), 10), '0'),
+            $lines->reduce(fn (string $carry, $line) => bcadd($carry, self::inDenars($line, $line->lineTotal()), 10), '0'),
             2
         );
     }
@@ -77,8 +77,23 @@ class Ddv04Query
     private static function sumVat(Collection $lines): string
     {
         return Bcmath::roundHalfUp(
-            $lines->reduce(fn (string $carry, $line) => bcadd($carry, $line->vatAmount(), 10), '0'),
+            $lines->reduce(fn (string $carry, $line) => bcadd($carry, self::inDenars($line, $line->vatAmount()), 10), '0'),
             2
         );
+    }
+
+    /**
+     * ДДВ-04 е во денари: износ од девизна фактура се множи со курсот на
+     * фактурата. Денарска фактура (курс 1) и влезни ставки поминуваат недопрени.
+     */
+    private static function inDenars($line, string $amount): string
+    {
+        $rate = $line->invoice_exchange_rate ?? null;
+
+        if ($rate === null || bccomp((string) $rate, '1', 6) === 0) {
+            return $amount;
+        }
+
+        return bcmul($amount, (string) $rate, 10);
     }
 }
