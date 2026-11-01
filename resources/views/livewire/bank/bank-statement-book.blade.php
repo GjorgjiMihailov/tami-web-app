@@ -50,7 +50,7 @@
                 <div class="w-48">
                     <x-input-label value="Вид" />
                     <select wire:model.live="lines.{{ $i }}.kind" class="border-gray-300 rounded-md text-sm w-full">
-                        @foreach (\App\Support\Bank\LineKind::cases() as $kind)
+                        @foreach (collect(\App\Support\Bank\LineKind::cases())->reject(fn ($k) => $k === \App\Support\Bank\LineKind::CURRENCY_SALE) as $kind)
                             <option value="{{ $kind->value }}">{{ $kind->label() }}</option>
                         @endforeach
                     </select>

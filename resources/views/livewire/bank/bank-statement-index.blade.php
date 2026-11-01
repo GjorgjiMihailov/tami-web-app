@@ -235,12 +235,11 @@
                                 <td class="py-1">{{ $statement->uploader?->name }}</td>
                                 @if ($canBook)
                                     <td class="py-1">
-                                        @if (! $statement->kind->isDenar())
-                                            <span class="text-gray-400">—</span>
-                                        @elseif ($statement->isBooked())
-                                            <a href="{{ route('bank-statements.book', [$company, $statement]) }}" class="text-green-700 hover:underline">Прокнижен · Отвори</a>
+                                        @php($bookRoute = $statement->kind->isForeign() ? 'bank-statements.book-foreign' : 'bank-statements.book')
+                                        @if ($statement->isBooked())
+                                            <a href="{{ route($bookRoute, [$company, $statement]) }}" class="text-green-700 hover:underline">Прокнижен · Отвори</a>
                                         @else
-                                            <a href="{{ route('bank-statements.book', [$company, $statement]) }}" class="text-brand hover:underline">Книжи</a>
+                                            <a href="{{ route($bookRoute, [$company, $statement]) }}" class="text-brand hover:underline">Книжи</a>
                                         @endif
                                         @unless ($statement->isBooked())
                                             <button type="button" wire:click="deleteStatement({{ $statement->id }})"
