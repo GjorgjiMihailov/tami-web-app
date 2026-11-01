@@ -5,6 +5,8 @@ namespace App\Support\Bank;
 use App\Models\Account;
 use App\Models\BankStatement;
 use App\Models\BankStatementLine;
+use App\Services\Bank\Settlement1039;
+use App\Support\BankStatementCurrency;
 use App\Support\Format;
 
 /**
@@ -159,6 +161,9 @@ class StatementControls
             $problems[] = 'контото не постои во оваа фирма.';
         } elseif (! $account->is_analytical) {
             $problems[] = "контото {$account->code} не е аналитичко.";
+        } elseif ($account->code === Settlement1039::CODE && $line->foreign_amount !== null
+            && (bccomp((string) $line->foreign_amount, '0', 2) <= 0 || ! in_array($line->currency, BankStatementCurrency::all(), true))) {
+            $problems[] = 'девизниот износ треба да е поголем од нула и да има валута (EUR или USD).';
         }
 
         return $problems;

@@ -60,6 +60,9 @@ class BankStatementPoster
 
             // Конто 1000 е по една ставка за цел налог (по страна), не по ред од изводот:
             // спротивните ставки го носат партнерот и описот на секој ред.
+            // Предлозите се од салдото ПРЕД овој налог: ставките на 1039 од него уште не постојат.
+            $proposals = Settlement1039::proposals($statement);
+
             $bankIn = '0';
             $bankOut = '0';
 
@@ -76,6 +79,8 @@ class BankStatementPoster
                     $bankOut = bcadd($bankOut, $posted['amount'], 2);
                 }
             }
+
+            $this->postSettlements($statement, $entry, $proposals);
 
             $this->postBankTotals($statement, $entry, $bank, $bankIn, $bankOut);
 
@@ -176,11 +181,45 @@ class BankStatementPoster
         $amount = (string) $line->amount;
         $common = ['partner_id' => $partnerId, 'description' => $label, 'line_date' => $line->line_date];
 
-        $entry->lines()->create($common + ['account_id' => $counter->id, 'debit' => $isIn ? '0' : $amount, 'credit' => $isIn ? $amount : '0']);
+        $entry->lines()->create($common + ['account_id' => $counter->id, 'debit' => $isIn ? '0' : $amount, 'credit' => $isIn ? $amount : '0'] + Settlement1039::foreignColumns($line->loadMissing('account')));
 
         return ['isIn' => $isIn, 'amount' => $amount];
     }
 
+    /**
+     * Курсната разлика на 1039 за ставките што сметководителот ја прифатил.
+     * Загуба: Должи 4750 / Побарува 1039; добивка: Должи 1039 / Побарува 7750.
+     * Не го допира 1000.
+     */
+    private function postSettlements(BankStatement $statement, JournalEntry $entry, array $proposals): void
+    {
+        foreach ($statement->lines as $line) {
+            if (! $line->settle_difference || ! isset($proposals[$line->id])) {
+                continue;
+            }
+
+            $proposal = $proposals[$line->id];
+            $isLoss = $proposal['side'] === 'loss';
+            $conversion = $line->account;
+            $other = $this->analytical($statement, $isLoss ? '4750' : '7750');
+            $label = "Курсна разлика на 1039 — извод бр. {$statement->number}";
+            $common = ['line_date' => $line->line_date, 'description' => $label];
+
+            $entry->lines()->create($common + ['account_id' => $isLoss ? $other->id : $conversion->id, 'debit' => $proposal['amount'], 'credit' => '0']);
+            $entry->lines()->create($common + ['account_id' => $isLoss ? $conversion->id : $other->id, 'debit' => '0', 'credit' => $proposal['amount']]);
+        }
+    }
+
+    private function analytical(BankStatement $statement, string $code): Account
+    {
+        $account = Account::where('company_id', $statement->company_id)->analytical()->where('code', $code)->first();
+
+        if ($account === null) {
+            throw new InvalidBankStatementException("Фирмата нема аналитичко конто {$code}, потребно за курсната разлика на 1039.");
+        }
+
+        return $account;
+    }
     /** Една ставка на 1000 за уплатите (должи) и една за исплатите (побарува). */
     private function postBankTotals(BankStatement $statement, JournalEntry $entry, Account $bank, string $in, string $out): void
     {

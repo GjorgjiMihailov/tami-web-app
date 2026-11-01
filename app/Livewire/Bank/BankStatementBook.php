@@ -14,12 +14,14 @@ use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
 use App\Services\Bank\BankCounterpartyRecognizer;
 use App\Services\Bank\BankStatementPoster;
+use App\Services\Bank\Settlement1039;
 use App\Services\Posting\PostedInvoiceAccounts;
 use App\Support\Bank\LineDirection;
 use App\Support\Bank\LineKind;
 use App\Support\Bank\MatchConfidence;
 use App\Support\Bank\StatementControls;
 use App\Support\Bcmath;
+use App\Support\BankStatementCurrency;
 use App\Support\Format;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
@@ -89,6 +91,9 @@ class BankStatementBook extends Component
             'account_id' => $line->account_id,
             'invoice_id' => $line->sales_invoice_id ?? $line->purchase_invoice_id,
             'existing_payment_id' => $line->sales_invoice_payment_id ?? $line->purchase_invoice_payment_id,
+            'foreign_amount' => $line->foreign_amount === null ? '' : (string) $line->foreign_amount,
+            'currency' => $line->currency ?? 'EUR',
+            'settle_difference' => $line->settle_difference,
             'reviewed' => $line->reviewed_at !== null,
         ])->all();
     }
@@ -115,6 +120,9 @@ class BankStatementBook extends Component
             'account_id' => null,
             'invoice_id' => null,
             'existing_payment_id' => null,
+            'foreign_amount' => '',
+            'currency' => 'EUR',
+            'settle_difference' => false,
             'reviewed' => true,
         ];
     }
@@ -732,7 +740,11 @@ class BankStatementBook extends Component
             'lines.*.amount' => ['required', 'regex:/^\d+(\.\d{1,2})?$/'],
             'lines.*.kind' => ['required', 'in:invoice_payment,account,unclear'],
             'lines.*.partner_id' => ['nullable', Rule::exists('partners', 'id')->where('company_id', $this->company->id)],
+            'lines.*.foreign_amount' => ['nullable', 'regex:/^\d+(\.\d{1,2})?$/'],
+            'lines.*.currency' => ['nullable', Rule::in(BankStatementCurrency::all())],
         ], [
+            'lines.*.foreign_amount.regex' => 'Девизниот износ е број со најмногу две децимали.',
+            'lines.*.currency.in' => 'Валутата е EUR или USD.',
             'lines.*.partner_id.exists' => 'Партнерот не е од оваа фирма.',
             'openingBalance.regex' => 'Почетната состојба е број (пример 1000.50 или -200).',
             'closingBalance.regex' => 'Крајната состојба е број (пример 1000.50 или -200).',
@@ -746,6 +758,7 @@ class BankStatementBook extends Component
             // нема во формата, па се пренесуваат по id од досегашните ставки на
             // ОВОЈ извод — не од формата, чии вредности клиентот може да ги измени.
             $previous = $this->statement->lines()->get()->keyBy('id');
+            $conversionIds = Account::where('company_id', $this->company->id)->where('code', Settlement1039::CODE)->pluck('id')->all();
 
             // Id што го нема меѓу тековните ставки значи дека изводот е сменет
             // откако е отворен овој прозорец (друг таб го зачувал и ставките се
@@ -770,6 +783,9 @@ class BankStatementBook extends Component
                 $isIn = $line['direction'] === LineDirection::IN->value;
                 $isInvoice = $line['kind'] === LineKind::INVOICE_PAYMENT->value;
                 $kept = $previous->get($line['id'] ?? 0);
+                // Девизен износ и прифатена разлика има само ставка на конто 1039.
+                $on1039 = ! $isInvoice && in_array((int) ($line['account_id'] ?? 0), $conversionIds, true);
+                $hasForeign = $on1039 && (string) ($line['foreign_amount'] ?? '') !== '';
 
                 $this->statement->lines()->create([
                     'position' => $position + 1,
@@ -788,6 +804,9 @@ class BankStatementBook extends Component
                     'reviewed_at' => ! empty($line['reviewed']) ? ($kept?->reviewed_at ?? now()) : null,
                     'kind' => $line['kind'],
                     'account_id' => $isInvoice ? null : ($line['account_id'] ?: null),
+                    'foreign_amount' => $hasForeign ? $line['foreign_amount'] : null,
+                    'currency' => $hasForeign ? $line['currency'] : null,
+                    'settle_difference' => $on1039 && ! empty($line['settle_difference']),
                     'sales_invoice_id' => $isInvoice && $isIn ? ($line['invoice_id'] ?: null) : null,
                     'purchase_invoice_id' => $isInvoice && ! $isIn ? ($line['invoice_id'] ?: null) : null,
                     'sales_invoice_payment_id' => $isInvoice && $isIn ? ($line['existing_payment_id'] ?: null) : null,
@@ -872,6 +891,7 @@ class BankStatementBook extends Component
             'suggestedCount' => $this->statement->isBooked() ? 0 : count($this->suggestedIndexes()),
             'reviewable' => $this->reviewing ? $this->reviewable() : [],
             'lineMeta' => $this->statement->lines()->get()->keyBy('id'),
+            'proposals' => $this->statement->isBooked() ? [] : Settlement1039::proposals($this->statement->fresh('lines')),
         ]);
     }
 }
