@@ -50,7 +50,7 @@
                 <div class="w-48">
                     <x-input-label value="Вид" />
                     <select wire:model.live="lines.{{ $i }}.kind" class="border-gray-300 rounded-md text-sm w-full">
-                        @foreach (\App\Support\Bank\LineKind::cases() as $kind)
+                        @foreach (collect(\App\Support\Bank\LineKind::cases())->reject(fn ($k) => $k === \App\Support\Bank\LineKind::CURRENCY_SALE) as $kind)
                             <option value="{{ $kind->value }}">{{ $kind->label() }}</option>
                         @endforeach
                     </select>
@@ -206,6 +206,31 @@
                                         </template>
                                     </div>
                                 </div>
+
+                                @if ($selectedAccount && $selectedAccount->code === \App\Services\Bank\Settlement1039::CODE)
+                                    {{-- Конверзија од девизната сметка: денарот што го исплатила банката, со девизниот износ што го затвора. --}}
+                                    <div class="mt-1 flex gap-1 items-center">
+                                        <x-text-input inputmode="decimal" placeholder="Девизен износ" title="Девизен износ"
+                                                      wire:model.live.debounce.300ms="lines.{{ $i }}.foreign_amount" class="w-28 text-right text-xs py-1" :disabled="$locked" />
+                                        <select wire:model="lines.{{ $i }}.currency" class="border-gray-300 rounded-md text-xs py-1" @disabled($locked)>
+                                            @foreach (\App\Support\BankStatementCurrency::all() as $code)
+                                                <option value="{{ $code }}">{{ $code }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    @error("lines.$i.foreign_amount") <span class="block text-red-600 text-xs">{{ $message }}</span> @enderror
+                                    @error("lines.$i.currency") <span class="block text-red-600 text-xs">{{ $message }}</span> @enderror
+                                    @php($proposal = $saved ? ($proposals[$saved->id] ?? null) : null)
+                                    @if ($proposal)
+                                        <label class="mt-1 flex items-start gap-1 text-xs p-1 rounded bg-amber-50 text-amber-800">
+                                            <input type="checkbox" wire:model="lines.{{ $i }}.settle_difference" class="mt-0.5 rounded border-gray-300" @disabled($locked)>
+                                            <span>Предлог: курсна разлика {{ \App\Support\Format::money($proposal['amount'], '') }} ден на
+                                                {{ $proposal['side'] === 'loss' ? '4750 (загуба)' : '7750 (добивка)' }} — штиклирај за да се прокнижи</span>
+                                        </label>
+                                    @else
+                                        <span class="block mt-1 text-[11px] text-gray-400">Предлогот за курсна разлика се пресметува по „Зачувај нацрт“.</span>
+                                    @endif
+                                @endif
                             @endif
                         </td>
 

@@ -53,13 +53,24 @@
             </div>
             <div class="w-36">
                 <x-input-label for="kind" value="Вид" />
-                <select id="kind" wire:model="kind" class="border-gray-300 rounded-md text-sm w-full">
+                <select id="kind" wire:model.live="kind" class="border-gray-300 rounded-md text-sm w-full">
                     @foreach ($kinds as $option)
                         <option value="{{ $option->value }}">{{ $option->label() }}</option>
                     @endforeach
                 </select>
                 @error('kind') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
             </div>
+            @if ($kind === \App\Support\BankStatementKind::FOREIGN->value)
+                <div class="w-24">
+                    <x-input-label for="currency" value="Валута" />
+                    <select id="currency" wire:model="currency" class="border-gray-300 rounded-md text-sm w-full">
+                        @foreach (\App\Support\BankStatementCurrency::all() as $code)
+                            <option value="{{ $code }}">{{ $code }}</option>
+                        @endforeach
+                    </select>
+                    @error('currency') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                </div>
+            @endif
             <div class="w-24">
                 <x-input-label for="number" value="Број" />
                 <x-text-input id="number" wire:model="number" class="w-full text-right" />
@@ -174,7 +185,7 @@
         <x-card class="mb-4">
             <h2 class="font-semibold text-gray-700 mb-2">
                 {{ $group['bank'] }} — {{ $group['account'] }}
-                <span class="text-gray-400 font-normal">/ {{ $group['kind']->label() }} / {{ $group['year'] }}</span>
+                <span class="text-gray-400 font-normal">/ {{ $group['kind']->label() }}{{ $group['currency'] ? ' '.$group['currency'] : '' }} / {{ $group['year'] }}</span>
             </h2>
             <table class="min-w-full text-sm">
                 <thead>
@@ -224,12 +235,11 @@
                                 <td class="py-1">{{ $statement->uploader?->name }}</td>
                                 @if ($canBook)
                                     <td class="py-1">
-                                        @if (! $statement->kind->isDenar())
-                                            <span class="text-gray-400">—</span>
-                                        @elseif ($statement->isBooked())
-                                            <a href="{{ route('bank-statements.book', [$company, $statement]) }}" class="text-green-700 hover:underline">Прокнижен · Отвори</a>
+                                        @php($bookRoute = $statement->kind->isForeign() ? 'bank-statements.book-foreign' : 'bank-statements.book')
+                                        @if ($statement->isBooked())
+                                            <a href="{{ route($bookRoute, [$company, $statement]) }}" class="text-green-700 hover:underline">Прокнижен · Отвори</a>
                                         @else
-                                            <a href="{{ route('bank-statements.book', [$company, $statement]) }}" class="text-brand hover:underline">Книжи</a>
+                                            <a href="{{ route($bookRoute, [$company, $statement]) }}" class="text-brand hover:underline">Книжи</a>
                                         @endif
                                         @unless ($statement->isBooked())
                                             <button type="button" wire:click="deleteStatement({{ $statement->id }})"

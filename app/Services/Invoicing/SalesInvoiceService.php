@@ -21,6 +21,7 @@ use App\Services\Posting\SalesPaymentPostingContext;
 use App\Support\Bcmath;
 use App\Support\InvoiceNumber;
 use App\Support\Posting\PostingDocType;
+use App\Support\Posting\PostingLine;
 use Illuminate\Support\Facades\DB;
 
 class SalesInvoiceService
@@ -400,13 +401,52 @@ class SalesInvoiceService
             throw new InvalidInvoiceStateException('Девизна фактура се наплатува само преку девизна сметка (банка).');
         }
 
-        if (! Bcmath::isPlainNumber($paymentRate) || bccomp($paymentRate, '0', 6) <= 0) {
+        return DB::transaction(function () use ($invoice, $amount, $paymentDate, $userId, $paymentRate) {
+            $label = "Payment for invoice {$invoice->formattedNumber()}";
+
+            [$payment, $lines] = $this->createForeignPaymentRecord($invoice, $amount, $paymentDate, (string) $paymentRate, $userId, $label);
+
+            $entry = JournalEntry::create([
+                'company_id' => $invoice->company_id,
+                'journal_group_id' => JournalGroupCodes::group($invoice->company, JournalGroupCodes::FOREIGN_BANK)->id,
+                'entry_date' => $paymentDate,
+                'description' => $label,
+                'created_by' => $userId,
+            ]);
+
+            foreach ($lines as $line) {
+                $entry->lines()->create($line->journalColumns($paymentDate));
+            }
+
+            return $payment;
+        });
+    }
+
+    /**
+     * Наплата на девизна фактура без налог: редот за плаќање и ставките што
+     * изводот ги пишува во СВОЈОТ налог (1030 по курсот на денот, побарувањето
+     * по курсот на фактурата, разликата на 4750/7750 — види ForeignReceiptPosting).
+     *
+     * @param  string  $rate  курс на денот на приливот
+     * @return array{0: SalesInvoicePayment, 1: list<PostingLine>}
+     */
+    public function createForeignPaymentRecord(SalesInvoice $invoice, string $amount, string $paymentDate, string $rate, int $userId, string $label): array
+    {
+        $amount = Bcmath::roundHalfUp($amount, 2);
+
+        $this->assertPayable($invoice, $amount);
+
+        if (! $invoice->isForeignCurrency()) {
+            throw new InvalidInvoiceStateException('Фактурата не е во девиза.');
+        }
+
+        if (! Bcmath::isPlainNumber($rate) || bccomp($rate, '0', 6) <= 0) {
             throw new InvalidInvoiceStateException('Внеси курс на денот на приливот (поголем од нула).');
         }
 
-        $rate = Bcmath::roundHalfUp($paymentRate, 6);
+        $rate = Bcmath::roundHalfUp($rate, 6);
 
-        return DB::transaction(function () use ($invoice, $amount, $paymentDate, $userId, $rate) {
+        return DB::transaction(function () use ($invoice, $amount, $paymentDate, $userId, $rate, $label) {
             // Пресметано ПРЕД да се создаде овој запис — состојбата на платено пред уплатава.
             $paidBefore = $invoice->paidTotal();
             // Наплата без курс е од старото книжење (по курсот на фактурата).
@@ -420,24 +460,9 @@ class SalesInvoiceService
                 'created_by' => $userId,
             ]);
 
-            $label = "Payment for invoice {$invoice->formattedNumber()}";
-
-            $entry = JournalEntry::create([
-                'company_id' => $invoice->company_id,
-                'journal_group_id' => JournalGroupCodes::group($invoice->company, JournalGroupCodes::FOREIGN_BANK)->id,
-                'entry_date' => $paymentDate,
-                'description' => $label,
-                'created_by' => $userId,
-            ]);
-
-            foreach ($this->foreignReceipt->lines($invoice, $amount, $paidBefore, $rate, $label, $legacyBefore) as $line) {
-                $entry->lines()->create($line->journalColumns($paymentDate));
-            }
-
-            return $payment;
+            return [$payment, $this->foreignReceipt->lines($invoice, $amount, $paidBefore, $rate, $label, $legacyBefore)];
         });
     }
-
     /**
      * Износ од валутата на фактурата во денари.
      *

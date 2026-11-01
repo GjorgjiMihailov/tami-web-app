@@ -36,6 +36,7 @@ class StatementSequence
                     'account' => $first->account,
                     'bank' => $first->bank,
                     'kind' => $first->kind,
+                    'currency' => $first->currency,
                     'year' => $first->statement_date->year,
                     'rows' => self::rows($ordered),
                 ];

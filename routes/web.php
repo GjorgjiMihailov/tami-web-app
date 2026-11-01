@@ -43,6 +43,7 @@ use App\Livewire\Apps\SalesDashboard;
 use App\Livewire\Bank\BankLineRuleIndex;
 use App\Livewire\Bank\BankStatementBook;
 use App\Livewire\Bank\BankStatementIndex;
+use App\Livewire\Bank\ForeignStatementBook;
 use App\Livewire\Bank\Form743Upload;
 use App\Livewire\Bank\Form743Worklist;
 use App\Livewire\ClientAccountantShow;
@@ -380,6 +381,7 @@ Route::domain(PortalApp::FINANSII->domain())->middleware(EnsureAppAccess::class.
         Route::get('/izvodi', [BankStatementIndex::class, '__invoke'])->name('index');
         Route::get('/izvodi/zapamteni-konta', [BankLineRuleIndex::class, '__invoke'])->name('rules');
         Route::get('/izvodi/{statement}/knizenje', [BankStatementBook::class, '__invoke'])->name('book');
+        Route::get('/izvodi/{statement}/devizno', [ForeignStatementBook::class, '__invoke'])->name('book-foreign');
     });
 
     Route::middleware(['auth', EnsureLegalEntity::class, EnsureCompanyModule::class.':finance'])->prefix('companies/{company}')->name('reports.')->group(function () {

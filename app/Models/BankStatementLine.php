@@ -21,10 +21,11 @@ class BankStatementLine extends Model
         'kind', 'account_id',
         'sales_invoice_id', 'purchase_invoice_id', 'sales_invoice_payment_id',
         'purchase_invoice_payment_id', 'created_payment',
+        'currency', 'exchange_rate', 'foreign_amount', 'settle_difference',
     ];
 
     // DB-default не го полни свеж модел во меморија.
-    protected $attributes = ['created_payment' => false, 'position' => 0];
+    protected $attributes = ['created_payment' => false, 'position' => 0, 'settle_difference' => false];
 
     protected function casts(): array
     {
@@ -36,6 +37,9 @@ class BankStatementLine extends Model
             'reviewed_at' => 'datetime',
             'amount' => 'decimal:2',
             'created_payment' => 'boolean',
+            'exchange_rate' => 'decimal:6',
+            'foreign_amount' => 'decimal:2',
+            'settle_difference' => 'boolean',
         ];
     }
 
