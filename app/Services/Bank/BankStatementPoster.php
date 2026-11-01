@@ -26,6 +26,7 @@ class BankStatementPoster
         private readonly SalesInvoiceService $sales,
         private readonly PurchaseInvoiceService $purchases,
         private readonly BankCounterpartyMemory $memory,
+        private readonly ForeignStatementPoster $foreign,
     ) {}
 
     public function post(BankStatement $statement, int $userId): JournalEntry
@@ -41,6 +42,10 @@ class BankStatementPoster
 
             if ($problems !== []) {
                 throw new InvalidBankStatementException(implode("\n", $problems));
+            }
+
+            if ($statement->kind->isForeign()) {
+                return $this->foreign->book($statement, $userId);
             }
 
             $bank = $this->account($statement, Account::BANK_CODE);

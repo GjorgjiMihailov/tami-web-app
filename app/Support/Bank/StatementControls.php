@@ -139,6 +139,10 @@ class StatementControls
             $problems[] = 'датумот е од друга година од изводот.';
         }
 
+        if ($statement->kind->isForeign()) {
+            return array_merge($problems, self::foreignLineProblems($statement, $line));
+        }
+
         if ($line->kind === LineKind::INVOICE_PAYMENT) {
             return array_merge($problems, self::invoiceProblems($statement, $line));
         }
@@ -155,6 +159,44 @@ class StatementControls
             $problems[] = 'контото не постои во оваа фирма.';
         } elseif (! $account->is_analytical) {
             $problems[] = "контото {$account->code} не е аналитичко.";
+        }
+
+        return $problems;
+    }
+
+    /**
+     * Девизен извод: само наплата на фактура (уплата) и продажба на девиза
+     * (исплата), секоја со курс на денот. Салдото и статусот на фактурата ги
+     * проверува invoiceProblems, исто како кај денарскиот извод.
+     *
+     * @return array<int, string>
+     */
+    private static function foreignLineProblems(BankStatement $statement, BankStatementLine $line): array
+    {
+        $isReceipt = $line->kind === LineKind::INVOICE_PAYMENT && $line->direction === LineDirection::IN;
+        $isSale = $line->kind === LineKind::CURRENCY_SALE && $line->direction === LineDirection::OUT;
+
+        if (! $isReceipt && ! $isSale) {
+            return ['на девизен извод се дозволени само наплата на фактура и продажба на девиза.'];
+        }
+
+        $problems = [];
+
+        if ($line->exchange_rate === null || bccomp((string) $line->exchange_rate, '0', 6) <= 0) {
+            $problems[] = 'внесете курс.';
+        }
+
+        if (! $isReceipt) {
+            return $problems;
+        }
+
+        $problems = array_merge($problems, self::invoiceProblems($statement, $line));
+
+        $invoice = $line->salesInvoice;
+
+        if ($invoice !== null && $invoice->company_id === $statement->company_id
+            && (! $invoice->isForeignCurrency() || $invoice->currency !== $statement->currency)) {
+            $problems[] = 'фактурата е во друга валута.';
         }
 
         return $problems;
