@@ -145,6 +145,6 @@ class Settlement1039Test extends TestCase
     {
         [$statement] = $this->statement(['currency' => null], ['opening_balance' => '0', 'closing_balance' => '424338.96']);
 
-        $this->assertStringContainsString('девизниот износ', implode(' ', StatementControls::problems($statement)));
+        $this->assertStringContainsString('девизен износ', implode(' ', StatementControls::problems($statement)));
     }
 }

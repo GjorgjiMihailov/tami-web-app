@@ -203,7 +203,8 @@ class BankStatementPoster
             $conversion = $line->account;
             $other = $this->analytical($statement, $isLoss ? '4750' : '7750');
             $label = "Курсна разлика на 1039 — извод бр. {$statement->number}";
-            $common = ['line_date' => $line->line_date, 'description' => $label];
+            // Валутата е потребна за салдото на 1039 по валута (колоната има основна вредност MKD).
+            $common = ['line_date' => $line->line_date, 'description' => $label, 'currency_code' => $line->currency];
 
             $entry->lines()->create($common + ['account_id' => $isLoss ? $other->id : $conversion->id, 'debit' => $proposal['amount'], 'credit' => '0']);
             $entry->lines()->create($common + ['account_id' => $isLoss ? $conversion->id : $other->id, 'debit' => '0', 'credit' => $proposal['amount']]);

@@ -44,6 +44,10 @@ class StatementControls
             $problems[] = 'Изводот нема ставки.';
         }
 
+        if ($statement->kind->isForeign() && ! in_array($statement->currency, BankStatementCurrency::all(), true)) {
+            $problems[] = 'Девизниот извод нема валута (EUR или USD).';
+        }
+
         $opening = $statement->opening_balance;
         $closing = $statement->closing_balance;
 
@@ -161,9 +165,9 @@ class StatementControls
             $problems[] = 'контото не постои во оваа фирма.';
         } elseif (! $account->is_analytical) {
             $problems[] = "контото {$account->code} не е аналитичко.";
-        } elseif ($account->code === Settlement1039::CODE && $line->foreign_amount !== null
-            && (bccomp((string) $line->foreign_amount, '0', 2) <= 0 || ! in_array($line->currency, BankStatementCurrency::all(), true))) {
-            $problems[] = 'девизниот износ треба да е поголем од нула и да има валута (EUR или USD).';
+        } elseif ($account->code === Settlement1039::CODE
+            && ($line->foreign_amount === null || bccomp((string) $line->foreign_amount, '0', 2) <= 0 || ! in_array($line->currency, BankStatementCurrency::all(), true))) {
+            $problems[] = 'на конто 1039 внесете девизен износ (поголем од нула) и валута (EUR или USD).';
         }
 
         return $problems;

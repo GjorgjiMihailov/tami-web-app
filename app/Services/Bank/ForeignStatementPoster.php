@@ -60,6 +60,11 @@ class ForeignStatementPoster
     /** @return list<PostingLine> */
     private function receiptLines(BankStatement $statement, BankStatementLine $line, int $userId): array
     {
+        if ($line->sales_invoice_payment_id !== null) {
+            // Веќе книжено со свој налог (копчето „Наплата“ на фактурата) — второ книжење би го удвоило.
+            return [];
+        }
+
         // Свеж запис: фактурата закачена на ставката може да е веќе вчитана со стар список на плаќања.
         $invoice = $line->salesInvoice()->firstOrFail();
         $label = $line->description ?: "Девизен извод бр. {$statement->number}";

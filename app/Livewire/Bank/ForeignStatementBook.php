@@ -70,6 +70,7 @@ class ForeignStatementBook extends Component
             'exchange_rate' => $line->exchange_rate === null ? '' : (string) $line->exchange_rate,
             'partner_id' => $line->partner_id,
             'invoice_id' => $line->sales_invoice_id,
+            'existing_payment_id' => $line->sales_invoice_payment_id,
             'description' => (string) $line->description,
         ])->all();
     }
@@ -91,6 +92,7 @@ class ForeignStatementBook extends Component
             'exchange_rate' => '',
             'partner_id' => null,
             'invoice_id' => null,
+            'existing_payment_id' => null,
             'description' => '',
         ];
     }
@@ -154,6 +156,42 @@ class ForeignStatementBook extends Component
             ->all();
     }
 
+    /**
+     * Веќе внесени банкарски наплати на избраната фактура (копчето „Наплата“) што не се врзани
+     * за друга ставка на извод — кандидати за „веќе книжено“.
+     *
+     * @return array<int, array{id: int, label: string}>
+     */
+    public function paymentOptions(int $index): array
+    {
+        $line = $this->lines[$index] ?? null;
+
+        if ($line === null || empty($line['invoice_id']) || ! is_numeric($line['invoice_id'])) {
+            return [];
+        }
+
+        $invoice = SalesInvoice::where('company_id', $this->company->id)->find($line['invoice_id']);
+
+        if ($invoice === null) {
+            return [];
+        }
+
+        $taken = BankStatementLine::whereNotNull('sales_invoice_payment_id')
+            ->when(! empty($line['id']), fn ($query) => $query->whereKeyNot($line['id']))
+            ->pluck('sales_invoice_payment_id');
+
+        return $invoice->payments()
+            ->where('payment_method', 'bank')
+            ->whereNotIn('id', $taken)
+            ->orderBy('payment_date')
+            ->get()
+            ->map(fn ($payment) => [
+                'id' => $payment->id,
+                'label' => Format::date($payment->payment_date).' — '.Format::money((string) $payment->amount, ''),
+            ])
+            ->all();
+    }
+
     /** @return array{in: string, out: string} */
     #[Computed]
     public function totals(): array
@@ -197,6 +235,7 @@ class ForeignStatementBook extends Component
         // Друг вид или друг партнер ја менува смислата на избраната фактура.
         if (preg_match('/^lines\.(\d+)\.(kind|partner_id)$/', $name, $m)) {
             $this->lines[(int) $m[1]]['invoice_id'] = null;
+            $this->lines[(int) $m[1]]['existing_payment_id'] = null;
 
             if ($m[2] === 'kind' && $value === LineKind::CURRENCY_SALE->value) {
                 $this->lines[(int) $m[1]]['partner_id'] = null;
@@ -206,6 +245,7 @@ class ForeignStatementBook extends Component
         // Избор на фактура: износот се нуди сам кога е празен.
         if (preg_match('/^lines\.(\d+)\.invoice_id$/', $name, $m) && $value) {
             $index = (int) $m[1];
+            $this->lines[$index]['existing_payment_id'] = null;
 
             foreach ($this->invoiceOptions($index) as $option) {
                 if ($option['id'] === (int) $value && $this->lines[$index]['amount'] === '') {
@@ -268,7 +308,9 @@ class ForeignStatementBook extends Component
             'lines.*.line_date' => ['required', 'date'],
             'lines.*.kind' => ['required', 'in:invoice_payment,currency_sale'],
             'lines.*.amount' => ['required', 'regex:/^\d+(\.\d{1,2})?$/'],
-            'lines.*.exchange_rate' => ['nullable', 'regex:/^\d+(\.\d{1,6})?$/'],
+            'lines.*.exchange_rate' => ['nullable', 'regex:/^\d{1,6}(\.\d{1,6})?$/'],
+            'lines.*.invoice_id' => ['nullable', 'integer'],
+            'lines.*.existing_payment_id' => ['nullable', 'integer'],
             'lines.*.partner_id' => ['nullable', Rule::exists('partners', 'id')->where('company_id', $this->company->id)],
         ], [
             'lines.*.partner_id.exists' => 'Партнерот не е од оваа фирма.',
@@ -276,7 +318,8 @@ class ForeignStatementBook extends Component
             'closingBalance.regex' => 'Крајната состојба е број (пример 1000.50 или -200).',
             'lines.*.amount.required' => 'Внесете износ на секоја ставка.',
             'lines.*.amount.regex' => 'Износот е број со најмногу две децимали.',
-            'lines.*.exchange_rate.regex' => 'Курсот е број со најмногу шест децимали (со точка).',
+            'lines.*.exchange_rate.regex' => 'Курсот е број до шест цифри пред точката и најмногу шест децимали.',
+            'lines.*.invoice_id.integer' => 'Изберете фактура од листата.',
         ]);
 
         DB::transaction(function () {
@@ -312,6 +355,7 @@ class ForeignStatementBook extends Component
                     'description' => $line['description'] ?: null,
                     'kind' => $line['kind'],
                     'sales_invoice_id' => $isSale ? null : ($line['invoice_id'] ?: null),
+                    'sales_invoice_payment_id' => $isSale ? null : ($line['existing_payment_id'] ?: null),
                     'reviewed_at' => now(),
                 ]);
             }

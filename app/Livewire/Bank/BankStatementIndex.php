@@ -111,6 +111,14 @@ class BankStatementIndex extends Component
             'newFile.max' => 'Изводот не смее да биде поголем од 25 MB.',
         ]);
 
+        // Низата на бројки и состојби е по сметка: друга валута на иста сметка би ги мешала.
+        if ($data['kind'] === BankStatementKind::FOREIGN->value && BankStatement::where('company_id', $this->company->id)
+            ->where('account', $data['account'])->whereNotNull('currency')->where('currency', '!=', $data['currency'])->exists()) {
+            $this->addError('currency', 'Оваа сметка веќе има изводи во друга валута.');
+
+            return;
+        }
+
         // Двапати ист број во истата низа ја руши токму проверката поради која
         // бројот се внесува — прекинот потоа не се гледа.
         if ($this->numberIsTaken((int) $data['number'], $data['account'], $data['statementDate'])) {

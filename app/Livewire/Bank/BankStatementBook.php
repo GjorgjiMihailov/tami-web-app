@@ -377,6 +377,16 @@ class BankStatementBook extends Component
 
     public function updated(string $name, mixed $value): void
     {
+        // Прифатената разлика важи за износот што сметководителот го видел: секоја измена ја одштиклира.
+        // Друго конто значи дека девизниот износ повеќе не се однесува на оваа ставка.
+        if (preg_match('/^lines\.(\d+)\.(debit|credit|amount|foreign_amount|currency|account_id)$/', $name, $m) && isset($this->lines[(int) $m[1]])) {
+            $this->lines[(int) $m[1]]['settle_difference'] = false;
+
+            if ($m[2] === 'account_id') {
+                $this->lines[(int) $m[1]]['foreign_amount'] = '';
+            }
+        }
+
         // Внесот е во Должи/Побарува; насоката и износот се изведуваат од тоа.
         // Должи (исплата) и Побарува (уплата) се исклучуваат меѓусебно.
         if (preg_match('/^lines\.(\d+)\.(debit|credit)$/', $name, $m)) {

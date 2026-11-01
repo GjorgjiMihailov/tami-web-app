@@ -84,6 +84,16 @@
                                             <option value="{{ $option['id'] }}">{{ $option['label'] }}</option>
                                         @endforeach
                                     </select>
+                                    @php($payments = $this->paymentOptions($i))
+                                    @if ($payments !== [])
+                                        <select wire:model.live="lines.{{ $i }}.existing_payment_id" class="mt-1 border-gray-300 rounded-md text-xs py-1 w-full" @disabled($locked)>
+                                            <option value="">— нова наплата —</option>
+                                            @foreach ($payments as $payment)
+                                                <option value="{{ $payment['id'] }}">Веќе внесено: {{ $payment['label'] }}</option>
+                                            @endforeach
+                                        </select>
+                                    @endif
+                                    @error("lines.$i.invoice_id") <span class="block text-red-600 text-xs">{{ $message }}</span> @enderror
                                 @endif
                             </td>
                             <td class="py-1 pr-2">
