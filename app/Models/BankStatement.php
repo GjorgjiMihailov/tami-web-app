@@ -25,7 +25,7 @@ class BankStatement extends Model
     public const STATUS_BOOKED = 'booked';
 
     protected $fillable = [
-        'company_id', 'bank', 'account', 'kind', 'number', 'statement_date', 'uploaded_by',
+        'company_id', 'bank', 'account', 'kind', 'currency', 'number', 'statement_date', 'uploaded_by',
         'opening_balance', 'closing_balance', 'status', 'journal_entry_id',
     ];
 

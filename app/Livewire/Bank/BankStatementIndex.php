@@ -9,6 +9,7 @@ use App\Services\Bank\Mt940Importer;
 use App\Services\DocumentStorage;
 use App\Support\Bank\BankLedgerTotals;
 use App\Support\Bank\StatementSequence;
+use App\Support\BankStatementCurrency;
 use App\Support\BankStatementKind;
 use App\Support\WorkingYear;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +38,9 @@ class BankStatementIndex extends Component
     public string $account = '';
 
     public string $kind = BankStatementKind::DENAR->value;
+
+    /** Само за девизен извод. */
+    public string $currency = 'EUR';
 
     public string $number = '';
 
@@ -89,12 +93,15 @@ class BankStatementIndex extends Component
             'bank' => 'required|string|max:255',
             'account' => 'required|string|max:34',
             'kind' => ['required', Rule::enum(BankStatementKind::class)],
+            'currency' => [Rule::requiredIf($this->kind === BankStatementKind::FOREIGN->value), 'nullable', Rule::in(BankStatementCurrency::all())],
             'number' => 'required|integer|min:1',
             'statementDate' => 'required|date|before_or_equal:today',
             'newFile' => 'required|file|max:25600',
         ], [
             'bank.required' => 'Внесете ја банката.',
             'account.required' => 'Внесете ја сметката.',
+            'currency.required' => 'Изберете валута на девизниот извод.',
+            'currency.in' => 'Валутата е EUR или USD.',
             'number.required' => 'Внесете го бројот на изводот.',
             'number.integer' => 'Бројот на изводот е цел број.',
             'number.min' => 'Бројот на изводот почнува од 1.',
@@ -117,6 +124,7 @@ class BankStatementIndex extends Component
             'bank' => $data['bank'],
             'account' => $data['account'],
             'kind' => $data['kind'],
+            'currency' => $data['kind'] === BankStatementKind::FOREIGN->value ? $data['currency'] : null,
             'number' => $data['number'],
             'statement_date' => $data['statementDate'],
             'uploaded_by' => auth()->id(),
