@@ -5,13 +5,22 @@ namespace App\Livewire\Invoicing;
 use App\Models\Company;
 use App\Support\InvoiceNumber;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('layouts.app')]
 class InvoiceSettings extends Component
 {
+    use WithFileUploads;
+
     public Company $company;
+
+    /** Слика од потпис и од печат — се печатат над линијата на издавачот. */
+    public $newSignature = null;
+
+    public $newStamp = null;
 
     public bool $includeYear = true;
 
@@ -40,6 +49,8 @@ class InvoiceSettings extends Component
     public string $deliveryNotePrefix = 'ИСП-';
 
     public bool $saved = false;
+
+    public bool $imagesSaved = false;
 
     public function mount(Company $company): void
     {
@@ -86,6 +97,66 @@ class InvoiceSettings extends Component
         ]);
 
         $this->saved = true;
+    }
+
+    /**
+     * Качената слика се зачувува само ако е вистинска слика; старата датотека се
+     * брише за да не остануваат сирачиња на дискот. Непополнето поле не се допира.
+     */
+    public function saveImages(): void
+    {
+        Gate::authorize('updateInvoiceSettings', $this->company);
+
+        $this->validate([
+            'newSignature' => 'nullable|image|mimes:png,jpg,jpeg|max:5120',
+            'newStamp' => 'nullable|image|mimes:png,jpg,jpeg|max:5120',
+        ], [
+            'newSignature.image' => 'Потписот мора да биде слика (PNG или JPG).',
+            'newSignature.mimes' => 'Потписот мора да биде PNG или JPG.',
+            'newSignature.max' => 'Сликата на потписот не смее да биде поголема од 5 MB.',
+            'newStamp.image' => 'Печатот мора да биде слика (PNG или JPG).',
+            'newStamp.mimes' => 'Печатот мора да биде PNG или JPG.',
+            'newStamp.max' => 'Сликата на печатот не смее да биде поголема од 5 MB.',
+        ]);
+
+        foreach (['signature' => $this->newSignature, 'stamp' => $this->newStamp] as $kind => $file) {
+            if (! $file) {
+                continue;
+            }
+
+            $column = $kind.'_path';
+            $old = $this->company->{$column};
+            $this->company->update([$column => $file->store('signatures/'.$this->company->id, 'public')]);
+
+            if ($old) {
+                Storage::disk('public')->delete($old);
+            }
+        }
+
+        $this->reset('newSignature', 'newStamp');
+        $this->imagesSaved = true;
+    }
+
+    public function removeSignature(): void
+    {
+        $this->removeImage('signature_path');
+    }
+
+    public function removeStamp(): void
+    {
+        $this->removeImage('stamp_path');
+    }
+
+    private function removeImage(string $column): void
+    {
+        Gate::authorize('updateInvoiceSettings', $this->company);
+
+        $old = $this->company->{$column};
+        $this->company->update([$column => null]);
+
+        if ($old) {
+            Storage::disk('public')->delete($old);
+        }
     }
 
     private function separatorValue(): string

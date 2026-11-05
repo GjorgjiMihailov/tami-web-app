@@ -17,6 +17,13 @@
             ? \Illuminate\Support\Facades\Storage::disk('public')->path($company->logo_path)
             : null;
         $hasLogo = $logoPath && file_exists($logoPath);
+        // Потпис и печат: ист принцип како логото — се печатат само ако датотеката
+        // навистина постои, инаку би излегла скршена слика.
+        $sealPaths = collect([$company->stamp_path, $company->signature_path])
+            ->filter()
+            ->map(fn ($path) => \Illuminate\Support\Facades\Storage::disk('public')->path($path))
+            ->filter(fn ($path) => file_exists($path))
+            ->values();
         // Распределба на ДДВ по стапки — само кога навистина има повеќе од
         // една стапка на фактурата (со само една стапка е чист повтор на
         // кутијата со вкупни износи).
@@ -347,9 +354,18 @@
                 <div class="muted" style="margin-top: 4px;">{{ $lang->t('no_bank_account') }}</div>
             @endunless
         </div>
-        <table class="signatures">
+        {{-- Со слики просторот над линијата го пополнуваат тие, па големиот размак
+             од 90px не е потребен. Без слики остануваат точно како порано. --}}
+        <table class="signatures" @if ($sealPaths->isNotEmpty()) style="margin-top: 24px;" @endif>
             <tr>
                 <td>
+                    @if ($sealPaths->isNotEmpty())
+                        <div style="height: 70px; text-align: center;">
+                            @foreach ($sealPaths as $sealPath)
+                                <img src="{{ $sealPath }}" style="max-height: 70px; max-width: 45%;">
+                            @endforeach
+                        </div>
+                    @endif
                     <div class="sig-line"></div>
                     <div class="sig-label">{{ $lang->t('signature_issuer') }}</div>
                 </td>

@@ -103,4 +103,38 @@
             </div>
         </form>
     </x-card>
+
+    <h2 class="text-xl font-bold text-gray-800 mt-8 mb-1">Потпис и печат на фактурата</h2>
+    <p class="text-sm text-gray-500 mb-4">
+        Сликите се печатат на фактурата над линијата „Издавач“. Најдобро е PNG со проѕирна позадина. Ако не качите слика, фактурата се печати како досега.
+    </p>
+
+    <x-card class="max-w-2xl">
+        <form wire:submit="saveImages" class="grid gap-5">
+            @foreach ([
+                ['field' => 'newSignature', 'column' => 'signature_path', 'label' => 'Потпис', 'remove' => 'removeSignature'],
+                ['field' => 'newStamp', 'column' => 'stamp_path', 'label' => 'Печат', 'remove' => 'removeStamp'],
+            ] as $image)
+                <div>
+                    <x-input-label for="{{ $image['field'] }}" :value="$image['label']" />
+                    @if ($company->{$image['column']})
+                        <div class="flex items-center gap-3 my-2">
+                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($company->{$image['column']}) }}" alt="{{ $image['label'] }}" class="h-16 border border-gray-200 rounded bg-white p-1">
+                            <button type="button" wire:click="{{ $image['remove'] }}" wire:confirm="Да се отстрани сликата?" class="text-sm text-red-600 hover:underline">Отстрани</button>
+                        </div>
+                    @endif
+                    <input id="{{ $image['field'] }}" type="file" accept="image/png,image/jpeg" wire:model="{{ $image['field'] }}" class="block w-full text-sm text-gray-600">
+                    <div wire:loading wire:target="{{ $image['field'] }}" class="text-xs text-gray-500 mt-1">Се качува…</div>
+                    @error($image['field']) <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                </div>
+            @endforeach
+
+            <div class="flex items-center gap-3">
+                <x-primary-button type="submit">Зачувај ги сликите</x-primary-button>
+                @if ($imagesSaved)
+                    <span class="text-sm text-green-700">Зачувано.</span>
+                @endif
+            </div>
+        </form>
+    </x-card>
 </div>
