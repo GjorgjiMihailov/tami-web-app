@@ -70,6 +70,8 @@ class MarketingHomeTest extends TestCase
             );
         }
 
-        $this->assertFileExists(public_path('images/logo-icon.png'));
+        foreach (['images/logo.png', 'images/logo-icon.png', 'favicon.ico', 'favicon-32x32.png', 'apple-touch-icon.png'] as $asset) {
+            $this->assertFileExists(public_path($asset));
+        }
     }
 }

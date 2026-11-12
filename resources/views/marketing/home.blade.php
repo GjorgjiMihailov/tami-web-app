@@ -16,8 +16,7 @@
     <title>ТАМИ — FinanceBuddy.mk Портал</title>
     <meta name="description" content="Порталот на FinanceBuddy.mk: фактури и е-Фактура до УЈП, сметководство, ДДВ-04, плати и МПИН, залихи и документи — на едно место, заедно со твојот сметководител.">
 
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    @include('partials.favicon')
 
     <meta property="og:type" content="website">
     <meta property="og:title" content="ТАМИ — FinanceBuddy.mk Портал">
@@ -40,11 +39,8 @@
     {{-- ───────────────────────── Горна лента ───────────────────────── --}}
     <header class="sticky top-0 z-50 border-b border-white/10 bg-night/85 backdrop-blur">
         <div class="mx-auto max-w-6xl px-5 h-16 flex items-center justify-between gap-4">
-            <a href="{{ url('/') }}" class="flex items-center gap-2.5 shrink-0">
-                <img src="/images/logo-icon.png" alt="" class="h-8 w-8" width="32" height="32">
-                <span class="font-display text-lg font-semibold tracking-tight text-white">
-                    ТАМИ<span class="text-white/60 font-body text-sm font-normal ms-2 hidden sm:inline">FinanceBuddy.mk Портал</span>
-                </span>
+            <a href="{{ url('/') }}" class="block shrink-0">
+                <img src="/images/logo.png" alt="ТАМИ — FinanceBuddy App" class="h-10 w-auto" width="800" height="232">
             </a>
 
             <nav class="hidden md:flex items-center gap-7 text-sm text-white/70">

@@ -11,7 +11,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Политика за приватност — ТАМИ, FinanceBuddy.mk</title>
     <meta name="robots" content="index,follow">
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    @include('partials.favicon')
     <link href="https://fonts.bunny.net/css?family=fraunces:400,600,700|inter:400,500,600,700&display=swap" rel="stylesheet" />
     @vite(['resources/css/app.css'])
 </head>

@@ -7,8 +7,7 @@
 
         <title>{{ \App\Support\PortalApp::current()->title() }}</title>
 
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        @include('partials.favicon')
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -19,12 +18,9 @@
     </head>
     <body class="font-sans text-ink antialiased">
         <div class="min-h-screen flex flex-col items-center justify-center gap-8 bg-canvas px-4 py-10">
-            <a href="/" class="flex items-center gap-2.5">
-                <img src="/images/logo-icon.png" alt="" class="h-10 w-10" width="40" height="40">
-                <span class="leading-tight">
-                    <span class="block text-xl font-bold tracking-tight text-ink">ТАМИ</span>
-                    <span class="block text-xs text-stone">FinanceBuddy App</span>
-                </span>
+            {{-- Темна плочка: текстот во логото е бел и на светла подлога не се чита. --}}
+            <a href="/" class="block rounded-2xl bg-night px-7 py-4 shadow-card">
+                <img src="/images/logo.png" alt="ТАМИ — FinanceBuddy App" class="h-14 w-auto" width="800" height="232">
             </a>
 
             <div class="w-full sm:max-w-md overflow-hidden rounded-2xl border border-sand bg-white shadow-card">

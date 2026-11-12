@@ -1,16 +1,18 @@
 <div class="w-60 shrink-0 bg-rail border-r border-rail-line text-rail-text flex flex-col min-h-screen app-sidebar"
      :class="{ 'is-open': sidebarOpen }">
-    {{-- Логото е бела лента преку целата ширина, со логото на средина. --}}
+    {{-- Логото е лента преку целата ширина, со логото на средина. Лентата е
+         темна како сајдбарот: текстот „ТАМИ“ во логото е бел со тенка контура
+         и на бела подлога едвај се чита. --}}
     <div class="relative border-b border-rail-line">
         {{-- Двата реда се два одделни јазли намерно: Livewire му врзува
              коментари-маркери на текст што е сечен со @if, па заедничка линија
              со услов среде неа би се распаднала при освежување. --}}
-        <a href="{{ $brandUrl }}" @if ($this->app() === \App\Support\PortalApp::PORTAL) wire:navigate @endif class="flex items-center justify-center h-14 w-full bg-white">
-            <img src="{{ asset('images/financebuddy-logo.png') }}" alt="FinanceBuddy.mk" class="h-7 w-auto max-w-[80%]">
+        <a href="{{ $brandUrl }}" @if ($this->app() === \App\Support\PortalApp::PORTAL) wire:navigate @endif class="flex items-center justify-center h-14 w-full bg-rail">
+            <img src="{{ asset('images/logo.png') }}" alt="ТАМИ — FinanceBuddy App" class="h-10 w-auto max-w-[80%]">
         </a>
         <button type="button" @click="sidebarOpen = false"
                 aria-label="Затвори мени"
-                class="absolute right-1 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition lg:hidden">
+                class="absolute right-1 top-1/2 -translate-y-1/2 p-2 rounded-md text-rail-text hover:bg-rail-soft transition lg:hidden">
             <svg class="h-5 w-5" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>

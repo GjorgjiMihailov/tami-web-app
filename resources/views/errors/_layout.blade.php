@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <title>{{ $title }} — ТАМИ</title>
+    @include('partials.favicon')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center">

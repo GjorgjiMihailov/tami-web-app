@@ -29,8 +29,9 @@ class SidebarAppBrandingTest extends TestCase
         $response = $this->actingAs($admin)->get(route('payroll-runs.index', $company));
 
         $response->assertOk();
-        // Логото на FinanceBuddy.mk стои на врвот на sidebar-от на секој екран.
-        $response->assertSee('FinanceBuddy.mk');
+        // Главното лого на ТАМИ (со текст) стои на врвот на sidebar-от на секој екран.
+        $response->assertSee('images/logo.png', false);
+        $response->assertSee('ТАМИ — FinanceBuddy App', false);
         // Која апликација си ја гледаш сега го кажува горната лента, не sidebar-от.
         $response->assertSee('Плати');
     }
