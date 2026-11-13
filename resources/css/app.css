@@ -265,6 +265,32 @@
     max-width: 34rem;
 }
 
+/*
+ * Помала плочка за списокот на фирми на почетниот екран: таму може да има
+ * десетици фирми, па секоја зафаќа помалку место и по четири стојат во ред.
+ */
+.app-tile--compact {
+    border-radius: 1rem;
+    padding: 0.875rem 1rem;
+}
+
+.app-tile--compact .app-tile__icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.7rem;
+}
+
+.app-tile--compact .app-tile__glow {
+    top: -2.5rem;
+    right: -2.5rem;
+    width: 6rem;
+    height: 6rem;
+}
+
+.app-tile--compact .app-tile__cta {
+    margin-top: 0.5rem;
+}
+
 .app-tile--orange { --tone: #ff6600; --tone-2: #ffa25c; --tone-soft: rgba(255, 102, 0, 0.16); }
 .app-tile--green  { --tone: #059669; --tone-2: #34d399; --tone-soft: rgba(5, 150, 105, 0.16); }
 .app-tile--indigo { --tone: #4f46e5; --tone-2: #818cf8; --tone-soft: rgba(79, 70, 229, 0.16); }

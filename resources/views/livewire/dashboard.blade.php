@@ -57,17 +57,17 @@
             </a>
         @endif
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             @foreach ($companies as $company)
                 <a href="{{ route('companies.dashboard', $company) }}" wire:navigate
-                   class="app-tile press {{ $company->type->isLegal() ? 'app-tile--orange' : 'app-tile--indigo' }}"
+                   class="app-tile app-tile--compact press {{ $company->type->isLegal() ? 'app-tile--orange' : 'app-tile--indigo' }}"
                    style="--i: {{ $loop->index }}">
                     <span class="app-tile__glow" aria-hidden="true"></span>
                     <span class="app-tile__icon" aria-hidden="true">
                         <span class="text-sm font-bold">{{ \Illuminate\Support\Str::of($company->name)->substr(0, 2)->upper() }}</span>
                     </span>
-                    <span class="relative block mt-4 text-base font-bold text-ink">{{ $company->name }}</span>
-                    <span class="relative block mt-1 text-xs text-stone">{{ $company->type->label() }}</span>
+                    <span class="relative block mt-2.5 text-sm font-bold leading-snug text-ink">{{ $company->name }}</span>
+                    <span class="relative block mt-0.5 text-xs text-stone">{{ $company->type->label() }}</span>
                     <span class="app-tile__cta">
                         Отвори
                         <svg class="app-tile__arrow h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
