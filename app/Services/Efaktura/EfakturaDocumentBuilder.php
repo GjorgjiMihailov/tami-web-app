@@ -59,8 +59,9 @@ class EfakturaDocumentBuilder
                     'docPaymentDiscount' => null,
                     'docCurrency' => 'MKD',
                     'docCurrencyCode' => 'MKD',
-                    'docCurrencyDate' => $today,
-                    'docCurrencyExchRate' => 1,
+                    // УЈП (тест-околина, 2026-11-19) ги одби docCurrencyDate и
+                    // docCurrencyExchRate како непознати полиња: за овој тип
+                    // документ валутата е секогаш MKD и курс не се праќа.
                 ],
                 'docItems' => $items,
                 'docTotals' => [
@@ -119,7 +120,6 @@ class EfakturaDocumentBuilder
         // „Original", а цената по рабат во „UnitPriceWoVat". Без рабат сите
         // вредности се исти како порано.
         $originalUnitPrice = (float) $line->originalUnitPrice();
-        $originalTotal = (float) $line->originalLineTotal();
         $unitDiscount = round($originalUnitPrice - $unitPrice, 4);
         $vatAmount = (float) $line->vatAmount();
         $vatPercent = EfakturaTaxIndicator::percent($line->vat_treatment, (string) $line->vat_rate);
@@ -144,7 +144,6 @@ class EfakturaDocumentBuilder
             'docItemUnitVat' => $unitVatAmount,
             'docItemVat' => $vatPercent,
             'docItemVatGroup' => $taxIndicator,
-            'docItemTotalOriginalPriceWoVat' => $originalTotal,
             'docItemTotalPriceWoVat' => $lineTotal,
             'docItemTotalVat' => $vatAmount,
             'docItemTotalPriceWVat' => round($lineTotal + $vatAmount, 2),

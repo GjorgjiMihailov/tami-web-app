@@ -105,7 +105,10 @@ class LineDiscountTest extends TestCase
         $this->assertSame(500.0, $discounted['docItemUnitOriginalPriceWoVat']);
         $this->assertSame(50.0, $discounted['docItemUnitDiscountAmount']);
         $this->assertSame(450.0, $discounted['docItemUnitPriceWoVat']);
-        $this->assertSame(1000.0, $discounted['docItemTotalOriginalPriceWoVat']);
+        // УЈП го одби docItemTotalOriginalPriceWoVat како непознато поле (2026-11-19).
+        $this->assertArrayNotHasKey('docItemTotalOriginalPriceWoVat', $discounted);
+        $this->assertArrayNotHasKey('docCurrencyDate', $items['docPayment']);
+        $this->assertArrayNotHasKey('docCurrencyExchRate', $items['docPayment']);
         $this->assertSame(900.0, $discounted['docItemTotalPriceWoVat']);
         $this->assertSame(162.0, $discounted['docItemTotalVat']);
         $this->assertSame(1062.0, $discounted['docItemTotalPriceWVat']);
@@ -113,7 +116,6 @@ class LineDiscountTest extends TestCase
         // Ставка без рабат: оригиналната и нето цената се исти, рабат нула — како порано.
         $this->assertSame(100.0, $plain['docItemUnitOriginalPriceWoVat']);
         $this->assertEquals(0, $plain['docItemUnitDiscountAmount']);
-        $this->assertSame(100.0, $plain['docItemTotalOriginalPriceWoVat']);
 
         // Документот се собира од износите по рабат.
         $this->assertSame(1000.0, $items['docTotals']['docNetAmount']);
